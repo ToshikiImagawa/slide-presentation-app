@@ -30,6 +30,7 @@
     "audio": {
       "play": "音声を再生",
       "stop": "音声を停止",
+      "error": "音声ファイルの読み込みに失敗しました",
       "autoPlayOn": "自動再生をOFFにする",
       "autoPlayOff": "自動再生をONにする",
       "autoSlideshowOn": "自動スライドショーをOFFにする",

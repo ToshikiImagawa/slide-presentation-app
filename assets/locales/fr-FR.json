@@ -30,6 +30,7 @@
     "audio": {
       "play": "Lire l'audio",
       "stop": "Arrêter l'audio",
+      "error": "Échec du chargement du fichier audio",
       "autoPlayOn": "Désactiver la lecture automatique",
       "autoPlayOff": "Activer la lecture automatique",
       "autoSlideshowOn": "Désactiver le diaporama automatique",

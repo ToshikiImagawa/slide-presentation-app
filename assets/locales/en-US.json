@@ -30,6 +30,7 @@
     "audio": {
       "play": "Play audio",
       "stop": "Stop audio",
+      "error": "Failed to load audio file",
       "autoPlayOn": "Turn off auto-play",
       "autoPlayOff": "Turn on auto-play",
       "autoSlideshowOn": "Turn off auto-slideshow",
