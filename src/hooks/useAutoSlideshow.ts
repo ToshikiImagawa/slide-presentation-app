@@ -68,29 +68,29 @@ export function useAutoSlideshow({ slides, currentIndex, audioPlayer, goToNext, 
     audioPlayer.onEndedRef.current = handleAudioEnded
   }, [audioPlayer.onEndedRef, handleAudioEnded])
 
-  // タイマーベース自動スクロール: voice 未定義スライドで scrollSpeed 秒後に次スライドへ
-  useEffect(() => {
-    if (!autoSlideshow) return
+  // タイマーベース自動スクロール: voice 未定義スライド、または音声読み込み失敗時に scrollSpeed 秒後に次スライドへ
+  const shouldUseTimer = useMemo(() => {
+    if (!autoSlideshow) return false
     const currentSlide = slides[currentIndex]
-    if (!currentSlide) return
+    if (!currentSlide) return false
+    if (currentIndex >= slides.length - 1) return false
     const voicePath = getVoicePath(currentSlide)
-    if (voicePath) return
-    const isLastSlide = currentIndex >= slides.length - 1
-    if (isLastSlide) return
+    if (!voicePath) return true
+    // voice が定義されているが音声読み込みに失敗した場合、タイマーフォールバック（DC_SNA_002 準拠）
+    return audioPlayer.hasError
+  }, [autoSlideshow, currentIndex, slides, audioPlayer.hasError])
 
+  useEffect(() => {
+    if (!shouldUseTimer) return
     const timerId = setTimeout(goToNext, scrollSpeed * 1000)
     return () => clearTimeout(timerId)
-  }, [autoSlideshow, currentIndex, slides, scrollSpeed, goToNext])
+  }, [shouldUseTimer, currentIndex, scrollSpeed, goToNext])
 
   // タイマーがアクティブかどうかを算出（プログレス表示用）
   const timerDuration = useMemo(() => {
-    if (!autoSlideshow) return null
-    const currentSlide = slides[currentIndex]
-    if (!currentSlide) return null
-    if (getVoicePath(currentSlide)) return null
-    if (currentIndex >= slides.length - 1) return null
+    if (!shouldUseTimer) return null
     return scrollSpeed
-  }, [autoSlideshow, currentIndex, slides, scrollSpeed])
+  }, [shouldUseTimer, scrollSpeed])
 
   return {
     autoPlay,

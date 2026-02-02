@@ -6,6 +6,8 @@ export interface UseAudioPlayerReturn {
   play: (src: string) => void
   stop: () => void
   isPlaying: boolean
+  /** 音声読み込みに失敗した場合 true */
+  hasError: boolean
   /** 音声終了時のコールバックを登録する */
   onEndedRef: React.MutableRefObject<(() => void) | null>
   /** 現在の再生位置（秒） */
@@ -16,6 +18,7 @@ export interface UseAudioPlayerReturn {
 
 export function useAudioPlayer(): UseAudioPlayerReturn {
   const [playbackState, setPlaybackState] = useState<AudioPlaybackState>('idle')
+  const [hasError, setHasError] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
   const audioRef = useRef<HTMLAudioElement | null>(null)
@@ -32,6 +35,7 @@ export function useAudioPlayer(): UseAudioPlayerReturn {
     (src: string) => {
       const audio = getAudio()
       audio.src = src
+      setHasError(false)
       audio.play().catch(() => {
         setPlaybackState('idle')
       })
@@ -47,6 +51,7 @@ export function useAudioPlayer(): UseAudioPlayerReturn {
       audio.currentTime = 0
     }
     setPlaybackState('idle')
+    setHasError(false)
     setCurrentTime(0)
     setDuration(0)
   }, [])
@@ -61,6 +66,8 @@ export function useAudioPlayer(): UseAudioPlayerReturn {
 
     const handleError = () => {
       setPlaybackState('idle')
+      // 音声読み込み失敗を記録し、useAutoSlideshow がタイマーフォールバックに切り替えられるようにする（DC_SNA_002 準拠）
+      setHasError(true)
     }
 
     const handleTimeUpdate = () => {
@@ -101,6 +108,7 @@ export function useAudioPlayer(): UseAudioPlayerReturn {
     play,
     stop,
     isPlaying: playbackState === 'playing',
+    hasError,
     onEndedRef,
     currentTime,
     duration,

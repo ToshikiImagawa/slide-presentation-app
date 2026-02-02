@@ -3,7 +3,9 @@ import { render } from '@testing-library/react'
 import { ThemeProvider } from '@mui/material/styles'
 import { SlideRenderer } from '../SlideRenderer'
 import { registerDefaultComponents } from '../registerDefaults'
-import { defaultPresentationData } from '../../data'
+import { getDefaultPresentationData } from '../../data'
+
+const defaultPresentationData = getDefaultPresentationData('ja')
 import { theme } from '../../theme'
 
 function renderWithTheme(ui: React.ReactNode) {

@@ -1,0 +1,667 @@
+{
+  "meta": {
+    "title": "Slide Template Guide",
+    "description": "Introduction to available layouts and components"
+  },
+  "slides": [
+    {
+      "id": "guide-title",
+      "layout": "center",
+      "content": {
+        "title": "Slide Template Guide",
+        "subtitle": "Introduction to available layouts and components\nPlace <code>public/slides.json</code> to customize"
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "This presentation introduces how to use slide templates.\nYou can freely customize slide content by placing public/slides.json.",
+          "summary": [
+            "Introduction to the slide template guide",
+            "Customizable via slides.json"
+          ]
+        }
+      }
+    },
+    {
+      "id": "guide-two-column-basic",
+      "layout": "two-column",
+      "content": {
+        "title": "layout: \"two-column\" — Basic Structure",
+        "left": {
+          "heading": "Left Column: heading",
+          "headingDescription": "Add subtext with headingDescription",
+          "paragraphs": [
+            "Write body text with paragraphs. <strong>HTML tags</strong> are also supported.",
+            "You can specify multiple paragraphs using an array."
+          ],
+          "items": [
+            {"text": "items:", "emphasis": true, "description": " emphasis: true for bold text"},
+            {"text": "Normal item:", "description": " add subtext with description"},
+            {"text": "Simple item"}
+          ]
+        },
+        "right": {
+          "codeBlock": {
+            "header": "> codeBlock.header",
+            "items": [
+              "codeBlock.items[0]",
+              "Ideal for displaying code or hierarchical structures",
+              "<strong>HTML tags</strong> are supported"
+            ]
+          },
+          "titledBulletList": {
+            "title": "titledBulletList.title",
+            "items": [
+              "titledBulletList item 1",
+              "titledBulletList item 2"
+            ]
+          },
+          "accentText": "→ accentText: Highlighted in primary color"
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "This slide explains the basic structure of the two-column layout. The left column contains heading, paragraphs, and items, while the right column has codeBlock, titledBulletList, and accentText.",
+          "summary": [
+            "Basic structure of two-column layout",
+            "Left: heading, paragraphs, items",
+            "Right: codeBlock, titledBulletList, accentText"
+          ]
+        }
+      }
+    },
+    {
+      "id": "guide-two-column-component",
+      "layout": "two-column",
+      "content": {
+        "title": "layout: \"two-column\" — Component Placement",
+        "left": {
+          "paragraphs": [
+            "Specify <code>component</code> in left / right to embed registered visuals."
+          ],
+          "codeBlock": {
+            "header": "> JSON specification",
+            "items": [
+              "\"right\": {",
+              "\u00a0\u00a0\"component\": {",
+              "\u00a0\u00a0\u00a0\u00a0\"name\": \"TerminalAnimation\",",
+              "\u00a0\u00a0\u00a0\u00a0\"props\": {",
+              "\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"logTextUrl\": \"/demo-log.txt\"",
+              "\u00a0\u00a0\u00a0\u00a0}",
+              "\u00a0\u00a0}",
+              "}"
+            ]
+          }
+        },
+        "right": {
+          "component": {
+            "name": "TerminalAnimation",
+            "props": { "logTextUrl": "/demo-log.txt" },
+            "style": { "height": "400px", "width": "90%", "margin": "auto" }
+          }
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "You can embed registered components by specifying a component field in the left or right columns of a two-column layout.",
+          "summary": [
+            "Specify component in left / right",
+            "Embed registered components",
+            "Configure with name, props, style"
+          ]
+        }
+      }
+    },
+    {
+      "id": "guide-workflow",
+      "layout": "content",
+      "content": {
+        "title": "layout: \"content\" — Timeline (steps)",
+        "steps": [
+          {"number": 1, "title": "Step Title", "description": "Description for each step", "command": "/command_name"},
+          {"number": 2, "title": "Step Title", "description": "command is optional"},
+          {"number": 3, "title": "Step Title", "description": "No limit on the number of steps", "command": "/another"},
+          {"number": 4, "title": "Step Title", "description": "Final step"}
+        ],
+        "footer": "footer: Display supplementary text below the timeline"
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "When you specify steps in a content layout, it displays in timeline format. Each step requires number, title, and description. command is optional.",
+          "summary": [
+            "Display timeline with steps",
+            "number, title, description are required",
+            "command is optional",
+            "footer for supplementary text"
+          ]
+        }
+      }
+    },
+    {
+      "id": "guide-features",
+      "layout": "content",
+      "content": {
+        "title": "layout: \"content\" — Tile Grid (tiles)",
+        "tiles": [
+          {
+            "icon": "Description",
+            "title": "Icon: Description",
+            "description": "Specify icon names in the icon field.<br/>Icons registered in registerDefaults are available."
+          },
+          {
+            "icon": "PlaylistAddCheck",
+            "title": "Icon: PlaylistAddCheck",
+            "description": "HTML tags like<br/><code>&lt;br/&gt;</code> and <code>&lt;code&gt;</code> are supported in description."
+          },
+          {
+            "icon": "Traffic",
+            "title": "Icon: Traffic",
+            "description": "Tiles are displayed in a 3-column grid. You can place 2 or 3 tiles."
+          }
+        ]
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "When you specify tiles in a content layout, it displays in a tile grid format. Each tile has icon, title, and description.",
+          "summary": [
+            "Display tile grid with tiles",
+            "Set icon, title, description",
+            "Arranged in 3-column grid"
+          ]
+        }
+      }
+    },
+    {
+      "id": "guide-content-component",
+      "layout": "content",
+      "content": {
+        "title": "layout: \"content\" — Component (component)",
+        "component": {
+          "name": "TerminalAnimation",
+          "props": { "logTextUrl": "/demo-log.txt" },
+          "style": { "height": "400px", "width": "90%", "margin": "auto" }
+        },
+        "footer": "Content layout components are rendered inside a wrapper with a title bar"
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "When you specify component in a content layout, the component is rendered inside a ContentLayout wrapper with a title bar. It is treated as a child element of the content layout, similar to steps and tiles.",
+          "summary": [
+            "Specify component in content layout",
+            "Rendered inside ContentLayout wrapper",
+            "Title bar is displayed automatically"
+          ]
+        }
+      }
+    },
+    {
+      "id": "guide-demo",
+      "layout": "bleed",
+      "content": {
+        "title": "layout: \"bleed\" — Full-width Two-column",
+        "titleDescription": "titleDescription: Display title supplement in left column",
+        "commands": [
+          {"text": "$ commands[0].text", "color": "var(--theme-text-heading)"},
+          {"text": "$ commands[1].text", "color": "var(--theme-primary)"},
+          {"text": "✓ You can specify color for each line", "color": "var(--theme-success)"}
+        ],
+        "component": {
+          "name": "TerminalAnimation",
+          "props": { "logTextUrl": "/demo-log.txt" },
+          "style": { "height": "400px", "width": "90%", "margin": "auto" }
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "The bleed layout displays in a full-width two-column format. The left column contains title, titleDescription, and commands, while the right column holds a component.",
+          "summary": [
+            "Full-width two-column with bleed layout",
+            "Left: title, titleDescription, commands",
+            "Right: component for any registered component"
+          ]
+        }
+      }
+    },
+    {
+      "id": "guide-custom-layout",
+      "layout": "custom",
+      "content": {
+        "component": {
+          "name": "TerminalAnimation",
+          "props": { "logTextUrl": "/demo-log.txt" },
+          "style": { "height": "100%", "width": "100%" }
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "The custom layout renders the specified component directly. Unlike the content layout, there is no wrapper such as a title bar, and the component occupies the entire slide.",
+          "summary": [
+            "layout: \"custom\" renders component directly",
+            "No wrapper like title bar",
+            "Understand the difference from content layout"
+          ]
+        }
+      }
+    },
+    {
+      "id": "guide-image-component",
+      "layout": "two-column",
+      "content": {
+        "title": "component: \"Image\" — Display Images",
+        "left": {
+          "paragraphs": [
+            "Specify <code>Image</code> as the <code>component</code> to display images.",
+            "It wraps <code>FallbackImage</code> and shows a fallback UI on load errors."
+          ],
+          "codeBlock": {
+            "header": "> JSON specification",
+            "items": [
+              "\"component\": {",
+              "\u00a0\u00a0\"name\": \"Image\",",
+              "\u00a0\u00a0\"props\": {",
+              "\u00a0\u00a0\u00a0\u00a0\"src\": \"https://...\",",
+              "\u00a0\u00a0\u00a0\u00a0\"width\": 320,",
+              "\u00a0\u00a0\u00a0\u00a0\"height\": 320,",
+              "\u00a0\u00a0}",
+              "}"
+            ]
+          }
+        },
+        "right": {
+          "component": {
+            "name": "Image",
+            "props": {
+              "src": "https://avatars.githubusercontent.com/u/6396938?v=4",
+              "width": 320,
+              "height": 320
+            },
+            "style": { "display": "flex", "justifyContent": "center", "alignItems": "center", "height": "100%" }
+          }
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "The Image component wraps FallbackImage and shows a fallback UI when image loading fails. Specify src, width, and height in props.",
+          "summary": [
+            "Display images with Image component",
+            "Fallback support via FallbackImage",
+            "Specify src, width, height in props"
+          ]
+        }
+      }
+    },
+    {
+      "id": "guide-custom",
+      "layout": "two-column",
+      "content": {
+        "title": "Default Registered Components",
+        "left": {
+          "titledBulletList": {
+            "title": "TerminalAnimation",
+            "description": "Terminal display with animation",
+            "items": [
+              "<strong>logTextUrl</strong>: URL of the log file\ne.g., \"/demo-log.txt\"",
+              "Uses built-in default when logTextUrl is omitted"
+            ]
+          }
+        },
+        "right": {
+          "codeBlock": {
+            "header": "> Registered MUI Icons",
+            "items": [
+              "Icon:Description",
+              "Icon:PlaylistAddCheck",
+              "Icon:Traffic",
+              "Icon:Memory",
+              "Icon:Search"
+            ]
+          },
+          "accentText": "→ Use icon names in the tiles icon field of content layout"
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "This is a list of components registered by default. TerminalAnimation and 5 MUI icons are available.",
+          "summary": [
+            "TerminalAnimation: Terminal with animation",
+            "5 MUI icons registered",
+            "Use in tiles icon field"
+          ]
+        }
+      }
+    },
+    {
+      "id": "guide-addon",
+      "layout": "two-column",
+      "content": {
+        "title": "Addon Components",
+        "left": {
+          "paragraphs": [
+            "Place components in <code>addons/src/</code> to dynamically register and use them in slides."
+          ],
+          "items": [
+            {"text": "Auto-registration:", "emphasis": true, "description": " Addons are registered to ComponentRegistry at startup"},
+            {"text": "When unloaded:", "emphasis": true, "description": " Fallback display (shows component name)"}
+          ],
+          "codeBlock": {
+            "header": "> JSON specification example",
+            "items": [
+              "\"component\": {",
+              "\u00a0\u00a0\"name\": \"VibeCodingDemo\"",
+              "}"
+            ]
+          }
+        },
+        "right": {
+          "titledBulletList": {
+            "title": "How to Create Addons",
+            "items": [
+              "<strong>addons/src/{name}/entry.ts</strong> — create the file",
+              "<code>window.__ADDON_REGISTER__</code> — register the component",
+              "<code>npm run build:addons</code> — build"
+            ]
+          },
+          "accentText": "→ addons/ is gitignored and only works locally"
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "The addon system allows you to add custom components. Place an entry file in addons/src/ and register it with window.__ADDON_REGISTER__.",
+          "summary": [
+            "Add components via addons/src/{name}/entry.ts",
+            "Register with window.__ADDON_REGISTER__",
+            "Build with npm run build:addons"
+          ]
+        }
+      }
+    },
+    {
+      "id": "guide-meta",
+      "layout": "two-column",
+      "content": {
+        "title": "Slide Configuration Options",
+        "left": {
+          "codeBlock": {
+            "header": "> meta (common to all slides)",
+            "items": [
+              "\"meta\": {",
+              "\u00a0\u00a0\"transition\": \"slide\",",
+              "\u00a0\u00a0\"backgroundColor\": \"#1a1a2e\",",
+              "\u00a0\u00a0\"backgroundImage\": \"/bg.png\",",
+              "\u00a0\u00a0\"notes\": \"string\" or {",
+              "\u00a0\u00a0\u00a0\u00a0\"speakerNotes\": \"Speaker notes\",",
+              "\u00a0\u00a0\u00a0\u00a0\"summary\": [\"Point 1\", ...]",
+              "\u00a0\u00a0}",
+              "}"
+            ]
+          }
+        },
+        "right": {
+          "codeBlock": {
+            "header": "> theme (entire presentation)",
+            "items": [
+              "\"theme\": {",
+              "\u00a0\u00a0\"colors\": {",
+              "\u00a0\u00a0\u00a0\u00a0\"primary\": \"#6c63ff\",",
+              "\u00a0\u00a0\u00a0\u00a0\"background\": \"#0f0e17\"",
+              "\u00a0\u00a0}",
+              "}"
+            ]
+          },
+          "accentText": "→ Details in the next slide"
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "The meta field lets you set transition, background color, background image, and speaker notes for each slide. The theme field configures colors and fonts for the entire presentation.",
+          "summary": [
+            "meta: transition, backgroundColor, backgroundImage, notes",
+            "theme: colors, fonts for entire presentation",
+            "notes can be string or object format"
+          ]
+        }
+      }
+    },
+    {
+      "id": "guide-theme-detail",
+      "layout": "two-column",
+      "content": {
+        "title": "Theme Configuration Details",
+        "left": {
+          "heading": "All theme.colors Keys",
+          "codeBlock": {
+            "header": "> theme.colors in slides.json",
+            "items": [
+              "\"colors\": {",
+              "\u00a0\u00a0\"primary\": \"#6c63ff\",",
+              "\u00a0\u00a0\"background\": \"#0f0e17\",",
+              "\u00a0\u00a0\"surface\": \"#1a1a2e\",",
+              "\u00a0\u00a0\"textHeading\": \"#ffffff\",",
+              "\u00a0\u00a0\"textBody\": \"#a0a0b0\",",
+              "\u00a0\u00a0\"accent\": \"#ff6b6b\",",
+              "\u00a0\u00a0\"success\": \"#4ecdc4\",",
+              "\u00a0\u00a0\"border\": \"#2a2a4a\"",
+              "}",
+              "",
+              "\"customCSS\": \".reveal { ... }\""
+            ]
+          }
+        },
+        "right": {
+          "heading": "Two Ways to Set Theme",
+          "items": [
+            {"text": "Method 1:", "emphasis": true, "description": " slides.json theme field (colors, fonts, customCSS)"},
+            {"text": "Method 2:", "emphasis": true, "description": " public/theme-colors.json (colors only)"},
+            {"text": "meta.themeColors:", "emphasis": true, "description": " Specify colors in slides.json meta (equivalent to Method 1)"}
+          ],
+          "codeBlock": {
+            "header": "> theme-colors.json (Method 2)",
+            "items": [
+              "{",
+              "\u00a0\u00a0\"primary\": \"#6c63ff\",",
+              "\u00a0\u00a0\"background\": \"#0f0e17\",",
+              "\u00a0\u00a0\"surface\": \"#1a1a2e\"",
+              "}"
+            ]
+          },
+          "accentText": "→ All colors have -rgb variants (usable with rgba())"
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "Theme colors can be set via slides.json theme.colors or public/theme-colors.json. Custom CSS can also be specified with customCSS. All colors automatically generate -rgb variants.",
+          "summary": [
+            "8 color keys available in theme.colors",
+            "Add custom CSS with customCSS",
+            "theme-colors.json for colors only",
+            "All colors auto-generate -rgb variants"
+          ]
+        }
+      }
+    },
+    {
+      "id": "guide-logo-fonts",
+      "layout": "two-column",
+      "content": {
+        "title": "Logo & Font Settings",
+        "left": {
+          "heading": "meta.logo",
+          "headingDescription": "Set a presentation logo",
+          "codeBlock": {
+            "header": "> JSON specification",
+            "items": [
+              "\"meta\": {",
+              "\u00a0\u00a0\"logo\": {",
+              "\u00a0\u00a0\u00a0\u00a0\"src\": \"/my-logo.png\",",
+              "\u00a0\u00a0\u00a0\u00a0\"width\": 150,",
+              "\u00a0\u00a0\u00a0\u00a0\"height\": 50",
+              "\u00a0\u00a0}",
+              "}"
+            ]
+          },
+          "items": [
+            {"text": "src:", "emphasis": true, "description": " Path to logo image (default: /logo.png)"},
+            {"text": "width / height:", "emphasis": true, "description": " Size specification (default: 120 x 40)"},
+            {"text": "When omitted:", "emphasis": true, "description": " Logo is not displayed"}
+          ]
+        },
+        "right": {
+          "heading": "theme.fonts",
+          "headingDescription": "Customize font families",
+          "codeBlock": {
+            "header": "> JSON specification",
+            "items": [
+              "\"theme\": {",
+              "\u00a0\u00a0\"fonts\": {",
+              "\u00a0\u00a0\u00a0\u00a0\"heading\": \"'Noto Sans JP'\",",
+              "\u00a0\u00a0\u00a0\u00a0\"body\": \"'Noto Sans JP'\",",
+              "\u00a0\u00a0\u00a0\u00a0\"code\": \"'Fira Code'\",",
+              "\u00a0\u00a0\u00a0\u00a0\"baseFontSize\": \"24px\",",
+              "\u00a0\u00a0\u00a0\u00a0\"sources\": [",
+              "\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"https://fonts...\"",
+              "\u00a0\u00a0\u00a0\u00a0]",
+              "\u00a0\u00a0}",
+              "}"
+            ]
+          },
+          "items": [
+            {"text": "heading:", "emphasis": true, "description": " Font for headings"},
+            {"text": "body:", "emphasis": true, "description": " Font for body text"},
+            {"text": "code:", "emphasis": true, "description": " Font for code blocks"},
+            {"text": "baseFontSize:", "emphasis": true, "description": " Base font size (default: 24px)"},
+            {"text": "sources:", "emphasis": true, "description": " Array of external font URLs (e.g., Google Fonts)"}
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "Set a logo image with meta.logo and customize font families with theme.fonts. The logo is not displayed when meta.logo is omitted.",
+          "summary": [
+            "Set logo image with meta.logo",
+            "Customize fonts with theme.fonts",
+            "3 font types: heading / body / code",
+            "baseFontSize and sources also configurable"
+          ]
+        }
+      }
+    },
+    {
+      "id": "guide-presenter-view",
+      "layout": "two-column",
+      "content": {
+        "title": "Presenter View",
+        "left": {
+          "heading": "Overview",
+          "paragraphs": [
+            "Click the \"Presenter View\" button in the top right to open a dedicated presenter window.",
+            "The main window and presenter view are synchronized bidirectionally. You can navigate slides from either window."
+          ],
+          "codeBlock": {
+            "header": "> notes configuration example",
+            "items": [
+              "\"meta\": {",
+              "\u00a0\u00a0\"notes\": {",
+              "\u00a0\u00a0\u00a0\u00a0\"speakerNotes\": \"Speaker notes\",",
+              "\u00a0\u00a0\u00a0\u00a0\"summary\": [\"Point 1\", \"Point 2\"]",
+              "\u00a0\u00a0}",
+              "}"
+            ]
+          }
+        },
+        "right": {
+          "heading": "4 Panels",
+          "items": [
+            {"text": "Speaker Notes:", "emphasis": true, "description": " Displays speaker notes (speakerNotes) for the current slide"},
+            {"text": "Previous Slide Preview:", "emphasis": true, "description": " Shows a thumbnail of the previous slide"},
+            {"text": "Next Slide Preview:", "emphasis": true, "description": " Shows a thumbnail of the next slide"},
+            {"text": "Key Points Summary:", "emphasis": true, "description": " Displays summary points as bullet list"}
+          ],
+          "titledBulletList": {
+            "title": "Keyboard Controls",
+            "items": [
+              "<strong>← / →</strong>: Navigate to previous/next slide",
+              "<strong>Space</strong>: Navigate to next slide"
+            ]
+          },
+          "accentText": "→ Set speakerNotes and summary in meta.notes to make the most of it"
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "The presenter view opens in a separate window and displays 4 panels: speaker notes, previous/next slide previews, and key points summary. It is synchronized bidirectionally with the main window.",
+          "summary": [
+            "Opens in separate window via top-right button",
+            "4 panels: speaker notes, prev/next previews, summary",
+            "Bidirectional sync with main window",
+            "Navigate with ←/→/Space"
+          ]
+        }
+      }
+    },
+    {
+      "id": "guide-audio",
+      "layout": "two-column",
+      "content": {
+        "title": "Audio Playback",
+        "left": {
+          "heading": "voice Field",
+          "headingDescription": "Specify audio files per slide",
+          "codeBlock": {
+            "header": "> JSON specification",
+            "items": [
+              "\"meta\": {",
+              "\u00a0\u00a0\"notes\": {",
+              "\u00a0\u00a0\u00a0\u00a0\"voice\": \"/voice/slide-01.wav\",",
+              "\u00a0\u00a0\u00a0\u00a0\"speakerNotes\": \"Speaker notes\"",
+              "\u00a0\u00a0}",
+              "}"
+            ]
+          },
+          "paragraphs": [
+            "Place audio files under <code>public/</code>. The toolbar is enabled on slides where <code>voice</code> is defined."
+          ]
+        },
+        "right": {
+          "heading": "Toolbar Buttons",
+          "items": [
+            {"text": "Play/Stop:", "emphasis": true, "description": " Manually play or stop the current slide's audio"},
+            {"text": "Auto-play:", "emphasis": true, "description": " Toggle automatic audio playback on slide transition"},
+            {"text": "Auto-slideshow:", "emphasis": true, "description": " Toggle automatic slide advance when audio ends"}
+          ],
+          "accentText": "→ Auto-play + Auto-slideshow enables fully automated presentations"
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "This slide introduces the audio playback feature. Specify the audio file path in meta.notes.voice to enable playback from the toolbar. Combining auto-play and auto-slideshow enables fully automated presentations across all slides.",
+          "summary": [
+            "Specify audio files with meta.notes.voice",
+            "Toolbar controls: manual play, auto-play, auto-slideshow",
+            "Auto-play + auto-slideshow for fully automated presentations"
+          ],
+          "voice": "/assets/voice/guide-audio-en.wav"
+        }
+      }
+    },
+    {
+      "id": "guide-summary",
+      "layout": "center",
+      "content": {
+        "variant": "section",
+        "title": "layout: \"center\" (variant: \"section\")",
+        "body": "Large title and body text.\nYou can display a QR code and GitHub link.",
+        "qrCode": "https://github.com/ToshikiImagawa/ai-sdd-workflow-demo",
+        "githubRepo": "ToshikiImagawa/ai-sdd-workflow-demo"
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "The center layout with variant: section is ideal for section dividers or summary slides with a large title display. You can also place a QR code and GitHub link.",
+          "summary": [
+            "center + variant: section for summary slides",
+            "QR code and GitHub link placement",
+            "Also useful as section dividers"
+          ]
+        }
+      }
+    }
+  ]
+}

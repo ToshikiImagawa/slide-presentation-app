@@ -638,7 +638,7 @@
             "ツールバーで手動再生・自動再生・自動スライドショーを制御",
             "自動再生 + 自動スライドショーで全自動プレゼンテーション"
           ],
-          "voice": "/assets/voice/guide-audio.wav"
+          "voice": "/assets/voice/guide-audio-ja.wav"
         }
       }
     },

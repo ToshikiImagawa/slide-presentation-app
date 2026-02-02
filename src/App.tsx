@@ -7,7 +7,7 @@ import { SettingsButton } from './components/SettingsButton'
 import { SettingsWindow } from './components/SettingsWindow'
 import { SlideRenderer } from './components/SlideRenderer'
 import { registerDefaultComponents } from './components/registerDefaults'
-import { defaultPresentationData, loadPresentationData } from './data'
+import { getDefaultPresentationData, loadPresentationData } from './data'
 import type { PresentationData } from './data'
 import { getVoicePath } from './data/noteHelpers'
 import { useAudioPlayer } from './hooks/useAudioPlayer'
@@ -17,7 +17,8 @@ import { useCircularProgress } from './hooks/useCircularProgress'
 import { useReveal } from './hooks/useReveal'
 import { theme } from './theme'
 import { applyThemeData } from './applyTheme'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useI18n } from './i18n'
 
 // デフォルトコンポーネントを登録
 registerDefaultComponents()
@@ -27,7 +28,9 @@ type AppProps = {
 }
 
 export function App({ presentationData }: AppProps) {
-  const data = loadPresentationData(presentationData, defaultPresentationData)
+  const { locale } = useI18n()
+  const defaultData = useMemo(() => getDefaultPresentationData(locale), [locale])
+  const data = loadPresentationData(presentationData, defaultData)
   const [currentIndex, setCurrentIndex] = useState(0)
   const [settingsOpen, setSettingsOpen] = useState(false)
 

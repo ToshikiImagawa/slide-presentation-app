@@ -1,8 +1,14 @@
 import type { PresentationData, SlideData, ValidationError } from './types'
-import defaultSlidesJson from './default-slides.json'
+import defaultSlidesJa from './default-slides-ja.json'
+import defaultSlidesEn from './default-slides-en.json'
 
-/** デフォルトのプレゼンテーションデータ */
-export const defaultPresentationData: PresentationData = defaultSlidesJson as PresentationData
+/** ロケールに応じたデフォルトプレゼンテーションデータを返す */
+export function getDefaultPresentationData(locale: string): PresentationData {
+  if (locale.startsWith('ja')) {
+    return defaultSlidesJa as PresentationData
+  }
+  return defaultSlidesEn as PresentationData
+}
 
 function addError(errors: ValidationError[], path: string, message: string, expected: string, actual: string): void {
   errors.push({ path, message, expected, actual })

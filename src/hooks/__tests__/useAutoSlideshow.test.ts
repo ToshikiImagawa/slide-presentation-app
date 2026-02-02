@@ -19,6 +19,7 @@ function createMockAudioPlayer(): UseAudioPlayerReturn {
     play: vi.fn() as unknown as (src: string) => void,
     stop: vi.fn() as unknown as () => void,
     isPlaying: false,
+    hasError: false,
     onEndedRef: { current: null },
     currentTime: 0,
     duration: 0,

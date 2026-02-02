@@ -48,4 +48,13 @@ describe('CircularProgress', () => {
     const svg = container.querySelector('svg')
     expect(svg).not.toBeNull()
   })
+
+  it('animationDuration 指定時に animationDuration スタイルが設定され stroke-dashoffset 属性がない', () => {
+    const { container } = render(<CircularProgress progress={0} visible={true} animationDuration={30} />)
+    const circle = container.querySelector('circle')
+    expect(circle).not.toBeNull()
+    expect(circle!.style.animationDuration).toBe('30s')
+    // animationDuration 指定時は stroke-dashoffset を直接属性に設定しない（CSS @keyframes が担当）
+    expect(circle!.getAttribute('stroke-dashoffset')).toBeNull()
+  })
 })

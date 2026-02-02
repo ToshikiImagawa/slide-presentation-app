@@ -40,7 +40,8 @@ export function useCircularProgress({ autoSlideshow, hasVoice, audioProgress, ti
       return { progress: 0, source: 'audio' as const, visible: true }
     }
 
-    if (!hasVoice && timerDuration != null && timerDuration > 0) {
+    // voice 未定義、または voice 定義済みだが音声読み込み失敗時のタイマーフォールバック（DC_SNA_002 準拠）
+    if (timerDuration != null && timerDuration > 0) {
       return { progress: 0, source: 'timer' as const, visible: true, animationDuration: timerDuration }
     }
 
