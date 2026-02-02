@@ -30,11 +30,9 @@ export function useAudioPlayer(): UseAudioPlayerReturn {
 
   const play = useCallback(
     (src: string) => {
-      console.log('[AudioPlayer] play called', { src })
       const audio = getAudio()
       audio.src = src
-      audio.play().catch((e) => {
-        console.log('[AudioPlayer] play() rejected', { error: e })
+      audio.play().catch(() => {
         setPlaybackState('idle')
       })
       setPlaybackState('playing')
@@ -43,7 +41,6 @@ export function useAudioPlayer(): UseAudioPlayerReturn {
   )
 
   const stop = useCallback(() => {
-    console.log('[AudioPlayer] stop called')
     const audio = audioRef.current
     if (audio) {
       audio.pause()
@@ -71,14 +68,12 @@ export function useAudioPlayer(): UseAudioPlayerReturn {
       // loadedmetadata が発火しないケースに備え、timeupdate でも duration を同期
       const dur = audio.duration
       if (isFinite(dur) && dur > 0) {
-        console.log('[AudioPlayer] timeupdate', { currentTime: audio.currentTime, duration: dur })
         setDuration(dur)
       }
     }
 
     const handleDurationChange = () => {
       const dur = audio.duration
-      console.log('[AudioPlayer] durationchange', { rawDuration: dur, isFinite: isFinite(dur) })
       if (isFinite(dur) && dur > 0) {
         setDuration(dur)
       }

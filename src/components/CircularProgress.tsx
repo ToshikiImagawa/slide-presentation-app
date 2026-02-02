@@ -17,7 +17,6 @@ const RING_CENTER = RING_RADIUS + 1
 const CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS
 
 export function CircularProgress({ progress, visible, animationDuration, resetKey }: CircularProgressProps) {
-  console.log('[CircularProgress render]', { visible, animationDuration, progress, resetKey })
   if (!visible) return null
 
   if (animationDuration != null) {

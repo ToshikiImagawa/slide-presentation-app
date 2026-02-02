@@ -117,15 +117,6 @@ export function App({ presentationData }: AppProps) {
   const currentVoicePath = getVoicePath(data.slides[currentIndex])
 
   // 円形プログレスの状態算出
-  const audioProgress = audioPlayer.isPlaying ? { currentTime: audioPlayer.currentTime, duration: audioPlayer.duration } : null
-  console.log('[App] circularProgress inputs', {
-    autoSlideshow,
-    hasVoice: !!currentVoicePath,
-    isPlaying: audioPlayer.isPlaying,
-    audioDuration: audioPlayer.duration,
-    audioProgress,
-    timerDuration,
-  })
   const {
     progress,
     visible: progressVisible,
@@ -133,10 +124,9 @@ export function App({ presentationData }: AppProps) {
   } = useCircularProgress({
     autoSlideshow,
     hasVoice: !!currentVoicePath,
-    audioProgress,
+    audioProgress: audioPlayer.isPlaying ? { currentTime: audioPlayer.currentTime, duration: audioPlayer.duration } : null,
     timerDuration,
   })
-  console.log('[App] circularProgress output', { progress, progressVisible, animationDuration })
 
   // プログレス状態を発表者ビューに同期
   useEffect(() => {
