@@ -1,0 +1,39 @@
+{
+  "languageCode": "fr-FR",
+  "languageName": "Français",
+  "ui": {
+    "settings": {
+      "title": "Paramètres",
+      "language": "Langue",
+      "close": "Fermer",
+      "open": "Paramètres",
+      "scrollSpeed": "Vitesse de défilement (sec)"
+    },
+    "presenterView": {
+      "open": "Vue présentateur",
+      "opened": "Ouvert",
+      "alreadyOpen": "La vue présentateur est déjà ouverte",
+      "navPrev": "Diapositive précédente (←)",
+      "navNext": "Diapositive suivante (→ / Espace)",
+      "autoPlay": "Lecture audio automatique",
+      "autoSlideshow": "Diaporama automatique",
+      "notesTitle": "Notes du présentateur",
+      "notesEmpty": "Aucune note",
+      "nextSlide": "Diapositive suivante",
+      "lastSlide": "Dernière diapositive",
+      "previousSlide": "Diapositive précédente",
+      "firstSlide": "Première diapositive",
+      "summaryTitle": "Points clés",
+      "summaryEmpty": "Aucun résumé",
+      "waitingForConnection": "En attente de la connexion à la fenêtre principale..."
+    },
+    "audio": {
+      "play": "Lire l'audio",
+      "stop": "Arrêter l'audio",
+      "autoPlayOn": "Désactiver la lecture automatique",
+      "autoPlayOff": "Activer la lecture automatique",
+      "autoSlideshowOn": "Désactiver le diaporama automatique",
+      "autoSlideshowOff": "Activer le diaporama automatique"
+    }
+  }
+}

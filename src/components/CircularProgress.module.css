@@ -1,0 +1,32 @@
+@property --circumference {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0;
+}
+
+.ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.ring circle {
+  transition: stroke-dashoffset 0.3s ease;
+}
+
+.animated {
+  transition: none;
+  stroke-dashoffset: var(--circumference);
+  animation: circularFill linear forwards;
+}
+
+@keyframes circularFill {
+  from {
+    stroke-dashoffset: var(--circumference);
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}

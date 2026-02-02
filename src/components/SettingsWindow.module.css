@@ -1,0 +1,137 @@
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+
+.window {
+  background: var(--theme-background-alt);
+  border: 1px solid var(--theme-border);
+  border-radius: 12px;
+  min-width: 360px;
+  max-width: 480px;
+  width: 100%;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--theme-border);
+}
+
+.title {
+  margin: 0;
+  font-size: 18px;
+  font-family: var(--theme-font-heading), sans-serif;
+  color: var(--theme-text-heading);
+  font-weight: 600;
+}
+
+.closeButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--theme-text-muted);
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.closeButton:hover {
+  color: var(--theme-text-heading);
+}
+
+.closeIcon {
+  width: 20px;
+  height: 20px;
+}
+
+.body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.settingRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.label {
+  font-size: 14px;
+  font-family: var(--theme-font-body), sans-serif;
+  color: var(--theme-text-body);
+}
+
+.select {
+  padding: 6px 12px;
+  border: 1px solid var(--theme-border);
+  border-radius: 6px;
+  background: var(--theme-background);
+  color: var(--theme-text-heading);
+  font-size: 14px;
+  font-family: var(--theme-font-body), sans-serif;
+  cursor: pointer;
+  min-width: 160px;
+}
+
+.select:focus {
+  outline: 2px solid var(--theme-primary);
+  outline-offset: -1px;
+}
+
+.input {
+  padding: 6px 12px;
+  border: 1px solid var(--theme-border);
+  border-radius: 6px;
+  background: var(--theme-background);
+  color: var(--theme-text-heading);
+  font-size: 14px;
+  font-family: var(--theme-font-body), sans-serif;
+  cursor: text;
+  min-width: 80px;
+}
+
+.input:focus {
+  outline: 2px solid var(--theme-primary);
+  outline-offset: -1px;
+}
+
+.footer {
+  padding: 12px 20px;
+  border-top: 1px solid var(--theme-border);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.footerButton {
+  padding: 6px 16px;
+  border: 1px solid var(--theme-border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--theme-text-body);
+  font-size: 14px;
+  font-family: var(--theme-font-body), sans-serif;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.footerButton:hover {
+  background: var(--theme-background);
+}

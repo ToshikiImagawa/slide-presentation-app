@@ -1,0 +1,8 @@
+{
+  "root": ".sdd",
+  "directories": {
+    "requirement": "requirement",
+    "specification": "specification",
+    "task": "task"
+  }
+}

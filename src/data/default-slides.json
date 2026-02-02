@@ -1,0 +1,667 @@
+{
+  "meta": {
+    "title": "Slide Template Guide",
+    "description": "利用可能なレイアウトとコンポーネントの紹介"
+  },
+  "slides": [
+    {
+      "id": "guide-title",
+      "layout": "center",
+      "content": {
+        "title": "Slide Template Guide",
+        "subtitle": "利用可能なレイアウトとコンポーネントの紹介\n<code>public/slides.json</code> を配置してカスタマイズできます"
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "このプレゼンテーションでは、スライドテンプレートの使い方を紹介します。\npublic/slides.json を配置することで、自由にスライド内容をカスタマイズできます。",
+          "summary": [
+            "スライドテンプレートガイドの紹介",
+            "slides.json でカスタマイズ可能"
+          ]
+        }
+      }
+    },
+    {
+      "id": "guide-two-column-basic",
+      "layout": "two-column",
+      "content": {
+        "title": "layout: \"two-column\" — 基本構成",
+        "left": {
+          "heading": "左カラム: heading",
+          "headingDescription": "headingDescription でサブテキストを追加",
+          "paragraphs": [
+            "paragraphs で本文テキストを記述します。<strong>HTML タグ</strong>も利用可能です。",
+            "配列で複数段落を指定できます。"
+          ],
+          "items": [
+            {"text": "items:", "emphasis": true, "description": " emphasis: true で太字"},
+            {"text": "通常の項目:", "description": " description でサブテキスト追加"},
+            {"text": "シンプルな項目"}
+          ]
+        },
+        "right": {
+          "codeBlock": {
+            "header": "> codeBlock.header",
+            "items": [
+              "codeBlock.items[0]",
+              "コードや階層構造の表示に最適",
+              "<strong>HTML タグ</strong>も使えます"
+            ]
+          },
+          "titledBulletList": {
+            "title": "titledBulletList.title",
+            "items": [
+              "titledBulletList の項目1",
+              "titledBulletList の項目2"
+            ]
+          },
+          "accentText": "→ accentText: プライマリカラーで強調表示"
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "two-column レイアウトの基本構成を説明するスライドです。左カラムには heading, paragraphs, items を、右カラムには codeBlock, titledBulletList, accentText を配置しています。",
+          "summary": [
+            "two-column レイアウトの基本構成",
+            "左: heading, paragraphs, items",
+            "右: codeBlock, titledBulletList, accentText"
+          ]
+        }
+      }
+    },
+    {
+      "id": "guide-two-column-component",
+      "layout": "two-column",
+      "content": {
+        "title": "layout: \"two-column\" — component 配置",
+        "left": {
+          "paragraphs": [
+            "left / right に <code>component</code> を指定すると、登録済みビジュアルを埋め込めます。"
+          ],
+          "codeBlock": {
+            "header": "> JSON での指定方法",
+            "items": [
+              "\"right\": {",
+              "\u00a0\u00a0\"component\": {",
+              "\u00a0\u00a0\u00a0\u00a0\"name\": \"TerminalAnimation\",",
+              "\u00a0\u00a0\u00a0\u00a0\"props\": {",
+              "\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"logTextUrl\": \"/demo-log.txt\"",
+              "\u00a0\u00a0\u00a0\u00a0}",
+              "\u00a0\u00a0}",
+              "}"
+            ]
+          }
+        },
+        "right": {
+          "component": {
+            "name": "TerminalAnimation",
+            "props": { "logTextUrl": "/demo-log.txt" },
+            "style": { "height": "400px", "width": "90%", "margin": "auto" }
+          }
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "two-column レイアウトの左右カラムに component フィールドを指定することで、登録済みコンポーネントを埋め込むことができます。",
+          "summary": [
+            "left / right に component を指定可能",
+            "登録済みコンポーネントを埋め込み表示",
+            "name, props, style で設定"
+          ]
+        }
+      }
+    },
+    {
+      "id": "guide-workflow",
+      "layout": "content",
+      "content": {
+        "title": "layout: \"content\" — タイムライン (steps)",
+        "steps": [
+          {"number": 1, "title": "Step Title", "description": "各ステップの説明文", "command": "/command_name"},
+          {"number": 2, "title": "Step Title", "description": "command はオプション"},
+          {"number": 3, "title": "Step Title", "description": "ステップ数に制限はありません", "command": "/another"},
+          {"number": 4, "title": "Step Title", "description": "最後のステップ"}
+        ],
+        "footer": "footer: タイムライン下部に補足テキストを表示"
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "content レイアウトで steps を指定すると、タイムライン形式で表示されます。各ステップには number, title, description が必須で、command はオプションです。",
+          "summary": [
+            "steps でタイムライン表示",
+            "number, title, description が必須",
+            "command はオプション",
+            "footer で補足テキスト表示可能"
+          ]
+        }
+      }
+    },
+    {
+      "id": "guide-features",
+      "layout": "content",
+      "content": {
+        "title": "layout: \"content\" — タイルグリッド (tiles)",
+        "tiles": [
+          {
+            "icon": "Description",
+            "title": "Icon: Description",
+            "description": "icon にはアイコン名を指定します。<br/>registerDefaults で登録済みのアイコンが使えます。"
+          },
+          {
+            "icon": "PlaylistAddCheck",
+            "title": "Icon: PlaylistAddCheck",
+            "description": "description には<br/><code>&lt;br/&gt;</code> や <code>&lt;code&gt;</code> などの HTML タグが使えます。"
+          },
+          {
+            "icon": "Traffic",
+            "title": "Icon: Traffic",
+            "description": "タイルは 3列グリッドで表示されます。2つでも3つでも配置可能です。"
+          }
+        ]
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "content レイアウトで tiles を指定すると、タイルグリッド形式で表示されます。各タイルには icon, title, description を設定します。",
+          "summary": [
+            "tiles でタイルグリッド表示",
+            "icon, title, description を設定",
+            "3列グリッドで配置"
+          ]
+        }
+      }
+    },
+    {
+      "id": "guide-content-component",
+      "layout": "content",
+      "content": {
+        "title": "layout: \"content\" — コンポーネント (component)",
+        "component": {
+          "name": "TerminalAnimation",
+          "props": { "logTextUrl": "/demo-log.txt" },
+          "style": { "height": "400px", "width": "90%", "margin": "auto" }
+        },
+        "footer": "content レイアウトの component はタイトルバー付きのラッパー内に描画されます"
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "content レイアウトで component を指定すると、タイトルバー付きの ContentLayout ラッパー内にコンポーネントが描画されます。steps や tiles と同様に content レイアウトの子要素として扱われます。",
+          "summary": [
+            "content レイアウトで component を指定",
+            "ContentLayout ラッパー内に描画",
+            "タイトルバーが自動で表示される"
+          ]
+        }
+      }
+    },
+    {
+      "id": "guide-demo",
+      "layout": "bleed",
+      "content": {
+        "title": "layout: \"bleed\" — 2カラム全幅",
+        "titleDescription": "titleDescription: 左カラムにタイトル補足を表示",
+        "commands": [
+          {"text": "$ commands[0].text", "color": "var(--theme-text-heading)"},
+          {"text": "$ commands[1].text", "color": "var(--theme-primary)"},
+          {"text": "✓ 各行に color を指定可能", "color": "var(--theme-success)"}
+        ],
+        "component": {
+          "name": "TerminalAnimation",
+          "props": { "logTextUrl": "/demo-log.txt" },
+          "style": { "height": "400px", "width": "90%", "margin": "auto" }
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "bleed レイアウトは2カラム全幅で表示されます。左カラムに title, titleDescription, commands を、右カラムに component を配置します。",
+          "summary": [
+            "bleed レイアウトで2カラム全幅表示",
+            "左: title, titleDescription, commands",
+            "右: component で任意のコンポーネント配置"
+          ]
+        }
+      }
+    },
+    {
+      "id": "guide-custom-layout",
+      "layout": "custom",
+      "content": {
+        "component": {
+          "name": "TerminalAnimation",
+          "props": { "logTextUrl": "/demo-log.txt" },
+          "style": { "height": "100%", "width": "100%" }
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "custom レイアウトは component で指定したコンポーネントを直接描画します。content レイアウトとの違いは、タイトルバーなどのラッパーが一切なく、コンポーネントがスライド全体を占有する点です。",
+          "summary": [
+            "layout: \"custom\" でコンポーネントを直接描画",
+            "タイトルバーなどのラッパーなし",
+            "content レイアウトとの違いを理解する"
+          ]
+        }
+      }
+    },
+    {
+      "id": "guide-image-component",
+      "layout": "two-column",
+      "content": {
+        "title": "component: \"Image\" — 画像表示",
+        "left": {
+          "paragraphs": [
+            "<code>component</code> に <code>Image</code> を指定すると、画像を表示できます。",
+            "<code>FallbackImage</code> をラップしており、読み込みエラー時はフォールバック UI を表示します。"
+          ],
+          "codeBlock": {
+            "header": "> JSON での指定方法",
+            "items": [
+              "\"component\": {",
+              "\u00a0\u00a0\"name\": \"Image\",",
+              "\u00a0\u00a0\"props\": {",
+              "\u00a0\u00a0\u00a0\u00a0\"src\": \"https://...\",",
+              "\u00a0\u00a0\u00a0\u00a0\"width\": 320,",
+              "\u00a0\u00a0\u00a0\u00a0\"height\": 320,",
+              "\u00a0\u00a0}",
+              "}"
+            ]
+          }
+        },
+        "right": {
+          "component": {
+            "name": "Image",
+            "props": {
+              "src": "https://avatars.githubusercontent.com/u/6396938?v=4",
+              "width": 320,
+              "height": 320
+            },
+            "style": { "display": "flex", "justifyContent": "center", "alignItems": "center", "height": "100%" }
+          }
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "Image コンポーネントは FallbackImage をラップしており、画像の読み込みエラー時にフォールバック UI を表示します。src, width, height を props で指定します。",
+          "summary": [
+            "Image コンポーネントで画像を表示",
+            "FallbackImage によるフォールバック対応",
+            "src, width, height を props で指定"
+          ]
+        }
+      }
+    },
+    {
+      "id": "guide-custom",
+      "layout": "two-column",
+      "content": {
+        "title": "デフォルト登録コンポーネント一覧",
+        "left": {
+          "titledBulletList": {
+            "title": "TerminalAnimation",
+            "description": "アニメーション付きターミナル表示",
+            "items": [
+              "<strong>logTextUrl</strong>: ログファイルの URL\n例: \"/demo-log.txt\"",
+              "logTextUrl 省略時は組み込みデフォルトを使用"
+            ]
+          }
+        },
+        "right": {
+          "codeBlock": {
+            "header": "> 登録済み MUI アイコン",
+            "items": [
+              "Icon:Description",
+              "Icon:PlaylistAddCheck",
+              "Icon:Traffic",
+              "Icon:Memory",
+              "Icon:Search"
+            ]
+          },
+          "accentText": "→ content レイアウトの tiles の icon に名前を指定して使用"
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "デフォルトで登録されているコンポーネントの一覧です。TerminalAnimation と5つの MUI アイコンが利用可能です。",
+          "summary": [
+            "TerminalAnimation: アニメーション付きターミナル",
+            "MUI アイコン5種が登録済み",
+            "tiles の icon フィールドで使用"
+          ]
+        }
+      }
+    },
+    {
+      "id": "guide-addon",
+      "layout": "two-column",
+      "content": {
+        "title": "アドオンコンポーネント",
+        "left": {
+          "paragraphs": [
+            "<code>addons/src/</code> にコンポーネントを配置すると、動的に登録されスライドから利用できます。"
+          ],
+          "items": [
+            {"text": "自動登録:", "emphasis": true, "description": " アドオンは起動時に ComponentRegistry へ登録"},
+            {"text": "未ロード時:", "emphasis": true, "description": " フォールバック表示（コンポーネント名を表示）"}
+          ],
+          "codeBlock": {
+            "header": "> JSON での指定例",
+            "items": [
+              "\"component\": {",
+              "\u00a0\u00a0\"name\": \"VibeCodingDemo\"",
+              "}"
+            ]
+          }
+        },
+        "right": {
+          "titledBulletList": {
+            "title": "アドオンの作り方",
+            "items": [
+              "<strong>addons/src/{名前}/entry.ts</strong> を作成",
+              "<code>window.__ADDON_REGISTER__</code> でコンポーネントを登録",
+              "<code>npm run build:addons</code> でビルド"
+            ]
+          },
+          "accentText": "→ addons/ は gitignore 対象のためローカル環境でのみ動作"
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "アドオンシステムにより、独自のコンポーネントを追加できます。addons/src/ にエントリファイルを配置し、window.__ADDON_REGISTER__ で登録します。",
+          "summary": [
+            "addons/src/{名前}/entry.ts でコンポーネントを追加",
+            "window.__ADDON_REGISTER__ で登録",
+            "npm run build:addons でビルド"
+          ]
+        }
+      }
+    },
+    {
+      "id": "guide-meta",
+      "layout": "two-column",
+      "content": {
+        "title": "スライド設定オプション",
+        "left": {
+          "codeBlock": {
+            "header": "> meta (各スライド共通)",
+            "items": [
+              "\"meta\": {",
+              "\u00a0\u00a0\"transition\": \"slide\",",
+              "\u00a0\u00a0\"backgroundColor\": \"#1a1a2e\",",
+              "\u00a0\u00a0\"backgroundImage\": \"/bg.png\",",
+              "\u00a0\u00a0\"notes\": \"文字列\" or {",
+              "\u00a0\u00a0\u00a0\u00a0\"speakerNotes\": \"発表者メモ\",",
+              "\u00a0\u00a0\u00a0\u00a0\"summary\": [\"要点1\", ...]",
+              "\u00a0\u00a0}",
+              "}"
+            ]
+          }
+        },
+        "right": {
+          "codeBlock": {
+            "header": "> theme (プレゼン全体)",
+            "items": [
+              "\"theme\": {",
+              "\u00a0\u00a0\"colors\": {",
+              "\u00a0\u00a0\u00a0\u00a0\"primary\": \"#6c63ff\",",
+              "\u00a0\u00a0\u00a0\u00a0\"background\": \"#0f0e17\"",
+              "\u00a0\u00a0}",
+              "}"
+            ]
+          },
+          "accentText": "→ 詳細は次のスライドで紹介"
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "meta フィールドでは各スライドのトランジション、背景色、背景画像、発表者ノートを設定できます。theme フィールドではプレゼン全体の色やフォントを設定します。",
+          "summary": [
+            "meta: transition, backgroundColor, backgroundImage, notes",
+            "theme: colors, fonts でプレゼン全体を設定",
+            "notes は文字列またはオブジェクト形式"
+          ]
+        }
+      }
+    },
+    {
+      "id": "guide-theme-detail",
+      "layout": "two-column",
+      "content": {
+        "title": "テーマ設定の詳細",
+        "left": {
+          "heading": "theme.colors 全キー",
+          "codeBlock": {
+            "header": "> slides.json 内の theme.colors",
+            "items": [
+              "\"colors\": {",
+              "\u00a0\u00a0\"primary\": \"#6c63ff\",",
+              "\u00a0\u00a0\"background\": \"#0f0e17\",",
+              "\u00a0\u00a0\"surface\": \"#1a1a2e\",",
+              "\u00a0\u00a0\"textHeading\": \"#ffffff\",",
+              "\u00a0\u00a0\"textBody\": \"#a0a0b0\",",
+              "\u00a0\u00a0\"accent\": \"#ff6b6b\",",
+              "\u00a0\u00a0\"success\": \"#4ecdc4\",",
+              "\u00a0\u00a0\"border\": \"#2a2a4a\"",
+              "}",
+              "",
+              "\"customCSS\": \".reveal { ... }\""
+            ]
+          }
+        },
+        "right": {
+          "heading": "テーマ設定の2つの方法",
+          "items": [
+            {"text": "方法1:", "emphasis": true, "description": " slides.json の theme フィールド（色・フォント・customCSS）"},
+            {"text": "方法2:", "emphasis": true, "description": " public/theme-colors.json（色のみ）"},
+            {"text": "meta.themeColors:", "emphasis": true, "description": " slides.json の meta 内で色を指定（方法1と同等）"}
+          ],
+          "codeBlock": {
+            "header": "> theme-colors.json（方法2）",
+            "items": [
+              "{",
+              "\u00a0\u00a0\"primary\": \"#6c63ff\",",
+              "\u00a0\u00a0\"background\": \"#0f0e17\",",
+              "\u00a0\u00a0\"surface\": \"#1a1a2e\"",
+              "}"
+            ]
+          },
+          "accentText": "→ すべての色に -rgb 変数あり（rgba() で使用可能）"
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "テーマの色は slides.json の theme.colors か public/theme-colors.json で設定できます。customCSS でカスタム CSS も指定可能です。すべての色に -rgb 変数が自動生成されます。",
+          "summary": [
+            "theme.colors で8種類の色を設定可能",
+            "customCSS でカスタム CSS を追加",
+            "theme-colors.json で色のみ設定も可能",
+            "すべての色に -rgb 変数が自動生成"
+          ]
+        }
+      }
+    },
+    {
+      "id": "guide-logo-fonts",
+      "layout": "two-column",
+      "content": {
+        "title": "ロゴ・フォント設定",
+        "left": {
+          "heading": "meta.logo",
+          "headingDescription": "プレゼンテーションのロゴを設定",
+          "codeBlock": {
+            "header": "> JSON での指定方法",
+            "items": [
+              "\"meta\": {",
+              "\u00a0\u00a0\"logo\": {",
+              "\u00a0\u00a0\u00a0\u00a0\"src\": \"/my-logo.png\",",
+              "\u00a0\u00a0\u00a0\u00a0\"width\": 150,",
+              "\u00a0\u00a0\u00a0\u00a0\"height\": 50",
+              "\u00a0\u00a0}",
+              "}"
+            ]
+          },
+          "items": [
+            {"text": "src:", "emphasis": true, "description": " ロゴ画像のパス（デフォルト: /logo.png）"},
+            {"text": "width / height:", "emphasis": true, "description": " サイズ指定（デフォルト: 120 x 40）"},
+            {"text": "省略時:", "emphasis": true, "description": " ロゴは表示されません"}
+          ]
+        },
+        "right": {
+          "heading": "theme.fonts",
+          "headingDescription": "フォントファミリーをカスタマイズ",
+          "codeBlock": {
+            "header": "> JSON での指定方法",
+            "items": [
+              "\"theme\": {",
+              "\u00a0\u00a0\"fonts\": {",
+              "\u00a0\u00a0\u00a0\u00a0\"heading\": \"'Noto Sans JP'\",",
+              "\u00a0\u00a0\u00a0\u00a0\"body\": \"'Noto Sans JP'\",",
+              "\u00a0\u00a0\u00a0\u00a0\"code\": \"'Fira Code'\",",
+              "\u00a0\u00a0\u00a0\u00a0\"baseFontSize\": \"24px\",",
+              "\u00a0\u00a0\u00a0\u00a0\"sources\": [",
+              "\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"https://fonts...\"",
+              "\u00a0\u00a0\u00a0\u00a0]",
+              "\u00a0\u00a0}",
+              "}"
+            ]
+          },
+          "items": [
+            {"text": "heading:", "emphasis": true, "description": " 見出し用フォント"},
+            {"text": "body:", "emphasis": true, "description": " 本文用フォント"},
+            {"text": "code:", "emphasis": true, "description": " コードブロック用フォント"},
+            {"text": "baseFontSize:", "emphasis": true, "description": " 基本フォントサイズ（デフォルト: 24px）"},
+            {"text": "sources:", "emphasis": true, "description": " Google Fonts 等の外部フォント URL 配列"}
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "meta.logo でロゴ画像を設定し、theme.fonts でフォントファミリーをカスタマイズできます。ロゴは meta.logo を省略すると表示されません。",
+          "summary": [
+            "meta.logo でロゴ画像を設定",
+            "theme.fonts でフォントをカスタマイズ",
+            "heading / body / code の3種類を指定可能",
+            "baseFontSize と sources も設定可能"
+          ]
+        }
+      }
+    },
+    {
+      "id": "guide-presenter-view",
+      "layout": "two-column",
+      "content": {
+        "title": "発表者ビュー",
+        "left": {
+          "heading": "概要",
+          "paragraphs": [
+            "画面右上の「発表者ビュー」ボタンをクリックすると、別ウィンドウで発表者専用の画面が開きます。",
+            "メインウィンドウと発表者ビューは双方向に同期されます。どちらからでもスライドを操作できます。"
+          ],
+          "codeBlock": {
+            "header": "> notes の設定例",
+            "items": [
+              "\"meta\": {",
+              "\u00a0\u00a0\"notes\": {",
+              "\u00a0\u00a0\u00a0\u00a0\"speakerNotes\": \"発表者メモ\",",
+              "\u00a0\u00a0\u00a0\u00a0\"summary\": [\"要点1\", \"要点2\"]",
+              "\u00a0\u00a0}",
+              "}"
+            ]
+          }
+        },
+        "right": {
+          "heading": "4つのパネル",
+          "items": [
+            {"text": "スピーカーノート:", "emphasis": true, "description": " 現在のスライドの発表者メモ（speakerNotes）を表示"},
+            {"text": "前スライドプレビュー:", "emphasis": true, "description": " 前のスライドの縮小プレビューを表示"},
+            {"text": "次スライドプレビュー:", "emphasis": true, "description": " 次のスライドの縮小プレビューを表示"},
+            {"text": "要点サマリー:", "emphasis": true, "description": " 現在のスライドの要点（summary）を箇条書き表示"}
+          ],
+          "titledBulletList": {
+            "title": "キーボード操作",
+            "items": [
+              "<strong>← / →</strong>: 前後のスライドへ移動",
+              "<strong>Space</strong>: 次のスライドへ移動"
+            ]
+          },
+          "accentText": "→ meta.notes に speakerNotes と summary を設定して活用しましょう"
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "発表者ビューは別ウィンドウで開き、スピーカーノート・前後スライドプレビュー・要点サマリーの4パネルを表示します。メインウィンドウと双方向に同期されます。",
+          "summary": [
+            "右上ボタンで別ウィンドウに表示",
+            "スピーカーノート・前後プレビュー・要点サマリーの4パネル",
+            "メインウィンドウと双方向同期",
+            "←/→/Space でスライド操作"
+          ]
+        }
+      }
+    },
+    {
+      "id": "guide-audio",
+      "layout": "two-column",
+      "content": {
+        "title": "音声再生",
+        "left": {
+          "heading": "voice フィールド",
+          "headingDescription": "スライドごとに音声ファイルを指定",
+          "codeBlock": {
+            "header": "> JSON での指定方法",
+            "items": [
+              "\"meta\": {",
+              "\u00a0\u00a0\"notes\": {",
+              "\u00a0\u00a0\u00a0\u00a0\"voice\": \"/voice/slide-01.wav\",",
+              "\u00a0\u00a0\u00a0\u00a0\"speakerNotes\": \"発表者メモ\"",
+              "\u00a0\u00a0}",
+              "}"
+            ]
+          },
+          "paragraphs": [
+            "音声ファイルは <code>public/</code> 配下に配置してください。<code>voice</code> が定義されたスライドでツールバーが有効になります。"
+          ]
+        },
+        "right": {
+          "heading": "ツールバーボタン",
+          "items": [
+            {"text": "再生/停止:", "emphasis": true, "description": " 現在のスライドの音声を手動で再生・停止"},
+            {"text": "自動再生:", "emphasis": true, "description": " スライド遷移時に音声を自動再生する ON/OFF"},
+            {"text": "自動スライドショー:", "emphasis": true, "description": " 音声終了時に次スライドへ自動遷移する ON/OFF"}
+          ],
+          "accentText": "→ 自動再生 + 自動スライドショーで全自動プレゼンテーションが可能"
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "このスライドでは音声再生機能を紹介しています。meta.notes.voice に音声ファイルのパスを指定すると、ツールバーから再生できます。自動再生と自動スライドショーを組み合わせると、全スライドを通した自動プレゼンテーションが可能です。",
+          "summary": [
+            "meta.notes.voice で音声ファイルを指定",
+            "ツールバーで手動再生・自動再生・自動スライドショーを制御",
+            "自動再生 + 自動スライドショーで全自動プレゼンテーション"
+          ],
+          "voice": "/assets/voice/guide-audio.wav"
+        }
+      }
+    },
+    {
+      "id": "guide-summary",
+      "layout": "center",
+      "content": {
+        "variant": "section",
+        "title": "layout: \"center\" (variant: \"section\")",
+        "body": "大きなタイトルと本文テキスト。\nQR コードと GitHub リンクを表示できます。",
+        "qrCode": "https://github.com/ToshikiImagawa/ai-sdd-workflow-demo",
+        "githubRepo": "ToshikiImagawa/ai-sdd-workflow-demo"
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "center レイアウトの variant: section は、セクション区切りやまとめスライドに適した大きなタイトル表示です。QR コードと GitHub リンクも配置できます。",
+          "summary": [
+            "center + variant: section でまとめスライド",
+            "QR コードと GitHub リンクを配置可能",
+            "セクション区切りにも使用可能"
+          ]
+        }
+      }
+    }
+  ]
+}

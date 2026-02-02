@@ -1,0 +1,52 @@
+.wrapper {
+}
+
+.button {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 6px;
+  border: none;
+  border-radius: 50%;
+  background-color: var(--theme-primary);
+  color: #fff;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: var(--theme-font-body), serif;
+  white-space: nowrap;
+  overflow: hidden;
+  transition:
+    border-radius 0.25s ease,
+    padding 0.25s ease,
+    gap 0.25s ease;
+}
+
+.wrapper:hover .button,
+.button:focus-visible {
+  border-radius: 6px;
+  padding: 6px 14px;
+  gap: 6px;
+}
+
+.label {
+  max-width: 0;
+  overflow: hidden;
+  transition: max-width 0.25s ease;
+}
+
+.wrapper:hover .label,
+.button:focus-visible .label {
+  max-width: 120px;
+}
+
+.icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+/* 発表者ビュー表示中 */
+.buttonOpen {
+  background-color: var(--theme-text-muted);
+  cursor: default;
+}

@@ -1,0 +1,39 @@
+{
+  "languageCode": "ja-JP",
+  "languageName": "日本語",
+  "ui": {
+    "settings": {
+      "title": "設定",
+      "language": "言語",
+      "close": "閉じる",
+      "open": "設定",
+      "scrollSpeed": "スクロールスピード（秒）"
+    },
+    "presenterView": {
+      "open": "発表者ビュー",
+      "opened": "表示中",
+      "alreadyOpen": "発表者ビューは既に開いています",
+      "navPrev": "前のスライド (←)",
+      "navNext": "次のスライド (→ / Space)",
+      "autoPlay": "自動音声再生",
+      "autoSlideshow": "自動スライドショー",
+      "notesTitle": "スピーカーノート",
+      "notesEmpty": "ノートはありません",
+      "nextSlide": "次のスライド",
+      "lastSlide": "最後のスライドです",
+      "previousSlide": "前のスライド",
+      "firstSlide": "最初のスライドです",
+      "summaryTitle": "要点サマリー",
+      "summaryEmpty": "サマリーはありません",
+      "waitingForConnection": "メインウィンドウからの接続を待機中..."
+    },
+    "audio": {
+      "play": "音声を再生",
+      "stop": "音声を停止",
+      "autoPlayOn": "自動再生をOFFにする",
+      "autoPlayOff": "自動再生をONにする",
+      "autoSlideshowOn": "自動スライドショーをOFFにする",
+      "autoSlideshowOff": "自動スライドショーをONにする"
+    }
+  }
+}

@@ -1,0 +1,28 @@
+.wrapper {
+}
+
+.button {
+  display: flex;
+  align-items: center;
+  padding: 6px;
+  border: none;
+  border-radius: 50%;
+  background-color: var(--theme-primary);
+  color: #fff;
+  cursor: pointer;
+  transition:
+    border-radius 0.25s ease,
+    padding 0.25s ease;
+}
+
+.wrapper:hover .button,
+.button:focus-visible {
+  border-radius: 6px;
+  padding: 6px;
+}
+
+.icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}

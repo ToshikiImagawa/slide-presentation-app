@@ -1,0 +1,39 @@
+$ echo "TerminalAnimation Style Guide"
+> ── Line Styles ──────────────────
+  "$"  Command line (typing animation)
+✓ Success message (green)
+⚠ Warning message (yellow)
+✗ Error message (red)
+> Accent line (theme primary color)
+  Default text (gray, no prefix)
+
+$ echo "How commands work"
+  Lines starting with "$" are typed out
+  character by character with a blinking cursor.
+  Other lines appear instantly in sequence.
+✓ Command completed
+
+$ cat long-output-example.log
+> ── Long Output Demo ────────────
+  When the log has many lines,
+  the terminal body auto-scrolls
+  to keep the latest output visible.
+  ─────────────────────────────────
+  line 1: processing...
+  line 2: processing...
+  line 3: processing...
+  line 4: processing...
+  line 5: processing...
+  ─────────────────────────────────
+✓ 5 items processed
+⚠ 2 items skipped (non-critical)
+✗ 1 item failed: timeout exceeded
+
+$ echo "Blank lines add spacing"
+
+  A blank line creates a short pause
+  useful for grouping output visually.
+
+> ── Summary ─────────────────────
+✓ Customize this file or set logTextUrl
+✓ to load your own log content.

@@ -1,0 +1,290 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  padding: 12px;
+  box-sizing: border-box;
+  background-color: var(--theme-background);
+  color: var(--theme-text-body);
+  font-family: var(--theme-font-body), serif;
+  gap: 12px;
+}
+
+/* 上部コントロールバー */
+.controlBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background-color: var(--theme-background-alt);
+  border: 1px solid var(--theme-border);
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.navControls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.navButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--theme-border);
+  border-radius: 6px;
+  background-color: transparent;
+  color: var(--theme-text-body);
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.navButton:hover:not(:disabled) {
+  background-color: rgba(var(--theme-primary-rgb, 100, 100, 255), 0.15);
+}
+
+.navButton:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.slideProgress {
+  font-size: 16px;
+  font-weight: bold;
+  color: var(--theme-text-heading);
+  min-width: 60px;
+  text-align: center;
+}
+
+.audioControls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.audioButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--theme-border);
+  border-radius: 6px;
+  background-color: transparent;
+  color: var(--theme-text-body);
+  cursor: pointer;
+  transition:
+    background-color 0.15s,
+    border-color 0.15s;
+}
+
+.audioButton:hover:not(:disabled) {
+  background-color: rgba(var(--theme-primary-rgb, 100, 100, 255), 0.15);
+}
+
+.audioButton:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.audioButton.active {
+  background-color: rgba(var(--theme-primary-rgb, 100, 100, 255), 0.25);
+  border-color: var(--theme-primary, #6464ff);
+  color: var(--theme-primary, #6464ff);
+}
+
+.buttonWrapper {
+  position: relative;
+}
+
+.autoLabel {
+  position: absolute;
+  bottom: 2px;
+  right: 3px;
+  font-size: 8px;
+  font-weight: bold;
+  line-height: 1;
+}
+
+/* メインコンテンツ（左:ノート / 右:次・前スライド） */
+.mainContent {
+  display: flex;
+  gap: 12px;
+  min-height: 0;
+}
+
+.rightColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.previewPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow: hidden;
+}
+
+.previewPanel h2 {
+  margin: 0;
+  font-size: 14px;
+  font-family: var(--theme-font-heading), serif;
+  color: var(--theme-text-heading);
+  flex-shrink: 0;
+}
+
+.previewFrame {
+  border: 1px solid var(--theme-border);
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: var(--theme-background-alt);
+  position: relative;
+}
+
+.previewScaler {
+  width: 1280px;
+  height: 720px;
+  transform-origin: top left;
+  pointer-events: none;
+}
+
+/*
+ * Reveal.js の印刷用 CSS が !important で section に
+ * position: static, width: auto, padding: 60px 20px 等を強制するため、
+ * プレビュー用にオーバーライドする。
+ * CSS Modules のスコープ内なのでメイン画面に影響しない。
+ */
+.previewReveal {
+  position: relative !important;
+  width: 1280px !important;
+  height: 720px !important;
+  overflow: hidden !important;
+  background-color: var(--theme-background) !important;
+  font-family: var(--theme-font-body), serif;
+}
+
+.previewReveal .slides {
+  position: absolute !important;
+  width: 100% !important;
+  height: 100% !important;
+  top: 0 !important;
+  left: 0 !important;
+  margin: 0 !important;
+  pointer-events: none;
+  text-align: center;
+}
+
+.previewReveal .slides section {
+  position: absolute !important;
+  width: 100% !important;
+  height: 100% !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  top: 0 !important;
+  left: 0 !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  transform: none !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+  text-align: left;
+}
+
+/*
+ * Reveal.js の印刷用 CSS が h1〜h4 に font-size を !important で強制する:
+ *   html:not(.print-pdf) .reveal h1 { font-size: 28pt !important }
+ *   html:not(.print-pdf) .reveal h2 { font-size: 24pt !important }
+ * MUI Typography の CSS 変数によるサイズ指定を復元する。
+ */
+.previewReveal h1 {
+  font-size: var(--theme-font-size-h1) !important;
+}
+
+.previewReveal h2 {
+  font-size: var(--theme-font-size-h2) !important;
+}
+
+.previewReveal h3 {
+  font-size: var(--theme-font-size-h3) !important;
+}
+
+.previewReveal h4 {
+  font-size: var(--theme-font-size-h4) !important;
+  font-variant: normal !important;
+}
+
+.boundaryMessage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  font-size: 16px;
+  color: var(--theme-text-muted);
+  font-style: italic;
+}
+
+.notesPanel {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  padding: 16px;
+  background-color: var(--theme-background-alt);
+  border: 1px solid var(--theme-border);
+  border-radius: 8px;
+}
+
+.notesPanel h2 {
+  margin: 0 0 12px;
+  font-size: 14px;
+  font-family: var(--theme-font-heading), serif;
+  color: var(--theme-text-heading);
+}
+
+.notesText {
+  font-size: 18px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  color: var(--theme-text-body);
+}
+
+.notesEmpty {
+  font-size: 14px;
+  color: var(--theme-text-muted);
+  font-style: italic;
+}
+
+.summaryPanel {
+  flex: 1;
+  min-height: 80px;
+  overflow-y: auto;
+  padding: 16px;
+  background-color: var(--theme-background-alt);
+  border: 1px solid var(--theme-border);
+  border-radius: 8px;
+}
+
+.summaryPanel h2 {
+  margin: 0 0 12px;
+  font-size: 14px;
+  font-family: var(--theme-font-heading), serif;
+  color: var(--theme-text-heading);
+}
+
+.summaryList {
+  margin: 0;
+  padding-left: 24px;
+  list-style-type: disc;
+}
+
+.summaryList li {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--theme-text-body);
+}

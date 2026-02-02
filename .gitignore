@@ -1,0 +1,15 @@
+.claude/settings.local.json
+node_modules/
+dist/
+.idea/
+.envrc
+
+.env.local
+.env.*.local
+
+public/
+addons/src/
+addons/dist/
+addons/.entry-generated.ts
+
+dist-slides/

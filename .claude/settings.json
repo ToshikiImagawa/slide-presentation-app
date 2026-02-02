@@ -1,0 +1,13 @@
+{
+  "enabledPlugins": {
+    "sdd-workflow-ja@ai-sdd-workflow": true
+  },
+  "extraKnownMarketplaces": {
+    "ai-sdd-workflow": {
+      "source": {
+        "source": "github",
+        "repo": "ToshikiImagawa/ai-sdd-workflow"
+      }
+    }
+  }
+}

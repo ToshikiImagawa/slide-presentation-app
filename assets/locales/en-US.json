@@ -1,0 +1,39 @@
+{
+  "languageCode": "en-US",
+  "languageName": "English",
+  "ui": {
+    "settings": {
+      "title": "Settings",
+      "language": "Language",
+      "close": "Close",
+      "open": "Settings",
+      "scrollSpeed": "Scroll Speed (sec)"
+    },
+    "presenterView": {
+      "open": "Presenter View",
+      "opened": "Opened",
+      "alreadyOpen": "Presenter view is already open",
+      "navPrev": "Previous slide (←)",
+      "navNext": "Next slide (→ / Space)",
+      "autoPlay": "Auto audio play",
+      "autoSlideshow": "Auto slideshow",
+      "notesTitle": "Speaker Notes",
+      "notesEmpty": "No notes",
+      "nextSlide": "Next Slide",
+      "lastSlide": "Last slide",
+      "previousSlide": "Previous Slide",
+      "firstSlide": "First slide",
+      "summaryTitle": "Key Points",
+      "summaryEmpty": "No summary",
+      "waitingForConnection": "Waiting for main window connection..."
+    },
+    "audio": {
+      "play": "Play audio",
+      "stop": "Stop audio",
+      "autoPlayOn": "Turn off auto-play",
+      "autoPlayOff": "Turn on auto-play",
+      "autoSlideshowOn": "Turn off auto-slideshow",
+      "autoSlideshowOff": "Turn on auto-slideshow"
+    }
+  }
+}

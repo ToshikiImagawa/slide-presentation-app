@@ -1,0 +1,297 @@
+/* CSS variable fallbacks (overridden at runtime by applyTheme) */
+:root {
+  --theme-primary: #e07a5f;
+  --theme-primary-rgb: 224, 122, 95;
+  --theme-background: #1c1917;
+  --theme-background-rgb: 28, 25, 23;
+  --theme-background-alt: #292524;
+  --theme-background-grid: #33302e;
+  --theme-text-heading: #faf8f5;
+  --theme-text-body: #a8a29e;
+  --theme-text-subtitle: #d6d3d1;
+  --theme-text-muted: #78716c;
+  --theme-border: #3d3835;
+  --theme-border-light: #4a4543;
+  --theme-success: #4ade80;
+  --theme-code-text: #fb923c;
+
+  /* Font theme variables (overridden by applyThemeData) */
+  --theme-font-heading: 'Noto Sans JP', 'Inter', sans-serif;
+  --theme-font-body: 'Noto Sans JP', 'Inter', sans-serif;
+  --theme-font-code: 'Roboto Mono', monospace;
+
+  /* Font size variables (overridden by baseFontSize) */
+  --theme-font-size-base: 20px;
+  --theme-font-size-h1: 72px;
+  --theme-font-size-h2: 48px;
+  --theme-font-size-h3: 24px;
+  --theme-font-size-h4: 20px;
+  --theme-font-size-subtitle1: 28px;
+  --theme-font-size-body1: 20px;
+  --theme-font-size-body2: 16px;
+}
+
+/* 0. KEYFRAMES */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* 1. THE SETUP */
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background-color: var(--theme-background);
+  background-image: linear-gradient(var(--theme-background-grid) 1px, transparent 1px), linear-gradient(90deg, var(--theme-background-grid) 1px, transparent 1px);
+  background-size: 40px 40px;
+  margin: 0;
+  font-family: var(--theme-font-body), serif;
+}
+
+.slide-container {
+  align-items: center;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  display: flex !important;
+  flex-direction: column;
+  height: 100%;
+  justify-content: center;
+  overflow: hidden;
+  padding: 60px;
+  position: relative;
+  width: 100%;
+}
+
+.slides .slide-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--theme-primary);
+  z-index: 10;
+}
+
+.slide-container::after {
+  display: none;
+}
+
+.backgrounds::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(to bottom, var(--theme-background) 0%, transparent 50%, var(--theme-background) 100%);
+  z-index: 5;
+  pointer-events: none;
+}
+
+.slide-logo {
+  position: fixed;
+  bottom: 20px;
+  left: 30px;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.toolbar {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  opacity: 0.15;
+  transition: opacity 0.25s ease;
+}
+
+.toolbar:hover {
+  opacity: 1;
+}
+
+.toolbar-left {
+  left: 12px;
+  right: auto;
+}
+
+.slide-container > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Slide entrance animation */
+.reveal .slides section.present .slide-title,
+.reveal .slides section.present .content-area,
+.reveal .slides section.present .title-layout,
+.reveal .slides section.present .section-title-layout,
+.reveal .slides section.present .bleed-content {
+  animation: fadeInUp 0.6s ease-out both;
+}
+
+.reveal .slides section.present .content-area {
+  animation-delay: 0.15s;
+}
+
+/* 2. TYPOGRAPHY */
+strong {
+  color: var(--theme-primary);
+  font-weight: 600;
+}
+
+code {
+  font-family: 'Roboto Mono', monospace;
+  background: var(--theme-background-alt);
+  padding: 4px 8px;
+  border-radius: 6px;
+  color: var(--theme-code-text);
+  font-size: 0.9em;
+  border: 1px solid var(--theme-border);
+}
+
+/* 3. LAYOUTS */
+.content-area {
+  width: 100%;
+  flex-grow: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 40px;
+}
+
+/* Title Slide */
+.title-layout {
+  text-align: center;
+  max-width: 900px;
+}
+
+/* Timeline */
+/* Bleed Image */
+.slide-container.bleed-image-layout {
+  padding: 0 !important;
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+}
+
+.bleed-content {
+  padding: 80px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  height: 100%;
+}
+
+.bleed-image {
+  height: 100%;
+  width: 100%;
+  max-height: 720px;
+  object-fit: cover;
+  object-position: center;
+}
+
+/* Section Title */
+.section-title-layout {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+}
+
+/* Slide Title */
+.slide-title {
+  font-size: var(--theme-font-size-h2);
+  margin-bottom: 40px;
+  width: 100%;
+  text-align: left;
+  border-left: 6px solid var(--theme-primary);
+  padding-left: 20px;
+}
+
+/* 4. REVEAL.JS OVERRIDES */
+.reveal-viewport {
+  background-color: var(--theme-background);
+}
+
+.reveal {
+  font-family: var(--theme-font-body), serif;
+  background-color: transparent;
+}
+
+.reveal .slides section {
+  padding: 0;
+  text-align: left;
+}
+
+.reveal h1,
+.reveal h2,
+.reveal h3,
+.reveal h4 {
+  text-transform: none;
+  text-shadow: none;
+}
+
+.reveal .slides section.slide-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--theme-primary);
+  z-index: 10;
+}
+
+.reveal .slides section.slide-container::after {
+  display: none;
+}
+
+.reveal .slide-number {
+  color: var(--theme-text-muted);
+  background: rgba(var(--theme-background-rgb), 0.9);
+  font-family: 'Roboto Mono', monospace;
+  border: 1px solid var(--theme-border);
+  border-radius: 4px;
+}
+
+.reveal .controls .navigate-left,
+.reveal .controls .navigate-right,
+.reveal .controls .navigate-up,
+.reveal .controls .navigate-down {
+  color: var(--theme-primary);
+}
+
+.reveal .progress span {
+  background: var(--theme-primary);
+}
