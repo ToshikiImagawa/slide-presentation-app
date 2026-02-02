@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { SlideData, PresenterControlState } from '../data'
 import { getSpeakerNotes, getSlideSummary } from '../data'
 import { useTranslation } from '../i18n'
-import { CircularProgress } from './CircularProgress'
+import { FillProgress } from './FillProgress'
 import { SlideRenderer } from './SlideRenderer'
 import styles from './PresenterViewWindow.module.css'
 
@@ -158,7 +158,7 @@ export function PresenterViewWindow({ slides, currentIndex, controlState, progre
               </svg>
               <span className={styles.autoLabel}>A</span>
             </button>
-            <CircularProgress progress={progressState?.progress ?? 0} visible={progressState?.visible ?? false} animationDuration={progressState?.animationDuration} resetKey={currentIndex} />
+            <FillProgress progress={progressState?.progress ?? 0} visible={progressState?.visible ?? false} animationDuration={progressState?.animationDuration} resetKey={currentIndex} />
           </div>
         </div>
       </div>

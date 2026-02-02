@@ -1,0 +1,25 @@
+.fill {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  border-radius: 6px;
+  background-color: rgba(var(--theme-primary-rgb, 100, 100, 255), 0.25);
+  pointer-events: none;
+  transition: height 0.3s ease;
+}
+
+.animated {
+  height: 0;
+  transition: none;
+  animation: fillUp linear forwards;
+}
+
+@keyframes fillUp {
+  from {
+    height: 0;
+  }
+  to {
+    height: 100%;
+  }
+}

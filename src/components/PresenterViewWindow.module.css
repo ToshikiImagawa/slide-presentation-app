@@ -106,6 +106,8 @@
 
 .buttonWrapper {
   position: relative;
+  overflow: hidden;
+  border-radius: 6px;
 }
 
 .autoLabel {
