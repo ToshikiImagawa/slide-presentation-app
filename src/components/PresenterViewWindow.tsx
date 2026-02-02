@@ -122,7 +122,12 @@ export function PresenterViewWindow({ slides, currentIndex, controlState, progre
           </button>
         </div>
         <div className={styles.audioControls}>
-          <button className={`${styles.audioButton} ${controlState?.hasError ? styles.audioError : controlState?.isPlaying ? styles.active : ''}`} onClick={onAudioToggle} disabled={!controlState?.hasVoice || controlState?.hasError} title={controlState?.hasError ? t('audio.error') : controlState?.isPlaying ? t('audio.stop') : t('audio.play')}>
+          <button
+            className={`${styles.audioButton} ${controlState?.hasError ? styles.audioError : controlState?.isPlaying ? styles.active : ''}`}
+            onClick={onAudioToggle}
+            disabled={!controlState?.hasVoice || controlState?.hasError}
+            title={controlState?.hasError ? t('audio.error') : controlState?.isPlaying ? t('audio.stop') : t('audio.play')}
+          >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
               {controlState?.hasError ? (
                 <>
