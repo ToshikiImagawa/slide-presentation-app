@@ -97,6 +97,13 @@
   color: var(--theme-primary, #6464ff);
 }
 
+.audioButton.audioError {
+  border-color: #d32f2f;
+  color: #d32f2f;
+  opacity: 0.8;
+  cursor: default;
+}
+
 .buttonWrapper {
   position: relative;
 }

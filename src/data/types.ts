@@ -91,6 +91,8 @@ export interface PresenterControlState {
   autoPlay: boolean
   autoSlideshow: boolean
   hasVoice: boolean
+  /** 音声読み込みに失敗した場合 true */
+  hasError: boolean
   scrollSpeed: number
 }
 

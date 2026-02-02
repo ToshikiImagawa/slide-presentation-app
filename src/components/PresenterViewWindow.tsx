@@ -122,9 +122,14 @@ export function PresenterViewWindow({ slides, currentIndex, controlState, progre
           </button>
         </div>
         <div className={styles.audioControls}>
-          <button className={`${styles.audioButton} ${controlState?.isPlaying ? styles.active : ''}`} onClick={onAudioToggle} disabled={!controlState?.hasVoice} title={controlState?.isPlaying ? t('audio.stop') : t('audio.play')}>
+          <button className={`${styles.audioButton} ${controlState?.hasError ? styles.audioError : controlState?.isPlaying ? styles.active : ''}`} onClick={onAudioToggle} disabled={!controlState?.hasVoice || controlState?.hasError} title={controlState?.hasError ? t('audio.error') : controlState?.isPlaying ? t('audio.stop') : t('audio.play')}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              {controlState?.isPlaying ? (
+              {controlState?.hasError ? (
+                <>
+                  <path d="M3 9v6h4l5 5V4L7 9H3z" />
+                  <path d="M16.5 12l3.5-3.5-1.4-1.4L15.1 10.6 11.6 7.1 10.2 8.5l3.5 3.5-3.5 3.5 1.4 1.4 3.5-3.5 3.5 3.5 1.4-1.4z" />
+                </>
+              ) : controlState?.isPlaying ? (
                 <>
                   <path d="M3 9v6h4l5 5V4L7 9H3z" />
                   <path d="M14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" />

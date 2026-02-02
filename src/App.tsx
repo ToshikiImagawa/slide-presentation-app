@@ -143,9 +143,10 @@ export function App({ presentationData }: AppProps) {
       autoPlay,
       autoSlideshow,
       hasVoice: !!currentVoicePath,
+      hasError: audioPlayer.hasError,
       scrollSpeed,
     })
-  }, [audioPlayer.isPlaying, autoPlay, autoSlideshow, currentVoicePath, scrollSpeed, sendControlState])
+  }, [audioPlayer.isPlaying, audioPlayer.hasError, autoPlay, autoSlideshow, currentVoicePath, scrollSpeed, sendControlState])
 
   const handleAudioToggleLocal = useCallback(() => {
     if (!currentVoicePath) return
@@ -180,7 +181,7 @@ export function App({ presentationData }: AppProps) {
         <SettingsButton onClick={() => setSettingsOpen(true)} />
       </div>
       <div className="toolbar">
-        {currentVoicePath && <AudioPlayButton playbackState={audioPlayer.playbackState} onToggle={handleAudioToggleLocal} />}
+        {currentVoicePath && <AudioPlayButton playbackState={audioPlayer.playbackState} hasError={audioPlayer.hasError} onToggle={handleAudioToggleLocal} />}
         <AudioControlBar
           autoPlay={autoPlay}
           onAutoPlayChange={setAutoPlay}
