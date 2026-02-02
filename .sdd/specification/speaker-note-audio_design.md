@@ -145,7 +145,7 @@ function getVoicePath(slide: SlideData): string | undefined {
 |------|------|
 | 音声再生のレスポンス | Audio オブジェクトの preload は行わない（オンデマンドロード）。再生開始までの遅延はブラウザ依存 |
 | リソース管理 | useEffect のクリーンアップで audio.pause() と audio.src = '' を実行し、リソースを解放 |
-| フォールバック | audio.onerror ハンドラで再生失敗時にスピーカーアイコンを無効化。プレゼン表示は継続 |
+| フォールバック | audio.onerror ハンドラで再生失敗時にスピーカーアイコンを無効化し、onEndedRef コールバックを呼び出す。これにより useAutoSlideshow がタイマーフォールバック（FR_AST_001）に切り替わり、自動スライドショーの進行が停止しない。プレゼン表示は継続 |
 | 後方互換性 | voice フィールドはオプショナル。既存の notes データ（string 型含む）はそのまま動作 |
 | ブラウザ互換性 | HTML5 Audio API はモダンブラウザで標準サポート。追加ポリフィル不要 |
 
@@ -156,7 +156,7 @@ function getVoicePath(slide: SlideData): string | undefined {
 | テストレベル | 対象 | カバレッジ目標 |
 |--------|------|---------|
 | ユニットテスト | `getVoicePath()`, `normalizeNotes()` 拡張 | voice あり/なし/string型 notes のすべてのパターン |
-| ユニットテスト | `useAudioPlayer` フック | play/stop/ended/error の状態遷移 |
+| ユニットテスト | `useAudioPlayer` フック | play/stop/ended/error の状態遷移。error 時に onEndedRef コールバックが呼ばれること |
 | ユニットテスト | `useAutoSlideshow` フック | autoPlay ON/OFF × autoSlideshow ON/OFF の組み合わせ |
 | ユニットテスト | バリデーション拡張 | voice フィールドの型検証（string/undefined/不正値） |
 | コンポーネントテスト | `AudioPlayButton` | voice あり/なし時の表示・クリック動作 |

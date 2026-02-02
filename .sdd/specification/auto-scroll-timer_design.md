@@ -99,12 +99,13 @@ useAutoSlideshow (拡張後)
 ├── scrollSpeed 状態管理（localStorage 永続化付き） ← 追加
 ├── timerDuration 算出（プログレス表示用）            ← 追加
 ├── 音声自動再生（スライド変更時）
-├── 音声終了 → 次スライド遷移
+├── 音声終了/エラー → 次スライド遷移（エラー時はタイマーフォールバック）
 └── タイマーベース自動遷移               ← 追加
     ├── voice 未定義スライドで setTimeout 開始
+    ├── 音声読み込み失敗時のフォールバックとして setTimeout 開始 ← 追加
     ├── スライド変更時に clearTimeout
     ├── 最終スライドではタイマー不開始
-    └── voice 定義済みスライドではタイマー不開始
+    └── voice 定義済みかつ音声読み込み成功時はタイマー不開始
 ```
 
 ---
@@ -184,6 +185,7 @@ interface UseAutoSlideshowReturn {
 |------------|-------------------------------------------|---------|
 | ユニットテスト    | useAutoSlideshow: voice 未定義時のタイマー開始       | 主要パス    |
 | ユニットテスト    | useAutoSlideshow: voice 定義済み時のタイマー不動作     | 主要パス    |
+| ユニットテスト    | useAutoSlideshow: voice 定義済みだが音声読み込み失敗時のタイマーフォールバック | 主要パス    |
 | ユニットテスト    | useAutoSlideshow: 最終スライドでのタイマー不動作         | 主要パス    |
 | ユニットテスト    | useAutoSlideshow: 手動スライド移動時のタイマーリセット      | 主要パス    |
 | ユニットテスト    | useAutoSlideshow: scrollSpeed 変更時のタイマー再設定 | 主要パス    |

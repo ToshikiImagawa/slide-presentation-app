@@ -20,7 +20,7 @@
 
 **設計原則:**
 
-- **2つの進行モード**: 音声再生の進行に連動するモード（React state + CSS transition）と、タイマーの経過に連動するモード（CSS @keyframes アニメーション）を提供する
+- **2つの進行モード**: 音声再生の進行に連動するモードと、タイマーの経過に連動するモードを提供する。いずれも CSS @keyframes アニメーションで滑らかに進行を補間する
 - **非干渉**: スライドコンテンツの視認性・伝達力を損なわない補助的なUI要素として機能する。ボタン周囲のリングとして表示することでスライドコンテンツ領域を占有しない
 - **状態連動**: 自動スライドショーのON/OFF状態に連動し、OFFの場合は非表示とする
 - **デュアルビュー**: メインウィンドウと発表者ビューの両方に円形プログレスを表示し、同一の進行状況を同期する
@@ -76,13 +76,13 @@ interface AudioProgress {
 
 /** useCircularProgress フックの出力 */
 interface UseCircularProgressReturn {
-  /** 進行率（0.0〜1.0）。タイマーモードでは常に 0（CSS アニメーションが進行を担当） */
+  /** 進行率（0.0〜1.0）。audio/timer モードでは常に 0（CSS @keyframes アニメーションが進行を担当） */
   progress: number
   /** 現在の進行ソース */
   source: ProgressSource
   /** 円形プログレスを表示するか */
   visible: boolean
-  /** タイマーモード時の CSS アニメーション用 duration（秒）。audio/none 時は undefined */
+  /** CSS アニメーション用 duration（秒）。audio モード・timer モードで使用。none 時は undefined */
   animationDuration?: number
 }
 
@@ -104,8 +104,8 @@ interface CircularProgressProps {
 | 用語                         | 説明                                    |
 |----------------------------|---------------------------------------|
 | 円形プログレス（Circular Progress） | 自動スクロールの進行状況をボタン周囲のSVGリングで可視化するUI要素   |
-| 音声プログレス（Audio Progress）    | 音声ファイル再生の進行に基づくプログレスの表示モード。React state + CSS transition で描画 |
-| タイマープログレス（Timer Progress）  | タイマーベース自動スクロールの進行に基づくプログレスの表示モード。CSS @keyframes で描画 |
+| 音声プログレス（Audio Progress）    | 音声ファイル再生の進行に基づくプログレスの表示モード。CSS @keyframes で描画（animationDuration = 音声の総時間） |
+| タイマープログレス（Timer Progress）  | タイマーベース自動スクロールの進行に基づくプログレスの表示モード。CSS @keyframes で描画（animationDuration = スクロールスピード） |
 | スクロールスピード（Scroll Speed）    | 音声未定義スライドで次スライドへ自動遷移するまでの待機時間（秒）      |
 | 進行ソース（Progress Source）     | 円形プログレスの進行率を決定する情報源（audio/timer/none） |
 
@@ -176,8 +176,8 @@ flowchart TD
     D -- No --> H{timerDuration > 0?}
     H -- Yes --> I["source=timer (CSS @keyframes)"]
     H -- No --> J[非表示 source=none]
-    F --> K[progress = currentTime / duration]
-    I --> L["animationDuration = timerDuration"]
+    F --> K["animationDuration = duration (CSS @keyframes)"]
+    I --> L["animationDuration = timerDuration (CSS @keyframes)"]
 ```
 
 ## 7.2. スライド遷移時のリセット
@@ -191,7 +191,7 @@ sequenceDiagram
     Hook ->> Hook: progress を 0 にリセット
     Hook ->> Hook: 新スライドの条件を判定
     alt 音声ファイルあり + 音声再生中
-        Hook ->> Bar: source=audio, visible=true, progress=x
+        Hook ->> Bar: source=audio, visible=true, animationDuration=duration
     else タイマー動作中
         Hook ->> Bar: source=timer, visible=true, animationDuration=n
     else 自動スライドショーOFF or 条件なし

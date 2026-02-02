@@ -16,8 +16,8 @@
 
 | モジュール/機能                 | ステータス | 備考                                                                        |
 |--------------------------|-------|---------------------------------------------------------------------------|
-| useCircularProgress フック  | 🟢    | 進行率算出ロジック（audio/timer/none の判定、クランプ、ゼロ除算防止）                               |
-| CircularProgress コンポーネント | 🟢    | UI表示（SVGリングによる円形プログレス、音声モード: CSS transition / タイマーモード: CSS @keyframes）    |
+| useCircularProgress フック  | 🟢    | 進行ソース判定ロジック（audio/timer/none の判定、animationDuration の算出）                      |
+| CircularProgress コンポーネント | 🟢    | UI表示（SVGリングによる円形プログレス、audio/timer 両モードとも CSS @keyframes で補間）             |
 | useAudioPlayer への進行情報追加  | 🟢    | currentTime/duration の公開（timeupdate/durationchange/loadedmetadata イベント経由） |
 | App.tsx への統合             | 🟢    | useCircularProgress フック呼び出し + AudioControlBar 経由で円形プログレスを表示               |
 | 発表者ビューへの統合               | 🟢    | BroadcastChannel 経由の progressChanged メッセージ + ボタン周囲にリング表示                  |
@@ -41,8 +41,7 @@
 |------------------|-------------------------------------------------|----------------------------------------------------------------------------------|
 | UI               | React コンポーネント + SVG                             | 既存のコンポーネントアーキテクチャに準拠（A-001）。SVG circle で円形リングを描画                                 |
 | ロジック             | React カスタムフック                                   | 既存の useAudioPlayer, useAutoSlideshow パターンとの一貫性                                   |
-| アニメーション（音声モード）   | CSS transition (stroke-dashoffset 0.3s ease)    | React state で更新される progress 値の変化を CSS で滑らかに補間                                    |
-| アニメーション（タイマーモード） | CSS @keyframes (circularFill)                   | ブラウザ GPU で 0→100% を滑らかに補間。React state の毎フレーム更新が不要でカクつかない                         |
+| アニメーション（音声/タイマー共通） | CSS @keyframes (circularFill)                   | ブラウザ GPU で 0→100% を滑らかに補間。React state の毎フレーム更新が不要でカクつかない。音声モードは duration、タイマーモードは scrollSpeed を animationDuration に設定 |
 | スタイリング           | CSS Modules                                     | コンポーネント固有スタイルの管理（A-002 の3層モデル準拠）                                                 |
 | 音声進行取得           | HTMLAudioElement timeupdate/durationchange イベント | 既存の useAudioPlayer が内部で管理する Audio 要素から進行情報を取得。durationchange で duration の取得漏れを防止 |
 
@@ -89,8 +88,8 @@ graph TD
 | モジュール名                      | 責務                                        | 依存関係                                                 | 配置場所                                       |
 |-----------------------------|-------------------------------------------|------------------------------------------------------|--------------------------------------------|
 | useCircularProgress         | 進行率の算出と表示状態の管理                            | useAudioPlayer の戻り値、useAutoSlideshow の timerDuration | src/hooks/useCircularProgress.ts           |
-| CircularProgress            | 円形プログレスの描画（2モード: transition / @keyframes） | なし（props のみ）                                         | src/components/CircularProgress.tsx        |
-| CircularProgress.module.css | 円形プログレスのスタイル定義（transition + @keyframes）   | CSS変数（--theme-*, --circumference）                    | src/components/CircularProgress.module.css |
+| CircularProgress            | 円形プログレスの描画（animationDuration 指定時: @keyframes / 未指定時: stroke-dashoffset 直接設定） | なし（props のみ）                                         | src/components/CircularProgress.tsx        |
+| CircularProgress.module.css | 円形プログレスのスタイル定義（@keyframes による audio/timer 共通アニメーション + transition による animationDuration 未指定時のフォールバック） | CSS変数（--theme-*, --circumference）                    | src/components/CircularProgress.module.css |
 
 ## 4.3. 既存コードへの変更
 
@@ -134,7 +133,7 @@ interface UseCircularProgressReturn {
   progress: number
   source: 'audio' | 'timer' | 'none'
   visible: boolean
-  /** タイマーモード時の CSS アニメーション用 duration（秒）。audio/none 時は undefined */
+  /** CSS アニメーション用 duration（秒）。audio モード・timer モードで使用。none 時は undefined */
   animationDuration?: number
 }
 
@@ -178,7 +177,7 @@ function CircularProgress(props: CircularProgressProps): JSX.Element | null {
 
 | 要件                       | 実現方針                                                                                                                                                 |
 |--------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------|
-| 滑らかなアニメーション（FR-ASPB-004） | 音声モード: CSS `transition: stroke-dashoffset 0.3s ease` で React state 更新を滑らかに補間。タイマーモード: CSS `@keyframes circularFill` でブラウザ GPU による滑らかな 0→100% アニメーション |
+| 滑らかなアニメーション（FR-ASPB-004） | 音声/タイマー共通: CSS `@keyframes circularFill` でブラウザ GPU による滑らかな 0→100% アニメーション。`animationDuration` に音声の総時間またはスクロールスピードを設定 |
 | コンテンツ非干渉（DC_ASPB_002）    | ボタン周囲にリングとして配置し、スライドコンテンツ領域を占有しない                                                                                                                    |
 | テーマ統合（DC_ASPB_001）       | リングの色に `var(--theme-primary)` を使用                                                                                                                    |
 | ライフサイクル管理（DC_ASPB_003）   | useEffect のクリーンアップで timeupdate/durationchange/loadedmetadata イベントリスナーを解除                                                                             |
@@ -201,8 +200,7 @@ function CircularProgress(props: CircularProgressProps): JSX.Element | null {
 
 | 決定事項               | 選択肢                                                                        | 決定内容                         | 理由                                                                                                                                                   |
 |--------------------|----------------------------------------------------------------------------|------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------|
-| アニメーション方式（音声モード）   | (a) CSS transition (b) requestAnimationFrame (c) CSS animation             | (a) CSS transition           | React state（audioPlayer.currentTime）の変化を `transition: stroke-dashoffset 0.3s ease` で滑らかに補間。timeupdate は約250ms間隔で発火するため、0.3s の transition で十分滑らか      |
-| アニメーション方式（タイマーモード） | (a) CSS transition + rAF (b) CSS @keyframes (c) JS setInterval             | (b) CSS @keyframes           | React state の毎フレーム更新（rAF）は CSS transition と競合してカクつく。CSS @keyframes なら React の再レンダリング不要でブラウザ GPU が滑らかに補間。`animationDuration` で秒数を指定するだけ               |
+| アニメーション方式（音声/タイマー共通） | (a) CSS transition + React state (b) CSS @keyframes (c) requestAnimationFrame | (b) CSS @keyframes           | 音声・タイマー両モードで CSS @keyframes を統一採用。React state の頻繁な更新（音声モードでは timeupdate ~250ms間隔）が不要になり、再レンダリングを最小化。ブラウザ GPU が滑らかに 0→100% を補間。`animationDuration` に音声の総時間またはスクロールスピードを設定するだけのシンプルな構成 |
 | 音声進行の取得方法          | (a) useAudioPlayer を拡張 (b) 別途 Audio 参照を取得                                  | (a) useAudioPlayer を拡張       | 既存の Audio 要素管理の一元化を維持（A-001 準拠）。currentTime/duration を戻り値に追加するだけの最小変更                                                                                |
 | duration 取得の信頼性向上  | (a) loadedmetadata のみ (b) durationchange 追加 (c) timeupdate 内でも同期           | (b) + (c) 併用                 | loadedmetadata が発火しないケース（ブラウザ差異、キャッシュ等）への対策。timeupdate 内で `isFinite(dur) && dur > 0` ガード付きで duration も同期                                             |
 | スタイリング方式           | (a) CSS Modules (b) MUI sx prop (c) インラインスタイル                              | (a) CSS Modules              | コンポーネント固有の複雑なスタイル（position, transition, animation）を管理するため、A-002 の3層モデルに従い CSS Modules を採用                                                            |
