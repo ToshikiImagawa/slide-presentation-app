@@ -1,41 +1,41 @@
 # Slide Presentation App
 
-React + Reveal.js ベースのスライドプレゼンテーション作成ツールです。
-JSON ファイルでスライド内容やテーマを定義し、ブラウザ上でプレゼンテーションとして表示します。
+A slide presentation tool built with React + Reveal.js.
+Define slide content and themes using JSON files and display them as presentations in the browser.
 
-## セットアップ
+## Setup
 
 ```bash
 npm install
 ```
 
-## コマンド
+## Commands
 
-| コマンド                    | 説明                                       |
-|-------------------------|------------------------------------------|
-| `npm run dev`           | 開発サーバー起動（アドオンビルド + Vite HMR）             |
-| `npm run build`         | プロダクションビルド（アドオンビルド + `dist/` に出力）        |
-| `npm run build:addons`  | アドオンのみビルド                                |
-| `npm run preview`       | ビルド済みファイルのプレビュー                          |
-| `npm run format`        | Prettier でコード整形（`src/**/*.{ts,tsx,css}`） |
-| `npm run typecheck`     | TypeScript 型チェック                         |
-| `npm run test`          | テスト実行（Vitest）                            |
-| `npm run test:watch`    | テスト監視モード                                 |
-| `npm run export:slides` | スライドコンテンツを npm パッケージ（.tgz）にエクスポート        |
+| Command                 | Description                                         |
+|-------------------------|-----------------------------------------------------|
+| `npm run dev`           | Start dev server (addon build + Vite HMR)           |
+| `npm run build`         | Production build (addon build + output to `dist/`)  |
+| `npm run build:addons`  | Build addons only                                   |
+| `npm run preview`       | Preview built files                                 |
+| `npm run format`        | Format code with Prettier (`src/**/*.{ts,tsx,css}`) |
+| `npm run typecheck`     | TypeScript type check                               |
+| `npm run test`          | Run tests (Vitest)                                  |
+| `npm run test:watch`    | Run tests in watch mode                             |
+| `npm run export:slides` | Export slide content as an npm package (.tgz)       |
 
-## スライドの定義
+## Defining Slides
 
-`public/slides.json` を作成することで、スライドの内容をカスタマイズできます。
-このファイルが存在しない場合は、組み込みのテンプレートガイドが表示されます。
+Create `public/slides.json` to customize slide content.
+If this file does not exist, the built-in template guide will be displayed.
 
-### 基本構造
+### Basic Structure
 
 ```json
 {
   "meta": {
-    "title": "プレゼンタイトル",
-    "description": "概要説明",
-    "author": "作成者",
+    "title": "Presentation Title",
+    "description": "Description",
+    "author": "Author",
     "logo": {
       "src": "/my-logo.png",
       "width": 150,
@@ -47,75 +47,78 @@ npm install
       "id": "slide-1",
       "layout": "center",
       "content": {
-        "title": "タイトルスライド",
-        "subtitle": "サブタイトル"
+        "title": "Title Slide",
+        "subtitle": "Subtitle"
       }
     }
   ]
 }
 ```
 
-### ロゴ設定
+### Logo Configuration
 
-`meta.logo` フィールドでプレゼンテーションのロゴをカスタマイズできます。
+Customize the presentation logo via the `meta.logo` field.
 
-| フィールド    | 型      | デフォルト       | 説明        |
-|----------|--------|-------------|-----------|
-| `src`    | string | `/logo.png` | ロゴ画像のパス   |
-| `width`  | number | `120`       | ロゴの幅（px）  |
-| `height` | number | `40`        | ロゴの高さ（px） |
+| Field    | Type   | Default     | Description        |
+|----------|--------|-------------|--------------------|
+| `src`    | string | `/logo.png` | Path to logo image |
+| `width`  | number | `120`       | Logo width (px)    |
+| `height` | number | `40`        | Logo height (px)   |
 
-`meta.logo` を省略した場合、ロゴは表示されません。`width` と `height` を省略した場合はそれぞれ `120`、`40`
-がデフォルト値として使用されます。
+If `meta.logo` is omitted, no logo will be displayed. If `width` and `height` are omitted, the defaults of `120` and`40`
+are used respectively.
 
-### レイアウト一覧
+### Layouts
 
-各スライドの `layout` フィールドで、以下のレイアウトを指定できます。
+Each slide's `layout` field determines which layout is used.
 
-| layout       | 用途          | 主なフィールド                                      |
-|--------------|-------------|----------------------------------------------|
-| `center`     | 表紙・タイトル・まとめ | `title`, `subtitle`, `variant`               |
-| `content`    | コンテンツ表示     | `title`, `steps[]` / `tiles[]` / `component` |
-| `two-column` | 左右2カラム      | `title`, `left`, `right`                     |
-| `bleed`      | 2カラム全幅      | `title`, `commands[]`, `component`           |
-| `custom`     | カスタムコンポーネント | `component`                                  |
+| layout       | Use case                | Main fields                                  |
+|--------------|-------------------------|----------------------------------------------|
+| `center`     | Cover / title / summary | `title`, `subtitle`, `variant`               |
+| `content`    | Content display         | `title`, `steps[]` / `tiles[]` / `component` |
+| `two-column` | Two-column layout       | `title`, `left`, `right`                     |
+| `bleed`      | Full-width two-column   | `title`, `commands[]`, `component`           |
+| `custom`     | Custom component        | `component`                                  |
 
-`center` レイアウトは `variant` フィールドで表示を切り替えます。
+The `center` layout switches display based on the `variant` field.
 
-| variant     | 説明                                         |
-|-------------|--------------------------------------------|
-| （未指定）       | TitleLayout（タイトル・サブタイトル表示）                 |
-| `"section"` | SectionLayout（まとめ表示。`body`, `qrCode` 等を使用） |
+| variant     | Description                                                  |
+|-------------|--------------------------------------------------------------|
+| (unset)     | TitleLayout (displays title and subtitle)                    |
+| `"section"` | SectionLayout (summary display, uses `body`, `qrCode`, etc.) |
 
-`content` レイアウトは子要素のフィールドで描画内容が決まります。
+The `content` layout determines rendering based on child element fields.
 
-| フィールド       | 描画内容            |
-|-------------|-----------------|
-| `steps`     | Timeline        |
-| `tiles`     | FeatureTileGrid |
-| `component` | カスタムコンポーネント     |
+| Field       | Renders          |
+|-------------|------------------|
+| `steps`     | Timeline         |
+| `tiles`     | FeatureTileGrid  |
+| `component` | Custom component |
 
-### two-column レイアウトの詳細
+### Two-Column Layout Details
 
-`left` / `right` にそれぞれ以下のフィールドを指定できます。
+The `left` / `right` fields accept the following:
 
 ```json
 {
-  "heading": "見出し",
-  "headingDescription": "見出しの補足テキスト",
+  "heading": "Heading",
+  "headingDescription": "Supplementary text for the heading",
   "paragraphs": [
-    "段落テキスト（HTML タグ利用可）"
+    "Paragraph text (HTML tags supported)"
   ],
   "items": [
     {
-      "text": "項目名",
-      "description": "説明",
+      "text": "Item name",
+      "description": "Description",
       "emphasis": true
     }
   ],
   "codeBlock": {
-    "header": "> ヘッダー",
-    "items": ["行1", "行2"]
+    "header": "> Header",
+    "items": [
+      "Line 1",
+      "Line 2"
+    ]
   },
   "component": {
     "name": "ComponentName",
@@ -124,50 +127,50 @@ npm install
 }
 ```
 
-### スライドメタ情報
+### Slide Meta
 
-各スライドにオプションの `meta` フィールドを追加して、トランジションや背景を制御できます。
+Add an optional `meta` field to each slide to control transitions and backgrounds.
 
 ```json
 {
   "id": "slide-1",
   "layout": "center",
   "content": {
-    "title": "タイトル"
+    "title": "Title"
   },
   "meta": {
     "transition": "fade",
     "backgroundColor": "#1a1a2e",
     "backgroundImage": "url(/background.jpg)",
-    "notes": "発表者ノート（文字列形式）"
+    "notes": "Speaker notes (string format)"
   }
 }
 ```
 
-### 発表者ノート（notes）
+### Speaker Notes
 
-`meta.notes` フィールドで発表者向けのノートを定義できます。文字列またはオブジェクトの2つの形式に対応しています。
+Define speaker notes via the `meta.notes` field. Two formats are supported: string and object.
 
-**文字列形式（シンプル）:**
+**String format (simple):**
 
 ```json
 {
   "meta": {
-    "notes": "ここに発表者メモを記述します"
+    "notes": "Write your speaker notes here"
   }
 }
 ```
 
-**オブジェクト形式（スピーカーノート + 要点サマリー + 音声）:**
+**Object format (speaker notes + key point summary + voice):**
 
 ```json
 {
   "meta": {
     "notes": {
-      "speakerNotes": "発表者向けのメモや台本を記述します",
+      "speakerNotes": "Write your speaker notes and script here",
       "summary": [
-        "要点1: このスライドの重要ポイント",
-        "要点2: 聴衆に伝えたいこと"
+        "Point 1: Key takeaway of this slide",
+        "Point 2: What to convey to the audience"
       ],
       "voice": "/voice/slide-01.wav"
     }
@@ -175,17 +178,17 @@ npm install
 }
 ```
 
-| フィールド          | 型        | 説明                            |
-|----------------|----------|-------------------------------|
-| `speakerNotes` | string   | 発表者メモ・台本                      |
-| `summary`      | string[] | 要点サマリー（箇条書き）                  |
-| `voice`        | string   | 音声ファイルへのパス（`public/` 配下の相対パス） |
+| Field          | Type     | Description                                |
+|----------------|----------|--------------------------------------------|
+| `speakerNotes` | string   | Speaker notes / script                     |
+| `summary`      | string[] | Key point summary (bulleted list)          |
+| `voice`        | string   | Path to audio file (relative to `public/`) |
 
-`notes` を省略したスライドでは、発表者ビューのノート欄は空欄で表示されます。
+Slides without `notes` will display an empty notes panel in the presenter view.
 
-### コンポーネントの参照
+### Component References
 
-スライド内で登録済みのコンポーネントを使用できます。
+Use registered components within slides.
 
 ```json
 {
@@ -198,15 +201,15 @@ npm install
 }
 ```
 
-組み込みコンポーネントの例: `TerminalAnimation`, `CodeBlockPanel`, `BulletList`, `Timeline` など
+Built-in component examples: `TerminalAnimation`, `CodeBlockPanel`, `BulletList`, `Timeline`, etc.
 
-## テーマの変更
+## Theming
 
-テーマは2つの方法でカスタマイズできます。
+Themes can be customized in two ways.
 
-### 方法 1: slides.json 内で定義
+### Method 1: Define in slides.json
 
-`slides.json` に `theme` フィールドを追加します。
+Add a `theme` field to `slides.json`.
 
 ```json
 {
@@ -241,21 +244,22 @@ npm install
 }
 ```
 
-#### フォント設定の詳細
+#### Font Configuration Details
 
-`theme.fonts` には以下のフィールドを指定できます。
+The following fields can be specified in `theme.fonts`.
 
-| フィールド          | 型            | デフォルト                                 | 説明                                    |
-|----------------|--------------|---------------------------------------|---------------------------------------|
-| `heading`      | string       | `'Noto Sans JP', 'Inter', sans-serif` | 見出し用フォント                              |
-| `body`         | string       | `'Noto Sans JP', 'Inter', sans-serif` | 本文用フォント                               |
-| `code`         | string       | `'Roboto Mono', monospace`            | コードブロック用フォント                          |
-| `baseFontSize` | number       | `20`                                  | 基本フォントサイズ（px）。全フォントサイズが比率で自動スケーリングされる |
-| `sources`      | FontSource[] | —                                     | フォントソースの配列                            |
+| Field          | Type         | Default                               | Description                                                           |
+|----------------|--------------|---------------------------------------|-----------------------------------------------------------------------|
+| `heading`      | string       | `'Noto Sans JP', 'Inter', sans-serif` | Heading font                                                          |
+| `body`         | string       | `'Noto Sans JP', 'Inter', sans-serif` | Body font                                                             |
+| `code`         | string       | `'Roboto Mono', monospace`            | Code block font                                                       |
+| `baseFontSize` | number       | `20`                                  | Base font size (px). All font sizes are automatically scaled by ratio |
+| `sources`      | FontSource[] | —                                     | Array of font sources                                                 |
 
-`baseFontSize` を変更すると、H1〜Body2 のすべてのフォントサイズが基準値からの比率で自動計算されます。
+Changing `baseFontSize` causes all font sizes from H1 to Body2 to be automatically calculated based on the ratio from
+the base value.
 
-`sources` でローカルフォントや外部フォントを読み込めます。
+Load local or external fonts using `sources`.
 
 ```json
 {
@@ -272,21 +276,21 @@ npm install
 }
 ```
 
-| フィールド    | 型      | 説明                                               |
-|----------|--------|--------------------------------------------------|
-| `family` | string | フォント名                                            |
-| `src`    | string | ローカルフォントファイルのパス（`@font-face` で登録される）             |
-| `url`    | string | 外部フォント URL（`<link>` タグで読み込まれる。Google Fonts 等に対応） |
+| Field    | Type   | Description                                                        |
+|----------|--------|--------------------------------------------------------------------|
+| `family` | string | Font name                                                          |
+| `src`    | string | Path to local font file (registered via `@font-face`)              |
+| `url`    | string | External font URL (loaded via `<link>` tag, supports Google Fonts) |
 
-### 方法 2: theme-colors.json で色のみ変更
+### Method 2: Override colors only with theme-colors.json
 
-`public/theme-colors.json` を作成すると、色の設定だけを上書きできます。
-`meta.themeColors` フィールドで、デフォルトの `/theme-colors.json` 以外のパスを指定することも可能です。
+Create `public/theme-colors.json` to override only color settings.
+You can also specify a custom path via the `meta.themeColors` field instead of the default `/theme-colors.json`.
 
 ```json
 {
   "meta": {
-    "title": "プレゼンタイトル",
+    "title": "Presentation Title",
     "themeColors": "/theme/custom-colors.json"
   }
 }
@@ -309,36 +313,37 @@ npm install
 }
 ```
 
-## 多言語対応（i18n）
+## Internationalization (i18n)
 
-UI の表示言語を切り替えることができます。初期表示はブラウザの言語設定から自動判定され、設定ウィンドウから手動で切り替えることも可能です。選択した言語は
-`localStorage` に保存され、次回以降も維持されます。
+Switch the UI display language. The initial language is auto-detected from browser settings and can be manually changed
+from the settings window. The selected language is saved to `localStorage` and persists across sessions.
 
-### 対応言語
+### Supported Languages
 
-| 言語コード   | 言語名      |
-|---------|----------|
-| `en-US` | English  |
-| `ja-JP` | 日本語      |
-| `fr-FR` | Français |
+| Language Code | Language |
+|---------------|----------|
+| `en-US`       | English  |
+| `ja-JP`       | Japanese |
+| `fr-FR`       | French   |
 
-### 設定ウィンドウ
+### Settings Window
 
-画面右上の歯車アイコン（設定ボタン）をクリックすると設定ウィンドウが開き、言語を選択できます。発表者ビューでも同じ言語設定が適用されます。
+Click the gear icon (settings button) in the upper right corner to open the settings window and select a language. The
+same language setting is applied to the presenter view.
 
-### 言語リソースの構造
+### Language Resource Structure
 
-言語リソースは `assets/locales/` ディレクトリに配置されます。
+Language resources are located in the `assets/locales/` directory.
 
 ```
 assets/locales/
-├── manifest.json    # ロード対象のファイル一覧
-├── en-US.json       # 英語リソース
-├── ja-JP.json       # 日本語リソース
-└── fr-FR.json       # フランス語リソース
+├── manifest.json    # List of files to load
+├── en-US.json       # English resource
+├── ja-JP.json       # Japanese resource
+└── fr-FR.json       # French resource
 ```
 
-`manifest.json` でロード対象の言語ファイルを指定します。
+`manifest.json` specifies which language files to load.
 
 ```json
 {
@@ -350,7 +355,7 @@ assets/locales/
 }
 ```
 
-各言語リソースは以下の構造です。
+Each language resource has the following structure.
 
 ```json
 {
@@ -379,107 +384,110 @@ assets/locales/
 }
 ```
 
-`ui` 内のキーは最大2段のネスト（`セクション.キー`）で構成されます。
+Keys within `ui` support up to two levels of nesting (`section.key`).
 
-## 発表者ビュー
+## Presenter View
 
-プレゼンテーション画面の右上にある「発表者ビュー」ボタンをクリックすると、別ウィンドウで発表者ビューが開きます。発表者ビューの
-UI ラベルは多言語対応セクションで説明した言語設定に従って表示されます。
+Click the "Presenter View" button in the upper right of the presentation screen to open the presenter view in a separate
+window. UI labels in the presenter view follow the language setting described in the Internationalization section.
 
-### パネル構成
+### Panel Layout
 
-発表者ビューは以下のエリアで構成されています。
+The presenter view consists of the following areas.
 
-**コントロールバー（上部）:**
+**Control Bar (top):**
 
-| 位置 | 操作                | 説明                          |
-|----|-------------------|-----------------------------|
-| 左側 | 前へ / 進捗 / 次へ      | スライド移動と現在位置の表示（例: `3 / 10`） |
-| 右側 | 再生・自動再生・自動スライドショー | 音声制御（詳細は「音声再生」セクションを参照）     |
+| Position | Controls                          | Description                                           |
+|----------|-----------------------------------|-------------------------------------------------------|
+| Left     | Previous / Progress / Next        | Slide navigation and current position (e.g. `3 / 10`) |
+| Right    | Play / Auto-play / Auto-slideshow | Audio controls (see the Audio Playback section)       |
 
-**メインエリア（中央）:**
+**Main Area (center):**
 
 ```
 ┌──────────────────┬──────────────────┐
-│                  │ 次のスライド         │
-│ スピーカーノート    │ プレビュー           │
+│                  │ Next Slide       │
+│ Speaker Notes    │ Preview          │
 │                  ├──────────────────┤
-│                  │ 前のスライド         │
-│                  │ プレビュー           │
+│                  │ Previous Slide   │
+│                  │ Preview          │
 └──────────────────┴──────────────────┘
 ```
 
-| パネル      | 内容                               |
-|----------|----------------------------------|
-| スピーカーノート | 現在のスライドの `speakerNotes`（発表者メモ）   |
-| 次のスライド   | 次のスライドの縮小プレビュー                   |
-| 前のスライド   | 前のスライドの縮小プレビュー                   |
-| 要点サマリー   | 現在のスライドの `summary`（箇条書き、画面下部に表示） |
+| Panel          | Content                                                    |
+|----------------|------------------------------------------------------------|
+| Speaker Notes  | Current slide's `speakerNotes` (presenter notes)           |
+| Next Slide     | Thumbnail preview of the next slide                        |
+| Previous Slide | Thumbnail preview of the previous slide                    |
+| Key Summary    | Current slide's `summary` (bulleted list, shown at bottom) |
 
-最初のスライドでは前スライドプレビューに境界メッセージ（日本語:
-「最初のスライドです」）、最終スライドでは次スライドプレビューに境界メッセージ（日本語:
-「最後のスライドです」）が表示されます。これらのメッセージは言語設定に応じて翻訳されます。
+On the first slide, the previous slide preview shows a boundary message (e.g. "This is the first slide"). On the last
+slide, the next slide preview shows a boundary message (e.g. "This is the last slide"). These messages are translated
+according to the language setting.
 
-### 双方向同期
+### Bidirectional Sync
 
-メインウィンドウと発表者ビューは `BroadcastChannel` で双方向に同期されます。
+The main window and presenter view are bidirectionally synced via `BroadcastChannel`.
 
-- メインウィンドウでスライドを操作すると、発表者ビューの表示がリアルタイムで更新されます
-- 発表者ビューからスライド移動や音声制御を操作すると、メインウィンドウに反映されます
+- Navigating slides in the main window updates the presenter view in real time
+- Navigating slides or controlling audio from the presenter view is reflected in the main window
 
-### キーボード操作
+### Keyboard Navigation
 
-発表者ビューでは以下のキーボード操作が使用できます。
+The following keyboard shortcuts are available in the presenter view.
 
-| キー                | 操作      |
-|-------------------|---------|
-| `←`（左矢印）          | 前のスライドへ |
-| `→`（右矢印）/ `Space` | 次のスライドへ |
+| Key                         | Action         |
+|-----------------------------|----------------|
+| `←` (Left Arrow)            | Previous slide |
+| `→` (Right Arrow) / `Space` | Next slide     |
 
-## 音声再生
+## Audio Playback
 
-スライドの `meta.notes.voice` フィールドに音声ファイルのパスを指定すると、スライドごとの音声再生機能が有効になります。音声ファイルは
-`public/` 配下に配置してください（例: `public/voice/slide-01.wav`）。
+Specify an audio file path in the `meta.notes.voice` field to enable per-slide audio playback. Place audio files under
+`public/` (e.g. `public/voice/slide-01.wav`).
 
-### ツールバー
+### Toolbar
 
-`voice` が定義されたスライドでは、画面右上のツールバーに以下のボタンが表示されます。
+On slides with a `voice` defined, the following buttons appear in the upper-right toolbar.
 
-| ボタン       | アイコン  | 機能                         |
-|-----------|-------|----------------------------|
-| 再生/停止     | スピーカー | 現在のスライドの音声を手動で再生・停止する      |
-| 自動再生      | ▶     | スライド遷移時に音声を自動再生する ON/OFF   |
-| 自動スライドショー | ▶▶    | 音声終了時に次のスライドへ自動遷移する ON/OFF |
+| Button         | Icon    | Function                                              |
+|----------------|---------|-------------------------------------------------------|
+| Play/Stop      | Speaker | Manually play/stop the current slide's audio          |
+| Auto-play      | ▶       | Toggle auto-play audio on slide transition ON/OFF     |
+| Auto-slideshow | ▶▶      | Toggle auto-advance to next slide on audio end ON/OFF |
 
-ツールバーは通常時は薄く表示され、マウスホバーで完全に表示されます。発表者ビューのコントロールバーからも同じ操作が可能です。
+The toolbar is displayed at reduced opacity by default and fully visible on hover. The same controls are available from
+the presenter view's control bar.
 
-### 手動再生
+### Manual Playback
 
-スピーカーアイコンをクリックすると、現在のスライドの音声を再生します。再生中にもう一度クリックすると停止します。`voice`
-が定義されていないスライドではアイコンは表示されません。
+Click the speaker icon to play the current slide's audio. Click again to stop. The icon is not shown on slides without a
+`voice` defined.
 
-### 自動再生
+### Auto-Play
 
-自動再生ボタン（▶）を ON にすると、スライドを切り替えるたびに、そのスライドに `voice` が定義されていれば自動的に音声が再生されます。
+When the auto-play button (▶) is ON, audio is automatically played on each slide that has a `voice` defined whenever you
+navigate to it.
 
-### 自動スライドショー
+### Auto-Slideshow
 
-自動スライドショーボタン（▶▶）を ON
-にすると、音声の再生が終了したタイミングで自動的に次のスライドへ遷移します。最終スライドでは自動遷移しません。自動再生と組み合わせることで、全スライドを通した自動プレゼンテーションが可能です。
+When the auto-slideshow button (▶▶) is ON, the presentation automatically advances to the next slide when audio playback
+ends. It does not auto-advance on the last slide. Combined with auto-play, this enables a fully automated presentation
+through all slides.
 
-## アドオンの追加
+## Adding Addons
 
-独自のコンポーネントをアドオンとして追加し、スライド内で利用できます。
+Add custom components as addons for use within slides.
 
-### 1. アドオンのディレクトリを作成
+### 1. Create the addon directory
 
 ```
-addons/src/{アドオン名}/
-├── entry.ts       # コンポーネント登録
-└── MyComponent.tsx  # コンポーネント実装
+addons/src/{addon-name}/
+├── entry.ts         # Component registration
+└── MyComponent.tsx  # Component implementation
 ```
 
-### 2. コンポーネントを実装
+### 2. Implement the component
 
 ```tsx
 // addons/src/my-addon/MyComponent.tsx
@@ -490,7 +498,7 @@ export function MyComponent({ message }: { message: string }) {
 }
 ```
 
-### 3. エントリファイルでコンポーネントを登録
+### 3. Register the component in the entry file
 
 ```ts
 // addons/src/my-addon/entry.ts
@@ -501,13 +509,13 @@ window.__ADDON_REGISTER__('my-addon', [
 ]);
 ```
 
-### 4. ビルド
+### 4. Build
 
 ```bash
 npm run build:addons
 ```
 
-### 5. スライドで使用
+### 5. Use in slides
 
 ```json
 {
@@ -524,11 +532,11 @@ npm run build:addons
 }
 ```
 
-## 静的アセットの配置
+## Static Assets
 
-`public/` ディレクトリに配置したファイルは、ビルド後にそのままルートパスでアクセスできます。
+Files placed in the `public/` directory are accessible at the root path after building.
 
-| ファイル                                  | URL                             |
+| File                                  | URL                             |
 |---------------------------------------|---------------------------------|
 | `public/slides.json`                  | `/slides.json`                  |
 | `public/theme-colors.json`            | `/theme-colors.json`            |
@@ -537,65 +545,66 @@ npm run build:addons
 | `public/assets/locales/manifest.json` | `/assets/locales/manifest.json` |
 | `public/assets/locales/en-US.json`    | `/assets/locales/en-US.json`    |
 
-## スライドパッケージ
+## Slide Packages
 
-スライドコンテンツ（slides.json + 画像・音声・テーマ・フォント等のアセット）を npm パッケージとしてエクスポート・配布できます。
+Export and distribute slide content (slides.json + images, audio, themes, fonts, etc.) as npm packages.
 
-### エクスポート（パッケージ作成）
+### Export (Create Package)
 
 ```bash
 npm run export:slides -- --name my-presentation --slides slides.json
 ```
 
-| オプション       | 必須 | 説明                                |
-|-------------|:--:|-----------------------------------|
-| `--name`    | ○  | パッケージ名（`@slides/{name}` として生成される） |
-| `--slides`  | ○  | `public/` 配下のスライド JSON ファイル名      |
-| `--version` |    | バージョン（デフォルト: `1.0.0`）             |
+| Option      | Required | Description                                  |
+|-------------|:--------:|----------------------------------------------|
+| `--name`    |   Yes    | Package name (generated as `@slides/{name}`) |
+| `--slides`  |   Yes    | Slide JSON filename under `public/`          |
+| `--version` |          | Version (default: `1.0.0`)                   |
 
-実行すると `dist-slides/` に `.tgz` ファイルが生成されます。slides.json 内で参照されているアセットパス（`image/`,
-`voice/`, `theme/`, `font/`）が自動検出され、パッケージに含まれます。
+This generates a `.tgz` file in `dist-slides/`. Asset paths referenced in slides.json (`image/`, `voice/`, `theme/`,
+`font/`) are auto-detected and included in the package.
 
-### インポート（パッケージ利用）
+### Import (Use Package)
 
-`VITE_SLIDE_PACKAGE` 環境変数でスライドパッケージを指定します。ローカルパスと npm パッケージの両方に対応しています。
+Specify a slide package via the `VITE_SLIDE_PACKAGE` environment variable. Both local paths and npm packages are
+supported.
 
-#### ローカルパスで利用（npm install 不要）
+#### Use with local path (no npm install required)
 
-`.env.local` に `.tgz` ファイルまたは展開済みディレクトリのパスを指定します。
+Specify the `.tgz` file or extracted directory path in `.env.local`.
 
 ```bash
-# .tgz を直接指定
+# Specify .tgz directly
 VITE_SLIDE_PACKAGE=./dist-slides/slides-my-presentation-1.0.0.tgz
 
-# 展開済みディレクトリを指定
+# Specify extracted directory
 VITE_SLIDE_PACKAGE=./dist-slides/my-presentation
 ```
 
-#### npm パッケージとして利用
+#### Use as npm package
 
 ```bash
-# .tgz をインストール
+# Install the .tgz
 npm install ./dist-slides/slides-my-presentation-1.0.0.tgz
 
-# .env.local にパッケージ名を指定
+# Specify the package name in .env.local
 VITE_SLIDE_PACKAGE=@slides/my-presentation
 ```
 
-#### `VITE_SLIDE_PACKAGE` の指定方法一覧
+#### `VITE_SLIDE_PACKAGE` Value Reference
 
-| 値の形式                          | 動作                                 |
-|-------------------------------|------------------------------------|
-| `./dist-slides/xxx-1.0.0.tgz` | .tgz を自動展開してローカル利用（npm install 不要） |
-| `./dist-slides/xxx/`          | 展開済みディレクトリから直接読み込み（npm install 不要） |
-| `@slides/xxx`                 | npm パッケージから読み込み                    |
-| 未指定                           | `@slides/*` パッケージを自動検出             |
+| Value                         | Behavior                                                |
+|-------------------------------|---------------------------------------------------------|
+| `./dist-slides/xxx-1.0.0.tgz` | Auto-extract .tgz for local use (no npm install)        |
+| `./dist-slides/xxx/`          | Read directly from extracted directory (no npm install) |
+| `@slides/xxx`                 | Read from npm package                                   |
+| (unset)                       | Auto-detect `@slides/*` packages                        |
 
-### 動作仕様
+### Behavior
 
-- `public/` に同名のファイルが存在する場合は `public/` のファイルが優先されます（パッケージはフォールバック）
-- `npm run build` 時はパッケージ内のアセットが `dist/` にコピーされます（既存ファイルは上書きしません）
+- If a file with the same name exists in `public/`, the `public/` file takes priority (package serves as fallback)
+- During `npm run build`, package assets are copied to `dist/` (existing files are not overwritten)
 
-## ライセンス
+## License
 
 MIT
