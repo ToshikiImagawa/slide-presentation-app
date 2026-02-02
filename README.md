@@ -114,8 +114,8 @@ npm install
     }
   ],
   "codeBlock": {
-    "language": "typescript",
-    "code": "const x = 1;"
+    "header": "> ヘッダー",
+    "items": ["行1", "行2"]
   },
   "component": {
     "name": "ComponentName",
@@ -496,7 +496,7 @@ export function MyComponent({ message }: { message: string }) {
 // addons/src/my-addon/entry.ts
 import { MyComponent } from './MyComponent';
 
-window.__ADDON_REGISTER__([
+window.__ADDON_REGISTER__('my-addon', [
   { name: 'MyComponent', component: MyComponent },
 ]);
 ```

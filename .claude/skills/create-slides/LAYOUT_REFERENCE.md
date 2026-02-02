@@ -189,6 +189,41 @@
 }
 ```
 
+`notes` はオブジェクト形式でも指定可能:
+
+```json
+{
+  "meta": {
+    "notes": {
+      "speakerNotes": "発表者向けのメモや台本",
+      "summary": ["要点1", "要点2"],
+      "voice": "/voice/slide-01.wav"
+    }
+  }
+}
+```
+
+## 共通: meta フィールド（トップレベル）
+
+トップレベルの `meta` にはプレゼン全体の設定を記載する。
+
+```json
+{
+  "meta": {
+    "title": "プレゼンタイトル",
+    "description": "概要",
+    "author": "作成者",
+    "logo": {
+      "src": "/my-logo.png",
+      "width": 150,
+      "height": 50
+    }
+  }
+}
+```
+
+`logo` を指定するとプレゼン内にロゴが表示される。`width`（デフォルト: 120）と `height`（デフォルト: 40）は省略可能。
+
 ## 共通: theme フィールド（プレゼン全体、トップレベル）
 
 ```json
@@ -201,7 +236,13 @@
     },
     "fonts": {
       "heading": "'Noto Sans JP', sans-serif",
-      "body": "'Noto Sans JP', sans-serif"
+      "body": "'Noto Sans JP', sans-serif",
+      "code": "'Fira Code', monospace",
+      "baseFontSize": 24,
+      "sources": [
+        { "family": "MyFont", "src": "/fonts/MyFont.woff2" },
+        { "family": "Fira Code", "url": "https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&display=swap" }
+      ]
     },
     "customCSS": ".reveal h1 { text-shadow: none; }"
   }

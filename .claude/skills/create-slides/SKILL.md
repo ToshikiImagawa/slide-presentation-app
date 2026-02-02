@@ -25,7 +25,12 @@ allowed-tools: Read, Write, Glob, Grep, Bash(npm run typecheck), Bash(npm run te
 {
   "meta": {
     "title": "プレゼンタイトル",
-    "description": "概要"
+    "description": "概要",
+    "logo": {
+      "src": "/logo.png",
+      "width": 120,
+      "height": 40
+    }
   },
   "theme": {
     "colors": { "primary": "#6c63ff" }
