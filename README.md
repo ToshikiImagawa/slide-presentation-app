@@ -3,6 +3,26 @@
 A slide presentation tool built with React + Reveal.js.
 Define slide content and themes using JSON files and display them as presentations in the browser.
 
+## What is Slide Presentation App
+
+Slide Presentation App is a presentation authoring and viewing tool that takes a purely data-driven approach. Instead of
+manually building slides with code or drag-and-drop editors, you define your entire presentation in a single JSON file
+covering slide content, layouts, theming, speaker notes, and audio narration.
+
+Because the format is structured and well-defined, AI models can produce complete presentations from a simple prompt,
+modify individual slides precisely, or restyle an entire deck by adjusting a few configuration fields. This makes Slide
+Presentation App particularly well-suited for AI-assisted workflows where an AI generates the first draft—without
+needing to understand complex UI frameworks or component hierarchies—and humans refine the result.
+
+Localization is also straightforward: translate the slide JSON and the same layouts and visuals are reproduced in every
+language. Pair that with AI-generated text-to-speech for the translated speaker notes, and the built-in auto-play and
+auto-slideshow features will run a fully automated, multi-language presentation without any manual intervention.
+Translated decks can be distributed as slide packages for easy sharing across teams.
+
+Under the hood, the app is built on React and Reveal.js, providing smooth transitions, a presenter view with speaker
+notes, keyboard navigation, and a plugin system for custom components. The result is a polished presentation tool with
+the simplicity and automation benefits of a data-driven approach.
+
 ## Setup
 
 ```bash
