@@ -1,68 +1,67 @@
 ---
-version: "2.4.2"
+version: "3.0.0"
 ---
 
-# AI-SDD 開発原則
+# AI-SDD Development Principles
 
-**ドキュメント種別**: プラグイン設計原則（サブエージェントではありません）
+**Document Type**: Plugin Design Principles (not a sub-agent)
 
-**目的**: このドキュメントは、AI駆動仕様駆動開発（AI-SDD）ワークフローの原則、ドキュメント構成、管理ルールを定義します。このプラグインのすべてのエージェント、コマンド、スキルは、このドキュメントを真実の源として参照します。
+**Purpose**: This document defines the principles, document structure, and management rules for AI-driven Specification-Driven Development (AI-SDD) workflow. All agents, commands, and skills in this plugin reference this document as the source of truth.
 
-**使用方法**:
-
-- このドキュメントは Task ツール経由で実行可能なサブエージェントではありません
-- すべてのエージェントが Read ツールで読み込む参照ドキュメントです
-- すべてのエージェントは実行前にこのドキュメントを読み込み、AI-SDD の原則を理解する必要があります
+**Usage**:
+- This document is NOT a sub-agent executable via Task tool
+- This is a reference document that all agents read via Read tool
+- All agents must read this document before execution to understand AI-SDD principles
 
 ---
 
-## AI-SDDとは
+## What is AI-SDD?
 
-AI-SDD（AI-driven Specification-Driven Development）は、**仕様書をコードの動作を規定する契約** とし、
-AIエージェントが参照する **真実の源** とする開発手法です。
+AI-SDD (AI-driven Specification-Driven Development) is a development methodology that treats **specifications as
+contracts governing code behavior** and serves as the **source of truth** that AI agents reference.
 
-### 解決する課題
+### Problems It Solves
 
-従来の開発が抱える以下の問題を解決します：
+It addresses the following issues in traditional development:
 
-| 課題                | 詳細                              |
-|:------------------|:--------------------------------|
-| **Vibe Coding問題** | 曖昧な指示によりAIが数千の未定義要件を推測せざるを得ない問題 |
-| **アーキテクチャの一貫性欠如** | 場当たり的な実装による設計の乱れ                |
-| **技術的負債の蓄積**      | ドキュメントの陳腐化と設計意図の喪失              |
-| **設計判断の不透明性**     | 「なぜこの設計にしたのか」が分からない             |
+| Issue                                 | Details                                                                                       |
+|:--------------------------------------|:----------------------------------------------------------------------------------------------|
+| **Vibe Coding Problem**               | The problem where AI must guess thousands of undefined requirements due to vague instructions |
+| **Lack of Architectural Consistency** | Design disorder caused by ad-hoc implementations                                              |
+| **Technical Debt Accumulation**       | Documentation obsolescence and loss of design intent                                          |
+| **Opaque Design Decisions**           | Unable to understand "why this design was chosen"                                             |
 
-### AI-SDDの開発原則
+### AI-SDD Development Principles
 
-| 原則            | 詳細                                     |
-|:--------------|:---------------------------------------|
-| **仕様書中心**     | コードを書いて後でドキュメントを作成するのではなく、**仕様書から始める** |
-| **AIのガードレール** | 曖昧さを排除した**抽象度の高い仕様**をAIに護欄として提供        |
-| **設計判断の透明性**  | コードだけでは分からない**「なぜ」**を仕様書で明確化           |
-| **知識資産の永続性**  | ドキュメントの肥大化を防ぎ、最新の設計意図のみを永続的に維持         |
+| Principle                        | Details                                                                                |
+|:---------------------------------|:---------------------------------------------------------------------------------------|
+| **Specification-First**          | **Start with specifications** rather than writing code first and documenting later     |
+| **AI Guardrails**                | Provide **high-abstraction specifications** as guardrails to AI, eliminating ambiguity |
+| **Design Decision Transparency** | Clarify the **"why"** that code alone cannot convey through specifications             |
+| **Knowledge Asset Persistence**  | Prevent documentation bloat and maintain only the latest design intent persistently    |
 
-## 4つの構造化されたフェーズ
+## Four Structured Phases
 
-AI-SDDは、アドホックな開発を以下の4フェーズに変換します：
+AI-SDD transforms ad-hoc development into these four phases:
 
 ```
-Specify（仕様化） → Plan（計画） → Tasks（タスク分解） → Implement & Review（実装と検証）
+Specify → Plan → Tasks → Implement & Review
 ```
 
-| フェーズ                   | 目的                                | 成果物             |
-|:-----------------------|:----------------------------------|:----------------|
-| **Specify**            | 「何を作るか」「なぜ作るか」を明確化。**技術的詳細は含めない** | PRD、`*_spec.md` |
-| **Plan**               | 「どのように実現するか」を検討。アーキテクチャ設計と技術選定    | `*_design.md`   |
-| **Tasks**              | 設計を独立してテスト可能な小タスクに分解              | `task/` 配下      |
-| **Implement & Review** | AIが各タスクを実行し、仕様との整合性を継続検証          | ソースコード          |
+| Phase                  | Purpose                                                                      | Deliverables     |
+|:-----------------------|:-----------------------------------------------------------------------------|:-----------------|
+| **Specify**            | Clarify "what to build" and "why to build it." **Exclude technical details** | PRD, `*_spec.md` |
+| **Plan**               | Consider "how to implement." Architecture design and technology selection    | `*_design.md`    |
+| **Tasks**              | Break down design into independently testable small tasks                    | Under `task/`    |
+| **Implement & Review** | AI executes each task, continuously verifying specification compliance       | Source code      |
 
-## プロジェクト設定ファイル
+## Project Configuration File
 
-### 設定ファイルの仕様
+### Configuration File Specification
 
-AI-SDDワークフローでは、`.sdd-config.json` ファイルによるディレクトリ名のカスタマイズをサポートします。
+AI-SDD workflow supports customizing directory names via a `.sdd-config.json` file.
 
-**設定ファイルパス**: プロジェクトルートの `.sdd-config.json`
+**Configuration File Path**: `.sdd-config.json` at project root
 
 ```json
 {
@@ -75,45 +74,45 @@ AI-SDDワークフローでは、`.sdd-config.json` ファイルによるディ�
 }
 ```
 
-### 設定項目
+### Configuration Items
 
-| 項目                          | デフォルト値          | 説明                     |
-|:----------------------------|:----------------|:-----------------------|
-| `root`                      | `.sdd`          | ルートディレクトリ              |
-| `directories.requirement`   | `requirement`   | PRD/要求仕様書ディレクトリ名       |
-| `directories.specification` | `specification` | 抽象仕様書・技術設計書ディレクトリ名     |
-| `directories.task`          | `task`          | タスクログディレクトリ名（一時的な作業ログ） |
+| Item                        | Default Value   | Description                                      |
+|:----------------------------|:----------------|:-------------------------------------------------|
+| `root`                      | `.sdd`          | Root directory                                   |
+| `directories.requirement`   | `requirement`   | PRD/Requirements specification directory         |
+| `directories.specification` | `specification` | Abstract specification/design document directory |
+| `directories.task`          | `task`          | Task log/temporary work log directory            |
 
-### 設定ファイルの読み込みルール
+### Configuration File Loading Rules
 
-1. プロジェクトルートに `.sdd-config.json` が存在するか確認
-2. 存在する場合: 設定値を読み込み、パス解決に使用
-3. 存在しない場合: デフォルト値を使用
-4. 部分的な設定も可能（指定されていない項目はデフォルト値を使用）
+1. Check if `.sdd-config.json` exists at project root
+2. If exists: Load configuration values and use for path resolution
+3. If not exists: Use default values
+4. Partial configuration is supported (unspecified items use default values)
 
-### 環境変数によるパス解決
+### Environment Variable Path Resolution
 
-セッション開始時に `session-start` フックが `.sdd-config.json` を読み込み、以下の環境変数を設定します。
+At session start, the `session-start` hook reads `.sdd-config.json` and sets the following environment variables.
 
-| 環境変数                     | デフォルト値               | 説明             |
-|:-------------------------|:---------------------|:---------------|
-| `SDD_ROOT`               | `.sdd`               | ルートディレクトリ      |
-| `SDD_REQUIREMENT_DIR`    | `requirement`        | 要求仕様書ディレクトリ名   |
-| `SDD_SPECIFICATION_DIR`  | `specification`      | 仕様書・設計書ディレクトリ名 |
-| `SDD_TASK_DIR`           | `task`               | タスクログディレクトリ名   |
-| `SDD_REQUIREMENT_PATH`   | `.sdd/requirement`   | 要求仕様書フルパス      |
-| `SDD_SPECIFICATION_PATH` | `.sdd/specification` | 仕様書・設計書フルパス    |
-| `SDD_TASK_PATH`          | `.sdd/task`          | タスクログフルパス      |
+| Environment Variable     | Default Value        | Description                  |
+|:-------------------------|:---------------------|:-----------------------------|
+| `SDD_ROOT`               | `.sdd`               | Root directory               |
+| `SDD_REQUIREMENT_DIR`    | `requirement`        | Requirements directory name  |
+| `SDD_SPECIFICATION_DIR`  | `specification`      | Specification directory name |
+| `SDD_TASK_DIR`           | `task`               | Task log directory name      |
+| `SDD_REQUIREMENT_PATH`   | `.sdd/requirement`   | Requirements full path       |
+| `SDD_SPECIFICATION_PATH` | `.sdd/specification` | Specification full path      |
+| `SDD_TASK_PATH`          | `.sdd/task`          | Task log full path           |
 
-**パス解決の優先順位:**
+**Path Resolution Priority:**
 
-1. 環境変数 `SDD_*` が設定されている場合はそれを使用
-2. 環境変数がない場合は `.sdd-config.json` を確認
-3. どちらもない場合はデフォルト値を使用
+1. Use `SDD_*` environment variables if set
+2. Check `.sdd-config.json` if environment variables are not set
+3. Use default values if neither exists
 
-エージェント・コマンド・スキルは、ドキュメントパスを参照する際にこれらの環境変数を使用します。
+Agents, commands, and skills use these environment variables when referencing document paths.
 
-### カスタム設定の例
+### Custom Configuration Example
 
 ```json
 {
@@ -126,396 +125,395 @@ AI-SDDワークフローでは、`.sdd-config.json` ファイルによるディ�
 }
 ```
 
-この設定の場合、ディレクトリ構造は以下のようになります：
+With this configuration, the directory structure becomes:
 
 ```
 docs/
-├── requirements/          # PRD（要求仕様書）
-├── specs/                 # 仕様書・設計書
-└── wip/                   # 一時的なタスクログ
+├── requirements/          # PRD (Requirements Specification)
+├── specs/                 # Specifications and Design Documents
+└── wip/                   # Temporary task logs
 ```
 
-## ドキュメント構成と管理ルール
+## Document Structure and Management Rules
 
-### 推奨ディレクトリ構造
+### Recommended Directory Structure
 
-フラット構造と階層構造の両方をサポートします。プロジェクトの規模に応じて選択してください。
+Both flat and hierarchical structures are supported. Choose based on project scale.
 
-#### フラット構造（小〜中規模プロジェクト向け）
-
-```
-.sdd/
-├── CONSTITUTION.md               # プロジェクト原則（非妥協原則）
-├── SPECIFICATION_TEMPLATE.md     # 抽象仕様書テンプレート
-├── DESIGN_DOC_TEMPLATE.md        # 技術設計書テンプレート
-├── requirement/          # PRD（要求仕様書）- SysML要求図形式
-│   └── {機能名}.md              # 高レベルな要求、ビジネス価値
-├── specification/                # 永続的な知識資産
-│   ├── {機能名}_spec.md         # 抽象仕様書（SysMLモデル）
-│   └── {機能名}_design.md       # 技術設計書（Design Doc）
-└── task/                         # 一時的なタスクログ（実装完了後に削除）
-    └── {チケット番号}/
-        └── xxx.md
-```
-
-#### 階層構造（中〜大規模プロジェクト向け）
+#### Flat Structure (for small to medium projects)
 
 ```
 .sdd/
-├── CONSTITUTION.md               # プロジェクト原則（非妥協原則）
-├── SPECIFICATION_TEMPLATE.md     # 抽象仕様書テンプレート
-├── DESIGN_DOC_TEMPLATE.md        # 技術設計書テンプレート
-├── requirement/          # PRD（要求仕様書）- SysML要求図形式
-│   ├── {機能名}.md              # トップレベル機能（フラット構造との互換性）
-│   └── {親機能名}/              # 親機能ディレクトリ
-│       ├── index.md             # 親機能の概要・要求一覧
-│       └── {子機能名}.md        # 子機能の要求仕様
-├── specification/                # 永続的な知識資産
-│   ├── {機能名}_spec.md         # トップレベル機能（フラット構造との互換性）
-│   ├── {機能名}_design.md
-│   └── {親機能名}/              # 親機能ディレクトリ
-│       ├── index_spec.md        # 親機能の抽象仕様書
-│       ├── index_design.md      # 親機能の技術設計書
-│       ├── {子機能名}_spec.md   # 子機能の抽象仕様書
-│       └── {子機能名}_design.md # 子機能の技術設計書
-└── task/                         # 一時的なタスクログ（実装完了後に削除）
-    └── {チケット番号}/
+├── CONSTITUTION.md               # Project constitution (non-negotiable principles)
+├── SPECIFICATION_TEMPLATE.md     # Abstract specification template
+├── DESIGN_DOC_TEMPLATE.md        # Technical design document template
+├── requirement/          # PRD (Requirements Specification) - SysML requirements diagram format
+│   └── {feature-name}.md         # High-level requirements, business value
+├── specification/                # Persistent knowledge assets
+│   ├── {feature-name}_spec.md    # Abstract specification (SysML model)
+│   └── {feature-name}_design.md  # Technical design document (Design Doc)
+└── task/                         # Temporary task logs (deleted after implementation)
+    └── {ticket-number}/
         └── xxx.md
 ```
 
-### ファイル命名規則（重要）
-
-**⚠️ requirement と specification でサフィックスの有無が異なります。混同しないでください。**
-
-| ディレクトリ            | ファイル種別 | 命名パターン                               | 例                                         |
-|:------------------|:-------|:-------------------------------------|:------------------------------------------|
-| **requirement**   | 全ファイル  | `{名前}.md`（サフィックスなし）                  | `user-login.md`, `index.md`               |
-| **specification** | 抽象仕様書  | `{名前}_spec.md`（`_spec` サフィックス必須）     | `user-login_spec.md`, `index_spec.md`     |
-| **specification** | 技術設計書  | `{名前}_design.md`（`_design` サフィックス必須） | `user-login_design.md`, `index_design.md` |
-
-#### 命名パターン早見表
+#### Hierarchical Structure (for medium to large projects)
 
 ```
-# ✅ 正しい命名
-requirement/auth/index.md              # 親機能の概要（サフィックスなし）
-requirement/auth/user-login.md         # 子機能の要求仕様（サフィックスなし）
-specification/auth/index_spec.md       # 親機能の抽象仕様書（_spec 必須）
-specification/auth/index_design.md     # 親機能の技術設計書（_design 必須）
-specification/auth/user-login_spec.md  # 子機能の抽象仕様書（_spec 必須）
-specification/auth/user-login_design.md # 子機能の技術設計書（_design 必須）
-
-# ❌ 誤った命名（絶対に使用しないこと）
-requirement/auth/index_spec.md         # requirement に _spec は不要
-specification/auth/user-login.md       # specification には _spec/_design が必須
-specification/auth/index.md            # specification には _spec/_design が必須
+.sdd/
+├── CONSTITUTION.md               # Project constitution (non-negotiable principles)
+├── SPECIFICATION_TEMPLATE.md     # Abstract specification template
+├── DESIGN_DOC_TEMPLATE.md        # Technical design document template
+├── requirement/          # PRD (Requirements Specification) - SysML requirements diagram format
+│   ├── {feature-name}.md         # Top-level feature (backward compatible with flat structure)
+│   └── {parent-feature}/         # Parent feature directory
+│       ├── index.md              # Parent feature overview and requirements list
+│       └── {child-feature}.md    # Child feature requirements
+├── specification/                # Persistent knowledge assets
+│   ├── {feature-name}_spec.md    # Top-level feature (backward compatible with flat structure)
+│   ├── {feature-name}_design.md
+│   └── {parent-feature}/         # Parent feature directory
+│       ├── index_spec.md         # Parent feature abstract specification
+│       ├── index_design.md       # Parent feature technical design document
+│       ├── {child-feature}_spec.md   # Child feature abstract specification
+│       └── {child-feature}_design.md # Child feature technical design document
+└── task/                         # Temporary task logs (deleted after implementation)
+    └── {ticket-number}/
+        └── xxx.md
 ```
 
-### ドキュメントリンク規約
+### File Naming Convention (Important)
 
-ドキュメント内でのマークダウンリンクは以下の形式に従ってください：
+**⚠️ Suffix requirements differ between requirement and specification directories. Do not confuse them.**
 
-| リンク先       | 形式                             | リンクテキスト   | 例                                                    |
-|:-----------|:-------------------------------|:----------|:-----------------------------------------------------|
-| **ファイル**   | `[ファイル名.md](パスまたはURL)`         | ファイル名を含める | `[user-login.md](../requirement/auth/user-login.md)` |
-| **ディレクトリ** | `[ディレクトリ名](パスまたはURL/index.md)` | ディレクトリ名のみ | `[auth](../requirement/auth/index.md)`               |
+| Directory         | File Type     | Naming Pattern                                 | Examples                                  |
+|:------------------|:--------------|:-----------------------------------------------|:------------------------------------------|
+| **requirement**   | All files     | `{name}.md` (no suffix)                        | `user-login.md`, `index.md`               |
+| **specification** | Abstract spec | `{name}_spec.md` (`_spec` suffix required)     | `user-login_spec.md`, `index_spec.md`     |
+| **specification** | Design doc    | `{name}_design.md` (`_design` suffix required) | `user-login_design.md`, `index_design.md` |
 
-この規約により、リンク先がファイルかディレクトリかが視覚的に判別しやすくなります。
+#### Naming Pattern Quick Reference
 
-#### 階層構造の使用ガイドライン
+```
+# ✅ Correct naming
+requirement/auth/index.md              # Parent feature overview (no suffix)
+requirement/auth/user-login.md         # Child feature requirements (no suffix)
+specification/auth/index_spec.md       # Parent feature abstract spec (_spec required)
+specification/auth/index_design.md     # Parent feature design doc (_design required)
+specification/auth/user-login_spec.md  # Child feature abstract spec (_spec required)
+specification/auth/user-login_design.md # Child feature design doc (_design required)
 
-| 条件             | 推奨構造   |
-|:---------------|:-------|
-| 機能数が10個以下      | フラット構造 |
-| 機能数が10個以上      | 階層構造   |
-| 複数のドメインにまたがる機能 | 階層構造   |
-| 機能間に親子関係がある    | 階層構造   |
+# ❌ Incorrect naming (never use these)
+requirement/auth/index_spec.md         # requirement does not need _spec
+specification/auth/user-login.md       # specification requires _spec or _design
+specification/auth/index.md            # specification requires _spec or _design
+```
 
-**階層構造でのパス指定例**:
+### Document Link Convention
 
-- `requirement/auth/index.md` → 認証ドメインの概要・要求一覧
-- `requirement/auth/user-login.md` → 認証ドメイン配下のユーザーログイン要求
-- `specification/auth/index_spec.md` → 認証ドメインの抽象仕様書
-- `specification/auth/index_design.md` → 認証ドメインの技術設計書
-- `specification/auth/user-login_spec.md` → 認証ドメイン配下のユーザーログイン仕様
-- `specification/payment/checkout_design.md` → 決済ドメイン配下のチェックアウト設計
+Follow these formats for markdown links within documents:
 
-### ドキュメントの永続性ルール
+| Link Target   | Format                                   | Link Text           | Example                                              |
+|:--------------|:-----------------------------------------|:--------------------|:-----------------------------------------------------|
+| **File**      | `[filename.md](path or URL)`             | Include filename    | `[user-login.md](../requirement/auth/user-login.md)` |
+| **Directory** | `[directory-name](path or URL/index.md)` | Directory name only | `[auth](../requirement/auth/index.md)`               |
 
-| パス                          | 永続性     | 管理ルール                                         |
-|:----------------------------|:--------|:----------------------------------------------|
-| `requirement/`              | **永続**  | 高レベルな要求（ビジネス要求）を定義。SysML要求図の基盤                |
-| `specification/*_spec.md`   | **永続**  | システムの**抽象的な構造と振る舞い**を定義。技術詳細は含めない             |
-| `specification/*_design.md` | **永続**  | **具体的な技術設計**、アーキテクチャ、技術選定の根拠を記述               |
-| `task/`                     | **一時的** | 実装完了後に**削除**。重要な設計判断は `*_design.md` に統合してから削除 |
+This convention makes it visually easy to distinguish whether the link target is a file or a directory.
 
-### ドキュメント間の依存関係
+#### Hierarchical Structure Guidelines
+
+| Condition                                | Recommended Structure  |
+|:-----------------------------------------|:-----------------------|
+| Less than 10 features                    | Flat structure         |
+| 10 or more features                      | Hierarchical structure |
+| Features spanning multiple domains       | Hierarchical structure |
+| Features with parent-child relationships | Hierarchical structure |
+
+**Hierarchical path examples**:
+
+- `requirement/auth/index.md` → Auth domain overview and requirements list
+- `requirement/auth/user-login.md` → User login requirements under auth domain
+- `specification/auth/index_spec.md` → Auth domain abstract specification
+- `specification/auth/index_design.md` → Auth domain technical design document
+- `specification/auth/user-login_spec.md` → User login specification under auth domain
+- `specification/payment/checkout_design.md` → Checkout design under payment domain
+
+### Document Persistence Rules
+
+| Path                        | Persistence    | Management Rules                                                                                                  |
+|:----------------------------|:---------------|:------------------------------------------------------------------------------------------------------------------|
+| `requirement/`              | **Persistent** | Define high-level requirements (business requirements). Foundation for SysML requirements diagrams                |
+| `specification/*_spec.md`   | **Persistent** | Define the **abstract structure and behavior** of the system. No technical details                                |
+| `specification/*_design.md` | **Persistent** | Describe **specific technical design**, architecture, and rationale for technology selection                      |
+| `task/`                     | **Temporary**  | **Delete** after implementation complete. Integrate important design decisions into `*_design.md` before deletion |
+
+### Document Dependencies
 
 ```mermaid
 graph RL
-    IMPL[実装] --> TASK["task/<br/>(タスクログ)"]
-    TASK --> DESIGN["*_design.md<br/>(技術設計)"]
-    DESIGN --> SPEC["*_spec.md<br/>(抽象仕様)"]
-    SPEC --> PRD["requirement/<br/>(PRD/要求図)"]
-    PRD --> CONST["CONSTITUTION.md<br/>(プロジェクト原則)"]
+    IMPL[Implementation] --> TASK["task/<br/>(Task Logs)"]
+    TASK --> DESIGN["*_design.md<br/>(Technical Design)"]
+    DESIGN --> SPEC["*_spec.md<br/>(Abstract Spec)"]
+    SPEC --> PRD["requirement/<br/>(PRD/Requirements)"]
+    PRD --> CONST["CONSTITUTION.md<br/>(Project Constitution)"]
 ```
 
-**依存方向の意味**:
+**Meaning of Dependency Direction**:
 
-- `実装` は `task/` のタスクログに基づいて作成される
-- `task/` は `*_design.md` を参照してタスク分解される
-- `*_design.md` は `*_spec.md` を参照して作成される（抽象的な「何を」を具体化）
-- `*_spec.md` は `requirement` を参照して作成される（ビジネス要求を技術仕様に変換）
-- `requirement` は `CONSTITUTION.md` の原則に従って作成される（プロジェクトの非交渉原則）
+- `Implementation` is created based on `task/` task logs
+- `task/` references `*_design.md` for task breakdown
+- `*_design.md` is created referencing `*_spec.md` (concretizing abstract "what")
+- `*_spec.md` is created referencing `requirement` (converting business requirements to technical specifications)
+- `requirement` is created following `CONSTITUTION.md` principles (non-negotiable project principles)
 
-## 各ドキュメントの役割と抽象度
+## Role of Each Document and Abstraction Level
 
-### 1. PRD / 要求図（`requirement/`）
+### 1. PRD / Requirements Diagram (`requirement/`)
 
-**抽象度: 最高** | **焦点: 何を作るか、なぜ作るか**
+**Abstraction Level: Highest** | **Focus: What to build, why to build it**
 
-| 項目          | 詳細                             |
-|:------------|:-------------------------------|
-| **目的**      | 製品の高レベルな要求（ビジネス価値）を定義          |
-| **内容**      | ユーザ要求、機能要求、非機能要求をSysML要求図形式で記述 |
-| **技術詳細**    | **含めない**                       |
-| **SysML要素** | 要求図 (req)                      |
+| Item                  | Details                                                                                                      |
+|:----------------------|:-------------------------------------------------------------------------------------------------------------|
+| **Purpose**           | Define high-level product requirements (business value)                                                      |
+| **Content**           | User requirements, functional requirements, non-functional requirements in SysML requirements diagram format |
+| **Technical Details** | **Not included**                                                                                             |
+| **SysML Elements**    | Requirements Diagram (req)                                                                                   |
 
-### 2. 抽象仕様書（`*_spec.md`）
+### 2. Abstract Specification (`*_spec.md`)
 
-**抽象度: 高** | **焦点: システムの論理構造と振る舞い**
+**Abstraction Level: High** | **Focus: System logical structure and behavior**
 
-| 項目          | 詳細                                       |
-|:------------|:-----------------------------------------|
-| **目的**      | PRDの要求を実現するためのシステムの**論理的・抽象的な構造**を定義     |
-| **内容**      | 公開API、データモデル、振る舞いの抽象化                    |
-| **技術詳細**    | **含めない**（抽象的なモデルのみ）                      |
-| **SysML要素** | ブロック定義図 (bdd)、シーケンス図 (sd)、アクティビティ図 (act) |
-| **役割**      | AIへの**ガードレール**として機能し、設計思想と正しさを判断させる      |
+| Item                  | Details                                                                                    |
+|:----------------------|:-------------------------------------------------------------------------------------------|
+| **Purpose**           | Define the **logical, abstract structure** of the system to fulfill PRD requirements       |
+| **Content**           | Public API, data models, abstraction of behavior                                           |
+| **Technical Details** | **Not included** (abstract models only)                                                    |
+| **SysML Elements**    | Block Definition Diagram (bdd), Sequence Diagram (sd), Activity Diagram (act)              |
+| **Role**              | Functions as **guardrails** for AI, enabling judgment of design philosophy and correctness |
 
-**必須セクション**: 背景、概要、API
-**推奨セクション**: 要求定義、使用例
-**任意セクション**: 型定義、用語集、振る舞い図、制約事項
+**Required Sections**: Background, Overview, API
+**Recommended Sections**: Requirements Definition, Use Cases
+**Optional Sections**: Type Definitions, Glossary, Behavior Diagrams, Constraints
 
-### 3. 技術設計書（`*_design.md`）
+### 3. Technical Design Document (`*_design.md`)
 
-**抽象度: 中〜低** | **焦点: どのように実現するか**
+**Abstraction Level: Medium to Low** | **Focus: How to implement**
 
-| 項目       | 詳細                                      |
-|:---------|:----------------------------------------|
-| **目的**   | 抽象仕様を**具体的な技術計画**に落とし込む                 |
-| **内容**   | 技術スタック選定、アーキテクチャ設計、モジュール分割、設計判断の根拠      |
-| **技術詳細** | **含める**（具体的な技術選定と実装方針）                  |
-| **役割**   | **設計判断の透明性**を確保し、将来の開発者が設計意図を理解できるようにする |
+| Item                  | Details                                                                                           |
+|:----------------------|:--------------------------------------------------------------------------------------------------|
+| **Purpose**           | Translate abstract specifications into **concrete technical plans**                               |
+| **Content**           | Technology stack selection, architecture design, module breakdown, rationale for design decisions |
+| **Technical Details** | **Included** (specific technology selection and implementation approach)                          |
+| **Role**              | Ensure **design decision transparency**, enabling future developers to understand design intent   |
 
-**必須セクション**: 実装ステータス、設計目標、技術スタック、アーキテクチャ、設計判断
-**任意セクション**: データモデル、インターフェース定義、テスト戦略、変更履歴
+**Required Sections**: Implementation Status, Design Goals, Technology Stack, Architecture, Design Decisions
+**Optional Sections**: Data Models, Interface Definitions, Testing Strategy, Change History
 
-### 4. タスクログ（`task/{チケット番号}/`）
+### 4. Task Logs (`task/{ticket-number}/`)
 
-**永続性: 一時的** | **焦点: タスク分解と実行ログ**
+**Persistence: Temporary** | **Focus: Task breakdown and execution logs**
 
-| 項目          | 詳細                                      |
-|:------------|:----------------------------------------|
-| **目的**      | 実装のための**一時的な作業記録**                      |
-| **内容**      | タスクリスト、調査ログ、実装スケジュール、テストケース詳細           |
-| **ライフサイクル** | 実装完了後に**削除**。重要な設計判断は `*_design.md` に統合 |
-| **役割**      | ドキュメントの**ノイズ化を防ぐ**                      |
+| Item          | Details                                                                                           |
+|:--------------|:--------------------------------------------------------------------------------------------------|
+| **Purpose**   | **Temporary work records** for implementation                                                     |
+| **Content**   | Task lists, investigation logs, implementation schedules, test case details                       |
+| **Lifecycle** | **Delete** after implementation complete. Integrate important design decisions into `*_design.md` |
+| **Role**      | **Prevent documentation noise**                                                                   |
 
-## 関連エージェント
+## Related Agents
 
-AI-SDDワークフローでは、ドキュメント種別ごとに専門のレビューエージェントが用意されています。
+The AI-SDD workflow provides specialized review agents for each document type.
 
-### ドキュメントレビューエージェント
+### Document Review Agents
 
-| エージェント          | 対象ドキュメント                   | 役割                                   |
-|:----------------|:---------------------------|:-------------------------------------|
-| `prd-reviewer`  | PRD（`requirement/`）        | PRDの品質レビューとCONSTITUTION.md準拠チェック     |
-| `spec-reviewer` | `*_spec.md`, `*_design.md` | 仕様書・設計書の品質レビューとCONSTITUTION.md準拠チェック |
+| Agent | Target Documents | Role |
+|:--|:--|:--|
+| `prd-reviewer` | PRD (`requirement/`) | PRD quality review and CONSTITUTION.md compliance check |
+| `spec-reviewer` | `*_spec.md`, `*_design.md` | Specification/design quality review and CONSTITUTION.md compliance check |
 
-### CONSTITUTION.md 準拠チェックの重要性
+### Importance of CONSTITUTION.md Compliance Check
 
-すべてのドキュメントは `CONSTITUTION.md` のプロジェクト原則に従って作成されます。レビューエージェントは以下の原則カテゴリをチェックします：
+All documents are created following `CONSTITUTION.md` project principles. Review agents check the following principle categories:
 
-| 原則カテゴリ        | ID形式  | PRDへの影響          | spec/designへの影響  |
-|:--------------|:------|:-----------------|:-----------------|
-| **ビジネス原則**    | B-xxx | 背景・目的、ユーザ要求に直接反映 | ビジネスロジックの反映      |
-| **アーキテクチャ原則** | A-xxx | 制約事項として記載        | アーキテクチャ設計に直接反映   |
-| **開発手法原則**    | D-xxx | 検証方法の選択に影響       | テスト戦略、モジュール設計に反映 |
-| **技術制約**      | T-xxx | 制約事項として記載        | 技術スタック選定に直接影響    |
+| Principle Category | ID Format | Impact on PRD | Impact on spec/design |
+|:--|:--|:--|:--|
+| **Business Principles** | B-xxx | Directly reflected in background/purpose, user requirements | Business logic reflection |
+| **Architecture Principles** | A-xxx | Documented as constraints | Directly reflected in architecture design |
+| **Development Method Principles** | D-xxx | Affects verification method selection | Reflected in test strategy, module design |
+| **Technical Constraints** | T-xxx | Documented as constraints | Directly affects technology stack selection |
 
-### レビューエージェントの使用タイミング
-
-```
-PRD生成/更新
-   ↓
-prd-reviewer によるレビュー（必須）
-   ├─ CONSTITUTION.md 準拠チェック
-   ├─ 違反検出時: 自動修正を試行
-   └─ 修正不可: 手動修正箇所をレポート
-   ↓
-spec生成/更新
-   ↓
-spec-reviewer によるレビュー（必須）
-   ├─ CONSTITUTION.md 準拠チェック（アーキテクチャ原則重視）
-   ├─ PRD ↔ spec 整合性チェック
-   └─ 違反/不整合検出時: 修正
-   ↓
-design生成/更新
-   ↓
-spec-reviewer によるレビュー（必須）
-   ├─ CONSTITUTION.md 準拠チェック（技術制約重視）
-   ├─ spec ↔ design 整合性チェック
-   └─ 違反/不整合検出時: 修正
-```
-
-### コマンドとレビューエージェントの対応
-
-| コマンド             | 呼び出されるレビューエージェント                            |
-|:-----------------|:--------------------------------------------|
-| `/generate_prd`  | `prd-reviewer`（PRD生成後に自動実行）                 |
-| `/generate_spec` | `spec-reviewer`（spec生成後、design生成後にそれぞれ自動実行） |
-
-**注意**: レビューエージェントは生成コマンド内で自動的に呼び出されます。手動でレビューを実行する場合は、該当するレビューエージェントを直接呼び出してください。
-
-## Vibe Coding防止
-
-曖昧な指示を検出し、仕様の明確化を促します：
-
-**検出パターン**:
-
-| カテゴリ        | パターン例                           |
-|:------------|:--------------------------------|
-| **曖昧な指示**   | 「いい感じに実装して」「適当に直して」「うまくやって」     |
-| **範囲の不明確さ** | 「あの機能を改善して」「パフォーマンスを上げて」（対象が不明） |
-| **仕様の欠如**   | 既存仕様書がない機能への変更要求、API設計なしでの実装要求  |
-| **暗黙の前提**   | 「前と同じように」「いつも通りに」（参照先が不明）       |
-| **優先度の曖昧さ** | 「できれば」「余裕があれば」（スコープ外かどうか不明）     |
-
-**リスクレベル判定**:
-
-| レベル  | 状態              | 対応                  |
-|:-----|:----------------|:--------------------|
-| 🔴 高 | 仕様書なし + 曖昧な指示   | 実装前に仕様書作成を**必須**とする |
-| 🟡 中 | 仕様書あり + 曖昧な部分あり | 曖昧な箇所を明確化してから実装     |
-| 🟢 低 | 仕様書あり + 要件明確    | 実装を開始可能             |
-
-**対応フロー**:
+### When to Use Review Agents
 
 ```
-1. 曖昧な箇所を特定し、ユーザーに確認
+PRD generation/update
    ↓
-2. 仕様書の作成/更新を提案
+prd-reviewer review (Required)
+   ├─ CONSTITUTION.md compliance check
+   ├─ On violation: Output fix proposals
+   └─ Main agent reviews and applies approved fixes
    ↓
-3. ユーザーが拒否した場合：
-   - リスクを明示的に警告
-   - 推測した仕様を task/ に記録（実装後に検証）
+spec generation/update
    ↓
-4. ガードレールとなる仕様を整備
+spec-reviewer review (Required)
+   ├─ CONSTITUTION.md compliance check (Architecture principles focus)
+   ├─ PRD ↔ spec consistency check
+   └─ On violation/inconsistency: Output fix proposals → Main agent applies
+   ↓
+design generation/update
+   ↓
+spec-reviewer review (Required)
+   ├─ CONSTITUTION.md compliance check (Technical constraints focus)
+   ├─ spec ↔ design consistency check
+   └─ On violation/inconsistency: Output fix proposals → Main agent applies
 ```
 
-**仕様不足時のエスカレーション**:
+### Command and Review Agent Mapping
 
-ユーザーが仕様書作成を拒否した場合でも、以下の最低限のガードレールを確保：
+| Command | Review Agent Called |
+|:--|:--|
+| `/generate_prd` | `prd-reviewer` (auto-executed after PRD generation) |
+| `/generate_spec` | `spec-reviewer` (auto-executed after spec generation and after design generation) |
 
-1. **推測仕様の明文化**: `task/{ticket}/assumed-spec.md` に推測した仕様を記録
-2. **検証ポイントの設定**: 実装完了時にユーザーと確認すべき項目をリスト化
-3. **リスクの可視化**: 仕様不足による潜在的な問題を警告
+**Note**: Review agents are automatically called within generation commands. For manual review, call the respective review agent directly.
 
-## ワークフロー管理ガイドライン
+## Vibe Coding Prevention
 
-### タスク種別の判定
+Detect vague instructions and prompt specification clarification:
 
-タスクの性質に応じて、必要なフェーズとドキュメントを判定します：
+**Detection Patterns**:
 
-| タスク種別      | 必要なフェーズ                            | 成果物                        |
-|:-----------|:-----------------------------------|:---------------------------|
-| 新機能追加（大規模） | Specify → Plan → Tasks → Implement | PRD → spec → design → task |
-| 新機能追加（小規模） | Specify → Plan → Tasks → Implement | spec → design → task       |
-| バグ修正       | Tasks → Implement                  | task（調査ログ）のみ               |
-| リファクタリング   | Plan → Tasks → Implement           | design（変更計画）→ task         |
-| 技術調査       | Tasks                              | task（調査結果）のみ               |
+| Category                   | Example Patterns                                                                                |
+|:---------------------------|:------------------------------------------------------------------------------------------------|
+| **Vague Instructions**     | "Make it nice," "Fix it somehow," "Make it work," "Make it look good"                           |
+| **Unclear Scope**          | "Improve that feature," "Optimize performance" (target unclear)                                 |
+| **Missing Specifications** | Change requests for features without existing specs, implementation requests without API design |
+| **Implicit Assumptions**   | "Same as before," "As usual" (reference unclear)                                                |
+| **Ambiguous Priority**     | "If possible," "When you have time" (unclear if out of scope)                                   |
 
-**タスク規模の判定基準**:
+**Risk Level Assessment**:
 
-| 規模   | 基準                                   |
-|:-----|:-------------------------------------|
-| 大規模  | 新しいビジネスドメイン、複数フィーチャーにまたがる変更、外部システム連携 |
-| 小規模  | 既存フィーチャー内の機能追加、単一モジュールで完結する変更        |
-| バグ修正 | 既存仕様からの逸脱を修正（仕様変更を伴わない）              |
+| Level  | State                            | Response                                                 |
+|:-------|:---------------------------------|:---------------------------------------------------------|
+| High   | No specs + vague instructions    | **Require** specification creation before implementation |
+| Medium | Specs exist + some ambiguity     | Clarify ambiguous points before implementation           |
+| Low    | Specs exist + clear requirements | Can start implementation                                 |
 
-### 知識資産の永続化管理
-
-`task/` 配下のファイルのライフサイクルを管理：
-
-**実装完了時のフロー**:
+**Response Flow**:
 
 ```
-1. task/ 配下の内容を確認
+1. Identify ambiguous points, confirm with user
    ↓
-2. 重要な設計判断を *_design.md に統合
+2. Propose specification creation/update
    ↓
-3. task/ 配下のファイルを削除
+3. If user declines:
+   - Explicitly warn of risks
+   - Record inferred specifications in task/
    ↓
-4. コミット
+4. Establish guardrail specifications
 ```
 
-**統合すべき内容**:
+**Escalation When Specifications Are Insufficient**:
 
-- 設計判断とその根拠
-- 代替案の検討結果
-- 将来の開発者に伝えるべき知見
+Even when user refuses specification creation, ensure minimum guardrails:
 
-**削除して良い内容**:
+1. **Document Inferred Specifications**: Record inferred specs in `task/{ticket}/assumed-spec.md`
+2. **Set Verification Points**: List items to confirm with user upon implementation completion
+3. **Visualize Risks**: Warn of potential issues due to specification gaps
 
-- 一時的な調査ログ
-- 作業進捗メモ
-- 具体的な実装手順（コードに反映済み）
+## Workflow Management Guidelines
 
-### 整合性チェック
+### Task Type Determination
 
-ドキュメント間の整合性を確認します：
+Determine required phases and documents based on task nature:
 
-| チェック対象            | 確認項目                         |
-|:------------------|:-----------------------------|
-| **PRD ↔ spec**    | 要求IDと仕様の対応、機能要求の網羅性          |
-| **spec ↔ design** | API定義の一致、要求の設計判断への反映、制約事項の考慮 |
-| **design ↔ 実装**   | モジュール構成の一致、インターフェース定義の一致     |
+| Task Type               | Required Phases                    | Deliverables                      |
+|:------------------------|:-----------------------------------|:----------------------------------|
+| New Feature (Large)     | Specify → Plan → Tasks → Implement | PRD → spec → design → task        |
+| New Feature (Small)     | Specify → Plan → Tasks → Implement | spec → design → task              |
+| Bug Fix                 | Tasks → Implement                  | task (investigation log) only     |
+| Refactoring             | Plan → Tasks → Implement           | design (change plan) → task       |
+| Technical Investigation | Tasks                              | task (investigation results) only |
 
-**チェック実行タイミング**:
+**Task Scale Criteria**:
 
-| タイミング   | チェック内容             | 対応                   |
-|:--------|:-------------------|:---------------------|
-| タスク開始時  | 既存ドキュメントの存在確認      | 不足があれば Specify フェーズへ |
-| Plan完了時 | spec ↔ design の整合性 | 不整合があれば設計を修正         |
-| 実装完了時   | design ↔ 実装の整合性    | 不整合があれば design を更新   |
-| レビュー時   | 全ドキュメント間の整合性       | 不整合を解消してからマージ        |
+| Scale   | Criteria                                                                             |
+|:--------|:-------------------------------------------------------------------------------------|
+| Large   | New business domain, changes spanning multiple features, external system integration |
+| Small   | Feature additions within existing features, changes contained to single module       |
+| Bug Fix | Correcting deviations from existing specifications (no spec changes)                 |
 
-### ドキュメント更新トリガー
+### Knowledge Asset Persistence Management
 
-各ドキュメントをいつ更新すべきかの判断基準：
+Manage lifecycle of files under `task/`:
 
-**`*_spec.md` を更新すべき場合**:
+**Flow at Implementation Completion**:
 
-- 公開APIのシグネチャ変更（引数、戻り値、型）
-- 新しいデータモデルの追加
-- 既存の振る舞いの根本的な変更
-- 要求図で新しい要求が追加された場合
+```
+1. Review contents under task/
+   ↓
+2. Integrate important design decisions into *_design.md
+   ↓
+3. Delete files under task/
+   ↓
+4. Commit
+```
 
-**`*_design.md` を更新すべき場合**:
+**Content to Integrate**:
 
-- 技術スタックの変更（ライブラリ追加・変更など）
-- アーキテクチャ上の重要な判断
-- モジュール構成の変更
-- 新しい設計パターンの導入
+- Design decisions and their rationale
+- Alternative evaluation results
+- Insights to convey to future developers
 
-**更新不要な場合**:
+**Content Safe to Delete**:
 
-- 内部実装の最適化（インターフェース変更なし）
-- バグ修正（仕様からの逸脱を修正）
-- リファクタリング（動作変更なし）
+- Temporary investigation logs
+- Work progress notes
+- Specific implementation steps (already reflected in code)
+
+### Consistency Checking
+
+Verify consistency between documents:
+
+| Check Target                | Verification Items                                                                         |
+|:----------------------------|:-------------------------------------------------------------------------------------------|
+| **PRD ↔ spec**              | Requirement ID to spec mapping, functional requirement coverage                            |
+| **spec ↔ design**           | API definition match, requirement reflection in design decisions, constraint consideration |
+| **design ↔ Implementation** | Module structure match, interface definition match                                         |
+
+**Check Execution Timing**:
+
+| Timing                    | Check Content                       | Response                             |
+|:--------------------------|:------------------------------------|:-------------------------------------|
+| Task Start                | Verify existing document existence  | If missing, go to Specify phase      |
+| Plan Completion           | spec ↔ design consistency           | If inconsistent, modify design       |
+| Implementation Completion | design ↔ implementation consistency | If inconsistent, update design       |
+| Review                    | All inter-document consistency      | Resolve inconsistencies before merge |
+
+### Document Update Triggers
+
+Criteria for when to update each document:
+
+**When to Update `*_spec.md`**:
+
+- Public API signature changes (arguments, return values, types)
+- New data model additions
+- Fundamental changes to existing behavior
+- When new requirements added in requirements diagram
+
+**When to Update `*_design.md`**:
+
+- Technology stack changes (library additions/changes)
+- Important architectural decisions
+- Module structure changes
+- New design pattern introductions
+
+**When Updates Are NOT Needed**:
+
+- Internal implementation optimization (no interface changes)
+- Bug fixes (correcting deviations from specifications)
+- Refactoring (no behavior changes)
 
 ---
 
-このドキュメントは、AI-SDD ワークフローの基盤として、**仕様書を真実の源** とし、Vibe Coding
-問題を防ぎ、AIエージェントによる高品質な実装を実現するための原則を定義します。
-ドキュメントの永続化と一時ログの分離を徹底し、知識資産の持続可能な成長を支援します。
+This document defines the principles for AI-SDD workflow, treating **specifications as the source of truth**, preventing Vibe Coding problems, and achieving high-quality implementations by AI agents.
+Thoroughly separate persistent documentation from temporary logs and support sustainable growth of knowledge assets.
