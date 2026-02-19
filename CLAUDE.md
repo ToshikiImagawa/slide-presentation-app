@@ -86,9 +86,9 @@ main.tsx
 - **Prettier**: セミコロンなし、シングルクォート、末尾カンマ、印刷幅 240
 - **TypeScript**: strict モード、未使用変数・パラメータをエラーとして検出
 
-## AI-SDD Instructions (v3.0.0)
+## AI-SDD Instructions (v3.1.0)
 
-<!-- sdd-workflow version: "3.0.0" -->
+<!-- sdd-workflow version: "3.1.0" -->
 
 このプロジェクトは AI-SDD（AI駆動仕様駆動開発）ワークフローに従います。
 
