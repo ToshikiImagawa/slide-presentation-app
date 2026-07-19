@@ -8,9 +8,7 @@
       "tagline": "スライドを選んで始めましょう",
       "recentTitle": "最近開いたスライド",
       "recentEmpty": "まだスライドを開いていません",
-      "sampleTitle": "サンプルスライド",
       "sampleButton": "サンプルを開く",
-      "browseTitle": "ファイルを開く",
       "browseButton": "ファイルを開く",
       "browseHint": ".json / .tgz ファイルを選択"
     },

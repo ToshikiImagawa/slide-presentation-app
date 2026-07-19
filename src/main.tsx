@@ -46,13 +46,12 @@ async function loadSamplePresentationData(locale: string): Promise<PresentationD
     const res = await fetch(import.meta.env.VITE_SLIDES_PATH || '/slides.json')
     if (res.ok) {
       return (await res.json()) as PresentationData
-    } else {
-      console.error(`Failed to load sample presentation data: ${res.status}`)
-      return getDefaultPresentationData(locale)
     }
+    console.error(`Failed to load sample presentation data: ${res.status}`)
   } catch {
-    return getDefaultPresentationData(locale)
+    // fetch 失敗時はビルトインのテンプレートガイドにフォールバックする
   }
+  return getDefaultPresentationData(locale)
 }
 
 async function applyPresentationTheme(data: PresentationData | undefined): Promise<void> {
@@ -75,11 +74,6 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
   const [recentPackages, setRecentPackages] = useState(initialRecentPackages)
 
   const showPresentation = useCallback(async (data: PresentationData) => {
-    // Reveal.js は hash:true で初期化時に URL ハッシュ（#/3 等）の位置へジャンプするため、
-    // 前のプレゼンテーションの表示位置が残らないよう、開く前にハッシュをクリアして必ず先頭から表示する
-    if (window.location.hash) {
-      history.replaceState(null, '', window.location.pathname + window.location.search)
-    }
     // スライド内容の更新を最優先で反映する（テーマ適用の失敗で更新がブロックされないようにする）
     setPresentationData(data)
     setPresentationKey((key) => key + 1)
@@ -93,18 +87,18 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
   }, [])
 
   const handleBrowse = useCallback(async () => {
-    const result = await pickAndLoadSlidePackage()
-    setRecentPackages(await getRecentSlidePackages())
-    if (!result) return
-    await showPresentation(result.data)
+    const { data, recentPackages } = await pickAndLoadSlidePackage()
+    if (recentPackages) setRecentPackages(recentPackages)
+    if (!data) return
+    await showPresentation(data.data)
   }, [showPresentation])
 
   const handleOpenRecent = useCallback(
     async (path: string) => {
-      const result = await openRecentSlidePackage(path)
-      setRecentPackages(await getRecentSlidePackages())
-      if (!result) return
-      await showPresentation(result.data)
+      const { data, recentPackages } = await openRecentSlidePackage(path)
+      if (recentPackages) setRecentPackages(recentPackages)
+      if (!data) return
+      await showPresentation(data.data)
     },
     [showPresentation],
   )
@@ -143,9 +137,7 @@ function Root({ locales, initialRecentPackages }: RootProps) {
 
 const root = createRoot(document.getElementById('root')!)
 
-// アドオン・言語リソース・最近開いたスライド一覧をロードしてから、常にホーム画面を表示する
-Promise.all([loadAddons(), loadLocales()]).then(async ([, locales]) => {
-  const initialRecentPackages = await getRecentSlidePackages()
-  await applyTheme()
+// アドオン・言語リソース・最近開いたスライド一覧・テーマを並行してロードしてから、常にホーム画面を表示する
+Promise.all([loadAddons(), loadLocales(), getRecentSlidePackages(), applyTheme()]).then(([, locales, initialRecentPackages]) => {
   root.render(<Root locales={locales} initialRecentPackages={initialRecentPackages} />)
 })

@@ -8,9 +8,7 @@
       "tagline": "Choisissez une présentation pour commencer",
       "recentTitle": "Récemment ouverts",
       "recentEmpty": "Vous n'avez pas encore ouvert de diapositives",
-      "sampleTitle": "Diapositives d'exemple",
       "sampleButton": "Ouvrir l'exemple",
-      "browseTitle": "Ouvrir un fichier",
       "browseButton": "Ouvrir un fichier",
       "browseHint": "Choisissez un fichier .json / .tgz"
     },

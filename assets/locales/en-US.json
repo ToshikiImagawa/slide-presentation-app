@@ -8,9 +8,7 @@
       "tagline": "Choose a slide deck to get started",
       "recentTitle": "Recently Opened",
       "recentEmpty": "You haven't opened any slides yet",
-      "sampleTitle": "Sample Slides",
       "sampleButton": "Open Sample",
-      "browseTitle": "Open a File",
       "browseButton": "Open a File",
       "browseHint": "Choose a .json / .tgz file"
     },

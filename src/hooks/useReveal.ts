@@ -25,6 +25,13 @@ export function useReveal(options?: UseRevealOptions): UseRevealReturn {
   useEffect(() => {
     if (!deckRef.current) return
 
+    // hash:true は初期化時に URL ハッシュ（#/3 等）の位置へジャンプする。App は presentation ごとに
+    // key で作り直されるため、この初期化エフェクトが「新規開始」の境界になる。前のスライドの表示位置を
+    // 引き継がないよう、initialize の直前でハッシュをクリアして必ず先頭スライドから開始する。
+    if (window.location.hash) {
+      history.replaceState(null, '', window.location.pathname + window.location.search)
+    }
+
     const deck = new Reveal(deckRef.current, {
       width: 1280,
       height: 720,
