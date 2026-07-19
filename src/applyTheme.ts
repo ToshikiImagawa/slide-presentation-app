@@ -86,6 +86,7 @@ function loadExternalFont(url: string): void {
   const link = document.createElement('link')
   link.rel = 'stylesheet'
   link.href = url
+  link.dataset.sddDynamicFont = 'true'
   document.head.appendChild(link)
 }
 
@@ -147,4 +148,28 @@ export function applyThemeData(themeData: ThemeData): void {
     }
     styleEl.textContent = themeData.customCSS
   }
+}
+
+/** applyTheme/applyThemeData が設定する CSS 変数の一覧（リセット対象） */
+const RESETTABLE_CSS_VARS: string[] = [
+  ...Object.values(keyToCssVar).flatMap((cssVar) => [cssVar, `${cssVar}-rgb`]),
+  ...Object.values(themeColorToCssVar).flatMap((cssVar) => [cssVar, `${cssVar}-rgb`]),
+  ...Object.values(themeFontToCssVar),
+  '--theme-font-size-base',
+  ...Object.keys(fontSizeRatios),
+]
+
+/**
+ * 前のプレゼンテーションで適用したテーマの上書きをすべて解除する。
+ * applyTheme/applyThemeData は「指定されたプロパティだけを上書きする」実装のため、
+ * 新しいプレゼンテーションに切り替える前に必ず呼ぶ（呼ばないと前のテーマが残ってしまう）。
+ */
+export function resetThemeOverrides(): void {
+  const root = document.documentElement
+  for (const cssVar of RESETTABLE_CSS_VARS) {
+    root.style.removeProperty(cssVar)
+  }
+  document.getElementById('sdd-custom-theme-css')?.remove()
+  document.querySelectorAll('style[id^="sdd-font-face-"]').forEach((el) => el.remove())
+  document.querySelectorAll('link[data-sdd-dynamic-font="true"]').forEach((el) => el.remove())
 }

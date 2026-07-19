@@ -7,13 +7,32 @@ import { validatePresentationData } from './data'
 import type { PresentationData } from './data'
 
 const ASSET_PATH_PREFIXES = ['image/', 'voice/', 'theme/', 'font/']
-const LAST_PACKAGE_PATH_KEY = 'lastSlidePackagePath'
+const RECENT_PACKAGES_KEY = 'recentSlidePackages'
+const MAX_RECENT_PACKAGES = 8
 
 const slidePackageStore = new LazyStore('slide-package-state.json')
 
 export interface LoadedSlidePackage {
   data: PresentationData
   baseDir: string
+}
+
+/** ホーム画面の「最近開いたスライド」一覧に表示する1件分の情報 */
+export interface RecentSlidePackageEntry {
+  path: string
+  title: string
+  openedAt: number
+}
+
+/** 最近使ったリストに entry を追加する（同一 path は重複排除して先頭へ、上限 max 件） */
+export function upsertRecentEntry(list: RecentSlidePackageEntry[], entry: RecentSlidePackageEntry, max = MAX_RECENT_PACKAGES): RecentSlidePackageEntry[] {
+  const withoutDup = list.filter((item) => item.path !== entry.path)
+  return [entry, ...withoutDup].slice(0, max)
+}
+
+/** 最近使ったリストから指定 path のエントリを取り除く */
+export function removeRecentEntry(list: RecentSlidePackageEntry[], path: string): RecentSlidePackageEntry[] {
+  return list.filter((item) => item.path !== path)
 }
 
 /** JSON内の image/voice/theme/font 参照を baseDir 基準のローカル asset URL に書き換える（scripts/export-slides.mjs の extractAssetPaths と同じ規則） */
@@ -63,17 +82,34 @@ async function loadSlidePackage(selectedPath: string): Promise<LoadedSlidePackag
   return { data: resolveLocalAssetPaths(parsed, baseDir), baseDir }
 }
 
-/** 指定パスのスライドパッケージを読み込む。失敗時は null（起動時の自動復元など、ユーザーへのエラー表示が不要な場合に使用） */
-export async function loadSlidePackageFromPath(selectedPath: string): Promise<LoadedSlidePackage | null> {
-  try {
-    return await loadSlidePackage(selectedPath)
-  } catch (error) {
-    console.error('[localSlideLoader] スライドの読み込みに失敗しました', error)
-    return null
-  }
+/** 最近使ったリストを取得する */
+export async function getRecentSlidePackages(): Promise<RecentSlidePackageEntry[]> {
+  return (await slidePackageStore.get<RecentSlidePackageEntry[]>(RECENT_PACKAGES_KEY)) ?? []
 }
 
-/** ダイアログでローカルの slides.json または .tgz パッケージを選択して読み込む。成功時は次回起動用にパスを記憶し、失敗時はエラーダイアログを表示する */
+/** 最近使ったリストから指定 path のエントリを取り除いて保存する（ファイルが移動・削除された場合など） */
+async function removeRecentSlidePackage(path: string): Promise<void> {
+  const list = await getRecentSlidePackages()
+  await slidePackageStore.set(RECENT_PACKAGES_KEY, removeRecentEntry(list, path))
+  await slidePackageStore.save()
+}
+
+/** 読み込みに成功した path を最近使ったリストの先頭に記録する */
+async function recordRecentSlidePackage(path: string, title: string): Promise<void> {
+  const list = await getRecentSlidePackages()
+  const updated = upsertRecentEntry(list, { path, title, openedAt: Date.now() })
+  await slidePackageStore.set(RECENT_PACKAGES_KEY, updated)
+  await slidePackageStore.save()
+}
+
+/** 読み込みに失敗した場合の共通処理: エラーダイアログを表示する */
+async function reportLoadError(error: unknown): Promise<void> {
+  console.error('[localSlideLoader] スライドの読み込みに失敗しました', error)
+  const detail = error instanceof Error ? error.message : String(error)
+  await message(`スライドの読み込みに失敗しました。\n\n${detail}`, { title: 'スライドを開く', kind: 'error' })
+}
+
+/** ダイアログでローカルの slides.json または .tgz パッケージを選択して読み込む。成功時は最近使ったリストに記録し、失敗時はエラーダイアログを表示する */
 export async function pickAndLoadSlidePackage(): Promise<LoadedSlidePackage | null> {
   const selected = await open({
     title: 'スライドを開く',
@@ -88,20 +124,23 @@ export async function pickAndLoadSlidePackage(): Promise<LoadedSlidePackage | nu
 
   try {
     const result = await loadSlidePackage(selected)
-    await slidePackageStore.set(LAST_PACKAGE_PATH_KEY, selected)
-    await slidePackageStore.save()
+    await recordRecentSlidePackage(selected, result.data.meta.title)
     return result
   } catch (error) {
-    console.error('[localSlideLoader] スライドの読み込みに失敗しました', error)
-    const detail = error instanceof Error ? error.message : String(error)
-    await message(`スライドの読み込みに失敗しました。\n\n${detail}`, { title: 'スライドを開く', kind: 'error' })
+    await reportLoadError(error)
     return null
   }
 }
 
-/** 前回開いていたローカルスライドパッケージを復元する（存在しない・読み込み失敗時は null） */
-export async function loadLastSlidePackage(): Promise<LoadedSlidePackage | null> {
-  const lastPath = await slidePackageStore.get<string>(LAST_PACKAGE_PATH_KEY)
-  if (!lastPath) return null
-  return loadSlidePackageFromPath(lastPath)
+/** 最近使ったリストの1件を再読み込みする。成功時はリスト先頭に更新し、失敗時はエラーダイアログを表示してリストから取り除く */
+export async function openRecentSlidePackage(path: string): Promise<LoadedSlidePackage | null> {
+  try {
+    const result = await loadSlidePackage(path)
+    await recordRecentSlidePackage(path, result.data.meta.title)
+    return result
+  } catch (error) {
+    await reportLoadError(error)
+    await removeRecentSlidePackage(path)
+    return null
+  }
 }

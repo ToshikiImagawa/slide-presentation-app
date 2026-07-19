@@ -2,8 +2,14 @@
   "languageCode": "fr-FR",
   "languageName": "Français",
   "ui": {
-    "openSlide": {
-      "open": "Ouvrir des diapositives"
+    "home": {
+      "goHome": "Accueil",
+      "recentTitle": "Récemment ouverts",
+      "recentEmpty": "Vous n'avez pas encore ouvert de diapositives",
+      "sampleTitle": "Diapositives d'exemple",
+      "sampleButton": "Ouvrir l'exemple",
+      "browseTitle": "Ouvrir un fichier",
+      "browseButton": "Choisir un fichier"
     },
     "settings": {
       "title": "Paramètres",

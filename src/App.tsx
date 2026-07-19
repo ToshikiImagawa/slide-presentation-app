@@ -2,7 +2,7 @@ import { ThemeProvider } from '@mui/material/styles'
 import { AudioControlBar } from './components/AudioControlBar'
 import { AudioPlayButton } from './components/AudioPlayButton'
 import { FallbackImage } from './components/FallbackImage'
-import { OpenSlideButton } from './components/OpenSlideButton'
+import { HomeButton } from './components/HomeButton'
 import { PresenterViewButton } from './components/PresenterViewButton'
 import { SettingsButton } from './components/SettingsButton'
 import { SettingsWindow } from './components/SettingsWindow'
@@ -26,10 +26,10 @@ registerDefaultComponents()
 
 type AppProps = {
   presentationData?: PresentationData
-  onOpenSlidePackage?: () => void
+  onGoHome: () => void
 }
 
-export function App({ presentationData, onOpenSlidePackage }: AppProps) {
+export function App({ presentationData, onGoHome }: AppProps) {
   const { locale } = useI18n()
   const defaultData = useMemo(() => getDefaultPresentationData(locale), [locale])
   const data = loadPresentationData(presentationData, defaultData)
@@ -180,7 +180,7 @@ export function App({ presentationData, onOpenSlidePackage }: AppProps) {
         </div>
       )}
       <div className="toolbar toolbar-left">
-        {onOpenSlidePackage && <OpenSlideButton onClick={onOpenSlidePackage} />}
+        <HomeButton onClick={onGoHome} />
         <SettingsButton onClick={() => setSettingsOpen(true)} />
       </div>
       <div className="toolbar">

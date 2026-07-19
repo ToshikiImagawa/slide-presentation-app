@@ -1,18 +1,19 @@
 import { useTranslation } from '../i18n'
 import styles from './SettingsButton.module.css'
 
-type OpenSlideButtonProps = {
+type HomeButtonProps = {
   onClick: () => void
 }
 
-export function OpenSlideButton({ onClick }: OpenSlideButtonProps) {
+export function HomeButton({ onClick }: HomeButtonProps) {
   const { t } = useTranslation()
-  const label = t('openSlide.open')
+  const label = t('home.goHome')
   return (
     <div className={styles.wrapper}>
       <button onClick={onClick} title={label} className={styles.button} aria-label={label}>
         <svg className={styles.icon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+          <path d="M3 11.5 12 4l9 7.5" />
+          <path d="M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9" />
         </svg>
       </button>
     </div>

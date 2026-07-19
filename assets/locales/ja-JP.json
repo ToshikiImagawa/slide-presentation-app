@@ -2,8 +2,14 @@
   "languageCode": "ja-JP",
   "languageName": "日本語",
   "ui": {
-    "openSlide": {
-      "open": "スライドを開く"
+    "home": {
+      "goHome": "ホーム",
+      "recentTitle": "最近開いたスライド",
+      "recentEmpty": "まだスライドを開いていません",
+      "sampleTitle": "サンプルスライド",
+      "sampleButton": "サンプルを開く",
+      "browseTitle": "ファイルを開く",
+      "browseButton": "ファイルを選択"
     },
     "settings": {
       "title": "設定",
