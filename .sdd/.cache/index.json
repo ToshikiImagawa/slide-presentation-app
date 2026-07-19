@@ -1,0 +1,694 @@
+{
+ "schema": "sdd-index/1",
+ "document_count": 30,
+ "documents": [
+  {
+   "path": "requirement/auto-scroll-progress-bar.md",
+   "doc_id": "",
+   "type": "",
+   "status": "",
+   "impl_status": "",
+   "category": "",
+   "depends_on": [],
+   "req_ids": {
+    "def": [],
+    "ref": []
+   }
+  },
+  {
+   "path": "requirement/auto-scroll-timer.md",
+   "doc_id": "",
+   "type": "",
+   "status": "",
+   "impl_status": "",
+   "category": "",
+   "depends_on": [],
+   "req_ids": {
+    "def": [
+     "AST-001",
+     "AST-002",
+     "AST-003",
+     "AST-004",
+     "AST-005",
+     "AST-006"
+    ],
+    "ref": []
+   }
+  },
+  {
+   "path": "requirement/builtin-ui-components.md",
+   "doc_id": "",
+   "type": "",
+   "status": "",
+   "impl_status": "",
+   "category": "",
+   "depends_on": [],
+   "req_ids": {
+    "def": [
+     "NFR_300",
+     "NFR_301",
+     "NFR_302",
+     "NFR_303",
+     "UR_300"
+    ],
+    "ref": [
+     "FR_104",
+     "FR_200",
+     "FR_203"
+    ]
+   }
+  },
+  {
+   "path": "requirement/image-component.md",
+   "doc_id": "",
+   "type": "",
+   "status": "",
+   "impl_status": "",
+   "category": "",
+   "depends_on": [],
+   "req_ids": {
+    "def": [
+     "NFR_400",
+     "NFR_401",
+     "UR_400"
+    ],
+    "ref": []
+   }
+  },
+  {
+   "path": "requirement/language-settings.md",
+   "doc_id": "",
+   "type": "",
+   "status": "",
+   "impl_status": "",
+   "category": "",
+   "depends_on": [],
+   "req_ids": {
+    "def": [],
+    "ref": []
+   }
+  },
+  {
+   "path": "requirement/presentation-foundation.md",
+   "doc_id": "",
+   "type": "",
+   "status": "",
+   "impl_status": "",
+   "category": "",
+   "depends_on": [],
+   "req_ids": {
+    "def": [
+     "FR_600",
+     "FR_601",
+     "FR_602",
+     "FR_603",
+     "FR_604",
+     "FR_605",
+     "FR_606",
+     "FR_700",
+     "FR_701",
+     "FR_702",
+     "FR_703",
+     "FR_704",
+     "FR_705",
+     "FR_800",
+     "FR_900",
+     "FR_901",
+     "FR_902",
+     "NFR_200",
+     "NFR_201",
+     "NFR_202",
+     "NFR_203",
+     "UR_200"
+    ],
+    "ref": []
+   }
+  },
+  {
+   "path": "requirement/presenter-view.md",
+   "doc_id": "",
+   "type": "",
+   "status": "",
+   "impl_status": "",
+   "category": "",
+   "depends_on": [],
+   "req_ids": {
+    "def": [
+     "PV-001",
+     "PV-002",
+     "PV-003",
+     "PV-004",
+     "PV-005",
+     "PV-006",
+     "PV-007",
+     "PV-008",
+     "PV-009",
+     "PV-010",
+     "PV-011"
+    ],
+    "ref": []
+   }
+  },
+  {
+   "path": "requirement/slide-content-customization.md",
+   "doc_id": "",
+   "type": "",
+   "status": "",
+   "impl_status": "",
+   "category": "",
+   "depends_on": [],
+   "req_ids": {
+    "def": [
+     "FR_100",
+     "FR_101",
+     "FR_102",
+     "FR_103",
+     "FR_104",
+     "FR_200",
+     "FR_201",
+     "FR_202",
+     "FR_203",
+     "FR_204",
+     "FR_300",
+     "FR_301",
+     "FR_302",
+     "FR_303",
+     "FR_400",
+     "FR_401",
+     "FR_402",
+     "FR_500",
+     "FR_501",
+     "FR_502",
+     "NFR_100",
+     "NFR_101",
+     "NFR_102",
+     "NFR_103",
+     "NFR_104",
+     "UR_100"
+    ],
+    "ref": []
+   }
+  },
+  {
+   "path": "requirement/speaker-note-audio.md",
+   "doc_id": "",
+   "type": "",
+   "status": "",
+   "impl_status": "",
+   "category": "",
+   "depends_on": [],
+   "req_ids": {
+    "def": [
+     "SNA-001",
+     "SNA-002",
+     "SNA-003",
+     "SNA-004",
+     "SNA-005",
+     "SNA-006",
+     "SNA-007",
+     "SNA-008"
+    ],
+    "ref": []
+   }
+  },
+  {
+   "path": "requirement/visual-addon.md",
+   "doc_id": "",
+   "type": "",
+   "status": "",
+   "impl_status": "",
+   "category": "",
+   "depends_on": [],
+   "req_ids": {
+    "def": [
+     "DC-001",
+     "DC-002",
+     "DC_001",
+     "DC_002",
+     "FR-001",
+     "FR-002",
+     "FR-003",
+     "FR-004",
+     "FR_001",
+     "FR_002",
+     "FR_003",
+     "FR_004",
+     "NFR-001",
+     "NFR-002",
+     "UR-001",
+     "UR_001"
+    ],
+    "ref": []
+   }
+  },
+  {
+   "path": "specification/auto-scroll-progress-bar_design.md",
+   "doc_id": "",
+   "type": "",
+   "status": "",
+   "impl_status": "",
+   "category": "",
+   "depends_on": [],
+   "req_ids": {
+    "def": [],
+    "ref": []
+   }
+  },
+  {
+   "path": "specification/auto-scroll-progress-bar_spec.md",
+   "doc_id": "",
+   "type": "",
+   "status": "",
+   "impl_status": "",
+   "category": "",
+   "depends_on": [],
+   "req_ids": {
+    "def": [],
+    "ref": []
+   }
+  },
+  {
+   "path": "specification/auto-scroll-timer_design.md",
+   "doc_id": "",
+   "type": "",
+   "status": "",
+   "impl_status": "",
+   "category": "",
+   "depends_on": [],
+   "req_ids": {
+    "def": [],
+    "ref": []
+   }
+  },
+  {
+   "path": "specification/auto-scroll-timer_spec.md",
+   "doc_id": "",
+   "type": "",
+   "status": "",
+   "impl_status": "",
+   "category": "",
+   "depends_on": [],
+   "req_ids": {
+    "def": [
+     "FR-001",
+     "FR-002",
+     "FR-003",
+     "FR-004",
+     "FR-005",
+     "FR-006"
+    ],
+    "ref": []
+   }
+  },
+  {
+   "path": "specification/builtin-ui-components_design.md",
+   "doc_id": "",
+   "type": "",
+   "status": "",
+   "impl_status": "",
+   "category": "",
+   "depends_on": [],
+   "req_ids": {
+    "def": [],
+    "ref": [
+     "NFR_300",
+     "NFR_301",
+     "NFR_302",
+     "NFR_303"
+    ]
+   }
+  },
+  {
+   "path": "specification/builtin-ui-components_spec.md",
+   "doc_id": "",
+   "type": "",
+   "status": "",
+   "impl_status": "",
+   "category": "",
+   "depends_on": [],
+   "req_ids": {
+    "def": [
+     "NFR_300",
+     "NFR_301",
+     "NFR_302",
+     "NFR_303"
+    ],
+    "ref": [
+     "UR_300"
+    ]
+   }
+  },
+  {
+   "path": "specification/image-component_design.md",
+   "doc_id": "",
+   "type": "",
+   "status": "",
+   "impl_status": "",
+   "category": "",
+   "depends_on": [],
+   "req_ids": {
+    "def": [],
+    "ref": []
+   }
+  },
+  {
+   "path": "specification/image-component_spec.md",
+   "doc_id": "",
+   "type": "",
+   "status": "",
+   "impl_status": "",
+   "category": "",
+   "depends_on": [],
+   "req_ids": {
+    "def": [
+     "FR-001",
+     "FR-002",
+     "FR-003",
+     "FR-004"
+    ],
+    "ref": []
+   }
+  },
+  {
+   "path": "specification/language-settings_design.md",
+   "doc_id": "",
+   "type": "",
+   "status": "",
+   "impl_status": "",
+   "category": "",
+   "depends_on": [],
+   "req_ids": {
+    "def": [],
+    "ref": [
+     "NFR-001"
+    ]
+   }
+  },
+  {
+   "path": "specification/language-settings_spec.md",
+   "doc_id": "",
+   "type": "",
+   "status": "",
+   "impl_status": "",
+   "category": "",
+   "depends_on": [],
+   "req_ids": {
+    "def": [
+     "FR-001",
+     "FR-002",
+     "FR-003",
+     "FR-004",
+     "FR-005",
+     "FR-006",
+     "FR-007",
+     "FR-008",
+     "FR-009",
+     "FR-010",
+     "NFR-001"
+    ],
+    "ref": []
+   }
+  },
+  {
+   "path": "specification/presentation-foundation_design.md",
+   "doc_id": "",
+   "type": "",
+   "status": "",
+   "impl_status": "",
+   "category": "",
+   "depends_on": [],
+   "req_ids": {
+    "def": [],
+    "ref": [
+     "FR_601",
+     "FR_602",
+     "FR_603",
+     "FR_604",
+     "FR_605",
+     "FR_606",
+     "FR_703",
+     "FR_901",
+     "FR_902",
+     "NFR_200",
+     "NFR_201",
+     "NFR_202",
+     "NFR_203"
+    ]
+   }
+  },
+  {
+   "path": "specification/presentation-foundation_spec.md",
+   "doc_id": "",
+   "type": "",
+   "status": "",
+   "impl_status": "",
+   "category": "",
+   "depends_on": [],
+   "req_ids": {
+    "def": [
+     "FR_600",
+     "FR_601",
+     "FR_602",
+     "FR_603",
+     "FR_604",
+     "FR_605",
+     "FR_606",
+     "FR_700",
+     "FR_701",
+     "FR_702",
+     "FR_703",
+     "FR_704",
+     "FR_705",
+     "FR_800",
+     "FR_900",
+     "FR_901",
+     "FR_902",
+     "NFR_200",
+     "NFR_201",
+     "NFR_202",
+     "NFR_203",
+     "UR_200"
+    ],
+    "ref": []
+   }
+  },
+  {
+   "path": "specification/presenter-view_design.md",
+   "doc_id": "",
+   "type": "",
+   "status": "",
+   "impl_status": "",
+   "category": "",
+   "depends_on": [],
+   "req_ids": {
+    "def": [],
+    "ref": [
+     "PV-003",
+     "PV-007",
+     "PV-008",
+     "PV-009",
+     "PV-010",
+     "PV-011"
+    ]
+   }
+  },
+  {
+   "path": "specification/presenter-view_spec.md",
+   "doc_id": "",
+   "type": "",
+   "status": "",
+   "impl_status": "",
+   "category": "",
+   "depends_on": [],
+   "req_ids": {
+    "def": [
+     "FR-001",
+     "FR-002",
+     "FR-003",
+     "FR-004",
+     "FR-005",
+     "FR-006",
+     "FR-007",
+     "FR-008",
+     "FR-009",
+     "FR-010",
+     "FR-011",
+     "FR-012",
+     "FR-013",
+     "FR-014",
+     "PV-001",
+     "PV-002",
+     "PV-003",
+     "PV-004",
+     "PV-005",
+     "PV-006",
+     "PV-007",
+     "PV-008",
+     "PV-009",
+     "PV-010",
+     "PV-011"
+    ],
+    "ref": []
+   }
+  },
+  {
+   "path": "specification/slide-content-customization_design.md",
+   "doc_id": "",
+   "type": "",
+   "status": "",
+   "impl_status": "",
+   "category": "",
+   "depends_on": [],
+   "req_ids": {
+    "def": [],
+    "ref": [
+     "DEM-001",
+     "NFR-001",
+     "NFR-002",
+     "NFR-003",
+     "NFR-004",
+     "NFR-005"
+    ]
+   }
+  },
+  {
+   "path": "specification/slide-content-customization_spec.md",
+   "doc_id": "",
+   "type": "",
+   "status": "",
+   "impl_status": "",
+   "category": "",
+   "depends_on": [],
+   "req_ids": {
+    "def": [
+     "FR-001",
+     "FR-002",
+     "FR-003",
+     "FR-004",
+     "FR-005",
+     "FR-006",
+     "FR-007",
+     "FR-008",
+     "FR-009",
+     "FR-010",
+     "FR-011",
+     "FR-012",
+     "FR-013",
+     "FR-014",
+     "FR_100",
+     "FR_101",
+     "FR_102",
+     "FR_103",
+     "FR_104",
+     "FR_200",
+     "FR_203",
+     "FR_301",
+     "FR_302",
+     "FR_303",
+     "FR_401",
+     "FR_402",
+     "FR_501",
+     "FR_502",
+     "NFR-001",
+     "NFR-002",
+     "NFR-003",
+     "NFR-004",
+     "NFR-005",
+     "NFR_100",
+     "NFR_101",
+     "NFR_102",
+     "NFR_103",
+     "NFR_104"
+    ],
+    "ref": [
+     "FR_201",
+     "FR_202",
+     "FR_204",
+     "FR_300",
+     "FR_400",
+     "FR_500",
+     "UR_100"
+    ]
+   }
+  },
+  {
+   "path": "specification/speaker-note-audio_design.md",
+   "doc_id": "",
+   "type": "",
+   "status": "",
+   "impl_status": "",
+   "category": "",
+   "depends_on": [],
+   "req_ids": {
+    "def": [],
+    "ref": []
+   }
+  },
+  {
+   "path": "specification/speaker-note-audio_spec.md",
+   "doc_id": "",
+   "type": "",
+   "status": "",
+   "impl_status": "",
+   "category": "",
+   "depends_on": [],
+   "req_ids": {
+    "def": [
+     "FR-001",
+     "FR-002",
+     "FR-003",
+     "FR-004",
+     "FR-005",
+     "FR-006",
+     "FR-007",
+     "FR-008",
+     "FR-009"
+    ],
+    "ref": []
+   }
+  },
+  {
+   "path": "specification/visual-addon_design.md",
+   "doc_id": "",
+   "type": "",
+   "status": "",
+   "impl_status": "",
+   "category": "",
+   "depends_on": [],
+   "req_ids": {
+    "def": [],
+    "ref": [
+     "DC-001",
+     "DC-002",
+     "FR-003",
+     "NFR-001",
+     "NFR-002"
+    ]
+   }
+  },
+  {
+   "path": "specification/visual-addon_spec.md",
+   "doc_id": "",
+   "type": "",
+   "status": "",
+   "impl_status": "",
+   "category": "",
+   "depends_on": [],
+   "req_ids": {
+    "def": [
+     "DC-001",
+     "DC-002",
+     "FR-001",
+     "FR-002",
+     "FR-003",
+     "FR-004",
+     "NFR-001",
+     "NFR-002"
+    ],
+    "ref": [
+     "UR-001"
+    ]
+   }
+  }
+ ]
+}

@@ -1,5 +1,5 @@
 ---
-version: "3.1.1"
+version: "4.0.0"
 ---
 
 # AI-SDD Development Principles
@@ -82,6 +82,30 @@ AI-SDD workflow supports customizing directory names via a `.sdd-config.json` fi
 | `directories.requirement`   | `requirement`   | PRD/Requirements specification directory         |
 | `directories.specification` | `specification` | Abstract specification/design document directory |
 | `directories.task`          | `task`          | Task log/temporary work log directory            |
+
+### ID Convention Configuration (Optional)
+
+The `id_conventions` section defines regex patterns for requirement ID naming conventions. The
+`requirement-analyzer` agent uses these patterns to validate ID numbering.
+
+```json
+{
+  "id_conventions": {
+    "prd_functional": "^FR_[A-Z]+_\\d{3}$",
+    "spec_functional": "^FR-[A-Z]+-\\d{3}'?$",
+    "spec_refined_relation": "^FR-{domain}-{prd_num}'$"
+  }
+}
+```
+
+| Item                    | Description                                                                          |
+|:------------------------|:--------------------------------------------------------------------------------------|
+| `prd_functional`        | Regex for functional requirement IDs in PRD documents                                  |
+| `spec_functional`       | Regex for functional requirement IDs in specification documents                        |
+| `spec_refined_relation` | Pattern linking a refined spec ID to its PRD source (`{domain}`, `{prd_num}` are placeholders) |
+
+Keys are free-form: define one entry per ID family used in the project (e.g., `prd_interface`, `design_constraint`).
+If `id_conventions` is not configured, agents infer the dominant pattern from existing IDs.
 
 ### Configuration File Loading Rules
 
