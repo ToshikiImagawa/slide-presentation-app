@@ -2,6 +2,9 @@
   "languageCode": "en-US",
   "languageName": "English",
   "ui": {
+    "openSlide": {
+      "open": "Open Slides"
+    },
     "settings": {
       "title": "Settings",
       "language": "Language",

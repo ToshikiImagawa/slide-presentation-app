@@ -2,6 +2,9 @@
   "languageCode": "fr-FR",
   "languageName": "Français",
   "ui": {
+    "openSlide": {
+      "open": "Ouvrir des diapositives"
+    },
     "settings": {
       "title": "Paramètres",
       "language": "Langue",

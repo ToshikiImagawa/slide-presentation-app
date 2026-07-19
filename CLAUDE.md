@@ -4,13 +4,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## プロジェクト概要
 
-React + Reveal.js ベースのスライドプレゼンテーション作成ツール。JSON ファイルでスライド内容やテーマを定義し、ブラウザ上でプレゼンテーションとして表示する。
+React + Reveal.js ベースのスライドプレゼンテーション作成ツール。JSON ファイルでスライド内容やテーマを定義し、Tauri（Rust）製のローカルデスクトップアプリとして表示する。
 
 ## コマンド
 
 ```bash
-npm run dev          # 開発サーバー起動（アドオンビルド + Vite HMR）
-npm run build        # プロダクションビルド（アドオンビルド + dist/ に出力）
+npm run tauri:dev    # デスクトップアプリ起動（Tauri + アドオンビルド + Vite HMR）
+npm run tauri:build  # デスクトップアプリのバンドルをビルド
+npm run dev          # フロントエンドのみ開発サーバー起動（アドオンビルド + Vite HMR）
+npm run build        # フロントエンドのみプロダクションビルド（アドオンビルド + dist/ に出力）
 npm run build:addons # アドオンのみビルド
 npm run preview      # ビルド済みファイルのプレビュー
 npm run format       # Prettier でコード整形（src/**/*.{ts,tsx,css}）
@@ -29,16 +31,19 @@ npm run test:watch   # テスト監視モード
 
 ```
 main.tsx
-├── applyTheme()           # public/theme-colors.json から色を適用
-├── loadAddons()           # addons/manifest.json → script 挿入 → ComponentRegistry に登録
-├── fetch('/slides.json')  # カスタムスライドデータのロード
-└── <App presentationData={data} />
-    ├── registerDefaultComponents()
-    ├── loadPresentationData()   # バリデーション + フォールバック
-    ├── applyThemeData()         # slides.json 内の theme フィールド適用
-    ├── useReveal()              # Reveal.js 初期化
-    └── <SlideRenderer />        # layout に基づきスライド描画
+├── loadAddons()                    # addons/manifest.json → script 挿入 → ComponentRegistry に登録
+├── loadLastSlidePackage()          # 前回ローカルで開いたスライドを復元（plugin-store）
+│   └── なければ fetch('/slides.json')  # バンドル済みデフォルトのロード
+├── applyTheme() / applyThemeData() # テーマ適用
+└── <Root>                          # presentationData / presentationKey を state で保持
+    └── <App key={presentationKey} presentationData={data} onOpenSlidePackage={...} />
+        ├── registerDefaultComponents()
+        ├── loadPresentationData()   # バリデーション + フォールバック
+        ├── useReveal()              # Reveal.js 初期化
+        └── <SlideRenderer />        # layout に基づきスライド描画
 ```
+
+「スライドを開く」ボタン（`OpenSlideButton`）でローカルの `slides.json` を選び直すと、`presentationKey` を更新して `App` 全体を再マウントし、新しい内容で Reveal.js を再初期化する（差分更新ではなく丸ごと作り直す設計）。
 
 ### コンポーネントシステム
 
@@ -65,6 +70,14 @@ main.tsx
 | `two-column` | ContentLayout + TwoColumnGrid | 左右2カラム。`left`/`right` で各カラムの内容を定義 |
 | `bleed` | BleedLayout | 2カラム全幅（端まで広がるレイアウト） |
 | `custom` | なし | `component` で指定したコンポーネントを直接描画 |
+
+### デスクトップアプリ (Tauri)
+
+`src-tauri/` に Tauri 2 + Rust のネイティブシェルがある。フロントエンドは通常の Vite アプリのままで、`tauri.conf.json` の `devUrl`/`frontendDist` を通じて Tauri の WebView にホストされる。
+
+- **発表者ビュー（別ウィンドウ）**: `usePresenterView`（`src/hooks/usePresenterView.ts`）が `@tauri-apps/api/webviewWindow` の `WebviewWindow` でネイティブウィンドウを生成し、`@tauri-apps/api/event` の `emit`/`listen`（イベント名 `presenter-view`）でメインウィンドウと相互通信する。メッセージ型 `PresenterViewMessage`（`src/data/types.ts`）はブラウザ版当時の設計を維持
+- **ローカルスライド選択**: `src/localSlideLoader.ts` が `@tauri-apps/plugin-dialog` でファイル選択（`slides.json` または `.tgz` パッケージ）、`@tauri-apps/plugin-fs` で読み込み、Rust コマンド `allow_asset_dir`（`src-tauri/src/lib.rs`）で asset プロトコルの読み取りスコープを動的に許可し、`convertFileSrc` で `image/`・`voice/`・`theme/`・`font/` の相対参照をローカル asset URL に書き換える（`scripts/export-slides.mjs` の `extractAssetPaths` と同じ規則）。`.tgz` は Rust コマンド `extract_slide_package`（`flate2`/`tar` クレート）でアプリのキャッシュディレクトリに展開し、`npm pack` の慣習に従って `package/` サブディレクトリを優先的に探す。最後に開いたパスは `@tauri-apps/plugin-store` で永続化し、次回起動時に自動復元する
+- ビルド時同梱（`public/slides.json`、`VITE_SLIDE_PACKAGE` 経由の npm パッケージ／`.tgz` 配布）は変更なし。ローカル選択はあくまで起動後の上書きとして追加された機能
 
 ### テーマシステム
 

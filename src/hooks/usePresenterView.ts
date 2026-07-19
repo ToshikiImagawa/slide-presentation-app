@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { emit, listen } from '@tauri-apps/api/event'
+import type { UnlistenFn } from '@tauri-apps/api/event'
+import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
 import type { SlideData, PresenterViewMessage, PresenterControlState } from '../data'
 
-const CHANNEL_NAME = 'presenter-view'
+const EVENT_NAME = 'presenter-view'
+const PRESENTER_WINDOW_LABEL = 'presenterView'
 
 export interface UsePresenterViewOptions {
   slides: SlideData[]
@@ -22,8 +26,6 @@ export interface UsePresenterViewReturn {
 
 export function usePresenterView({ slides, onNavigate, onAudioToggle, onAutoPlayToggle, onAutoSlideshowToggle, onScrollSpeedChange }: UsePresenterViewOptions): UsePresenterViewReturn {
   const [isOpen, setIsOpen] = useState(false)
-  const channelRef = useRef<BroadcastChannel | null>(null)
-  const windowRef = useRef<Window | null>(null)
 
   // コールバックを useRef で保持（stale closure 回避）
   const onNavigateRef = useRef(onNavigate)
@@ -50,23 +52,21 @@ export function usePresenterView({ slides, onNavigate, onAudioToggle, onAutoPlay
   }, [onScrollSpeedChange])
 
   useEffect(() => {
-    const channel = new BroadcastChannel(CHANNEL_NAME)
-    channelRef.current = channel
+    let unlisten: UnlistenFn | undefined
 
-    channel.onmessage = (event: MessageEvent<PresenterViewMessage>) => {
-      const msg = event.data
+    listen<PresenterViewMessage>(EVENT_NAME, (event) => {
+      const msg = event.payload
       if (msg.type === 'presenterViewReady') {
         setIsOpen(true)
         const message: PresenterViewMessage = { type: 'slideChanged', payload: { currentIndex: 0, slides } }
-        channel.postMessage(message)
+        void emit(EVENT_NAME, message)
         // 初期制御状態を送信
         if (latestControlStateRef.current) {
           const controlMessage: PresenterViewMessage = { type: 'controlStateChanged', payload: latestControlStateRef.current }
-          channel.postMessage(controlMessage)
+          void emit(EVENT_NAME, controlMessage)
         }
       } else if (msg.type === 'presenterViewClosed') {
         setIsOpen(false)
-        windowRef.current = null
       } else if (msg.type === 'navigate') {
         onNavigateRef.current?.(msg.payload.direction)
       } else if (msg.type === 'audioToggle') {
@@ -78,19 +78,20 @@ export function usePresenterView({ slides, onNavigate, onAudioToggle, onAutoPlay
       } else if (msg.type === 'scrollSpeedChange') {
         onScrollSpeedChangeRef.current?.(msg.payload.speed)
       }
-    }
+    }).then((fn) => {
+      unlisten = fn
+    })
 
     return () => {
-      channel.close()
-      channelRef.current = null
+      unlisten?.()
     }
   }, [])
 
   const sendSlideState = useCallback(
     (currentIndex: number) => {
-      if (channelRef.current && isOpen) {
+      if (isOpen) {
         const message: PresenterViewMessage = { type: 'slideChanged', payload: { currentIndex, slides } }
-        channelRef.current.postMessage(message)
+        void emit(EVENT_NAME, message)
       }
     },
     [isOpen, slides],
@@ -99,9 +100,9 @@ export function usePresenterView({ slides, onNavigate, onAudioToggle, onAutoPlay
   const sendControlState = useCallback(
     (state: PresenterControlState) => {
       latestControlStateRef.current = state
-      if (channelRef.current && isOpen) {
+      if (isOpen) {
         const message: PresenterViewMessage = { type: 'controlStateChanged', payload: state }
-        channelRef.current.postMessage(message)
+        void emit(EVENT_NAME, message)
       }
     },
     [isOpen],
@@ -109,27 +110,33 @@ export function usePresenterView({ slides, onNavigate, onAudioToggle, onAutoPlay
 
   const sendProgressState = useCallback(
     (progress: number, visible: boolean, animationDuration?: number) => {
-      if (channelRef.current && isOpen) {
+      if (isOpen) {
         const message: PresenterViewMessage = { type: 'progressChanged', payload: { progress, visible, animationDuration } }
-        channelRef.current.postMessage(message)
+        void emit(EVENT_NAME, message)
       }
     },
     [isOpen],
   )
 
   const openPresenterView = useCallback(() => {
-    if (isOpen && windowRef.current && !windowRef.current.closed) {
-      windowRef.current.focus()
-      return
-    }
+    // isOpen（React state）はイベント経由の非同期状態なので、実際のウィンドウ有無は都度 Tauri に問い合わせる
+    WebviewWindow.getByLabel(PRESENTER_WINDOW_LABEL).then((existing) => {
+      if (existing) {
+        void existing.setFocus()
+        return
+      }
 
-    const newWindow = window.open('/presenter-view.html', 'presenterView')
-    if (newWindow) {
-      windowRef.current = newWindow
-    } else {
-      console.warn('[presenter-view] ポップアップがブロックされました。ブラウザの設定でポップアップを許可してください。')
-    }
-  }, [isOpen])
+      const win = new WebviewWindow(PRESENTER_WINDOW_LABEL, {
+        url: 'presenter-view.html',
+        title: '発表者ビュー',
+        width: 1000,
+        height: 700,
+      })
+      win.once('tauri://error', (e) => {
+        console.warn('[presenter-view] ウィンドウの作成に失敗しました', e)
+      })
+    })
+  }, [])
 
   return { openPresenterView, isOpen, sendSlideState, sendControlState, sendProgressState }
 }

@@ -2,6 +2,9 @@
   "languageCode": "ja-JP",
   "languageName": "日本語",
   "ui": {
+    "openSlide": {
+      "open": "スライドを開く"
+    },
     "settings": {
       "title": "設定",
       "language": "言語",
