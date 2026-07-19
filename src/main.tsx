@@ -75,6 +75,11 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
   const [recentPackages, setRecentPackages] = useState(initialRecentPackages)
 
   const showPresentation = useCallback(async (data: PresentationData) => {
+    // Reveal.js は hash:true で初期化時に URL ハッシュ（#/3 等）の位置へジャンプするため、
+    // 前のプレゼンテーションの表示位置が残らないよう、開く前にハッシュをクリアして必ず先頭から表示する
+    if (window.location.hash) {
+      history.replaceState(null, '', window.location.pathname + window.location.search)
+    }
     // スライド内容の更新を最優先で反映する（テーマ適用の失敗で更新がブロックされないようにする）
     setPresentationData(data)
     setPresentationKey((key) => key + 1)
