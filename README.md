@@ -1,7 +1,7 @@
 # Slide Presentation App
 
-A slide presentation tool built with React + Reveal.js.
-Define slide content and themes using JSON files and display them as presentations in the browser.
+A slide presentation tool built with React + Reveal.js, packaged as a local desktop app with Tauri.
+Define slide content and themes using JSON files and display them as presentations in a native window.
 
 ## What is Slide Presentation App
 
@@ -29,19 +29,32 @@ the simplicity and automation benefits of a data-driven approach.
 npm install
 ```
 
+Running the app requires a Rust toolchain (`cargo`/`rustc`) for Tauri. See the
+[Tauri prerequisites guide](https://v2.tauri.app/start/prerequisites/) if you don't have one yet.
+
 ## Commands
 
-| Command                 | Description                                         |
-|-------------------------|-----------------------------------------------------|
-| `npm run dev`           | Start dev server (addon build + Vite HMR)           |
-| `npm run build`         | Production build (addon build + output to `dist/`)  |
-| `npm run build:addons`  | Build addons only                                   |
-| `npm run preview`       | Preview built files                                 |
-| `npm run format`        | Format code with Prettier (`src/**/*.{ts,tsx,css}`) |
-| `npm run typecheck`     | TypeScript type check                               |
-| `npm run test`          | Run tests (Vitest)                                  |
-| `npm run test:watch`    | Run tests in watch mode                             |
-| `npm run export:slides` | Export slide content as an npm package (.tgz)       |
+| Command                 | Description                                                |
+|--------------------------|------------------------------------------------------------|
+| `npm run tauri:dev`      | Start the desktop app (Tauri + addon build + Vite HMR)      |
+| `npm run tauri:build`    | Build the desktop app bundle                                |
+| `npm run dev`            | Start frontend-only dev server (addon build + Vite HMR)     |
+| `npm run build`          | Frontend-only production build (addon build + output to `dist/`) |
+| `npm run build:addons`   | Build addons only                                           |
+| `npm run preview`        | Preview built files                                          |
+| `npm run format`         | Format code with Prettier (`src/**/*.{ts,tsx,css}`)          |
+| `npm run typecheck`      | TypeScript type check                                        |
+| `npm run test`           | Run tests (Vitest)                                            |
+| `npm run test:watch`     | Run tests in watch mode                                       |
+| `npm run export:slides`  | Export slide content as an npm package (.tgz)                 |
+
+## Opening a Local Slide Package
+
+Besides the slide content bundled at build time (see [Slide Packages](#slide-packages) below), you can pick a
+`slides.json` file, or a `.tgz` slide package produced by `npm run export:slides`, from disk at any time using the
+**Open Slides** button in the toolbar. `.tgz` packages are extracted into the app's cache directory first. Any
+`image/`, `voice/`, `theme/`, or `font/` relative references inside the slide data are resolved against the folder
+the content lives in. The app remembers the last opened file and reloads it automatically on next launch.
 
 ## Defining Slides
 

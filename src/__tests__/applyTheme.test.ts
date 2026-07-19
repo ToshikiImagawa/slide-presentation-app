@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { applyThemeData, applyBaseFontSize, loadFontSources } from '../applyTheme'
+import { applyThemeData, applyBaseFontSize, loadFontSources, resetThemeOverrides } from '../applyTheme'
 import type { ThemeData } from '../data'
 
 describe('applyBaseFontSize', () => {
@@ -117,5 +117,44 @@ describe('applyThemeData - fonts integration', () => {
 
     expect(document.documentElement.style.getPropertyValue('--theme-font-heading')).toBe('CustomHeading')
     expect(document.documentElement.style.getPropertyValue('--theme-font-body')).toBe('CustomBody')
+  })
+})
+
+describe('resetThemeOverrides', () => {
+  beforeEach(() => {
+    document.documentElement.style.cssText = ''
+    document.head.innerHTML = ''
+  })
+
+  it('前のプレゼンテーションで設定した色・フォントの CSS 変数を消す', () => {
+    applyThemeData({ colors: { primary: '#123456', text: '#abcdef' }, fonts: { heading: 'CustomHeading', baseFontSize: 24 } })
+
+    resetThemeOverrides()
+
+    expect(document.documentElement.style.getPropertyValue('--theme-primary')).toBe('')
+    expect(document.documentElement.style.getPropertyValue('--theme-text-body')).toBe('')
+    expect(document.documentElement.style.getPropertyValue('--theme-font-heading')).toBe('')
+    expect(document.documentElement.style.getPropertyValue('--theme-font-size-base')).toBe('')
+  })
+
+  it('前のプレゼンテーションの customCSS を取り除く', () => {
+    applyThemeData({ customCSS: '.foo { color: red; }' })
+    expect(document.getElementById('sdd-custom-theme-css')).not.toBeNull()
+
+    resetThemeOverrides()
+
+    expect(document.getElementById('sdd-custom-theme-css')).toBeNull()
+  })
+
+  it('前のプレゼンテーションで読み込んだフォントの style/link 要素を取り除く', () => {
+    loadFontSources([
+      { family: 'MyFont', src: '/fonts/MyFont.woff2' },
+      { family: 'Fira Code', url: 'https://fonts.googleapis.com/css2?family=Fira+Code' },
+    ])
+
+    resetThemeOverrides()
+
+    expect(document.getElementById('sdd-font-face-myfont')).toBeNull()
+    expect(document.querySelector('link[data-sdd-dynamic-font="true"]')).toBeNull()
   })
 })

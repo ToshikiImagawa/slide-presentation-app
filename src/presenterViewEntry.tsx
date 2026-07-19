@@ -1,6 +1,8 @@
 import { createRoot } from 'react-dom/client'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { ThemeProvider } from '@mui/material/styles'
+import { emit, listen } from '@tauri-apps/api/event'
+import type { UnlistenFn } from '@tauri-apps/api/event'
 import 'reveal.js/dist/reveal.css'
 import './styles/global.css'
 import './addon-bridge'
@@ -11,7 +13,7 @@ import { I18nProvider, loadLocales, useTranslation } from './i18n'
 import { theme } from './theme'
 import type { SlideData, PresentationData, PresenterViewMessage, PresenterControlState } from './data'
 
-const CHANNEL_NAME = 'presenter-view'
+const EVENT_NAME = 'presenter-view'
 
 // デフォルトコンポーネントを登録
 registerDefaultComponents()
@@ -46,38 +48,37 @@ function PresenterViewApp() {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [controlState, setControlState] = useState<PresenterControlState | null>(null)
   const [progressState, setProgressState] = useState<{ progress: number; visible: boolean; animationDuration?: number }>({ progress: 0, visible: false })
-  const channelRef = useRef<BroadcastChannel | null>(null)
 
   useEffect(() => {
-    const channel = new BroadcastChannel(CHANNEL_NAME)
-    channelRef.current = channel
+    let unlisten: UnlistenFn | undefined
 
-    channel.onmessage = (event: MessageEvent<PresenterViewMessage>) => {
-      if (event.data.type === 'slideChanged') {
-        setSlides(event.data.payload.slides)
-        setCurrentIndex(event.data.payload.currentIndex)
-      } else if (event.data.type === 'controlStateChanged') {
-        setControlState(event.data.payload)
-      } else if (event.data.type === 'progressChanged') {
-        setProgressState(event.data.payload)
+    listen<PresenterViewMessage>(EVENT_NAME, (event) => {
+      if (event.payload.type === 'slideChanged') {
+        setSlides(event.payload.payload.slides)
+        setCurrentIndex(event.payload.payload.currentIndex)
+      } else if (event.payload.type === 'controlStateChanged') {
+        setControlState(event.payload.payload)
+      } else if (event.payload.type === 'progressChanged') {
+        setProgressState(event.payload.payload)
       }
-    }
+    }).then((fn) => {
+      unlisten = fn
+    })
 
     // メインウィンドウに準備完了を通知
     const readyMessage: PresenterViewMessage = { type: 'presenterViewReady' }
-    channel.postMessage(readyMessage)
+    void emit(EVENT_NAME, readyMessage)
 
     // ウィンドウが閉じられるときにメインウィンドウに通知
     const handleBeforeUnload = () => {
       const closedMessage: PresenterViewMessage = { type: 'presenterViewClosed' }
-      channel.postMessage(closedMessage)
+      void emit(EVENT_NAME, closedMessage)
     }
     window.addEventListener('beforeunload', handleBeforeUnload)
 
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload)
-      channel.close()
-      channelRef.current = null
+      unlisten?.()
     }
   }, [])
 
@@ -100,7 +101,7 @@ function PresenterViewApp() {
   }, [])
 
   const sendMessage = useCallback((message: PresenterViewMessage) => {
-    channelRef.current?.postMessage(message)
+    void emit(EVENT_NAME, message)
   }, [])
 
   const handleNavigate = useCallback(

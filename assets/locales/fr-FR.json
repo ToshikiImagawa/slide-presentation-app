@@ -2,6 +2,16 @@
   "languageCode": "fr-FR",
   "languageName": "Français",
   "ui": {
+    "home": {
+      "goHome": "Accueil",
+      "appTitle": "Slide Presentation App",
+      "tagline": "Choisissez une présentation pour commencer",
+      "recentTitle": "Récemment ouverts",
+      "recentEmpty": "Vous n'avez pas encore ouvert de diapositives",
+      "sampleButton": "Ouvrir l'exemple",
+      "browseButton": "Ouvrir un fichier",
+      "browseHint": "Choisissez un fichier .json / .tgz"
+    },
     "settings": {
       "title": "Paramètres",
       "language": "Langue",

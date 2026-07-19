@@ -2,6 +2,16 @@
   "languageCode": "en-US",
   "languageName": "English",
   "ui": {
+    "home": {
+      "goHome": "Home",
+      "appTitle": "Slide Presentation App",
+      "tagline": "Choose a slide deck to get started",
+      "recentTitle": "Recently Opened",
+      "recentEmpty": "You haven't opened any slides yet",
+      "sampleButton": "Open Sample",
+      "browseButton": "Open a File",
+      "browseHint": "Choose a .json / .tgz file"
+    },
     "settings": {
       "title": "Settings",
       "language": "Language",

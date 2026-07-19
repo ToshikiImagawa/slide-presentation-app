@@ -197,6 +197,8 @@ export default defineConfig({
     },
   },
   server: {
+    port: 1420,
+    strictPort: true,
     fs: {
       allow: ['.', resolve(__dirname, 'addons'), resolve(__dirname, 'assets')],
     },

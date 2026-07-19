@@ -1,12 +1,17 @@
 import { createRoot } from 'react-dom/client'
+import { useCallback, useState } from 'react'
 import 'reveal.js/dist/reveal.css'
 import './styles/global.css'
 import './addon-bridge'
 import { App } from './App'
-import { applyTheme } from './applyTheme'
+import { HomeScreen } from './components/HomeScreen'
+import { applyTheme, applyThemeData, resetThemeOverrides } from './applyTheme'
+import { getDefaultPresentationData } from './data'
 import type { PresentationData } from './data'
-import { I18nProvider, loadLocales } from './i18n'
+import { I18nProvider, loadLocales, useI18n } from './i18n'
 import type { LocaleResource } from './i18n'
+import { getRecentSlidePackages, openRecentSlidePackage, pickAndLoadSlidePackage } from './localSlideLoader'
+import type { RecentSlidePackageEntry } from './localSlideLoader'
 
 type AddonManifest = {
   addons: Array<{ name: string; bundle: string }>
@@ -35,30 +40,104 @@ async function loadAddons(): Promise<void> {
   }
 }
 
-const root = createRoot(document.getElementById('root')!)
+/** バンドル済みの slides.json を読み込む。存在しない場合はビルトインのテンプレートガイドを返す（ホーム画面の「サンプルスライド」用） */
+async function loadSamplePresentationData(locale: string): Promise<PresentationData> {
+  try {
+    const res = await fetch(import.meta.env.VITE_SLIDES_PATH || '/slides.json')
+    if (res.ok) {
+      return (await res.json()) as PresentationData
+    }
+    console.error(`Failed to load sample presentation data: ${res.status}`)
+  } catch {
+    // fetch 失敗時はビルトインのテンプレートガイドにフォールバックする
+  }
+  return getDefaultPresentationData(locale)
+}
 
-/** I18nProvider でラップしてレンダリングする */
-function renderApp(presentationData?: PresentationData, locales: LocaleResource[] = []) {
-  root.render(
+async function applyPresentationTheme(data: PresentationData | undefined): Promise<void> {
+  // 前のプレゼンテーションのテーマ上書きが残らないよう、まずリセットしてから適用する
+  resetThemeOverrides()
+  await applyTheme(data?.meta?.themeColors)
+  if (data?.theme) {
+    applyThemeData(data.theme)
+  }
+}
+
+type View = 'home' | 'presentation'
+
+/** ホーム画面とプレゼンテーション画面を切り替える（I18nProvider の内側で useI18n を使うための内側コンポーネント） */
+function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentSlidePackageEntry[] }) {
+  const { locale } = useI18n()
+  const [view, setView] = useState<View>('home')
+  const [presentationData, setPresentationData] = useState<PresentationData | undefined>(undefined)
+  const [presentationKey, setPresentationKey] = useState(0)
+  const [recentPackages, setRecentPackages] = useState(initialRecentPackages)
+
+  const showPresentation = useCallback(async (data: PresentationData) => {
+    // スライド内容の更新を最優先で反映する（テーマ適用の失敗で更新がブロックされないようにする）
+    setPresentationData(data)
+    setPresentationKey((key) => key + 1)
+    setView('presentation')
+
+    try {
+      await applyPresentationTheme(data)
+    } catch (error) {
+      console.error('[main] テーマの適用に失敗しました', error)
+    }
+  }, [])
+
+  const handleBrowse = useCallback(async () => {
+    const { data, recentPackages } = await pickAndLoadSlidePackage()
+    if (recentPackages) setRecentPackages(recentPackages)
+    if (!data) return
+    await showPresentation(data.data)
+  }, [showPresentation])
+
+  const handleOpenRecent = useCallback(
+    async (path: string) => {
+      const { data, recentPackages } = await openRecentSlidePackage(path)
+      if (recentPackages) setRecentPackages(recentPackages)
+      if (!data) return
+      await showPresentation(data.data)
+    },
+    [showPresentation],
+  )
+
+  const handleOpenSample = useCallback(async () => {
+    const data = await loadSamplePresentationData(locale)
+    await showPresentation(data)
+  }, [locale, showPresentation])
+
+  const handleGoHome = useCallback(() => {
+    // プレゼンテーション固有のテーマを持ち越さず、ホーム画面はアプリのデフォルトテーマで表示する
+    resetThemeOverrides()
+    void applyTheme()
+    setView('home')
+  }, [])
+
+  if (view === 'home') {
+    return <HomeScreen recentPackages={recentPackages} onOpenRecent={handleOpenRecent} onOpenSample={handleOpenSample} onBrowse={handleBrowse} />
+  }
+
+  return <App key={presentationKey} presentationData={presentationData} onGoHome={handleGoHome} />
+}
+
+interface RootProps {
+  locales: LocaleResource[]
+  initialRecentPackages: RecentSlidePackageEntry[]
+}
+
+function Root({ locales, initialRecentPackages }: RootProps) {
+  return (
     <I18nProvider locales={locales}>
-      <App presentationData={presentationData} />
-    </I18nProvider>,
+      <RootContent initialRecentPackages={initialRecentPackages} />
+    </I18nProvider>
   )
 }
 
-// アドオン・言語リソースをロードし、slides.json を読み込んでからテーマを適用してレンダリングする
-Promise.all([loadAddons(), loadLocales()]).then(([, locales]) => {
-  fetch(import.meta.env.VITE_SLIDES_PATH || '/slides.json')
-    .then((res) => {
-      if (!res.ok) throw new Error(`${res.status}`)
-      return res.json() as Promise<PresentationData>
-    })
-    .then(async (data) => {
-      await applyTheme(data.meta?.themeColors)
-      renderApp(data, locales)
-    })
-    .catch(async () => {
-      await applyTheme()
-      renderApp(undefined, locales)
-    })
+const root = createRoot(document.getElementById('root')!)
+
+// アドオン・言語リソース・最近開いたスライド一覧・テーマを並行してロードしてから、常にホーム画面を表示する
+Promise.all([loadAddons(), loadLocales(), getRecentSlidePackages(), applyTheme()]).then(([, locales, initialRecentPackages]) => {
+  root.render(<Root locales={locales} initialRecentPackages={initialRecentPackages} />)
 })
