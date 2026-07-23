@@ -9,8 +9,14 @@ use tauri_plugin_fs::FsExt;
 /// readTextFile 等はこちらが許可されていないと forbidden path エラーになる）
 #[tauri::command]
 fn allow_asset_dir(app: tauri::AppHandle, dir: String) -> Result<(), String> {
-  app.asset_protocol_scope().allow_directory(&dir, true).map_err(|e| e.to_string())?;
-  app.fs_scope().allow_directory(&dir, true).map_err(|e| e.to_string())?;
+  app
+    .asset_protocol_scope()
+    .allow_directory(&dir, true)
+    .map_err(|e| e.to_string())?;
+  app
+    .fs_scope()
+    .allow_directory(&dir, true)
+    .map_err(|e| e.to_string())?;
   Ok(())
 }
 
@@ -24,10 +30,16 @@ fn extract_tgz(bytes: &[u8], extract_dir: &Path) -> Result<PathBuf, String> {
   fs::create_dir_all(extract_dir).map_err(|e| e.to_string())?;
 
   let gz = flate2::read::GzDecoder::new(Cursor::new(bytes));
-  tar::Archive::new(gz).unpack(extract_dir).map_err(|e| e.to_string())?;
+  tar::Archive::new(gz)
+    .unpack(extract_dir)
+    .map_err(|e| e.to_string())?;
 
   let package_dir = extract_dir.join("package");
-  Ok(if package_dir.is_dir() { package_dir } else { extract_dir.to_path_buf() })
+  Ok(if package_dir.is_dir() {
+    package_dir
+  } else {
+    extract_dir.to_path_buf()
+  })
 }
 
 /// スライドパッケージ (.tgz) をアプリのキャッシュディレクトリに展開し、slides.json のあるディレクトリを返す
@@ -47,7 +59,10 @@ fn extract_slide_package(app: tauri::AppHandle, tgz_path: String) -> Result<Stri
     .join(stem);
 
   let result_dir = extract_tgz(&bytes, &extract_dir)?;
-  result_dir.to_str().map(|s| s.to_string()).ok_or_else(|| "抽出先パスの文字列化に失敗しました".to_string())
+  result_dir
+    .to_str()
+    .map(|s| s.to_string())
+    .ok_or_else(|| "抽出先パスの文字列化に失敗しました".to_string())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -56,7 +71,10 @@ pub fn run() {
     .plugin(tauri_plugin_fs::init())
     .plugin(tauri_plugin_dialog::init())
     .plugin(tauri_plugin_store::Builder::default().build())
-    .invoke_handler(tauri::generate_handler![allow_asset_dir, extract_slide_package])
+    .invoke_handler(tauri::generate_handler![
+      allow_asset_dir,
+      extract_slide_package
+    ])
     .setup(|app| {
       if cfg!(debug_assertions) {
         app.handle().plugin(
@@ -91,7 +109,8 @@ mod tests {
 
     let mut gz_bytes = Vec::new();
     {
-      let mut encoder = flate2::write::GzEncoder::new(&mut gz_bytes, flate2::Compression::default());
+      let mut encoder =
+        flate2::write::GzEncoder::new(&mut gz_bytes, flate2::Compression::default());
       encoder.write_all(&tar_bytes).unwrap();
       encoder.finish().unwrap();
     }
@@ -103,7 +122,8 @@ mod tests {
     let content = b"{\"meta\":{\"title\":\"t\"},\"slides\":[]}";
     let gz_bytes = build_npm_pack_tgz(content);
 
-    let extract_dir = std::env::temp_dir().join(format!("slide-extract-test-{}", std::process::id()));
+    let extract_dir =
+      std::env::temp_dir().join(format!("slide-extract-test-{}", std::process::id()));
     let result = extract_tgz(&gz_bytes, &extract_dir).expect("extraction should succeed");
 
     assert_eq!(result, extract_dir.join("package"));
@@ -116,7 +136,8 @@ mod tests {
 
   #[test]
   fn extract_tgz_replaces_existing_dir() {
-    let extract_dir = std::env::temp_dir().join(format!("slide-extract-test-replace-{}", std::process::id()));
+    let extract_dir =
+      std::env::temp_dir().join(format!("slide-extract-test-replace-{}", std::process::id()));
     fs::create_dir_all(&extract_dir).unwrap();
     fs::write(extract_dir.join("stale.txt"), b"old").unwrap();
 
