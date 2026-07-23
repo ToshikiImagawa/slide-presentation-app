@@ -249,6 +249,8 @@ export default defineConfig(({ mode }) => {
       environment: 'jsdom',
       globals: true,
       setupFiles: ['./src/test-setup.ts'],
+      // Vitest 対象は単体/統合テストのみ。e2e/ の Playwright spec（*.spec.ts）は除外する
+      include: ['src/**/*.{test,spec}.{ts,tsx}', 'scripts/**/*.test.mjs'],
     },
   }
 })
