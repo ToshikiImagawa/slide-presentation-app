@@ -1,0 +1,127 @@
+{
+  "meta": {
+    "title": "Slide Presentation App",
+    "description": "Representative deck for screenshots (no external assets)",
+    "logo": {
+      "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMzIgNDAiIHdpZHRoPSIxMzIiIGhlaWdodD0iNDAiPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDIwLDIwKSI+PGNpcmNsZSByPSIxMyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMmVjYzcxIiBzdHJva2Utd2lkdGg9IjQiLz48Y2lyY2xlIHI9IjYiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzJlY2M3MSIgc3Ryb2tlLXdpZHRoPSIzIiBvcGFjaXR5PSIwLjU1Ii8+PC9nPjx0ZXh0IHg9IjQyIiB5PSIyNiIgZm9udC1mYW1pbHk9IkhlbHZldGljYSBOZXVlLEFyaWFsLHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTYiIGZvbnQtd2VpZ2h0PSI3MDAiIGZpbGw9IiNlNmU2ZTYiIGxldHRlci1zcGFjaW5nPSIxLjUiPlNMSURFPC90ZXh0Pjwvc3ZnPg==",
+      "width": 132,
+      "height": 40
+    }
+  },
+  "slides": [
+    {
+      "id": "cover",
+      "layout": "center",
+      "content": {
+        "title": "Slide Presentation App",
+        "subtitle": "Data-driven slides defined in JSON<br/>React + Reveal.js + Tauri"
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "This deck is defined entirely in JSON. Layout, theme, speaker notes, and audio narration are all described in a single file.",
+          "summary": ["Slides defined purely in JSON", "Layout / theme / notes / audio in one place", "Ideal for AI generation and localization"],
+          "voice": "/voice/intro.wav"
+        }
+      }
+    },
+    {
+      "id": "section",
+      "layout": "center",
+      "content": {
+        "variant": "section",
+        "title": "layout: center (variant: section)",
+        "body": "A large title and body text for section breaks or summaries.\nYou can also place a GitHub link.",
+        "githubRepo": "ToshikiImagawa/slide-presentation-app"
+      }
+    },
+    {
+      "id": "workflow",
+      "layout": "content",
+      "content": {
+        "title": "layout: content — Timeline (steps)",
+        "steps": [
+          { "number": 1, "title": "Open a deck", "description": "Pick a local slides.json / .tgz package", "command": "OpenSlideButton" },
+          { "number": 2, "title": "Render by layout", "description": "Rendered automatically based on the layout field" },
+          { "number": 3, "title": "Apply a theme", "description": "Specify colors, fonts, and custom CSS in JSON", "command": "theme" },
+          { "number": 4, "title": "Present", "description": "Open the presenter view in a separate window" }
+        ],
+        "footer": "Specifying steps renders a timeline"
+      }
+    },
+    {
+      "id": "features",
+      "layout": "content",
+      "content": {
+        "title": "layout: content — FeatureTileGrid (tiles)",
+        "tiles": [
+          { "icon": "Description", "title": "Data-driven", "description": "Slides are defined in JSON.<br/>Reorder or edit by changing data only." },
+          { "icon": "PlaylistAddCheck", "title": "5 layouts", "description": "center / content / two-column /<br/>bleed / custom are provided." },
+          { "icon": "Traffic", "title": "Add-ons", "description": "Register custom components at runtime<br/>via bundled add-ons." }
+        ]
+      }
+    },
+    {
+      "id": "two-column",
+      "layout": "two-column",
+      "content": {
+        "title": "layout: two-column",
+        "left": {
+          "heading": "Left column",
+          "headingDescription": "Place heading, paragraphs, and items",
+          "paragraphs": ["Lay content out side by side to compare or map items. <strong>HTML tags</strong> are supported."],
+          "items": [{ "text": "Heading, paragraphs, bullet list", "emphasis": true }, { "text": "Code block and accent text" }, { "text": "Embedded components" }]
+        },
+        "right": {
+          "codeBlock": {
+            "header": "> slides.json",
+            "items": ["{", "  \"layout\": \"two-column\",", "  \"content\": { \"left\": {}, \"right\": {} }", "}"]
+          },
+          "accentText": "→ Place a code block or titledBulletList in the right column"
+        }
+      }
+    },
+    {
+      "id": "bleed",
+      "layout": "bleed",
+      "content": {
+        "title": "layout: bleed — full-width two-column",
+        "titleDescription": "Title and commands on the left, any component on the right",
+        "commands": [
+          { "text": "$ npm run tauri:dev", "color": "var(--theme-text-heading)" },
+          { "text": "> starting dev server", "color": "var(--theme-primary)" },
+          { "text": "✓ ready on :1420", "color": "var(--theme-success)" }
+        ],
+        "component": {
+          "name": "TerminalAnimation",
+          "props": {
+            "title": "Terminal",
+            "logText": "$ npm run tauri:dev\n> Compiling app...\n✓ Ready on http://localhost:1420\n$ open presentation\n✓ 5 slides loaded"
+          },
+          "style": { "height": "360px", "width": "90%", "margin": "auto" }
+        }
+      }
+    },
+    {
+      "id": "custom",
+      "layout": "custom",
+      "content": {
+        "component": {
+          "name": "TerminalAnimation",
+          "props": {
+            "title": "layout: custom",
+            "logText": "$ slide-presentation-app\n> layout: \"custom\" renders a component\n> full-screen with no wrapper\n✓ done"
+          },
+          "style": { "height": "70%", "width": "80%", "margin": "auto" }
+        }
+      }
+    },
+    {
+      "id": "closing",
+      "layout": "center",
+      "content": {
+        "title": "Wrap-up",
+        "subtitle": "Just write JSON — and it's ready to present"
+      }
+    }
+  ]
+}

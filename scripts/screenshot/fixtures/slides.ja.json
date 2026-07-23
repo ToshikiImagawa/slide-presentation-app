@@ -1,0 +1,127 @@
+{
+  "meta": {
+    "title": "Slide Presentation App",
+    "description": "スクリーンショット撮影用の代表デッキ（外部アセット非依存）",
+    "logo": {
+      "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMzIgNDAiIHdpZHRoPSIxMzIiIGhlaWdodD0iNDAiPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDIwLDIwKSI+PGNpcmNsZSByPSIxMyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMmVjYzcxIiBzdHJva2Utd2lkdGg9IjQiLz48Y2lyY2xlIHI9IjYiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzJlY2M3MSIgc3Ryb2tlLXdpZHRoPSIzIiBvcGFjaXR5PSIwLjU1Ii8+PC9nPjx0ZXh0IHg9IjQyIiB5PSIyNiIgZm9udC1mYW1pbHk9IkhlbHZldGljYSBOZXVlLEFyaWFsLHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTYiIGZvbnQtd2VpZ2h0PSI3MDAiIGZpbGw9IiNlNmU2ZTYiIGxldHRlci1zcGFjaW5nPSIxLjUiPlNMSURFPC90ZXh0Pjwvc3ZnPg==",
+      "width": 132,
+      "height": 40
+    }
+  },
+  "slides": [
+    {
+      "id": "cover",
+      "layout": "center",
+      "content": {
+        "title": "Slide Presentation App",
+        "subtitle": "JSON で定義するデータ駆動型スライド<br/>React + Reveal.js + Tauri"
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "このデッキは JSON だけで定義されています。レイアウト・テーマ・スピーカーノート・音声ナレーションをまとめて 1 つのファイルに記述できます。",
+          "summary": ["JSON だけでスライドを定義", "レイアウト / テーマ / ノート / 音声を一括管理", "AI による生成・多言語展開に最適"],
+          "voice": "/voice/intro.wav"
+        }
+      }
+    },
+    {
+      "id": "section",
+      "layout": "center",
+      "content": {
+        "variant": "section",
+        "title": "layout: center (variant: section)",
+        "body": "大きなタイトルと本文で、章の区切りやまとめに。\nGitHub リンクなども配置できます。",
+        "githubRepo": "ToshikiImagawa/slide-presentation-app"
+      }
+    },
+    {
+      "id": "workflow",
+      "layout": "content",
+      "content": {
+        "title": "layout: content — タイムライン (steps)",
+        "steps": [
+          { "number": 1, "title": "スライドを開く", "description": "ローカルの slides.json / .tgz パッケージを選択", "command": "OpenSlideButton" },
+          { "number": 2, "title": "レイアウトで描画", "description": "layout フィールドに応じて自動レンダリング" },
+          { "number": 3, "title": "テーマを適用", "description": "色・フォント・カスタム CSS を JSON で指定", "command": "theme" },
+          { "number": 4, "title": "発表する", "description": "発表者ビューを別ウィンドウで開いて進行" }
+        ],
+        "footer": "steps を指定するとタイムライン形式で表示されます"
+      }
+    },
+    {
+      "id": "features",
+      "layout": "content",
+      "content": {
+        "title": "layout: content — タイルグリッド (tiles)",
+        "tiles": [
+          { "icon": "Description", "title": "データ駆動", "description": "スライドは JSON で定義。<br/>順序や内容の変更はデータ編集だけ。" },
+          { "icon": "PlaylistAddCheck", "title": "5 つのレイアウト", "description": "center / content / two-column /<br/>bleed / custom を用意。" },
+          { "icon": "Traffic", "title": "アドオン", "description": "同梱アドオンで独自コンポーネントを<br/>ランタイム登録できます。" }
+        ]
+      }
+    },
+    {
+      "id": "two-column",
+      "layout": "two-column",
+      "content": {
+        "title": "layout: two-column",
+        "left": {
+          "heading": "左カラム",
+          "headingDescription": "heading と paragraphs、items を配置",
+          "paragraphs": ["左右に内容を並べて比較・対応づけを表現できます。<strong>HTML タグ</strong>も利用可能です。"],
+          "items": [{ "text": "見出し・段落・箇条書き", "emphasis": true }, { "text": "コードブロックや強調テキスト" }, { "text": "コンポーネントの埋め込み" }]
+        },
+        "right": {
+          "codeBlock": {
+            "header": "> slides.json",
+            "items": ["{", "  \"layout\": \"two-column\",", "  \"content\": { \"left\": {}, \"right\": {} }", "}"]
+          },
+          "accentText": "→ 右カラムにコードブロックや titledBulletList を配置"
+        }
+      }
+    },
+    {
+      "id": "bleed",
+      "layout": "bleed",
+      "content": {
+        "title": "layout: bleed — 2カラム全幅",
+        "titleDescription": "左にタイトルとコマンド、右に任意のコンポーネント",
+        "commands": [
+          { "text": "$ npm run tauri:dev", "color": "var(--theme-text-heading)" },
+          { "text": "> starting dev server", "color": "var(--theme-primary)" },
+          { "text": "✓ ready on :1420", "color": "var(--theme-success)" }
+        ],
+        "component": {
+          "name": "TerminalAnimation",
+          "props": {
+            "title": "Terminal",
+            "logText": "$ npm run tauri:dev\n> Compiling app...\n✓ Ready on http://localhost:1420\n$ open presentation\n✓ 5 slides loaded"
+          },
+          "style": { "height": "360px", "width": "90%", "margin": "auto" }
+        }
+      }
+    },
+    {
+      "id": "custom",
+      "layout": "custom",
+      "content": {
+        "component": {
+          "name": "TerminalAnimation",
+          "props": {
+            "title": "layout: custom",
+            "logText": "$ slide-presentation-app\n> layout: \"custom\" はラッパー無しで\n> コンポーネントを全画面描画します\n✓ done"
+          },
+          "style": { "height": "70%", "width": "80%", "margin": "auto" }
+        }
+      }
+    },
+    {
+      "id": "closing",
+      "layout": "center",
+      "content": {
+        "title": "まとめ",
+        "subtitle": "JSON を書くだけで、そのまま発表できるスライドに"
+      }
+    }
+  ]
+}
