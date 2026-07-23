@@ -1,17 +1,20 @@
 #!/usr/bin/env node
-/* global document, window */
+/* global document */
 /**
- * README スクリーンショット自動撮影（Playwright WebKit + IPC モック）。
+ * README スクリーンショット自動撮影（Playwright WebKit + Tauri IPC モック）。
  *
  * フロー:
- *   1. vite --mode screenshot を起動（IPC を __screenshot__ モックへ alias 差し替え）
+ *   1. `npm run dev -- --mode screenshot` を起動
+ *      （Tauri IPC を src/__screenshot__/ のモックへ alias 差し替え、fixture を /slides.json で配信）
  *   2. WebKit を起動し、scenarios.mjs の各シナリオを順に実行
- *      - addInitScript で初期シナリオを注入 → goto（mount 時に正しいデータ取得）
- *      - SideNav 遷移 + steps（クリック/待機/イベント発火）
+ *      - goto(path) → waitFor → steps（クリック/待機/キー入力）
  *      - コンテンツ撮影 → macOS ウィンドウ枠を合成 → resources/screenshots/ へ保存
  *
+ * このスクリプトは e2e スモークを兼ねる: 1 件でも waitFor 等が失敗すると非ゼロ終了する。
+ * 日本語フォント・WebKit 描画差のため macOS での実行を前提とする。
+ *
  * 実行: node scripts/screenshot/capture-screenshots.mjs [撮影キー...]
- *   引数を渡すとそのキーのみ撮影（例: dashboard ai-chat）。
+ *   引数を渡すとそのキーのみ撮影（例: home presenter-view）。
  */
 import { spawn } from 'node:child_process'
 import { mkdirSync, writeFileSync } from 'node:fs'
@@ -23,15 +26,21 @@ import { scenarios } from './scenarios.mjs'
 import { DEVICE_SCALE_FACTOR, VIEWPORTS, contentViewport } from './viewports.mjs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
-// 既定は本番。検証時は SCREENSHOT_OUT で出力先を差し替え、現行PNGの上書きを避ける。
-const OUT_DIR = process.env.SCREENSHOT_OUT
-  ? resolve(ROOT, process.env.SCREENSHOT_OUT)
-  : resolve(ROOT, 'resources/screenshots')
+// 既定は本番。検証時は SCREENSHOT_OUT で出力先ベースを差し替え、現行PNGの上書きを避ける。
+// 実際の出力はこのベース配下のロケール別サブディレクトリ（en/ ja/）。
+const OUT_BASE = process.env.SCREENSHOT_OUT ? resolve(ROOT, process.env.SCREENSHOT_OUT) : resolve(ROOT, 'resources/screenshots')
 const URL = 'http://localhost:1420'
+
+// 撮影するロケール。code は Playwright の context locale（UI 言語 = navigator.language、
+// fixture 選択 = Accept-Language の双方に効く）。dir は出力サブディレクトリ。
+const LOCALES = [
+  { code: 'en-US', dir: 'en' },
+  { code: 'ja-JP', dir: 'ja' },
+]
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
-async function waitForServer(url, timeoutMs = 60000) {
+async function waitForServer(url, timeoutMs = 120000) {
   const start = Date.now()
   while (Date.now() - start < timeoutMs) {
     try {
@@ -45,37 +54,35 @@ async function waitForServer(url, timeoutMs = 60000) {
 }
 
 async function runStep(page, step) {
-  if (step.click) await page.click(step.click, { timeout: 10000 })
+  if (step.click) await page.click(step.click, { timeout: 15000 })
   if (step.fill) await page.fill(step.fill, step.text ?? '')
   if (step.press) await page.keyboard.press(step.press)
-  if (step.flushStream) await page.evaluate((k) => window.__SCREENSHOT__.flushStream(k), step.flushStream)
+  if (step.hover) await page.hover(step.hover)
+  // Reveal のハッシュナビ（#/2 等）で任意スライドへジャンプする（hash:true 前提）
+  if (step.hash) await page.evaluate((h) => (window.location.hash = h), step.hash)
+  // 撮影用の一時 CSS を注入する（例: ツールバーの opacity 強制。ページ単位＝シナリオ単位）
+  if (step.addStyle) await page.addStyleTag({ content: step.addStyle })
   if (step.scrollIntoView) await page.locator(step.scrollIntoView).scrollIntoViewIfNeeded()
-  if (step.waitFor) await page.waitForSelector(step.waitFor, { timeout: 10000 })
+  if (step.waitFor) await page.waitForSelector(step.waitFor, { timeout: 15000 })
   if (step.wait) await sleep(step.wait)
 }
 
-async function captureOne(browser, barCache, sc) {
+async function captureOne(browser, barCache, sc, locale, outDir) {
   const vp = contentViewport(sc.key)
   const context = await browser.newContext({
     viewport: { width: vp.width, height: vp.height },
     deviceScaleFactor: DEVICE_SCALE_FACTOR,
+    // UI 言語（navigator.language）と fixture 選択（Accept-Language）を同時に切り替える
+    locale: locale.code,
   })
-  // 初期シナリオを mount 前に注入（データ取得は mount 時に走るため）
-  await context.addInitScript((key) => {
-    window.__SCREENSHOT_INITIAL__ = key
-  }, sc.scenario)
 
   const page = await context.newPage()
   const errors = []
   page.on('pageerror', (e) => errors.push(String(e)))
 
   try {
-    await page.goto(URL, { waitUntil: 'domcontentloaded' })
-    await page.waitForSelector('nav[aria-label="メインナビゲーション"]', { timeout: 15000 })
-
-    if (sc.nav) {
-      await page.click(`nav[aria-label="メインナビゲーション"] [aria-label^="${sc.nav}"]`, { timeout: 10000 })
-    }
+    await page.goto(URL + (sc.path ?? '/'), { waitUntil: 'domcontentloaded' })
+    if (sc.waitFor) await page.waitForSelector(sc.waitFor, { timeout: 15000 })
     for (const step of sc.steps ?? []) {
       await runStep(page, step)
     }
@@ -84,7 +91,7 @@ async function captureOne(browser, barCache, sc) {
 
     const contentBuf = await page.screenshot({ fullPage: vp.fullPage })
 
-    // ウィンドウ枠合成
+    // macOS ウィンドウ枠合成
     let finalBuf = contentBuf
     if (VIEWPORTS[sc.key].chrome) {
       const barWidthPx = vp.width * DEVICE_SCALE_FACTOR
@@ -94,12 +101,12 @@ async function captureOne(browser, barCache, sc) {
       finalBuf = compositeChrome(contentBuf, barCache.get(barWidthPx))
     }
 
-    writeFileSync(resolve(OUT_DIR, `${sc.key}.png`), finalBuf)
+    writeFileSync(resolve(outDir, `${sc.key}.png`), finalBuf)
     const status = errors.length ? `⚠ pageerror ${errors.length}件` : '✅'
-    console.log(`${status}  ${sc.key}.png`)
+    console.log(`${status}  ${locale.dir}/${sc.key}.png`)
     if (errors.length) errors.slice(0, 5).forEach((e) => console.log(`    - ${e}`))
   } catch (e) {
-    console.log(`❌ ${sc.key}: ${e.message ?? e}`)
+    console.log(`❌ ${locale.dir}/${sc.key}: ${e.message ?? e}`)
     return false
   } finally {
     await context.close()
@@ -114,10 +121,14 @@ async function main() {
     console.error(`該当シナリオなし: ${only.join(', ')}`)
     process.exit(1)
   }
-  mkdirSync(OUT_DIR, { recursive: true })
+  for (const loc of LOCALES) mkdirSync(resolve(OUT_BASE, loc.dir), { recursive: true })
 
   console.log('[capture] vite (screenshot mode) を起動中...')
-  const vite = spawn('pnpm', ['exec', 'vite', '--mode', 'screenshot'], { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'] })
+  // `npm run dev` は build:addons を実行してから vite を起動する。末尾に付いた
+  // `--mode screenshot` は vite に渡り、Tauri IPC モックと fixture 配信が有効になる。
+  // detached: true でプロセスグループを分離し、終了時に vite の孫プロセスごと確実に停止する
+  // （npm → vite の入れ子のため、npm だけ kill すると vite が孤児化してジョブが終了しない）
+  const vite = spawn('npm', ['run', 'dev', '--', '--mode', 'screenshot'], { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'], detached: true })
   vite.stderr.on('data', (d) => process.stderr.write(`[vite] ${d}`))
 
   let browser
@@ -127,19 +138,30 @@ async function main() {
     browser = await webkit.launch()
     const barCache = new Map()
     const failed = []
-    for (const sc of targets) {
-      if (!(await captureOne(browser, barCache, sc))) failed.push(sc.key)
+    // ロケール（en / ja）ごとにサブディレクトリへ撮影する
+    for (const loc of LOCALES) {
+      const outDir = resolve(OUT_BASE, loc.dir)
+      for (const sc of targets) {
+        if (!(await captureOne(browser, barCache, sc, loc, outDir))) failed.push(`${loc.dir}/${sc.key}`)
+      }
     }
-    console.log(`\n[capture] 完了。出力先: ${OUT_DIR}`)
+    console.log(`\n[capture] 完了。出力先: ${OUT_BASE}/{${LOCALES.map((l) => l.dir).join(',')}}`)
     // 部分的に壊れたスクショ一式が CI で無言コミットされるのを防ぐため、
-    // 1 件でも失敗したら非ゼロ終了にする。
+    // 1 件でも失敗したら非ゼロ終了にする（e2e スモークとしての合否）。
     if (failed.length) {
       console.error(`[capture] 失敗シナリオ: ${failed.join(', ')}`)
       process.exitCode = 1
     }
   } finally {
     if (browser) await browser.close()
-    vite.kill('SIGTERM')
+    // プロセスグループごと停止（孤児 vite を残さない）。失敗時は単体 kill にフォールバック
+    if (vite.pid) {
+      try {
+        process.kill(-vite.pid, 'SIGTERM')
+      } catch {
+        vite.kill('SIGTERM')
+      }
+    }
   }
 }
 

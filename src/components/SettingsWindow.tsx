@@ -22,7 +22,7 @@ export function SettingsWindow({ open, onClose, scrollSpeed, setScrollSpeed, emb
 
   return (
     <div className={styles.overlay} onClick={onClose} onKeyDown={(e) => e.stopPropagation()}>
-      <div className={styles.window} onClick={(e) => e.stopPropagation()}>
+      <div className={styles.window} onClick={(e) => e.stopPropagation()} data-testid="settings-dialog">
         <div className={styles.header}>
           <h2 className={styles.title}>{t('settings.title')}</h2>
           <button className={styles.closeButton} onClick={onClose} aria-label={t('settings.close')}>

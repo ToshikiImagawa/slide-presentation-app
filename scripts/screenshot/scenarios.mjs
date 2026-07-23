@@ -1,183 +1,88 @@
 /**
- * 撮影シナリオ定義。
+ * 撮影シナリオ定義（slide-presentation-app 用）。
  *
- * 各シナリオは「どのモック応答セットで」「どの画面へ遷移し」「どの操作をして」
- * 「何を待って」撮影するかを宣言的に記述する。
+ * 各シナリオは「どのパスを開き」「何を待って」「どの操作をして」撮影するかを宣言的に記述する。
+ * Tauri IPC は `vite --mode screenshot` の alias で src/__screenshot__/ のモックに差し替わる。
+ * スライド内容は fixture（scripts/screenshot/fixtures/slides.json）が /slides.json として配信される。
+ *
+ * フィールド:
+ *   key      出力ファイル名（<key>.png）兼 VIEWPORTS のキー
+ *   path     goto するパス（省略時は '/'）
+ *   waitFor  goto 直後に出現を待つセレクタ（省略可）
+ *   steps    撮影前の操作列（下記 step 語彙）
  *
  * step の語彙:
  *   { click: selector }      要素をクリック
  *   { waitFor: selector }    要素出現を待つ
  *   { fill: selector, text } テキスト入力
  *   { press: key }           キー入力
- *   { flushStream: key }     window.__SCREENSHOT__.flushStream(key) を実行
+ *   { hover: selector }      要素にホバー
+ *   { hash: '#/2' }          Reveal のハッシュナビで任意スライドへジャンプ
+ *   { addStyle: 'css' }      撮影用の一時 CSS を注入（シナリオ単位）
  *   { wait: ms }             指定ms待機
  *   { scrollIntoView: sel }  要素までスクロール
- *
- * nav: SideNav の aria-label 前方一致（クリックで画面遷移）。省略時は初期ルート(/dashboard)。
  */
 
-const NAV = {
-  dashboard: 'ダッシュボード',
-  chat: 'AI チャット',
-  aiTool: 'AIツール 管理',
-  settings: '設定',
+/** サンプルスライド（fixture デッキ）を開いてプレゼン画面を表示する共通ステップ */
+const OPEN_SAMPLE = [{ click: '[data-testid="home-sample"]' }, { waitFor: '.reveal .slides section' }, { wait: 500 }]
+
+/** fixture デッキの指定インデックスのスライドを表示して撮影するレイアウト用シナリオ */
+function layoutScenario(key, index, extraWait = 0) {
+  return {
+    key,
+    waitFor: '[data-testid="home-sample"]',
+    steps: [...OPEN_SAMPLE, { hash: `#/${index}` }, { wait: 700 + extraWait }],
+  }
 }
 
 export const scenarios = [
-  // === page レベル（高信頼）===
+  // ホーム画面（起動直後。plugin-store モックで「最近開いたスライド」は空表示）
   {
-    key: 'dashboard',
-    scenario: 'dashboard',
-    nav: NAV.dashboard,
-    steps: [{ click: '[role="tab"]:has-text("チケット")' }, { waitFor: 'tr[role="button"]' }],
-  },
-  {
-    key: 'hero',
-    scenario: 'hero',
-    nav: NAV.dashboard,
-    steps: [{ click: '[role="tab"]:has-text("チケット")' }, { waitFor: 'tr[role="button"]' }],
-  },
-  {
-    key: 'ai-chat',
-    scenario: 'ai-chat',
-    nav: NAV.chat,
-    steps: [
-      // 会話一覧の先頭を選択 → 本文表示
-      { click: 'text=今スプリントのブロッカー確認' },
-      { waitFor: 'text=次の3件です' },
-    ],
-  },
-  {
-    key: 'ai-tool-manager',
-    scenario: 'ai-tool-manager',
-    nav: NAV.aiTool,
-    steps: [{ waitFor: 'text=ストーリーポイント推定' }],
+    key: 'home',
+    waitFor: '[data-testid="home-screen"]',
+    steps: [{ waitFor: '[data-testid="home-sample"]' }, { wait: 300 }],
   },
 
-  // === ダッシュボード詳細パネル / AI 自動化ダイアログ系 ===
+  // プレゼンテーション画面（サンプルスライドの表紙）
   {
-    key: 'ai-tool-buttons',
-    scenario: 'ai-tool-buttons',
-    nav: NAV.dashboard,
-    steps: [
-      { click: '[role="tab"]:has-text("チケット")' },
-      { waitFor: 'tr[role="button"]' },
-      { click: 'tr[role="button"]:has-text("DEMO-119")' },
-      { waitFor: 'text=AI 自動化' },
-      { waitFor: '[data-testid="ai-tool-story-points-vertical-slice-button"]' },
-    ],
-  },
-  {
-    key: 'ai-tool-hint-dialog',
-    scenario: 'ai-tool-hint-dialog',
-    nav: NAV.dashboard,
-    steps: [
-      { click: '[role="tab"]:has-text("チケット")' },
-      { waitFor: 'tr[role="button"]' },
-      { click: 'tr[role="button"]:has-text("DEMO-119")' },
-      { waitFor: '[data-testid="ai-tool-story-points-vertical-slice-button"]' },
-      { click: '[data-testid="ai-tool-story-points-vertical-slice-button"]' },
-      { waitFor: '[data-testid="ai-tool-hint-dialog"]' },
-    ],
-  },
-  {
-    key: 'ai-tool-sp',
-    scenario: 'ai-tool-sp',
-    nav: NAV.dashboard,
-    steps: [
-      { click: '[role="tab"]:has-text("チケット")' },
-      { waitFor: 'tr[role="button"]' },
-      { click: 'tr[role="button"]:has-text("DEMO-119")' },
-      { waitFor: '[data-testid="ai-tool-story-points-vertical-slice-button"]' },
-      { click: '[data-testid="ai-tool-story-points-vertical-slice-button"]' },
-      { waitFor: '[data-testid="ai-tool-hint-skip-button"]' },
-      { click: '[data-testid="ai-tool-hint-skip-button"]' },
-      { waitFor: '[data-testid="ai-tool-approve-button"]' },
-      { wait: 500 },
-    ],
-  },
-  {
-    key: 'ai-tool-pr',
-    scenario: 'ai-tool-pr',
-    nav: NAV.dashboard,
-    steps: [
-      { click: '[role="tab"]:has-text("チケット")' },
-      { waitFor: 'tr[role="button"]' },
-      { click: 'tr[role="button"]:has-text("DEMO-119")' },
-      { waitFor: '[data-testid="ai-tool-pr-link-vertical-slice-button"]' },
-      { click: '[data-testid="ai-tool-pr-link-vertical-slice-button"]' },
-      { waitFor: '[data-testid="ai-tool-hint-skip-button"]' },
-      { click: '[data-testid="ai-tool-hint-skip-button"]' },
-      { waitFor: '[data-testid="ai-tool-approve-button"]' },
-      { wait: 400 },
-    ],
+    key: 'presentation',
+    waitFor: '[data-testid="home-sample"]',
+    steps: [...OPEN_SAMPLE],
   },
 
-  // === AIツール フォームエディタ / オーサリング ===
+  // 設定ダイアログ（プレゼン画面の左ツールバーから開く）
   {
-    key: 'ai-tool-authoring',
-    scenario: 'ai-tool-authoring',
-    nav: NAV.aiTool,
-    steps: [
-      { waitFor: '[data-testid="ai-authoring-open-create"]' },
-      { click: '[data-testid="ai-authoring-open-create"]' },
-      { waitFor: '[data-testid="ai-authoring-prompt"]' },
-      {
-        fill: '[data-testid="ai-authoring-prompt"]',
-        text: '未着手の高優先度チケットに、負荷の低い担当者を自動で割り当てる AIツール を作って',
-      },
-      { wait: 400 },
-    ],
-  },
-  {
-    key: 'ai-tool-form-editor',
-    scenario: 'ai-tool-form-editor',
-    nav: NAV.aiTool,
-    steps: [
-      { waitFor: 'button:has-text("編集")' },
-      { click: 'button:has-text("編集")' },
-      { waitFor: 'button:has-text("保存")' },
-      { wait: 600 },
-    ],
-  },
-  {
-    key: 'ai-tool-jql-placeholder',
-    scenario: 'ai-tool-jql-placeholder',
-    nav: NAV.aiTool,
-    steps: [
-      { waitFor: 'button:has-text("編集")' },
-      { click: 'button:has-text("編集")' },
-      { waitFor: '[data-testid="jql-placeholder-hints"]' },
-      { click: '[data-testid="jql-placeholder-hints"] summary' },
-      { scrollIntoView: '[data-testid="jql-placeholder-hints"]' },
-      { wait: 500 },
-    ],
+    key: 'settings',
+    waitFor: '[data-testid="home-sample"]',
+    steps: [...OPEN_SAMPLE, { click: '[data-testid="settings-open"]' }, { waitFor: '[data-testid="settings-dialog"]' }, { wait: 400 }],
   },
 
-  // === setup（オンボーディングダイアログ 3 ステップ）===
-  // オンボーディングは設定タブ内ではなく、未設定時に起動直後ダッシュボード上へ
-  // オーバーレイ表示される OnboardingDialog（#384）。default モックは未設定状態のため
-  // goto 直後にダイアログが自動で開く。nav 遷移は不要（背景はダッシュボード）。
+  // 発表者ビュー（別エントリを単独で開く。モックの event responder が /slides.json を注入する）
+  // fixture の表紙にはスピーカーノート・要点サマリー・音声が入っているため実データ表示になる。
   {
-    key: 'setup-credentials',
-    scenario: 'default',
-    steps: [{ waitFor: 'text=初回セットアップ' }, { waitFor: 'text=認証設定' }, { wait: 400 }],
+    key: 'presenter-view',
+    path: '/presenter-view.html',
+    waitFor: '[data-testid="presenter-view"]',
+    steps: [{ wait: 800 }],
   },
+
+  // ツールバー（左: ホーム/設定、右: 音声再生/自動再生/自動スライドショー/発表者ビュー）。
+  // 既定は opacity:0.15 なので、撮影用 CSS で不透明にして全ボタンを可視化する。
+  // 表紙には voice があるため音声再生ボタンも表示される。
   {
-    // ステップ未完了時は「次へ」が disabled になるため「スキップ」で進める
-    key: 'setup-mcp',
-    scenario: 'default',
-    steps: [{ waitFor: 'text=初回セットアップ' }, { click: 'button:has-text("スキップ")' }, { wait: 600 }],
+    key: 'toolbar',
+    waitFor: '[data-testid="home-sample"]',
+    steps: [...OPEN_SAMPLE, { addStyle: '.toolbar { opacity: 1 !important }' }, { wait: 400 }],
   },
-  {
-    key: 'setup-projects',
-    scenario: 'default',
-    steps: [
-      { waitFor: 'text=初回セットアップ' },
-      { click: 'button:has-text("スキップ")' },
-      { wait: 400 },
-      { click: 'button:has-text("スキップ")' },
-      { wait: 600 },
-    ],
-  },
+
+  // レイアウト・ギャラリー（fixture デッキの各レイアウトを個別に撮影）
+  layoutScenario('layout-section', 1),
+  layoutScenario('layout-content-steps', 2),
+  layoutScenario('layout-content-tiles', 3),
+  layoutScenario('layout-two-column', 4),
+  layoutScenario('layout-bleed', 5, 1500),
+  layoutScenario('layout-custom', 6, 1500),
+
+  // ロゴ表示（meta.logo。左下に表示される。まとめスライドで見せる）
+  layoutScenario('logo', 7),
 ]

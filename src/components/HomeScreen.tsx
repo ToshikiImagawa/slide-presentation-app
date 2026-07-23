@@ -42,7 +42,7 @@ export function HomeScreen({ recentPackages, onOpenRecent, onOpenSample, onBrows
   const { t } = useTranslation()
 
   return (
-    <div className={styles.container}>
+    <div className={styles.container} data-testid="home-screen">
       <div className={styles.content}>
         <header className={styles.hero}>
           <h1 className={styles.title}>{t('home.appTitle', 'Slide Presentation App')}</h1>
@@ -50,7 +50,7 @@ export function HomeScreen({ recentPackages, onOpenRecent, onOpenSample, onBrows
         </header>
 
         <div className={styles.actions}>
-          <button className={styles.primaryCard} onClick={onBrowse}>
+          <button className={styles.primaryCard} onClick={onBrowse} data-testid="home-browse">
             <span className={styles.primaryIcon}>
               <FolderIcon />
             </span>
@@ -60,7 +60,7 @@ export function HomeScreen({ recentPackages, onOpenRecent, onOpenSample, onBrows
             </span>
           </button>
 
-          <button className={styles.secondaryButton} onClick={onOpenSample}>
+          <button className={styles.secondaryButton} onClick={onOpenSample} data-testid="home-sample">
             <SparkleIcon />
             <span>{t('home.sampleButton')}</span>
           </button>

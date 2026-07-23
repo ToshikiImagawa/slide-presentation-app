@@ -111,7 +111,7 @@ const chromePath = await resolveChromePath()
 if (chromePath) {
   if (!existsSync(chromePath)) {
     console.error(`Chrome not found at: ${chromePath}`)
-    console.error('Run: pnpm exec puppeteer browsers install chrome')
+    console.error('Run: npx puppeteer browsers install chrome')
     process.exit(1)
   }
   console.log(`Using Chrome: ${chromePath}`)
@@ -126,7 +126,9 @@ const browser = await puppeteer.launch({
 
 const targets = [
   { input: 'README.md', output: 'README.pdf' },
+  { input: 'README.ja.md', output: 'README.ja.pdf' },
   { input: 'CHANGELOG.md', output: 'CHANGELOG.pdf' },
+  { input: 'CHANGELOG.ja.md', output: 'CHANGELOG.ja.pdf' },
 ]
 
 mkdirSync(OUT_DIR, { recursive: true })

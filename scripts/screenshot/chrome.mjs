@@ -11,7 +11,7 @@
 /* global document */
 import { PNG } from 'pngjs'
 
-const TITLE = 'NexusBoard'
+const TITLE = 'Slide Presentation App'
 const BAR_LOGICAL_HEIGHT = 28 // 論理px
 const CORNER_RADIUS = 22 // 出力画像のpx（DSF 適用後）
 
