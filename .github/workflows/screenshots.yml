@@ -1,0 +1,47 @@
+name: Update Screenshots
+
+# README 用スクリーンショットを WebKit で撮影し、差分があればコミットする。
+# 日本語フォント・WebKit 描画差のため macOS ランナー固定（Linux では豆腐化・見た目差が出る）。
+# 撮影は e2e スモークを兼ねており、いずれかのシナリオが失敗するとジョブも失敗する。
+on:
+  workflow_dispatch:
+    inputs:
+      keys:
+        description: '撮影するシナリオキー（スペース区切り。空なら全シナリオ）'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  update-screenshots:
+    name: Update Screenshots (macOS)
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+      - run: npm ci
+      - name: Install Playwright WebKit
+        run: npx playwright install webkit
+      - name: Generate screenshots
+        run: npm run generate-screenshots -- ${{ github.event.inputs.keys }}
+      - name: Commit screenshots if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [ -n "$(git status --porcelain resources/screenshots/)" ]; then
+            git add resources/screenshots/
+            git commit -m "[update] README スクリーンショットを更新"
+            git push
+          else
+            echo "スクリーンショットに差分はありません。コミットをスキップします。"
+          fi

@@ -103,7 +103,7 @@ export function PresenterViewWindow({ slides, currentIndex, controlState, progre
   }, [onNavigate])
 
   return (
-    <div ref={containerRef} className={styles.container}>
+    <div ref={containerRef} className={styles.container} data-testid="presenter-view">
       {/* 上部コントロールバー */}
       <div ref={controlBarRef} className={styles.controlBar}>
         <div className={styles.navControls}>

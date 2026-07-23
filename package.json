@@ -10,10 +10,17 @@
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\"",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "export:slides": "npm run build:addons && node scripts/export-slides.mjs"
+    "test:e2e": "playwright test",
+    "test:e2e:report": "playwright show-report",
+    "export:slides": "npm run build:addons && node scripts/export-slides.mjs",
+    "generate-icons": "node scripts/generate-icons.mjs",
+    "generate-docs": "node scripts/generate-docs-pdf.mjs",
+    "generate-screenshots": "node scripts/screenshot/capture-screenshots.mjs",
+    "screenshots:compare": "node scripts/screenshot/compare.mjs"
   },
   "keywords": [],
   "author": "",
@@ -33,6 +40,7 @@
     "reveal.js": "^5.2.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@tauri-apps/cli": "^2.11.4",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
@@ -41,7 +49,12 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.2",
     "jsdom": "^27.4.0",
+    "marked": "^18.0.4",
+    "pixelmatch": "^7.2.0",
+    "playwright": "^1.61.1",
+    "pngjs": "^7.0.0",
     "prettier": "^3.8.1",
+    "puppeteer": "^25.1.0",
     "typescript": "^5.9.3",
     "vite": "^7.3.1",
     "vitest": "^4.0.18"

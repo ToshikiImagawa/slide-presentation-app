@@ -1,5 +1,7 @@
 # Changelog
 
+**English** | [日本語](CHANGELOG.ja.md)
+
 All notable changes to this project will be documented in this file.
 
 ## [1.0.0] - 2026-02-02
