@@ -23,3 +23,8 @@ scripts/screenshot/__compare__/
 
 # docs（generate-docs で生成する PDF）
 docs/*.pdf
+
+# Playwright E2E の出力
+playwright-report/
+test-results/
+.playwright/

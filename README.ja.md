@@ -723,7 +723,11 @@ npm run generate-screenshots -- home    # 単一シナリオを撮影
   兼ねます。
 - **macOS 専用**（日本語フォントと WebKit の描画が Linux とは異なるため）。CI では `.github/workflows/screenshots.yml`
   （手動 dispatch）の macOS ランナーで実行し、`resources/screenshots/` の差分をコミットします。
-- 実 Tauri WebView 上での受け入れテスト（WebdriverIO + `tauri-driver`）の雛形が `e2e/` にあります。
+- **アサーション付き E2E**: `npm run test:e2e` は Playwright Test スイート（`e2e/*.spec.ts`）を実行します。撮影と同じ
+  screenshot モードのサーバー・IPC モック・fixture を再利用しつつ、`en` / `ja` 両ロケールで明示的な `expect()` 検証を
+  行います。ピクセルではなく DOM テキストを検証するため、CI では Linux 上でヘッドレス実行します
+  （`.github/workflows/ci.yml`）。詳細は [`e2e/README.md`](e2e/README.md)。
+- 実 Tauri WebView 上での受け入れテスト（WebdriverIO + `tauri-driver`）の任意の雛形が `e2e/` にあります。
 
 ## ライセンス
 

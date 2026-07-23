@@ -70,6 +70,29 @@ jobs:
       - name: Test
         run: cargo test --manifest-path src-tauri/Cargo.toml
 
+  e2e:
+    name: E2E (Playwright)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+      - run: npm ci
+      # e2e はテキスト内容ベースの検証なので WebKit を Linux で実行できる（フォント描画に非依存）
+      - name: Install Playwright WebKit
+        run: npx playwright install --with-deps webkit
+      - name: Run E2E tests
+        run: npm run test:e2e
+      - name: Upload report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
   build:
     name: Build (frontend)
     needs: [quality, test, rust]

@@ -728,7 +728,11 @@ npm run generate-screenshots -- home    # capture a single scenario
   e2e smoke test.
 - **macOS only** (Japanese fonts and WebKit rendering differ on Linux). CI runs it on a macOS runner via
   `.github/workflows/screenshots.yml` (manual dispatch) and commits any diff under `resources/screenshots/`.
-- Real-Tauri-WebView acceptance testing (WebdriverIO + `tauri-driver`) has a scaffold under `e2e/`.
+- **Assertion-based E2E**: `npm run test:e2e` runs a Playwright Test suite (`e2e/*.spec.ts`) that reuses the same
+  screenshot-mode server, IPC mocks, and fixtures, but adds explicit `expect()` assertions across the `en` and `ja`
+  locales. Because it checks DOM text (not pixels), it runs headless on Linux in CI (`.github/workflows/ci.yml`). See
+  [`e2e/README.md`](e2e/README.md).
+- Real-Tauri-WebView acceptance testing (WebdriverIO + `tauri-driver`) has an optional scaffold under `e2e/`.
 
 ## License
 
