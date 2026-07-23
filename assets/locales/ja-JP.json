@@ -17,7 +17,10 @@
       "language": "言語",
       "close": "閉じる",
       "open": "設定",
-      "scrollSpeed": "スクロールスピード（秒）"
+      "scrollSpeed": "スクロールスピード（秒）",
+      "embeddedAddons": "同梱アドオン",
+      "disableEmbeddedAddons": "同梱アドオンを常に無効化する",
+      "resetAddonTrust": "アドオンの許可履歴をリセット"
     },
     "presenterView": {
       "open": "発表者ビュー",

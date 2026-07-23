@@ -3,25 +3,26 @@
 import { readFileSync, writeFileSync, mkdirSync, cpSync, existsSync, rmSync } from 'fs'
 import { resolve, dirname } from 'path'
 import { execSync } from 'child_process'
-import { fileURLToPath } from 'url'
+import { fileURLToPath, pathToFileURL } from 'url'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 const projectRoot = resolve(__dirname, '..')
 
 // --- CLI引数パース ---
-function parseArgs(args) {
-  const result = { name: null, slides: null, version: '1.0.0' }
+export function parseArgs(args) {
+  const result = { name: null, slides: null, version: '1.0.0', addons: false }
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--name' && args[i + 1]) result.name = args[++i]
     else if (args[i] === '--slides' && args[i + 1]) result.slides = args[++i]
     else if (args[i] === '--version' && args[i + 1]) result.version = args[++i]
+    else if (args[i] === '--addons') result.addons = true
   }
   return result
 }
 
 // --- JSON内のアセットパスを再帰抽出 ---
-function extractAssetPaths(obj) {
+export function extractAssetPaths(obj) {
   const paths = new Set()
   const prefixes = ['image/', 'voice/', 'theme/', 'font/']
 
@@ -42,6 +43,56 @@ function extractAssetPaths(obj) {
   return [...paths]
 }
 
+// --- アドオン manifest の bundle をパッケージ相対（addons/xxx）へ書き換える ---
+export function rewriteAddonManifestBundles(manifest) {
+  const addons = Array.isArray(manifest?.addons) ? manifest.addons : []
+  return {
+    ...manifest,
+    addons: addons.map((addon) => ({
+      ...addon,
+      bundle: `addons/${String(addon.bundle).split('/').pop()}`,
+    })),
+  }
+}
+
+// --- package.json の files フィールドを組み立てる ---
+export function buildFilesField(assetPaths, includeAddons) {
+  const usedDirs = new Set(assetPaths.map((p) => p.split('/')[0]))
+  const files = ['slides.json', ...usedDirs]
+  if (includeAddons) files.push('addons')
+  return files
+}
+
+// --- ビルド済みアドオン（addons/dist）を outDir/addons へ同梱し、manifest を相対パス化する ---
+function bundleAddons(outDir) {
+  const addonsDistDir = resolve(projectRoot, 'addons', 'dist')
+  const manifestPath = resolve(addonsDistDir, 'manifest.json')
+  if (!existsSync(manifestPath)) {
+    console.warn('Warning: addons/dist/manifest.json が見つかりません（アドオン未ビルド）。アドオン同梱をスキップします')
+    return false
+  }
+
+  const manifest = JSON.parse(readFileSync(manifestPath, 'utf-8'))
+  const outAddonsDir = resolve(outDir, 'addons')
+  mkdirSync(outAddonsDir, { recursive: true })
+
+  let copied = 0
+  for (const addon of manifest.addons ?? []) {
+    const fileName = String(addon.bundle).split('/').pop()
+    const src = resolve(addonsDistDir, fileName)
+    if (existsSync(src)) {
+      cpSync(src, resolve(outAddonsDir, fileName))
+      copied++
+    } else {
+      console.warn(`Warning: ${src} が見つかりません（スキップ）`)
+    }
+  }
+
+  writeFileSync(resolve(outAddonsDir, 'manifest.json'), JSON.stringify(rewriteAddonManifestBundles(manifest), null, 2))
+  console.log(`Bundled ${copied} addon(s)`)
+  return copied > 0
+}
+
 // --- READMEテンプレート読み込み ---
 function generateReadme(name, assetPaths) {
   const templatePath = resolve(__dirname, 'export-slides-readme-template.md')
@@ -59,10 +110,11 @@ function main() {
   const args = parseArgs(process.argv.slice(2))
 
   if (!args.name || !args.slides) {
-    console.error('Usage: node scripts/export-slides.mjs --name <name> --slides <slides.json>')
+    console.error('Usage: node scripts/export-slides.mjs --name <name> --slides <slides.json> [--addons]')
     console.error('  --name     パッケージ名 (例: my-presentation)')
     console.error('  --slides   public/配下のslidesファイル名 (例: slides.json)')
     console.error('  --version  バージョン (デフォルト: 1.0.0)')
+    console.error('  --addons   ビルド済みアドオン (addons/dist) を同梱する')
     process.exit(1)
   }
 
@@ -103,9 +155,11 @@ function main() {
   }
   console.log(`Copied ${copiedCount}/${assetPaths.length} assets`)
 
-  // 使用されているアセットディレクトリを特定
-  const usedDirs = new Set(assetPaths.map((p) => p.split('/')[0]))
-  const filesField = ['slides.json', ...usedDirs]
+  // アドオン同梱（--addons 指定時のみ）
+  let includeAddons = false
+  if (args.addons) {
+    includeAddons = bundleAddons(outDir)
+  }
 
   // package.json 生成
   const packageJson = {
@@ -115,7 +169,7 @@ function main() {
     slidePresentation: {
       entry: 'slides.json',
     },
-    files: filesField,
+    files: buildFilesField(assetPaths, includeAddons),
   }
   writeFileSync(resolve(outDir, 'package.json'), JSON.stringify(packageJson, null, 2))
   console.log('Generated package.json')
@@ -144,4 +198,7 @@ function main() {
   console.log(`  npm install ./dist-slides/${tgzName}`)
 }
 
-main()
+// 直接実行時のみ main() を走らせる（テストからの import では実行しない）
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main()
+}

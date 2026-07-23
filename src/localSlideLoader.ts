@@ -1,4 +1,4 @@
-import { message, open } from '@tauri-apps/plugin-dialog'
+import { ask, message, open } from '@tauri-apps/plugin-dialog'
 import { readTextFile } from '@tauri-apps/plugin-fs'
 import { convertFileSrc, invoke } from '@tauri-apps/api/core'
 import { dirname } from '@tauri-apps/api/path'
@@ -9,12 +9,96 @@ import type { PresentationData } from './data'
 const ASSET_PATH_PREFIXES = ['image/', 'voice/', 'theme/', 'font/']
 const RECENT_PACKAGES_KEY = 'recentSlidePackages'
 const MAX_RECENT_PACKAGES = 8
+/** 同梱アドオンの信頼判断（path → 許可/拒否）の永続化キー */
+const ADDON_TRUST_KEY = 'addonTrust'
+/** 同梱アドオンを一律無効化するグローバル設定の永続化キー */
+const ADDON_DISABLE_KEY = 'disableEmbeddedAddons'
 
 const slidePackageStore = new LazyStore('slide-package-state.json')
 
 export interface LoadedSlidePackage {
   data: PresentationData
   baseDir: string
+  /** 利用者が選択した元パス（.tgz または slides.json）。信頼判断の永続化キーに使う */
+  sourcePath: string
+  /** convertFileSrc で asset URL 化済みのアドオンバンドル URL（manifest 宣言かつ addons/ 配下のみ） */
+  addonScripts: string[]
+  /** アドオン登録の所有者スコープ（= baseDir）。パッケージ切替時の owner 単位アンロードに使用する */
+  owner: string
+}
+
+/** アドオン manifest の最小形（bundle のみ参照する） */
+interface PackageAddonManifest {
+  addons?: Array<{ bundle?: unknown }>
+}
+
+/**
+ * パッケージ同梱アドオンの manifest から、baseDir/addons/ 配下のバンドル相対パスのみを取り出す（純粋関数）。
+ * スコープ外パス（addons/ 以外）は除外する（FR-010）。bundle の先頭スラッシュは正規化する。
+ */
+export function extractAddonBundlePaths(manifest: unknown): string[] {
+  if (!manifest || typeof manifest !== 'object') return []
+  const addons = (manifest as PackageAddonManifest).addons
+  if (!Array.isArray(addons)) return []
+  return addons.map((a) => (a && typeof a.bundle === 'string' ? a.bundle.replace(/^\//, '') : null)).filter((b): b is string => b !== null && b.startsWith('addons/'))
+}
+
+/** path 単位の同梱アドオン信頼判断 */
+export type AddonTrustDecision = 'allowed' | 'denied'
+type AddonTrustMap = Record<string, AddonTrustDecision>
+
+/**
+ * グローバル無効化フラグと path 単位の判断から、アドオンをどう扱うか決める（純粋関数）。
+ * - 一律無効化が ON → 'deny'
+ * - 許可/拒否が永続化済み → その判断
+ * - 未判断 → 'prompt'（呼び出し側が確認ダイアログを出す。既定は拒否）
+ */
+export function resolveAddonTrust(disabled: boolean, decision: AddonTrustDecision | undefined): 'allow' | 'deny' | 'prompt' {
+  if (disabled) return 'deny'
+  if (decision === 'allowed') return 'allow'
+  if (decision === 'denied') return 'deny'
+  return 'prompt'
+}
+
+/** 同梱アドオンが一律無効化されているかを取得する */
+export async function isEmbeddedAddonsDisabled(): Promise<boolean> {
+  return (await slidePackageStore.get<boolean>(ADDON_DISABLE_KEY)) ?? false
+}
+
+/** 同梱アドオンの一律無効化フラグを設定する */
+export async function setEmbeddedAddonsDisabled(disabled: boolean): Promise<void> {
+  await slidePackageStore.set(ADDON_DISABLE_KEY, disabled)
+  await slidePackageStore.save()
+}
+
+/** 許可済み/拒否済みの信頼判断をすべて失効（リセット）する */
+export async function resetAddonTrust(): Promise<void> {
+  await slidePackageStore.set(ADDON_TRUST_KEY, {})
+  await slidePackageStore.save()
+}
+
+/**
+ * 指定 path のパッケージの同梱アドオンをロードしてよいか判定する。
+ * 未判断の場合は確認ダイアログ（既定拒否）を表示し、その結果を path 単位で永続化する（FR-008/009）。
+ */
+export async function isAddonAllowed(path: string): Promise<boolean> {
+  const disabled = await isEmbeddedAddonsDisabled()
+  const trustMap = (await slidePackageStore.get<AddonTrustMap>(ADDON_TRUST_KEY)) ?? {}
+  const outcome = resolveAddonTrust(disabled, trustMap[path])
+  if (outcome === 'allow') return true
+  if (outcome === 'deny') return false
+
+  // 未判断 → 確認ダイアログ（既定は「無効のまま」＝拒否）
+  const allowed = await ask('このパッケージは実行コード（アドオン）を含みます。\n信頼できる発行元の場合のみ有効化してください。', {
+    title: '同梱アドオンの確認',
+    kind: 'warning',
+    okLabel: '有効化する',
+    cancelLabel: '無効のまま',
+  })
+  trustMap[path] = allowed ? 'allowed' : 'denied'
+  await slidePackageStore.set(ADDON_TRUST_KEY, trustMap)
+  await slidePackageStore.save()
+  return allowed
 }
 
 /** スライド読み込みの結果と、それに伴う最近使ったリストの更新をまとめて返す（recentPackages が null のときは変更なし＝再設定不要） */
@@ -72,6 +156,18 @@ async function resolvePackageEntry(selectedPath: string): Promise<{ slidesJsonPa
   return { slidesJsonPath: selectedPath, baseDir: await dirname(selectedPath) }
 }
 
+/** baseDir/addons/manifest.json を読み、宣言されたバンドルを asset URL 化して返す。manifest 不在・不正時は空配列 */
+async function resolvePackageAddons(baseDir: string): Promise<string[]> {
+  try {
+    const raw = await readTextFile(`${baseDir}/addons/manifest.json`)
+    const manifest: unknown = JSON.parse(raw)
+    return extractAddonBundlePaths(manifest).map((bundle) => convertFileSrc(`${baseDir}/${bundle}`))
+  } catch {
+    // manifest が存在しない・不正な場合はアドオンなし（スライド自体は開ける）
+    return []
+  }
+}
+
 /** 指定パス（slides.json または .tgz パッケージ）を読み込み、バリデーション・ローカルアセット解決を行う。失敗時は例外を投げる */
 async function loadSlidePackage(selectedPath: string): Promise<LoadedSlidePackage> {
   const { slidesJsonPath, baseDir } = await resolvePackageEntry(selectedPath)
@@ -85,7 +181,10 @@ async function loadSlidePackage(selectedPath: string): Promise<LoadedSlidePackag
     throw new Error('スライドデータの形式が正しくありません（meta.title、slides 配列などを確認してください）')
   }
 
-  return { data: resolveLocalAssetPaths(parsed, baseDir), baseDir }
+  // allow_asset_dir 完了後に同梱アドオンを解決する（owner はパッケージ単位で一意な baseDir）
+  const addonScripts = await resolvePackageAddons(baseDir)
+
+  return { data: resolveLocalAssetPaths(parsed, baseDir), baseDir, sourcePath: selectedPath, addonScripts, owner: baseDir }
 }
 
 /** 最近使ったリストを取得する */

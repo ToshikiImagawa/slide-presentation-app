@@ -1,0 +1,38 @@
+/**
+ * AC 4.5 の E2E スペック（テンプレート）。
+ * 有効化するには拡張子から `.sample` を外し、e2e/README.md の依存・設定を整えること。
+ * このファイルは Vitest（jsdom）の対象外です（`.sample` 拡張子・e2e/ 配下）。
+ */
+import { browser, $ } from '@wdio/globals'
+
+// 事前に `npm run export:slides -- --name pkgA --slides slides.json --addons` 等で用意した .tgz を開く導線を利用する。
+// アプリ側に E2E 用の「パスを指定して開く」フックがない場合は、最近使ったリストやテスト専用コマンドを併用する。
+
+describe('パッケージ同梱アドオンのライフサイクル (E2E)', () => {
+  it('AC-1: 同梱アドオンを含む pkgA を開くとコンポーネントが解決される', async () => {
+    // TODO: pkgA を開く操作（ファイルダイアログはネイティブのため、テスト専用の起動フック/深いリンク等を用意する）
+    // 例: await openPackageForTest('/abs/path/slides-pkgA-1.0.0.tgz')
+    const fallback = await $('*=Component not found')
+    await expect(fallback).not.toBeExisting()
+  })
+
+  it('AC-2: A→B→A 切替で残留・混線が起きない', async () => {
+    // TODO: pkgA→pkgB→pkgA と切替し、各段でそのパッケージのコンポーネントのみが描画されることを検証
+  })
+
+  it('AC-3: 同一パッケージ再オープンで script が二重注入されない', async () => {
+    // TODO: 同じ data-addon-src の <script> が 1 個であることを DOM で検証
+    const scripts = await browser.$$('script[data-addon-src]')
+    const srcs = await Promise.all(scripts.map((s) => s.getAttribute('data-addon-src')))
+    const unique = new Set(srcs)
+    await expect(srcs.length).toBe(unique.size)
+  })
+
+  it('AC-4: 発表者ビューでも解決される', async () => {
+    // TODO: 発表者ビューウィンドウへスイッチし、fallback が無いことを検証
+  })
+
+  it('AC-5/6: 拒否時はアドオン無効・スライドは開ける', async () => {
+    // TODO: 確認ダイアログで拒否 → 該当コンポーネントは fallback、スライドは表示されることを検証
+  })
+})

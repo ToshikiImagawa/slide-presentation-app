@@ -13,7 +13,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "export:slides": "node scripts/export-slides.mjs"
+    "export:slides": "npm run build:addons && node scripts/export-slides.mjs"
   },
   "keywords": [],
   "author": "",

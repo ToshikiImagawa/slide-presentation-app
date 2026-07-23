@@ -1,5 +1,5 @@
 import { createRoot } from 'react-dom/client'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { ThemeProvider } from '@mui/material/styles'
 import { emit, listen } from '@tauri-apps/api/event'
 import type { UnlistenFn } from '@tauri-apps/api/event'
@@ -7,7 +7,9 @@ import 'reveal.js/dist/reveal.css'
 import './styles/global.css'
 import './addon-bridge'
 import { applyTheme, applyThemeData } from './applyTheme'
+import { loadAddonScripts, loadBuiltinAddons } from './addonLoader'
 import { registerDefaultComponents } from './components/registerDefaults'
+import { unregisterOwner } from './components/ComponentRegistry'
 import { PresenterViewWindow } from './components/PresenterViewWindow'
 import { I18nProvider, loadLocales, useTranslation } from './i18n'
 import { theme } from './theme'
@@ -18,44 +20,40 @@ const EVENT_NAME = 'presenter-view'
 // デフォルトコンポーネントを登録
 registerDefaultComponents()
 
-type AddonManifest = {
-  addons: Array<{ name: string; bundle: string }>
-}
-
-function loadAddonScript(src: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const script = document.createElement('script')
-    script.src = src
-    script.onload = () => resolve()
-    script.onerror = () => reject(new Error(`Failed to load addon: ${src}`))
-    document.head.appendChild(script)
-  })
-}
-
-async function loadAddons(): Promise<void> {
-  try {
-    const res = await fetch('/addons/manifest.json')
-    if (!res.ok) return
-    const manifest: AddonManifest = await res.json()
-    await Promise.all(manifest.addons.map((addon) => loadAddonScript(addon.bundle)))
-  } catch {
-    // manifest が存在しない、またはロード失敗時はフォールバック（アドオンなし）
-  }
-}
-
 function PresenterViewApp() {
   const [slides, setSlides] = useState<SlideData[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [controlState, setControlState] = useState<PresenterControlState | null>(null)
   const [progressState, setProgressState] = useState<{ progress: number; visible: boolean; animationDuration?: number }>({ progress: 0, visible: false })
 
+  // 現在登録済みのパッケージアドオンの owner（切替時のアンロード対象）
+  const currentOwnerRef = useRef<string | undefined>(undefined)
+  // 直近のアドオンロード完了を待つための Promise。slides 描画はこれの完了後に行う
+  const addonLoadRef = useRef<Promise<void>>(Promise.resolve())
+
   useEffect(() => {
     let unlisten: UnlistenFn | undefined
 
-    listen<PresenterViewMessage>(EVENT_NAME, (event) => {
-      if (event.payload.type === 'slideChanged') {
-        setSlides(event.payload.payload.slides)
-        setCurrentIndex(event.payload.payload.currentIndex)
+    listen<PresenterViewMessage>(EVENT_NAME, async (event) => {
+      if (event.payload.type === 'addonsChanged') {
+        const { owner, scripts } = event.payload.payload
+        // 旧 owner を破棄してから新アドオンをロードする（slideChanged 側がこの完了を待つ）
+        // ロード失敗時も slides 描画をブロックしないよう握りつぶす（未解決コンポーネントは fallback 表示）
+        addonLoadRef.current = (async () => {
+          try {
+            if (currentOwnerRef.current) unregisterOwner(currentOwnerRef.current)
+            currentOwnerRef.current = scripts.length > 0 ? owner : undefined
+            if (scripts.length > 0) await loadAddonScripts(scripts, owner)
+          } catch (error) {
+            console.error('[presenter-view] アドオンのロードに失敗しました（アドオンなしで続行）', error)
+          }
+        })()
+      } else if (event.payload.type === 'slideChanged') {
+        const { slides, currentIndex } = event.payload.payload
+        // アドオンのロード完了を待ってから描画し、未解決コンポーネントの fallback 表示を避ける
+        await addonLoadRef.current
+        setSlides(slides)
+        setCurrentIndex(currentIndex)
       } else if (event.payload.type === 'controlStateChanged') {
         setControlState(event.payload.payload)
       } else if (event.payload.type === 'progressChanged') {
@@ -158,8 +156,8 @@ function WaitingMessage() {
 
 const root = createRoot(document.getElementById('root')!)
 
-// アドオン・言語リソースをロードしてからレンダリングする
-Promise.all([loadAddons(), loadLocales()]).then(([, locales]) => {
+// 組み込みアドオン・言語リソースをロードしてからレンダリングする
+Promise.all([loadBuiltinAddons(), loadLocales()]).then(([, locales]) => {
   root.render(
     <I18nProvider locales={locales}>
       <PresenterViewApp />

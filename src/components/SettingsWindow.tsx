@@ -6,9 +6,15 @@ type SettingsWindowProps = {
   onClose: () => void
   scrollSpeed: number
   setScrollSpeed: (speed: number) => void
+  /** 同梱アドオンの一律無効化フラグ（未指定時はアドオン設定セクションを表示しない） */
+  embeddedAddonsDisabled?: boolean
+  /** 一律無効化トグルの変更ハンドラ */
+  onToggleEmbeddedAddons?: (disabled: boolean) => void
+  /** アドオン許可履歴のリセットハンドラ */
+  onResetAddonTrust?: () => void
 }
 
-export function SettingsWindow({ open, onClose, scrollSpeed, setScrollSpeed }: SettingsWindowProps) {
+export function SettingsWindow({ open, onClose, scrollSpeed, setScrollSpeed, embeddedAddonsDisabled, onToggleEmbeddedAddons, onResetAddonTrust }: SettingsWindowProps) {
   const { locale, locales, setLocale } = useI18n()
   const { t } = useTranslation()
 
@@ -56,6 +62,24 @@ export function SettingsWindow({ open, onClose, scrollSpeed, setScrollSpeed }: S
               }}
             />
           </div>
+          {onToggleEmbeddedAddons && (
+            <>
+              <div className={styles.settingRow}>
+                <label className={styles.label} htmlFor="disable-addons-input">
+                  {t('settings.disableEmbeddedAddons')}
+                </label>
+                <input type="checkbox" id="disable-addons-input" checked={embeddedAddonsDisabled ?? false} onChange={(e) => onToggleEmbeddedAddons(e.target.checked)} />
+              </div>
+              {onResetAddonTrust && (
+                <div className={styles.settingRow}>
+                  <label className={styles.label}>{t('settings.embeddedAddons')}</label>
+                  <button type="button" className={styles.footerButton} onClick={onResetAddonTrust}>
+                    {t('settings.resetAddonTrust')}
+                  </button>
+                </div>
+              )}
+            </>
+          )}
         </div>
         <div className={styles.footer}>
           <button className={styles.footerButton} onClick={onClose}>

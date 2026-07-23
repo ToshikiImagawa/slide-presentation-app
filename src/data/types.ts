@@ -108,6 +108,8 @@ export type PresenterViewMessage =
   | { type: 'autoPlayToggle' }
   | { type: 'autoSlideshowToggle' }
   | { type: 'scrollSpeedChange'; payload: { speed: number } }
+  // メインウィンドウ → 発表者ビュー（パッケージ切替に伴う同梱アドオンの変更を伝搬する）
+  | { type: 'addonsChanged'; payload: { owner: string; scripts: string[] } }
   // 双方向
   | { type: 'presenterViewReady' }
   | { type: 'presenterViewClosed' }

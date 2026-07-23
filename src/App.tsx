@@ -10,6 +10,7 @@ import { SlideRenderer } from './components/SlideRenderer'
 import { registerDefaultComponents } from './components/registerDefaults'
 import { getDefaultPresentationData, loadPresentationData } from './data'
 import type { PresentationData } from './data'
+import { isEmbeddedAddonsDisabled, resetAddonTrust, setEmbeddedAddonsDisabled } from './localSlideLoader'
 import { getVoicePath } from './data/noteHelpers'
 import { useAudioPlayer } from './hooks/useAudioPlayer'
 import { useAutoSlideshow } from './hooks/useAutoSlideshow'
@@ -27,14 +28,33 @@ registerDefaultComponents()
 type AppProps = {
   presentationData?: PresentationData
   onGoHome: () => void
+  /** 現在のパッケージ同梱アドオンの owner（発表者ビューへの伝搬用） */
+  addonOwner?: string
+  /** 現在のパッケージ同梱アドオンの asset URL 群（発表者ビューへの伝搬用） */
+  addonScripts?: string[]
 }
 
-export function App({ presentationData, onGoHome }: AppProps) {
+export function App({ presentationData, onGoHome, addonOwner, addonScripts }: AppProps) {
   const { locale } = useI18n()
   const defaultData = useMemo(() => getDefaultPresentationData(locale), [locale])
   const data = loadPresentationData(presentationData, defaultData)
   const [currentIndex, setCurrentIndex] = useState(0)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [addonsDisabled, setAddonsDisabled] = useState(false)
+
+  // 同梱アドオンの一律無効化フラグを永続ストアから復元する
+  useEffect(() => {
+    void isEmbeddedAddonsDisabled().then(setAddonsDisabled)
+  }, [])
+
+  const handleToggleAddonsDisabled = useCallback((disabled: boolean) => {
+    setAddonsDisabled(disabled)
+    void setEmbeddedAddonsDisabled(disabled)
+  }, [])
+
+  const handleResetAddonTrust = useCallback(() => {
+    void resetAddonTrust()
+  }, [])
 
   const audioPlayer = useAudioPlayer()
 
@@ -82,6 +102,8 @@ export function App({ presentationData, onGoHome }: AppProps) {
 
   const { openPresenterView, isOpen, sendSlideState, sendControlState, sendProgressState } = usePresenterView({
     slides: data.slides,
+    addonOwner,
+    addonScripts,
     onNavigate: handleNavigate,
     onAudioToggle: handleAudioToggle,
     onAutoPlayToggle: handleAutoPlayToggle,
@@ -197,7 +219,15 @@ export function App({ presentationData, onGoHome }: AppProps) {
         />
         <PresenterViewButton onClick={openPresenterView} isOpen={isOpen} />
       </div>
-      <SettingsWindow open={settingsOpen} onClose={() => setSettingsOpen(false)} scrollSpeed={scrollSpeed} setScrollSpeed={setScrollSpeed} />
+      <SettingsWindow
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        scrollSpeed={scrollSpeed}
+        setScrollSpeed={setScrollSpeed}
+        embeddedAddonsDisabled={addonsDisabled}
+        onToggleEmbeddedAddons={handleToggleAddonsDisabled}
+        onResetAddonTrust={handleResetAddonTrust}
+      />
     </ThemeProvider>
   )
 }
