@@ -7,9 +7,12 @@ dist/
 .env.local
 .env.*.local
 
+# contents
 public/
 addons/src/
 addons/dist/
 addons/.entry-generated.ts
-
 dist-slides/
+
+# sdd
+.sdd/.cache/
