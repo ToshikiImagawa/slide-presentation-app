@@ -1,5 +1,7 @@
 # Slide Presentation App
 
+**English** | [日本語](README.ja.md)
+
 A slide presentation tool built with React + Reveal.js, packaged as a local desktop app with Tauri.
 Define slide content and themes using JSON files and display them as presentations in a native window.
 
@@ -23,6 +25,17 @@ Under the hood, the app is built on React and Reveal.js, providing smooth transi
 notes, keyboard navigation, and a plugin system for custom components. The result is a polished presentation tool with
 the simplicity and automation benefits of a data-driven approach.
 
+## Screenshots
+
+|                                                             |                                                         |
+|:-----------------------------------------------------------:|:-------------------------------------------------------:|
+|                          **Home**                           |                    **Presentation**                     |
+|       ![Home screen](resources/screenshots/en/home.png)        | ![Presentation](resources/screenshots/en/presentation.png) |
+|                     **Presenter View**                      |                      **Settings**                       |
+| ![Presenter view](resources/screenshots/en/presenter-view.png) |     ![Settings](resources/screenshots/en/settings.png)     |
+
+> These images are generated automatically — see [Screenshots & E2E](#screenshots--e2e).
+
 ## Setup
 
 ```bash
@@ -34,25 +47,42 @@ Running the app requires a Rust toolchain (`cargo`/`rustc`) for Tauri. See the
 
 ## Commands
 
-| Command                 | Description                                                |
-|--------------------------|------------------------------------------------------------|
-| `npm run tauri:dev`      | Start the desktop app (Tauri + addon build + Vite HMR)      |
-| `npm run tauri:build`    | Build the desktop app bundle                                |
-| `npm run dev`            | Start frontend-only dev server (addon build + Vite HMR)     |
-| `npm run build`          | Frontend-only production build (addon build + output to `dist/`) |
-| `npm run build:addons`   | Build addons only                                           |
-| `npm run preview`        | Preview built files                                          |
-| `npm run format`         | Format code with Prettier (`src/**/*.{ts,tsx,css}`)          |
-| `npm run typecheck`      | TypeScript type check                                        |
-| `npm run test`           | Run tests (Vitest)                                            |
-| `npm run test:watch`     | Run tests in watch mode                                       |
-| `npm run export:slides`  | Export slide content as an npm package (.tgz)                 |
+| Command                        | Description                                                                             |
+|--------------------------------|-----------------------------------------------------------------------------------------|
+| `npm run tauri:dev`            | Start the desktop app (Tauri + addon build + Vite HMR)                                  |
+| `npm run tauri:build`          | Build the desktop app bundle                                                            |
+| `npm run dev`                  | Start frontend-only dev server (addon build + Vite HMR)                                 |
+| `npm run build`                | Frontend-only production build (addon build + output to `dist/`)                        |
+| `npm run build:addons`         | Build addons only                                                                       |
+| `npm run preview`              | Preview built files                                                                     |
+| `npm run format`               | Format code with Prettier (`src/**/*.{ts,tsx,css}`)                                     |
+| `npm run typecheck`            | TypeScript type check                                                                   |
+| `npm run test`                 | Run tests (Vitest)                                                                      |
+| `npm run test:watch`           | Run tests in watch mode                                                                 |
+| `npm run export:slides`        | Export slide content as an npm package (.tgz)                                           |
+| `npm run format:check`         | Check formatting with Prettier (no writes; used in CI)                                  |
+| `npm run generate-icons`       | Regenerate `src-tauri/icons/` from `resources/icon.svg` (macOS only)                    |
+| `npm run generate-screenshots` | Capture README screenshots with Playwright WebKit (macOS only; doubles as an e2e smoke) |
+| `npm run screenshots:compare`  | Diff a real-app screenshot against a mock one (pixelmatch)                              |
+| `npm run generate-docs`        | Render `README.md` / `CHANGELOG.md` to PDF under `docs/`                                |
+
+## Home Screen
+
+On launch, the app opens on a home screen where you choose what to present.
+
+| Action              | Description                                                                                 |
+|---------------------|---------------------------------------------------------------------------------------------|
+| **Open a File**     | Pick a `slides.json` or a `.tgz` slide package from disk                                    |
+| **Open Sample**     | Load the bundled sample deck (the built-in template guide when no `slides.json` is bundled) |
+| **Recently Opened** | Re-open a recently used package; the list is persisted across launches                      |
+
+While presenting, the **Home** button in the top-left toolbar returns to this screen.
 
 ## Opening a Local Slide Package
 
 Besides the slide content bundled at build time (see [Slide Packages](#slide-packages) below), you can pick a
 `slides.json` file, or a `.tgz` slide package produced by `npm run export:slides`, from disk at any time using the
-**Open Slides** button in the toolbar. `.tgz` packages are extracted into the app's cache directory first. Any
+**Open a File** button on the home screen. `.tgz` packages are extracted into the app's cache directory first. Any
 `image/`, `voice/`, `theme/`, or `font/` relative references inside the slide data are resolved against the folder
 the content lives in. The app remembers the last opened file and reloads it automatically on next launch.
 
@@ -99,7 +129,9 @@ Customize the presentation logo via the `meta.logo` field.
 | `height` | number | `40`        | Logo height (px)   |
 
 If `meta.logo` is omitted, no logo will be displayed. If `width` and `height` are omitted, the defaults of `120` and`40`
-are used respectively.
+are used respectively. The logo is shown in the bottom-left corner of every slide.
+
+![Logo shown in the bottom-left corner](resources/screenshots/en/logo.png)
 
 ### Layouts
 
@@ -127,6 +159,19 @@ The `content` layout determines rendering based on child element fields.
 | `steps`     | Timeline         |
 | `tiles`     | FeatureTileGrid  |
 | `component` | Custom component |
+
+#### Layout Examples
+
+|                                                                   |                                                                  |
+| :---------------------------------------------------------------: | :--------------------------------------------------------------: |
+|                  `content` — Timeline (`steps`)                   |             `content` — FeatureTileGrid (`tiles`)                |
+| ![content steps](resources/screenshots/en/layout-content-steps.png) | ![content tiles](resources/screenshots/en/layout-content-tiles.png) |
+|                           `two-column`                            |                 `center` (`variant: "section"`)                  |
+|    ![two-column](resources/screenshots/en/layout-two-column.png)     |       ![center section](resources/screenshots/en/layout-section.png)|
+|              `bleed` — full-width two-column                       |             `custom` — full-screen component                     |
+|         ![bleed](resources/screenshots/en/layout-bleed.png)          |        ![custom](resources/screenshots/en/layout-custom.png)        |
+
+> The `center` cover/title layout is shown in the [Screenshots](#screenshots) section above.
 
 ### Two-Column Layout Details
 
@@ -424,6 +469,8 @@ Keys within `ui` support up to two levels of nesting (`section.key`).
 Click the "Presenter View" button in the upper right of the presentation screen to open the presenter view in a separate
 window. UI labels in the presenter view follow the language setting described in the Internationalization section.
 
+![Presenter view](resources/screenshots/en/presenter-view.png)
+
 ### Panel Layout
 
 The presenter view consists of the following areas.
@@ -460,7 +507,8 @@ according to the language setting.
 
 ### Bidirectional Sync
 
-The main window and presenter view are bidirectionally synced via `BroadcastChannel`.
+The main window and presenter view are bidirectionally synced via Tauri events (`@tauri-apps/api/event`, event name
+`presenter-view`). The presenter view runs as a separate native Tauri window.
 
 - Navigating slides in the main window updates the presenter view in real time
 - Navigating slides or controlling audio from the presenter view is reflected in the main window
@@ -491,6 +539,8 @@ On slides with a `voice` defined, the following buttons appear in the upper-righ
 
 The toolbar is displayed at reduced opacity by default and fully visible on hover. The same controls are available from
 the presenter view's control bar.
+
+![Toolbar — left: Home / Settings, right: audio playback / auto-play / auto-slideshow / presenter view](resources/screenshots/en/toolbar.png)
 
 ### Manual Playback
 
@@ -588,11 +638,11 @@ Export and distribute slide content (slides.json + images, audio, themes, fonts,
 npm run export:slides -- --name my-presentation --slides slides.json
 ```
 
-| Option      | Required | Description                                  |
-|-------------|:--------:|----------------------------------------------|
-| `--name`    |   Yes    | Package name (generated as `@slides/{name}`) |
-| `--slides`  |   Yes    | Slide JSON filename under `public/`          |
-| `--version` |          | Version (default: `1.0.0`)                   |
+| Option      | Required | Description                                           |
+|-------------|:--------:|-------------------------------------------------------|
+| `--name`    |   Yes    | Package name (generated as `@slides/{name}`)          |
+| `--slides`  |   Yes    | Slide JSON filename under `public/`                   |
+| `--version` |          | Version (default: `1.0.0`)                            |
 | `--addons`  |          | Bundle built add-ons (`addons/dist`) into the package |
 
 This generates a `.tgz` file in `dist-slides/`. Asset paths referenced in slides.json (`image/`, `voice/`, `theme/`,
@@ -610,10 +660,11 @@ switching between packages unloads the previous package's add-ons and prevents n
 > could reach any capability the app exposes. Therefore:
 >
 > - The first time you open a package that contains add-ons, a confirmation dialog appears. **Add-ons are disabled by
->   default** — they are only loaded if you explicitly enable them. Your choice (allow / deny) is remembered per package.
+    > default** — they are only loaded if you explicitly enable them. Your choice (allow / deny) is remembered per
+    package.
 > - If you deny, the slides still open normally; unresolved components fall back to a placeholder.
 > - You can turn off embedded add-ons entirely from **Settings → “Always disable embedded add-ons”**, and reset all
->   remembered allow/deny decisions with **“Reset add-on trust history.”**
+    > remembered allow/deny decisions with **“Reset add-on trust history.”**
 >
 > Only add-ons declared in the package's `addons/manifest.json` and located under `addons/` are ever loaded.
 
@@ -657,6 +708,27 @@ VITE_SLIDE_PACKAGE=@slides/my-presentation
 
 - If a file with the same name exists in `public/`, the `public/` file takes priority (package serves as fallback)
 - During `npm run build`, package assets are copied to `dist/` (existing files are not overwritten)
+
+## Screenshots & E2E
+
+The screenshots in this README are produced by a Playwright (WebKit) script that also serves as an end-to-end smoke
+test.
+
+```bash
+npm run generate-screenshots            # capture all scenarios
+npm run generate-screenshots -- home    # capture a single scenario
+```
+
+- Runs the app via `vite --mode screenshot`, replacing the Tauri IPC layer with in-memory mocks (`src/__screenshot__/`)
+  so the UI boots in a plain browser. A locale-specific fixture deck (`scripts/screenshot/fixtures/slides.{en,ja}.json`)
+  is served as `/slides.json` based on the browser locale.
+- Captures every scenario (`home`, `presentation`, `toolbar`, `settings`, `presenter-view`, the `layout-*` gallery, and
+  `logo`) for both locales, compositing a macOS window frame. English shots go to `resources/screenshots/en/` and
+  Japanese to `resources/screenshots/ja/`. If any scenario's wait fails, the run exits non-zero — so it doubles as an
+  e2e smoke test.
+- **macOS only** (Japanese fonts and WebKit rendering differ on Linux). CI runs it on a macOS runner via
+  `.github/workflows/screenshots.yml` (manual dispatch) and commits any diff under `resources/screenshots/`.
+- Real-Tauri-WebView acceptance testing (WebdriverIO + `tauri-driver`) has a scaffold under `e2e/`.
 
 ## License
 

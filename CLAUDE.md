@@ -16,10 +16,27 @@ npm run build        # フロントエンドのみプロダクションビルド
 npm run build:addons # アドオンのみビルド
 npm run preview      # ビルド済みファイルのプレビュー
 npm run format       # Prettier でコード整形（src/**/*.{ts,tsx,css}）
+npm run format:check # Prettier の整形チェック（CI 用・書き換えなし）
 npm run typecheck    # TypeScript 型チェック
-npm run test         # テスト実行（Vitest）
+npm run test         # テスト実行（Vitest 単体テスト）
 npm run test:watch   # テスト監視モード
+npm run generate-icons       # resources/icon.svg から src-tauri/icons/ を再生成（macOS 専用: sips + tauri icon）
+npm run generate-screenshots # README 用スクリーンショット撮影（Playwright WebKit・macOS 専用・e2e スモーク兼用）
+npm run screenshots:compare  # 実アプリ画像とモック画像の手動比較（pixelmatch）
+npm run generate-docs        # README.md / CHANGELOG.md を PDF 化（docs/ に出力・puppeteer）
 ```
+
+### スナップショット / e2e（スクリーンショット機構）
+
+`npm run generate-screenshots` が唯一のブラウザ自動化で、**e2e スモークを兼ねる**（各シナリオの待受が失敗すると非ゼロ終了）。仕組み:
+
+- `vite --mode screenshot` を起動し、Tauri IPC を `src/__screenshot__/`（`tauri-store` / `tauri-event` / `tauri-webview`）へ **Vite alias で差し替え**て素のブラウザで boot させる（本番ビルドには非混入。`@tauri-apps/api/core` は実物の plugin-fs/dialog が依存するため alias しない）。
+- スライド内容はロケール別 fixture `scripts/screenshot/fixtures/slides.{ja,en}.json` を `/slides.json` として配信する（`Accept-Language` で出し分け）。
+- Playwright **WebKit** で撮影し、`scripts/screenshot/chrome.mjs` が macOS ウィンドウ枠を合成。**en / ja の 2 ロケール**で撮影し、`resources/screenshots/en/`・`resources/screenshots/ja/` に出力する（Playwright の context `locale` で UI 言語と fixture を切り替え）。
+- シナリオは `scripts/screenshot/scenarios.mjs`（`home` / `presentation` / `toolbar` / `settings` / `presenter-view` / `layout-*` / `logo`）。回帰検知は **git 差分ベース**（閾値自動判定はしない）。
+- **日本語フォント・WebKit 描画差のため macOS で実行する**（CI は `.github/workflows/screenshots.yml` の macOS ランナー・手動 dispatch）。
+- 実機 Tauri WebView 上の受け入れ検証用に WebdriverIO の雛形が `e2e/`（未配線）に別途ある。
+- ドキュメントは英日 2 言語: `README.md` / `CHANGELOG.md`（英語）と `README.ja.md` / `CHANGELOG.ja.md`（日本語）。英語版は `en/`、日本語版は `ja/` のスクリーンショットを参照する。`npm run generate-docs` は全 4 ファイルを PDF 化する。
 
 ## アーキテクチャ
 
