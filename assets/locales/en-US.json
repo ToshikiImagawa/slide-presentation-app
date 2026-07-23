@@ -17,7 +17,10 @@
       "language": "Language",
       "close": "Close",
       "open": "Settings",
-      "scrollSpeed": "Scroll Speed (sec)"
+      "scrollSpeed": "Scroll Speed (sec)",
+      "embeddedAddons": "Embedded add-ons",
+      "disableEmbeddedAddons": "Always disable embedded add-ons",
+      "resetAddonTrust": "Reset add-on trust history"
     },
     "presenterView": {
       "open": "Presenter View",

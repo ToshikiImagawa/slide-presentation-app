@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { upsertRecentEntry, removeRecentEntry } from '../localSlideLoader'
+import { upsertRecentEntry, removeRecentEntry, extractAddonBundlePaths, resolveAddonTrust } from '../localSlideLoader'
 import type { RecentSlidePackageEntry } from '../localSlideLoader'
 
 function entry(path: string, openedAt = 0): RecentSlidePackageEntry {
@@ -38,5 +38,53 @@ describe('removeRecentEntry', () => {
     const list = [entry('/a'), entry('/b')]
     const result = removeRecentEntry(list, '/z')
     expect(result.map((e) => e.path)).toEqual(['/a', '/b'])
+  })
+})
+
+describe('extractAddonBundlePaths', () => {
+  it('addons/ 配下の bundle を相対パスで取り出す', () => {
+    const manifest = { addons: [{ name: 'x', bundle: 'addons/addons.iife.js' }] }
+    expect(extractAddonBundlePaths(manifest)).toEqual(['addons/addons.iife.js'])
+  })
+
+  it('先頭スラッシュ付きの絶対パスを正規化する', () => {
+    const manifest = { addons: [{ name: 'x', bundle: '/addons/addons.iife.js' }] }
+    expect(extractAddonBundlePaths(manifest)).toEqual(['addons/addons.iife.js'])
+  })
+
+  it('addons/ 以外（スコープ外）のパスを除外する', () => {
+    const manifest = { addons: [{ bundle: 'addons/ok.js' }, { bundle: '../evil.js' }, { bundle: 'other/x.js' }] }
+    expect(extractAddonBundlePaths(manifest)).toEqual(['addons/ok.js'])
+  })
+
+  it('addons 配列がない・不正な manifest では空配列を返す', () => {
+    expect(extractAddonBundlePaths({})).toEqual([])
+    expect(extractAddonBundlePaths(null)).toEqual([])
+    expect(extractAddonBundlePaths('nope')).toEqual([])
+    expect(extractAddonBundlePaths({ addons: 'x' })).toEqual([])
+  })
+
+  it('bundle が文字列でないエントリを除外する', () => {
+    const manifest = { addons: [{ bundle: 42 }, { bundle: 'addons/ok.js' }, {}] }
+    expect(extractAddonBundlePaths(manifest)).toEqual(['addons/ok.js'])
+  })
+})
+
+describe('resolveAddonTrust', () => {
+  it('一律無効化が ON なら判断内容に関わらず deny', () => {
+    expect(resolveAddonTrust(true, undefined)).toBe('deny')
+    expect(resolveAddonTrust(true, 'allowed')).toBe('deny')
+  })
+
+  it('許可済みは allow', () => {
+    expect(resolveAddonTrust(false, 'allowed')).toBe('allow')
+  })
+
+  it('拒否済みは deny', () => {
+    expect(resolveAddonTrust(false, 'denied')).toBe('deny')
+  })
+
+  it('未判断は prompt（既定は呼び出し側で拒否）', () => {
+    expect(resolveAddonTrust(false, undefined)).toBe('prompt')
   })
 })

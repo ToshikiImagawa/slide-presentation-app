@@ -9,7 +9,15 @@ const enUS: LocaleResource = {
   languageCode: 'en-US',
   languageName: 'English',
   ui: {
-    settings: { title: 'Settings', language: 'Language', close: 'Close', scrollSpeed: 'Scroll Speed (sec)' },
+    settings: {
+      title: 'Settings',
+      language: 'Language',
+      close: 'Close',
+      scrollSpeed: 'Scroll Speed (sec)',
+      embeddedAddons: 'Embedded add-ons',
+      disableEmbeddedAddons: 'Always disable embedded add-ons',
+      resetAddonTrust: 'Reset add-on trust history',
+    },
   },
 }
 
@@ -114,5 +122,59 @@ describe('SettingsWindow', () => {
     fireEvent.change(select, { target: { value: 'ja-JP' } })
 
     expect(select.value).toBe('ja-JP')
+  })
+
+  describe('同梱アドオン設定', () => {
+    it('onToggleEmbeddedAddons 未指定時はアドオン設定を表示しない（後方互換）', () => {
+      render(
+        <Wrapper>
+          <SettingsWindow open={true} onClose={() => {}} scrollSpeed={20} setScrollSpeed={() => {}} />
+        </Wrapper>,
+      )
+      expect(screen.queryByText('Always disable embedded add-ons')).toBeNull()
+    })
+
+    it('ハンドラ指定時に無効化トグルとリセットボタンが表示される', () => {
+      render(
+        <Wrapper>
+          <SettingsWindow open={true} onClose={() => {}} scrollSpeed={20} setScrollSpeed={() => {}} embeddedAddonsDisabled={false} onToggleEmbeddedAddons={() => {}} onResetAddonTrust={() => {}} />
+        </Wrapper>,
+      )
+      expect(screen.getByText('Always disable embedded add-ons')).toBeDefined()
+      const checkbox = screen.getByRole('checkbox') as HTMLInputElement
+      expect(checkbox.checked).toBe(false)
+      expect(screen.getByRole('button', { name: 'Reset add-on trust history' })).toBeDefined()
+    })
+
+    it('embeddedAddonsDisabled=true でチェックボックスが ON', () => {
+      render(
+        <Wrapper>
+          <SettingsWindow open={true} onClose={() => {}} scrollSpeed={20} setScrollSpeed={() => {}} embeddedAddonsDisabled={true} onToggleEmbeddedAddons={() => {}} />
+        </Wrapper>,
+      )
+      expect((screen.getByRole('checkbox') as HTMLInputElement).checked).toBe(true)
+    })
+
+    it('トグル切替で onToggleEmbeddedAddons が呼ばれる', () => {
+      const onToggle = vi.fn()
+      render(
+        <Wrapper>
+          <SettingsWindow open={true} onClose={() => {}} scrollSpeed={20} setScrollSpeed={() => {}} embeddedAddonsDisabled={false} onToggleEmbeddedAddons={onToggle} />
+        </Wrapper>,
+      )
+      fireEvent.click(screen.getByRole('checkbox'))
+      expect(onToggle).toHaveBeenCalledWith(true)
+    })
+
+    it('リセットボタンで onResetAddonTrust が呼ばれる', () => {
+      const onReset = vi.fn()
+      render(
+        <Wrapper>
+          <SettingsWindow open={true} onClose={() => {}} scrollSpeed={20} setScrollSpeed={() => {}} embeddedAddonsDisabled={false} onToggleEmbeddedAddons={() => {}} onResetAddonTrust={onReset} />
+        </Wrapper>,
+      )
+      fireEvent.click(screen.getByRole('button', { name: 'Reset add-on trust history' }))
+      expect(onReset).toHaveBeenCalledTimes(1)
+    })
   })
 })

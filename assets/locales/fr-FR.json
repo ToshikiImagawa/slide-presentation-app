@@ -17,7 +17,10 @@
       "language": "Langue",
       "close": "Fermer",
       "open": "Paramètres",
-      "scrollSpeed": "Vitesse de défilement (sec)"
+      "scrollSpeed": "Vitesse de défilement (sec)",
+      "embeddedAddons": "Modules complémentaires intégrés",
+      "disableEmbeddedAddons": "Toujours désactiver les modules complémentaires intégrés",
+      "resetAddonTrust": "Réinitialiser l'historique de confiance des modules"
     },
     "presenterView": {
       "open": "Vue présentateur",

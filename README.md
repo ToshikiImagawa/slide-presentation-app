@@ -593,9 +593,29 @@ npm run export:slides -- --name my-presentation --slides slides.json
 | `--name`    |   Yes    | Package name (generated as `@slides/{name}`) |
 | `--slides`  |   Yes    | Slide JSON filename under `public/`          |
 | `--version` |          | Version (default: `1.0.0`)                   |
+| `--addons`  |          | Bundle built add-ons (`addons/dist`) into the package |
 
 This generates a `.tgz` file in `dist-slides/`. Asset paths referenced in slides.json (`image/`, `voice/`, `theme/`,
-`font/`) are auto-detected and included in the package.
+`font/`) are auto-detected and included in the package. When `--addons` is passed, the built add-ons are bundled under
+`addons/` and are dynamically loaded after the package is opened (Tauri runtime only — see below).
+
+### Embedded Add-ons (Runtime Loading)
+
+When a `.tgz` is opened in the desktop app, any add-ons bundled under its `addons/` directory are loaded at runtime and
+their components become resolvable from `{ "component": { "name": ... } }`. Add-ons are scoped per package (owner), so
+switching between packages unloads the previous package's add-ons and prevents name collisions.
+
+> ⚠️ **Security: only open packages from publishers you trust.**
+> Embedded add-ons are JavaScript that runs with the **same privileges as the app** (no sandbox). A malicious package
+> could reach any capability the app exposes. Therefore:
+>
+> - The first time you open a package that contains add-ons, a confirmation dialog appears. **Add-ons are disabled by
+>   default** — they are only loaded if you explicitly enable them. Your choice (allow / deny) is remembered per package.
+> - If you deny, the slides still open normally; unresolved components fall back to a placeholder.
+> - You can turn off embedded add-ons entirely from **Settings → “Always disable embedded add-ons”**, and reset all
+>   remembered allow/deny decisions with **“Reset add-on trust history.”**
+>
+> Only add-ons declared in the package's `addons/manifest.json` and located under `addons/` are ever loaded.
 
 ### Import (Use Package)
 

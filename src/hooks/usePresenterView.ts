@@ -9,6 +9,10 @@ const PRESENTER_WINDOW_LABEL = 'presenterView'
 
 export interface UsePresenterViewOptions {
   slides: SlideData[]
+  /** 現在のパッケージ同梱アドオンの owner（組み込みのみの場合は空文字） */
+  addonOwner?: string
+  /** 現在のパッケージ同梱アドオンの asset URL 群（発表者ビューへ伝搬してロードさせる） */
+  addonScripts?: string[]
   onNavigate?: (direction: 'prev' | 'next') => void
   onAudioToggle?: () => void
   onAutoPlayToggle?: () => void
@@ -24,7 +28,7 @@ export interface UsePresenterViewReturn {
   sendProgressState: (progress: number, visible: boolean, animationDuration?: number) => void
 }
 
-export function usePresenterView({ slides, onNavigate, onAudioToggle, onAutoPlayToggle, onAutoSlideshowToggle, onScrollSpeedChange }: UsePresenterViewOptions): UsePresenterViewReturn {
+export function usePresenterView({ slides, addonOwner = '', addonScripts = [], onNavigate, onAudioToggle, onAutoPlayToggle, onAutoSlideshowToggle, onScrollSpeedChange }: UsePresenterViewOptions): UsePresenterViewReturn {
   const [isOpen, setIsOpen] = useState(false)
 
   // コールバックを useRef で保持（stale closure 回避）
@@ -58,6 +62,9 @@ export function usePresenterView({ slides, onNavigate, onAudioToggle, onAutoPlay
       const msg = event.payload
       if (msg.type === 'presenterViewReady') {
         setIsOpen(true)
+        // アドオンを slides より先に伝搬し、発表者ビューが描画前にロード・登録できるようにする
+        const addonMessage: PresenterViewMessage = { type: 'addonsChanged', payload: { owner: addonOwner, scripts: addonScripts } }
+        void emit(EVENT_NAME, addonMessage)
         const message: PresenterViewMessage = { type: 'slideChanged', payload: { currentIndex: 0, slides } }
         void emit(EVENT_NAME, message)
         // 初期制御状態を送信
@@ -85,6 +92,15 @@ export function usePresenterView({ slides, onNavigate, onAudioToggle, onAutoPlay
     return () => {
       unlisten?.()
     }
+  }, [])
+
+  // パッケージ切替（この hook の再マウント）時に、既に開いている発表者ビューへ最新アドオンを伝搬する。
+  // 発表者ビューが未オープンならこの emit は無視され、後続の presenterViewReady 受信時に改めて伝搬される。
+  useEffect(() => {
+    const message: PresenterViewMessage = { type: 'addonsChanged', payload: { owner: addonOwner, scripts: addonScripts } }
+    void emit(EVENT_NAME, message)
+    // マウント時に一度だけ実行する（addonOwner/addonScripts はマウント単位で固定）
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const sendSlideState = useCallback(

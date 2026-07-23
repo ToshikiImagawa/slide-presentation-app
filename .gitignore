@@ -16,3 +16,4 @@ dist-slides/
 
 # sdd
 .sdd/.cache/
+/.cache/
