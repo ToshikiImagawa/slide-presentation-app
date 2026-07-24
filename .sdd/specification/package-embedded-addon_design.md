@@ -7,8 +7,6 @@ sdd-phase: plan
 impl-status: implemented
 created: 2026-07-22
 updated: 2026-07-23
-priority: high
-risk: high
 depends-on:
   - spec-package-embedded-addon
 tags:
@@ -24,7 +22,7 @@ category: addon-system
 
 **ドキュメント種別:** 技術設計書 (Design Doc)
 **SDDフェーズ:** Plan (計画/設計)
-**最終更新日:** 2026-07-22
+**最終更新日:** 2026-07-23
 **関連 Spec:** [package-embedded-addon_spec.md](./package-embedded-addon_spec.md)
 **関連 PRD:** [package-embedded-addon.md](../requirement/package-embedded-addon.md)
 
@@ -120,6 +118,8 @@ graph TD
 | `main.tsx` | 切替順序制御（破棄→await→再マウント）、`owner`/`addonScripts` 受領 | `addonLoader`, `ComponentRegistry`, `localSlideLoader` | `src/main.tsx`（改修） |
 | `usePresenterView` | 切替時・ready 受信時に `addonsChanged` を emit | `types` | `src/hooks/usePresenterView.ts`（改修） |
 | `presenterViewEntry` | 受信アドオンを描画前にロード・登録、切替時 unregister | `addonLoader`, `ComponentRegistry` | `src/presenterViewEntry.tsx`（改修） |
+| `App` | `addonOwner`/`addonScripts` を props で受け取り `usePresenterView` へ中継。無効化トグル・信頼失効ハンドラ（`handleToggleAddonsDisabled`/`handleResetAddonTrust`）を保持し `SettingsWindow` へ渡す | `usePresenterView`, `localSlideLoader`, `SettingsWindow` | `src/App.tsx`（改修） |
+| `SettingsWindow` | 同梱アドオン一律無効化トグルと信頼失効ボタンの UI（`embeddedAddonsDisabled`/`onToggleEmbeddedAddons`/`onResetAddonTrust`） | なし | `src/components/SettingsWindow.tsx`（改修） |
 | `types` | `PresenterViewMessage` に `addonsChanged` 追加 | なし | `src/data/types.ts`（改修） |
 | `export-slides` | `--addons` でアドオン同梱、manifest 相対パス化 | なし | `scripts/export-slides.mjs`（改修） |
 
@@ -134,13 +134,14 @@ graph TD
 export interface LoadedSlidePackage {
   data: PresentationData
   baseDir: string
-  addonScripts: string[]  // convertFileSrc 済み・manifest 宣言分のみ
-  owner: string           // = baseDir
+  sourcePath: string      // 利用者が選択した元パス（.tgz または slides.json）。信頼判断の永続化キー
+  addonScripts: string[]  // convertFileSrc 済み・manifest 宣言かつ addons/ 配下のみ
+  owner: string           // = baseDir（owner 単位アンロードのスコープ識別子）
 }
 
-// パッケージ内 addons/manifest.json（既存 AddonManifest と同形。bundle は相対パス）
-type PackageAddonManifest = {
-  addons: Array<{ name: string; bundle: string }> // 例: "addons/addons.iife.js"
+// パッケージ内 addons/manifest.json の最小形（bundle のみ参照する。extractAddonBundlePaths が unknown を安全に取り出す）
+interface PackageAddonManifest {
+  addons?: Array<{ bundle?: unknown }>
 }
 
 // 信頼判断の永続化（既存ストア slide-package-state.json のキー "addonTrust"）
@@ -165,23 +166,34 @@ export function unregisterOwner(owner: string): void // owner に属する custo
 // resolveComponent / clearRegistry は不変（clearRegistry はテスト専用のまま）
 
 // addonLoader.ts（新規）
-const injectedScripts = new Set<string>() // src の二重注入防止
+// src → 注入済み <script> 要素。再ロード時は旧要素を除去してから再注入する（冪等かつ owner 切替後の再登録を可能にする）
+const injectedScripts = new Map<string, HTMLScriptElement>()
 export function loadAddonScripts(scripts: string[], owner: string): Promise<void>
 export function loadBuiltinAddons(): Promise<void> // 従来の /addons/manifest.json ロードを集約
 
 // addon-bridge.ts
 export function setCurrentAddonOwner(owner: string | undefined): void
-// __ADDON_REGISTER__ は currentOwner を registerComponent の第3引数へ渡す
+// __ADDON_REGISTER__ は currentAddonOwner を registerComponent の第3引数へ渡す
 
 // localSlideLoader.ts
+async function resolvePackageEntry(selectedPath: string): Promise<{ slidesJsonPath: string; baseDir: string }>
+// .tgz は extract_slide_package で展開、slides.json はその dirname を baseDir とする
 async function resolvePackageAddons(baseDir: string): Promise<string[]>
 // allow_asset_dir 後に baseDir/addons/manifest.json を読み、bundle を convertFileSrc で URL 化
-async function isAddonAllowed(path: string, hasAddons: boolean): Promise<boolean>
-// 設定の一律無効化 → 永続化済み判断 → 未判断なら確認ダイアログ（既定拒否）
+export function resolveAddonTrust(disabled: boolean, decision: AddonTrustDecision | undefined): 'allow' | 'deny' | 'prompt'
+// 純粋関数。一律無効化 → 永続化済み判断 → 未判断は 'prompt'
+export async function isAddonAllowed(path: string): Promise<boolean>
+// resolveAddonTrust の結果を評価し、'prompt' 時のみ確認ダイアログ（既定拒否）を出して path 単位に永続化
+export async function isEmbeddedAddonsDisabled(): Promise<boolean>                // 一律無効化フラグの取得（FR-009）
+export async function setEmbeddedAddonsDisabled(disabled: boolean): Promise<void> // 一律無効化フラグの設定（FR-009）
+export async function resetAddonTrust(): Promise<void>                            // 許可/拒否済み判断をすべて失効（FR-009）
+// ※ hasAddons 判定は isAddonAllowed に含めず、呼び出し側 main.tsx（applyPackageAddons）で
+//   `pkg.addonScripts.length > 0 && (await isAddonAllowed(pkg.sourcePath))` として合成する
 
 // usePresenterView.ts
-sendAddonsChanged(owner: string, scripts: string[]): void
-// パッケージ切替時と presenterViewReady 受信時に emit
+export function usePresenterView(options: { slides; addonOwner?; addonScripts?; ... }): UsePresenterViewReturn
+// hook オプション addonOwner/addonScripts を受け取り、マウント時と presenterViewReady 受信時に
+// addonsChanged を emit する（専用の sendAddonsChanged 関数は持たない）
 ```
 
 ---
@@ -224,6 +236,7 @@ sendAddonsChanged(owner: string, scripts: string[]): void
 | セキュリティ緩和 | origin/iframe 分離 / オプトアウト | **オプトアウト** | 分離は React 単一インスタンス共有要件と両立しない |
 | 初回既定挙動 | 確認して拒否 / 確認して許可待ち / 一律無効 | **確認して既定拒否** | RCE 相当リスクに対し安全側に倒す（ユーザー確認済み） |
 | Rust 側 | 変更 / 変更不要 | **変更不要** | `extract_tgz` の `package/` 展開と `allow_asset_dir` の再帰許可で `addons/` を包含 |
+| `owner` と `sourcePath` の分離 | 単一キー兼用 / `owner`=baseDir と `sourcePath` を分離 | **分離（2 つのキーを持つ）** | `owner`（= 展開先 `baseDir`）はレジストリの owner 単位アンロードのスコープ識別子で、`.tgz` 展開のたびに変わりうる。信頼判断は利用者が選んだ元パス `sourcePath`（`.tgz`／`slides.json` の選択パス）を安定キーにする。両者を混同すると、展開先が変わるたびに信頼判断が失効する／別パッケージの判断を誤って再利用する恐れがあるため分離する |
 
 ## 9.2. 未解決の課題
 

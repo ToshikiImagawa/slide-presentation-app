@@ -1,8 +1,27 @@
+---
+id: design-language-settings
+title: 言語設定機能 技術設計書
+type: design
+status: draft
+sdd-phase: plan
+impl-status: implemented
+created: 2026-02-02
+updated: 2026-07-24
+depends-on:
+  - spec-language-settings
+tags:
+  - i18n
+  - localization
+  - settings
+  - ui
+category: internationalization
+---
+
 # 言語設定機能（Language Settings）
 
 **ドキュメント種別:** 技術設計書 (Design Doc)
 **SDDフェーズ:** Plan (計画/設計)
-**最終更新日:** 2026-02-01
+**最終更新日:** 2026-07-24
 **関連 Spec:** [language-settings_spec.md](./language-settings_spec.md)
 **関連 PRD:** [language-settings.md](../requirement/language-settings.md)
 
@@ -16,11 +35,11 @@
 
 | モジュール/機能                                | ステータス   | 備考                                                           |
 |-----------------------------------------|---------|--------------------------------------------------------------|
-| 言語リソースJSONファイル（en-US, ja-JP）            | 🟢 実装完了 | `public/assets/locales/` に配置、manifest.json による自動検出           |
+| 言語リソースJSONファイル（en-US, ja-JP, fr-FR）      | 🟢 実装完了 | `assets/locales/`（プロジェクトルート）に配置、manifest.json による自動検出       |
 | 言語リソースローダー（loadLocales）                 | 🟢 実装完了 | `src/i18n/loader.ts` — バリデーション付きローダー                         |
 | I18nProvider / useI18n / useTranslation | 🟢 実装完了 | `src/i18n/i18nProvider.tsx` — React Context ベース              |
 | SettingsButton コンポーネント                  | 🟢 実装完了 | `src/components/SettingsButton.tsx` — 歯車アイコン、左上配置            |
-| SettingsWindow コンポーネント                  | 🟢 実装完了 | `src/components/SettingsWindow.tsx` — オーバーレイモーダル、言語セレクト      |
+| SettingsWindow コンポーネント                  | 🟢 実装完了 | `src/components/SettingsWindow.tsx` — オーバーレイモーダル、言語セレクト・スクロール速度・同梱アドオン設定 |
 | ブラウザ言語検出                                | 🟢 実装完了 | 完全一致 → プレフィックス一致 → en-US フォールバック                             |
 | localStorage 永続化                        | 🟢 実装完了 | キー `slide-app-locale` で保存・復元                                 |
 | 既存UIテキストの翻訳キー化                          | 🟢 実装完了 | PresenterViewButton, AudioPlayButton, AudioControlBar を翻訳キー化 |
@@ -29,10 +48,10 @@
 
 # 2. 設計目標
 
-1. **データ駆動の維持** — 言語リソースはJSONファイルとして `public/assets/locales/` に配置し、コード変更なしで言語追加を可能にする（A-003準拠）
-2. **フォールバックファースト** — 言語リソースの読み込み失敗、キー欠落時に英語（en-US）にフォールバック（A-005準拠）
+1. **データ駆動の維持** — 言語リソースはJSONファイルとして `assets/locales/`（プロジェクトルート）に配置し、コード変更なしで言語追加を可能にする（A-003準拠）
+2. **フォールバックファースト** — 言語リソースの読み込み失敗時は該当リソースを除外し、UIキー欠落時は参照時に英語（en-US）へフォールバック（A-005準拠）
 3. **コンポーネント分離** — 設定UI（SettingsButton, SettingsWindow）は既存コンポーネントと独立（A-001準拠）
-4. **スタイルの階層管理** — CSS変数（`--theme-*`）を使用し、色値ハードコードを禁止（A-002準拠）
+4. **スタイルの階層管理** — 原則としてCSS変数（`--theme-*`）を使用しテーマシステムと統合する（A-002準拠）。ただし一部にハードコード色が残存する（§9.3 参照）
 5. **バリデーション駆動** — 言語リソースJSONの構造検証を実装（D-002準拠）
 6. **Reveal.js非干渉** — 設定UIがReveal.jsのキーボードショートカット・スライド操作を妨げない（T-002準拠）
 7. **拡張性** — 設定ウィンドウに将来的に他の設定項目を追加可能な構造とする
@@ -47,7 +66,7 @@
 | 永続化       | localStorage                     | 後述の設計判断（9.1）参照。シンプルなキー・バリュー保存に適しており、セッション跨ぎの永続性がある                             |
 | 言語リソース形式  | JSON                             | PRDの制約に準拠。`manifest.json` による動的検出でビルド不要の言語追加を実現                                |
 | UIコンポーネント | カスタムHTML + CSS Modules            | 既存UIコンポーネント（PresenterViewButton, AudioPlayButton等）がMUIコンポーネントを使わずカスタムHTML + CSS Modulesで実装されており、一貫性を維持 |
-| スタイリング    | CSS Modules                      | A-002に準拠。CSS変数（`--theme-*`）を使用し、テーマシステムとの統合を維持                                 |
+| スタイリング    | CSS Modules                      | 原則A-002に準拠し、CSS変数（`--theme-*`）を使用してテーマシステムと統合。ただしオーバーレイ背景やボタン前景色など一部にハードコード色が残存（§9.3 参照）             |
 
 ---
 
@@ -77,6 +96,7 @@ graph TD
     subgraph "言語リソース"
         EnUS[en-US.json]
         JaJP[ja-JP.json]
+        FrFR[fr-FR.json]
         OtherLocales[...追加言語]
     end
 
@@ -88,6 +108,7 @@ graph TD
     Main --> Loader
     Loader --> EnUS
     Loader --> JaJP
+    Loader --> FrFR
     Loader --> OtherLocales
     Main --> App
     App --> I18nProvider
@@ -111,24 +132,25 @@ graph TD
 | useI18n        | 言語コンテキストへのアクセスフック  | I18nProvider | `src/i18n/i18nProvider.tsx`         |
 | useTranslation | 翻訳関数（t）の提供         | I18nProvider | `src/i18n/i18nProvider.tsx`         |
 | SettingsButton | 設定ボタンUI（左上オーバーレイ）  | なし           | `src/components/SettingsButton.tsx` |
-| SettingsWindow | 設定ウィンドウUI（モーダル）    | useI18n      | `src/components/SettingsWindow.tsx` |
-| en-US.json     | 英語リソース（フォールバック兼用）  | なし           | `public/assets/locales/en-US.json`  |
-| ja-JP.json     | 日本語リソース            | なし           | `public/assets/locales/ja-JP.json`  |
+| SettingsWindow | 設定ウィンドウUI（モーダル。言語・スクロール速度・同梱アドオン設定） | useI18n      | `src/components/SettingsWindow.tsx` |
+| en-US.json     | 英語リソース（フォールバック兼用）  | なし           | `assets/locales/en-US.json`         |
+| ja-JP.json     | 日本語リソース            | なし           | `assets/locales/ja-JP.json`         |
+| fr-FR.json     | フランス語リソース          | なし           | `assets/locales/fr-FR.json`         |
 
 ## 4.3. 言語リソース読み込みフロー
 
 ```
 main.tsx
-├── Promise.all([loadAddons(), loadLocales()])  # アドオンと言語リソースを並列ロード
+├── Promise.all([loadBuiltinAddons(), loadLocales(), getRecentSlidePackages(), applyTheme()])  # 起動時に並列ロード
 │   └── loadLocales()
 │       ├── fetch('/assets/locales/manifest.json')  # マニフェストから言語ファイル一覧を取得
 │       ├── 各JSONファイルを fetch で読み込み
-│       ├── 構造バリデーション（D-002準拠）
+│       ├── validateLocaleResource() で構造バリデーション（D-002準拠。不正リソースは読み込み対象から除外）
 │       └── LocaleResource[] を返却
-├── fetch('/slides.json')      # 既存のスライドデータ読み込み
-└── <I18nProvider locales={locales}>
-      <App presentationData={data} />
-    </I18nProvider>
+└── <Root locales={locales} initialRecentPackages={...}>
+      └── <I18nProvider locales={locales}>
+            <RootContent />   # ホーム画面 / <App> を切り替え
+          </I18nProvider>
 ```
 
 ---
@@ -138,7 +160,7 @@ main.tsx
 ## 5.1. 言語リソースJSON構造
 
 ```typescript
-// public/assets/locales/en-US.json の構造
+// assets/locales/en-US.json の構造
 interface LocaleResource {
   languageCode: string   // "en-US"
   languageName: string   // "English"
@@ -193,7 +215,21 @@ interface LocaleValidationResult {
     expected: string
     actual: string
   }>
-  resource: LocaleResource  // 補完済みリソース
+  resource: LocaleResource  // 検証対象のリソース（マージ・補完はしない。渡された resource をそのまま返す）
+}
+
+// loader.ts が公開する検証関数（必須構造のみを検査し、valid=false のリソースは loadLocales が読み込み対象から除外）
+function validateLocaleResource(resource: LocaleResource): LocaleValidationResult
+
+// SettingsWindow の props（FR-010: 言語以外の設定項目を追加できる拡張構造を具現化）
+interface SettingsWindowProps {
+  open: boolean
+  onClose: () => void
+  scrollSpeed: number                     // 自動スライドショーのスクロール速度（秒）
+  setScrollSpeed: (speed: number) => void
+  embeddedAddonsDisabled?: boolean        // 同梱アドオンの一律無効化フラグ（未指定時はアドオン設定セクションを非表示）
+  onToggleEmbeddedAddons?: (disabled: boolean) => void
+  onResetAddonTrust?: () => void          // アドオン許可履歴のリセット
 }
 ```
 
@@ -227,7 +263,7 @@ interface LocaleValidationResult {
 | 決定事項       | 選択肢                                                      | 決定内容                          | 理由                                                                                                                                                   |
 |------------|----------------------------------------------------------|-------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------|
 | 永続化ストレージ   | A) localStorage B) Cookie C) sessionStorage D) IndexedDB | **A) localStorage**           | 保存するデータは言語コード（文字列1つ）のみでシンプル。localStorageはセッション跨ぎで永続化され、同期的にアクセス可能。Cookieはサーバーに毎回送信されるためクライアント専用アプリには不適切。sessionStorageはタブ閉じで消失する。IndexedDBは少量データには過剰 |
-| 言語リソース配置場所 | A) public/assets/locales/ B) src/i18n/locales/           | **A) public/assets/locales/** | PRDの要求（FR-LANG-008）でコード変更なしの言語追加が必須。publicディレクトリに配置することでビルド不要で追加可能。`manifest.json` にファイル一覧を記載し、ランタイムで `fetch` により動的に読み込む方式を採用                         |
+| 言語リソース配置場所 | A) プロジェクトルート assets/locales/ B) public/assets/locales/ C) src/i18n/locales/ | **A) プロジェクトルート assets/locales/** | PRDの要求（FR-LANG-008）でコード変更なしの言語追加が必須。`vite.config.ts` の assetsPlugin が `/assets` を dev サーバーで配信し、ビルド時に `dist/assets` へコピーするため、`public/` を経由せずプロジェクトルート直下の `assets/` に配置する独自規約を採用。フォント・テーマ等の他アセットと配置規約を統一でき、`manifest.json` にファイル一覧を記載してランタイムで `fetch` により動的に読み込む方式を採用 |
 | 状態管理方式     | A) React Context B) Zustand C) グローバル変数                   | **A) React Context**          | 既存プロジェクトに外部状態管理ライブラリがなく、言語状態はアプリ全体で共有するためContextが適切。Zustandは新規依存の追加になる。グローバル変数はReactの再レンダリングと統合できない                                                  |
 | 翻訳関数の実装    | A) 自前実装 B) react-i18next C) react-intl                   | **A) 自前実装**                   | このアプリのUI翻訳は限定的（設定ウィンドウ、発表者ビューボタン等の少数テキスト）であり、ライブラリ追加のオーバーヘッドに見合わない。ドット記法のキー解決（`t('settings.title')`）程度の簡易実装で十分                                       |
 | 設定ウィンドウの実装 | A) MUI Dialog B) カスタムモーダル                                | **B) カスタムモーダル**               | 既存UIコンポーネント（PresenterViewButton, AudioPlayButton, AudioControlBar）がMUIコンポーネントを使わずカスタムHTML + CSS Modulesで実装されているため、一貫性を維持。オーバーレイ、閉じるボタン、外部クリック閉じをCSS Modulesで実装 |
@@ -251,9 +287,26 @@ interface LocaleValidationResult {
 - IndexedDBは非同期APIであり、言語コード1つの保存には過剰
 - localStorageは同期的にアクセスでき、ブラウザを閉じても維持される
 
+## 9.3. 未解決の課題
+
+| 課題                                                                                                                                                                                                 | 影響度 | 対応方針                                                                                                                                    |
+|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----|-----------------------------------------------------------------------------------------------------------------------------------------|
+| 設定UIのCSSに一部ハードコード色が残存しており、A-002（色値ハードコード禁止）に完全準拠していない。具体的には `SettingsButton.module.css` の前景色 `color: #fff`、`SettingsWindow.module.css` のオーバーレイ背景 `rgba(0, 0, 0, 0.5)` と box-shadow `rgba(0, 0, 0, 0.4)` | 低   | 前景色・オーバーレイ用の `--theme-*` CSS変数を追加して置き換える。視認性確保のための黒半透明オーバーレイはテーマ非依存の妥当値だが、変数化することで一貫性を高める余地がある。CSSはコード側の変更となるため本設計書では課題として記録するにとどめる |
+
 ---
 
 # 10. 変更履歴
+
+## v1.2.0 (2026-07-24)
+
+**実装との整合（ドキュメント修正）:**
+
+- 言語リソース配置を `public/assets/locales/` → `assets/locales/`（プロジェクトルート、vite assetsPlugin が `/assets` を配信）に修正し、独自 assets/ 規約の採用理由を §9.1 に追記
+- 対応ロケールを en-US / ja-JP / fr-FR の3言語に更新（manifest.json / fr-FR.json 実在）
+- 欠落キー補完の仕組みを「ロード時マージ」→「`t()` 参照時の en-US フォールバック」に修正（§6 の「補完済みリソース」記述を実態に合わせて訂正）
+- SettingsWindow の拡張 props（scrollSpeed / setScrollSpeed / embeddedAddonsDisabled / onToggleEmbeddedAddons / onResetAddonTrust）と対応UIを反映（FR-010 の具現化）
+- A-002 準拠記述を実態（一部ハードコード色あり）に訂正し、§9.3 未解決の課題を追加
+- 起動フローを `Promise.all([loadBuiltinAddons(), loadLocales(), getRecentSlidePackages(), applyTheme()])` に修正（`loadAddons` → `loadBuiltinAddons`）
 
 ## v1.1.0 (2026-02-01)
 

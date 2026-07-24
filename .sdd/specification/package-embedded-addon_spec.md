@@ -5,9 +5,7 @@ type: spec
 status: draft
 sdd-phase: specify
 created: 2026-07-22
-updated: 2026-07-22
-priority: high
-risk: high
+updated: 2026-07-24
 depends-on:
   - prd-package-embedded-addon
 tags:
@@ -23,7 +21,7 @@ category: addon-system
 
 **ドキュメント種別:** 抽象仕様書 (Spec)
 **SDDフェーズ:** Specify (仕様化)
-**最終更新日:** 2026-07-22
+**最終更新日:** 2026-07-24
 **関連 Design Doc:** [package-embedded-addon_design.md](./package-embedded-addon_design.md)
 **関連 PRD:** [package-embedded-addon.md](../requirement/package-embedded-addon.md)
 
@@ -41,14 +39,14 @@ category: addon-system
 
 # 2. 概要
 
-`.tgz` パッケージに同梱したアドオンを、パッケージを開いた時点で起動後に動的ロードし、スライドの `{ "component": { "name": ... } }` 参照を解決できるようにする。設計原則は以下のとおり。
+`.tgz` パッケージに同梱したアドオンを、パッケージを開いた時点で起動後に動的ロードし、スライドの `{ "component": { "name": ... } }` 参照を解決できるようにする。本仕様は PRD の **UR-001**（パッケージ同梱アドオンのランタイムロード）と **UR-002**（同梱アドオンの実行制御）を満たすことを目的とする。設計原則は以下のとおり。
 
 - **オーナースコープ型レジストリ**: 登録されたコンポーネントを「所有者（owner）」単位で管理し、パッケージ切替時に旧 owner のアドオンだけを安全に破棄してから新アドオンをロードする。`resolveComponent` の解決順（custom → default → fallback）は不変とし、owner 管理は追加 API として実現する。
-- **ロード方式の固定**: 実機（macOS/WKWebView）で確認済みの「IIFE + `convertFileSrc` の asset URL を `<script src>` 注入」を採る。ロードは「`.tgz` 展開 → `allow_asset_dir` → `<script>` 注入」の順序を厳守する。
+- **ロード方式の固定**: 実機（macOS/WKWebView）で確認済みの「IIFE + `convertFileSrc` の asset URL を `<script src>` 注入」を採る。ロードは「`.tgz` 展開 → `allow_asset_dir` → `<script>` 注入」の順序を厳守する（**DC-004**: `allow` 前に asset URL を読むと 403）。
 - **フォールバックファースト**: アドオンが拒否・失敗してもスライド自体は開け、未解決コンポーネントは fallback で描画する。
-- **セキュリティは分離ではなくオプトアウトで緩和**: 別 origin / iframe による分離は React 単一インスタンス共有要件と両立しないため採らず、利用者が実行可否を制御できるようにする。既定挙動は「確認して拒否」。
+- **セキュリティは分離ではなくオプトアウトで緩和**（**DC-003**）: 別 origin / iframe による分離は React 単一インスタンス共有要件と両立しないため採らず、利用者が実行可否を制御できるようにする。既定挙動は「確認して拒否」。
 
-**対象は Tauri ランタイム経路に限定する。** dev/build（Vite）経路での同梱アドオン配信、および既存のビルド時同梱（`public/slides.json`・`VITE_SLIDE_PACKAGE`）はスコープ外・変更なし。
+**対象は Tauri ランタイム経路に限定する（DC-002）。** dev/build（Vite）経路での同梱アドオン配信、および既存のビルド時同梱（`public/slides.json`・`VITE_SLIDE_PACKAGE`）はスコープ外・変更なし。
 
 # 3. 要求定義
 
@@ -69,12 +67,12 @@ category: addon-system
 
 ## 3.2. 非機能要件 (Non-Functional Requirements)
 
-| ID      | カテゴリ   | 要件                                                                | 目標値／根拠（PRD） |
-|---------|--------|-------------------------------------------------------------------|-------------|
-| NFR-001 | セキュリティ | 利用者が同梱アドオンの実行を止められる。既定挙動は「確認して拒否」                          | NFR-001     |
-| NFR-002 | 互換性    | 既存のビルド時同梱・起動時 `/addons/manifest.json` ロードが従来どおり動作。typecheck/test 通過 | NFR-002     |
-| NFR-003 | 信頼性    | パッケージ A→B→A 切替で残留・混線・同名衝突が起きない。ホーム復帰時に custom 登録がクリアされる       | NFR-003     |
-| NFR-004 | 互換性    | macOS(WKWebView) で asset URL の `<script>` 実行が可能。Windows は追跡課題      | NFR-004     |
+| ID      | カテゴリ   | 優先度 | 要件                                                                | 目標値／根拠（PRD） |
+|---------|--------|-----|-------------------------------------------------------------------|-------------|
+| NFR-001 | セキュリティ | 必須  | 利用者が同梱アドオンの実行を止められる。既定挙動は「確認して拒否」                          | NFR-001     |
+| NFR-002 | 互換性    | 必須  | 既存のビルド時同梱・起動時 `/addons/manifest.json` ロードが従来どおり動作。typecheck/test 通過 | NFR-002     |
+| NFR-003 | 信頼性    | 必須  | パッケージ A→B→A 切替で残留・混線・同名衝突が起きない。ホーム復帰時に custom 登録がクリアされる       | NFR-003     |
+| NFR-004 | 互換性    | 推奨  | macOS(WKWebView) で asset URL の `<script>` 実行が可能。Windows は追跡課題      | NFR-004     |
 
 # 4. API
 
@@ -85,9 +83,14 @@ category: addon-system
 | `src/components` | `ComponentRegistry.tsx` | `registerComponent(name, component, owner?)` | 既存 API を拡張し、任意の owner を記録する（後方互換） |
 | `src/components` | `ComponentRegistry.tsx` | `unregisterOwner(owner)` | 指定 owner の custom 登録のみを削除する（default は温存） |
 | `src` | `addonLoader.ts` | `loadAddonScripts(scripts, owner)` | manifest 解決済みの bundle 群を冪等に `<script>` 注入してロードする |
-| `src` | `addonLoader.ts` | `loadBuiltinAddons()` | 起動時の組み込み `/addons/manifest.json` ロード（既存 `loadAddons` を集約） |
+| `src` | `addonLoader.ts` | `loadBuiltinAddons()` | 起動時の組み込み `/addons/manifest.json` ロード（従来各エントリに重複していたロード処理を集約） |
 | `src` | `addon-bridge.ts` | （内部）`setCurrentAddonOwner(owner)` | `__ADDON_REGISTER__` が登録するコンポーネントの owner を伝搬する |
-| `src` | `localSlideLoader.ts` | `LoadedSlidePackage`（型拡張） | `addonScripts: string[]` と `owner: string` を追加 |
+| `src` | `localSlideLoader.ts` | `LoadedSlidePackage`（型拡張） | `sourcePath: string`・`addonScripts: string[]`・`owner: string` を追加 |
+| `src` | `localSlideLoader.ts` | `isAddonAllowed(path)` | 同梱アドオンのロード可否を判定。未判断時は確認ダイアログ（既定拒否）を出し path 単位に永続化（FR-008） |
+| `src` | `localSlideLoader.ts` | `resolveAddonTrust(disabled, decision)` | 一律無効化フラグと path 単位の判断から `allow`/`deny`/`prompt` を返す純粋関数（FR-008/009） |
+| `src` | `localSlideLoader.ts` | `isEmbeddedAddonsDisabled()` / `setEmbeddedAddonsDisabled(disabled)` | 同梱アドオンの一律無効化フラグの取得・設定（FR-009） |
+| `src` | `localSlideLoader.ts` | `resetAddonTrust()` | 許可/拒否済みの信頼判断をすべて失効（リセット）する（FR-009） |
+| `src` | `localSlideLoader.ts` | （内部）`resolvePackageEntry(selectedPath)` | 選択パスから `slides.json` 実パスと `baseDir` を求める（`.tgz` は Rust 側で展開） |
 | `src/data` | `types.ts` | `PresenterViewMessage`（型拡張） | `addonsChanged` メッセージを追加 |
 | `scripts` | `export-slides.mjs` | `--addons` フラグ | ビルド済みアドオンをパッケージに同梱するオプション |
 
@@ -102,11 +105,16 @@ export function unregisterOwner(owner: string): void
 export interface LoadedSlidePackage {
   data: PresentationData
   baseDir: string
-  /** convertFileSrc で asset URL 化済みのアドオンバンドル URL（manifest 宣言分のみ） */
+  /** 利用者が選択した元パス（.tgz または slides.json）。信頼判断の永続化キーに使う */
+  sourcePath: string
+  /** convertFileSrc で asset URL 化済みのアドオンバンドル URL（manifest 宣言かつ addons/ 配下のみ） */
   addonScripts: string[]
-  /** アドオン登録の所有者スコープ（= baseDir） */
+  /** アドオン登録の所有者スコープ（= baseDir）。owner 単位アンロードに使う */
   owner: string
 }
+
+// localSlideLoader.ts — 信頼判断の永続化（既存ストア slide-package-state.json のキー "addonTrust"）
+export type AddonTrustDecision = 'allowed' | 'denied'
 
 // types.ts — 発表者ビューへアドオン変更を伝搬するメッセージ
 type PresenterViewMessage =
@@ -178,9 +186,9 @@ sequenceDiagram
 - CSP 無効（`tauri.conf.json` の `csp: null`）と asset プロトコルの `text/javascript` 配信を前提とする。
 - 既存の IIFE ローダ規約（`window.React` / `window.ReactJSXRuntime` 公開、`__ADDON_REGISTER__` コールバック）を流用する。
 - `ComponentRegistry` の解決優先順位（custom → default → fallback）を変更しない（DC-001）。
-- ロードは「展開 → `allow_asset_dir` → `<script>` 注入」の順序を守る（`allow` 前は 403）。
-- 対象は Tauri ランタイム経路に限定する（dev/build 経路はスコープ外）。
-- 別 origin / iframe 分離は採らない（React 単一インスタンス共有要件と両立しないため）。
+- ロードは「展開 → `allow_asset_dir` → `<script>` 注入」の順序を守る（`allow` 前は 403）（DC-004）。
+- 対象は Tauri ランタイム経路に限定する（dev/build 経路はスコープ外）（DC-002）。
+- 別 origin / iframe 分離は採らない（React 単一インスタンス共有要件と両立しないため）（DC-003）。
 
 ---
 

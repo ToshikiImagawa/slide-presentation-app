@@ -1,8 +1,27 @@
+---
+id: spec-builtin-ui-components
+title: 組み込みUIコンポーネント群 抽象仕様書
+type: spec
+status: draft
+sdd-phase: specify
+created: 2026-02-02
+updated: 2026-07-24
+depends-on:
+  - prd-builtin-ui-components
+tags:
+  - ui-components
+  - component-registry
+  - slide-rendering
+  - theme
+  - mui
+category: ui-components
+---
+
 # 組み込みUIコンポーネント群
 
 **ドキュメント種別:** 抽象仕様書 (Spec)
 **SDDフェーズ:** Specify (仕様化)
-**最終更新日:** 2026-01-30
+**最終更新日:** 2026-07-24
 **関連 Design Doc:** [builtin-ui-components_design.md](./builtin-ui-components_design.md)
 **関連 PRD:** [builtin-ui-components.md](../requirement/builtin-ui-components.md)
 
@@ -88,7 +107,7 @@
 | `components/`  | `QrCodeCard.tsx`        | `QrCodeCard`                   | QR コード生成カード                               |
 | `components/`  | `GitHubLink.tsx`        | `GitHubLink`                   | GitHub リポジトリリンク表示                         |
 | `components/`  | `FallbackImage.tsx`     | `FallbackImage`                | エラー時フォールバック付き画像表示                         |
-| `components/`  | `ComponentRegistry.tsx` | `registerDefaultComponent`, `registerComponent`, `resolveComponent`, `getRegisteredComponents`, `clearRegistry` | コンポーネント名前解決システム |
+| `components/`  | `ComponentRegistry.tsx` | `registerDefaultComponent`, `registerComponent`, `resolveComponent`, `getRegisteredComponents`, `unregisterOwner`, `clearRegistry`, 型 `RegisteredComponent` | コンポーネント名前解決システム |
 | `components/`  | `registerDefaults.tsx`  | `registerDefaultComponents`    | デフォルトコンポーネント一括登録                          |
 
 ## 4.1. 型定義
@@ -221,26 +240,30 @@ interface FallbackImageProps {
 ### コンポーネントインフラ
 
 ```typescript
-type RegisteredComponent = {
-  name: string;
-  component: ComponentType<Record<string, unknown>>;
-};
+// コンポーネント本体そのものを表す型（name/component のペアではない）
+type RegisteredComponent = ComponentType<Record<string, unknown>>;
 
 function registerDefaultComponent(
   name: string,
-  component: ComponentType<Record<string, unknown>>
+  component: RegisteredComponent
 ): void;
 
+// owner を指定すると所有者スコープで登録され、unregisterOwner で一括破棄できる
 function registerComponent(
   name: string,
-  component: ComponentType<Record<string, unknown>>
+  component: RegisteredComponent,
+  owner?: string
 ): void;
 
-function resolveComponent(
-  name: string
-): ComponentType<Record<string, unknown>> | null;
+// 指定 owner に属する custom 登録のみを破棄する（default 登録は温存）
+function unregisterOwner(owner: string): void;
 
-function getRegisteredComponents(): Map<string, RegisteredComponent>;
+// 常に有効なコンポーネントを返す（null を返さない）。
+// 未登録の場合は内部の FallbackComponent を返す
+function resolveComponent(name: string): RegisteredComponent;
+
+// 登録済みコンポーネント名の一覧（ソート済み）を返す
+function getRegisteredComponents(): string[];
 
 function clearRegistry(): void;
 
@@ -311,10 +334,10 @@ function TwoColumnSlide() {
 ```tsx
 import { resolveComponent } from './components/ComponentRegistry';
 
+// resolveComponent は常に有効なコンポーネントを返すため null チェックは不要。
+// 未登録名の場合は内部の FallbackComponent が返り、そのまま描画してよい。
 const MyComponent = resolveComponent('TerminalAnimation');
-if (MyComponent) {
-  return <MyComponent logTextUrl="/demo-log.txt" />;
-}
+return <MyComponent logTextUrl="/demo-log.txt" />;
 ```
 
 # 7. 振る舞い図
@@ -337,13 +360,11 @@ sequenceDiagram
         alt default に登録あり
             DC -->> CR: コンポーネントを返す
         else default にも登録なし
-            CR -->> SR: null を返す
+            CR ->> CR: 内部 FallbackComponent を解決
         end
     end
-    CR -->> SR: コンポーネントまたは null
-    alt null の場合
-        SR ->> SR: フォールバック UI を表示
-    end
+    CR -->> SR: 常に有効なコンポーネント（未登録時は FallbackComponent）
+    Note over SR: 呼び出し側での null チェックは不要
 ```
 
 ## TerminalAnimation ライフサイクル
@@ -373,6 +394,7 @@ sequenceDiagram
 
 - TypeScript strict モードに準拠すること（T-001）
 - Reveal.js の DOM 構造（`.reveal > .slides > section`）内で正しく動作すること（T-002）
+- 副作用（`setTimeout` / Intersection Observer 等）を伴うコンポーネントは、アンマウント時に必ずクリーンアップ（`clearTimeout` / `observer.disconnect`）を行うこと（T-003）
 - テーマシステムの CSS 変数を直接参照し、ハードコードされた色値を使用しないこと（NFR_300）
 - 1280x720 の解像度で正しく表示されること（B-001）
 - コンポーネント間に暗黙的な依存関係を持たないこと（NFR_301）
