@@ -2,7 +2,7 @@
 id: task-slide-edit-mode
 title: スライド編集モード（器の作成）
 type: task
-status: pending
+status: completed
 sdd-phase: tasks
 created: 2026-07-24
 updated: 2026-07-24

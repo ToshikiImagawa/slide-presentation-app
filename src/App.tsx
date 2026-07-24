@@ -2,6 +2,7 @@ import { ThemeProvider } from '@mui/material/styles'
 import { AudioControlBar } from './components/AudioControlBar'
 import { AudioPlayButton } from './components/AudioPlayButton'
 import { FallbackImage } from './components/FallbackImage'
+import { EditButton } from './components/EditButton'
 import { HomeButton } from './components/HomeButton'
 import { PresenterViewButton } from './components/PresenterViewButton'
 import { SettingsButton } from './components/SettingsButton'
@@ -10,7 +11,9 @@ import { SlideRenderer } from './components/SlideRenderer'
 import { registerDefaultComponents } from './components/registerDefaults'
 import { getDefaultPresentationData, loadPresentationData } from './data'
 import type { PresentationData } from './data'
-import { isEmbeddedAddonsDisabled, resetAddonTrust, setEmbeddedAddonsDisabled } from './localSlideLoader'
+import { clearAddonTrustDecision, getAddonTrustMap, getRecentSlidePackages, isEmbeddedAddonsDisabled, resetAddonTrust, setAddonTrustDecision, setEmbeddedAddonsDisabled } from './localSlideLoader'
+import type { AddonTrustDecision } from './localSlideLoader'
+import type { AddonTrustEntry } from './components/SettingsWindow'
 import { getVoicePath } from './data/noteHelpers'
 import { useAudioPlayer } from './hooks/useAudioPlayer'
 import { useAutoSlideshow } from './hooks/useAutoSlideshow'
@@ -28,33 +31,76 @@ registerDefaultComponents()
 type AppProps = {
   presentationData?: PresentationData
   onGoHome: () => void
+  /** 編集モードを開始する（未指定なら編集ボタンを表示しない） */
+  onStartEdit?: () => void
   /** 現在のパッケージ同梱アドオンの owner（発表者ビューへの伝搬用） */
   addonOwner?: string
   /** 現在のパッケージ同梱アドオンの asset URL 群（発表者ビューへの伝搬用） */
   addonScripts?: string[]
 }
 
-export function App({ presentationData, onGoHome, addonOwner, addonScripts }: AppProps) {
+export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addonScripts }: AppProps) {
   const { locale } = useI18n()
   const defaultData = useMemo(() => getDefaultPresentationData(locale), [locale])
   const data = loadPresentationData(presentationData, defaultData)
   const [currentIndex, setCurrentIndex] = useState(0)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [addonsDisabled, setAddonsDisabled] = useState(false)
+  // 層C: 実行時信頼の個別付け外し対象（最近開いたパッケージ × 現在の信頼判断）
+  const [addonTrustList, setAddonTrustList] = useState<AddonTrustEntry[]>([])
 
   // 同梱アドオンの一律無効化フラグを永続ストアから復元する
   useEffect(() => {
     void isEmbeddedAddonsDisabled().then(setAddonsDisabled)
   }, [])
 
+  // 設定ダイアログを開くたびに、信頼判断を持つパッケージ（trustMap 全キー）と最近開いたパッケージを
+  // 突き合わせて一覧化する（層C・FR-008）。trustMap を基点にすることで、最近リストの上限を超えて
+  // 追い出された「許可済み」パッケージも一覧に残り、個別に取り消せる。title は recent から補完する
+  useEffect(() => {
+    if (!settingsOpen) return
+    void Promise.all([getRecentSlidePackages(), getAddonTrustMap()]).then(([recent, trustMap]) => {
+      const titleByPath = new Map(recent.map((r) => [r.path, r.title]))
+      const recentPaths = recent.map((r) => r.path)
+      // recent を先頭に、trustMap にしか無い（＝追い出された）判断済みパッケージを後ろに並べる
+      const extraPaths = Object.keys(trustMap).filter((p) => !recentPaths.includes(p))
+      setAddonTrustList([...recentPaths, ...extraPaths].map((path) => ({ path, title: titleByPath.get(path) ?? path, decision: trustMap[path] })))
+    })
+  }, [settingsOpen])
+
   const handleToggleAddonsDisabled = useCallback((disabled: boolean) => {
     setAddonsDisabled(disabled)
     void setEmbeddedAddonsDisabled(disabled)
   }, [])
 
-  const handleResetAddonTrust = useCallback(() => {
-    void resetAddonTrust()
+  // 永続化失敗時に楽観更新した一覧を実態へ戻す（await して store の save 失敗を握りつぶさない）
+  const reloadTrustList = useCallback(() => {
+    void getAddonTrustMap().then((trustMap) => {
+      setAddonTrustList((list) => list.map((e) => ({ ...e, decision: trustMap[e.path] })))
+    })
   }, [])
+
+  const handleResetAddonTrust = useCallback(() => {
+    // 失効に合わせてローカル一覧の判断も未設定へ戻す（失敗時は実態へロールバック）
+    setAddonTrustList((list) => list.map((e) => ({ ...e, decision: undefined })))
+    resetAddonTrust().catch((err) => {
+      console.error('[App] アドオン許可履歴のリセットに失敗しました', err)
+      reloadTrustList()
+    })
+  }, [reloadTrustList])
+
+  // decision が undefined のときは「未設定」へ戻す（trustMap からキー削除）
+  const handleSetAddonTrust = useCallback(
+    (path: string, decision: AddonTrustDecision | undefined) => {
+      setAddonTrustList((list) => list.map((e) => (e.path === path ? { ...e, decision } : e)))
+      const op = decision === undefined ? clearAddonTrustDecision(path) : setAddonTrustDecision(path, decision)
+      op.catch((err) => {
+        console.error('[App] アドオン信頼の保存に失敗しました', err)
+        reloadTrustList()
+      })
+    },
+    [reloadTrustList],
+  )
 
   const audioPlayer = useAudioPlayer()
 
@@ -203,6 +249,7 @@ export function App({ presentationData, onGoHome, addonOwner, addonScripts }: Ap
       )}
       <div className="toolbar toolbar-left">
         <HomeButton onClick={onGoHome} />
+        {onStartEdit && <EditButton onClick={onStartEdit} />}
         <SettingsButton onClick={() => setSettingsOpen(true)} />
       </div>
       <div className="toolbar">
@@ -227,6 +274,8 @@ export function App({ presentationData, onGoHome, addonOwner, addonScripts }: Ap
         embeddedAddonsDisabled={addonsDisabled}
         onToggleEmbeddedAddons={handleToggleAddonsDisabled}
         onResetAddonTrust={handleResetAddonTrust}
+        addonTrust={addonTrustList}
+        onSetAddonTrust={handleSetAddonTrust}
       />
     </ThemeProvider>
   )

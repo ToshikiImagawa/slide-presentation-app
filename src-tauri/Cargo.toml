@@ -18,7 +18,9 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2.6.3", features = [] }
 
 [dependencies]
-serde_json = "1.0"
+# preserve_order: オブジェクトのキーを挿入順で保持し、extract_asset_paths のアセット走査順を
+# JS(export-slides.mjs の Object.values=挿入順) と一致させる（DC-003・lib.rs のコメント「出現順を保持」を実挙動と整合）
+serde_json = { version = "1.0", features = ["preserve_order"] }
 serde = { version = "1.0", features = ["derive"] }
 log = "0.4"
 tauri = { version = "2.11.3", features = ["protocol-asset"] }

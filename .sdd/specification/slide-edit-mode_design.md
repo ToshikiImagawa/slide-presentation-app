@@ -4,7 +4,7 @@ title: スライド編集モード（器の作成） 技術設計書
 type: design
 status: approved
 sdd-phase: plan
-impl-status: not-implemented
+impl-status: implemented
 created: 2026-07-24
 updated: 2026-07-24
 depends-on:
@@ -31,22 +31,23 @@ category: authoring
 
 # 1. 実装ステータス
 
-**ステータス:** 🔴 未実装（本設計は計画フェーズの成果物。実装は未着手）
+**ステータス:** 🟢 実装完了（2026-07-24・Issue #13）。単体テスト（Rust 12 / JS 249）・typecheck/clippy/fmt green、多エージェントレビュー＋敵対的検証（blocker/CONFIRMED 0）、実機検証（B/C/D）済み。実装ログ: [implementation_progress.md](../task/slide-edit-mode/implementation_progress.md)
 
 ## 1.1. 実装進捗
 
 | モジュール/機能 | ステータス | 備考 |
 |----------|--------|------|
-| モード切替（`View` に `'edit'`） | 🔴 | FR-001。`main.tsx` の表示分岐に追加 |
-| 編集画面（`src/edit/`） | 🔴 | FR-001/002/003。`SlideEditor`/`SlideJsonEditor`/`SlideMetaForm`（新規） |
-| ライブプレビュー（`SlideRenderer.Slide` 再利用） | 🔴 | FR-002/NFR-004。差分描画・全再マウントなし |
-| 無損失シリアライズ（`slidesSerialize.ts`） | 🔴 | FR-004/NFR-002。パース→再シリアライズの往復保持（新規） |
-| 保存前バリデーション | 🔴 | FR-005。`loader.ts` の `getValidationErrors` 再利用 |
-| Rust 書き込みコマンド（`save_slides_json`/`export_slide_package`/`set_edit_mode`） | 🔴 | FR-006/007/011。`lib.rs` に新設・編集モード state ゲート |
-| `.tgz` 生成（Rust・`flate2`/`tar`） | 🔴 | FR-007/DC-003。`extractAssetPaths` 規則を移植 |
-| Addon 付け外し 層C（実行時信頼 UI） | 🔴 | FR-008。`localSlideLoader.ts`/`SettingsWindow` 拡張 |
-| Addon 付け外し 層B（export 同梱選択） | 🔴 | FR-009。`export-slides.mjs` の同梱を個別選択化 |
-| Addon 付け外し 層A（組み込み entry.ts・dev 限定） | 🔴 | FR-010/DC-004。dev 環境限定 |
+| モード切替（`View` に `'edit'`） | 🟢 | FR-001。`main.tsx` に `editSource` state・enter/exitEditMode・描画分岐、`App` に `EditButton` |
+| 編集画面（`src/edit/`） | 🟢 | FR-001/002/003。`SlideEditor`/`SlideJsonEditor`/`SlideMetaForm`/`SlidePreview` を新設 |
+| ライブプレビュー（`SlideRenderer.Slide` 再利用） | 🟢 | FR-002/NFR-004。差分描画・全再マウントなし。`SlidePreview` として編集用に新設（発表者ビュー不変） |
+| 無損失シリアライズ（`slidesSerialize.ts`） | 🟢 | FR-004/NFR-002。`JSON.parse`/`stringify(2sp)` ベース。往復・冪等をテスト |
+| 保存前バリデーション | 🟢 | FR-005。`parseSlides` の errors で保存/書出をゲート。エラー時はプレビュー非表示 |
+| Rust 書き込みコマンド（`save_slides_json`/`export_slide_package`/`set_edit_mode`） | 🟢 | FR-006/007/011。`lib.rs` に新設・`EditMode(Mutex<bool>)` ゲート・純粋関数を切出しテスト |
+| `.tgz` 生成（Rust・`flate2`/`tar`） | 🟢 | FR-007/DC-003。`extract_asset_paths` 移植・`package/` 規約・`extract_slide_package` と往復 |
+| Addon 付け外し 層C（実行時信頼 UI） | 🟢 | FR-008。`getAddonTrustMap`/`setAddonTrustDecision`/`clearAddonTrustDecision`＋書込直列化、`SettingsWindow` UI、信頼一覧は trustMap 全キー基点 |
+| Addon 付け外し 層B（export 同梱選択） | 🟢 | FR-009。Rust `filter_addon_manifest`（bundle 正規化＋同梱）、`export-slides.mjs --addons`、編集 UI チェックボックス |
+| Addon 付け外し 層A（組み込み entry.ts・dev 限定） | 🟢 | FR-010/DC-004。Rust `list/add/remove_builtin_addon`（`cfg!(debug_assertions)`＋ゲート＋`sanitize_addon_name`）、編集 UI dev パネル |
+| i18n / エディタ UI テーマ分離 | 🟢 | ja/en/fr の `edit.*`/`settings.addonTrust*` を追加。編集 chrome は `editorUiTheme`（固定 UI サイズ）、プレビューのみプレゼンテーマ（§9.1） |
 
 ---
 
@@ -172,53 +173,65 @@ interface ThemeData {
 
 # 6. インターフェース定義
 
+> 実装で確定した最終シグネチャを反映（計画時から精緻化した点は注記）。
+
 ```typescript
 // src/edit/slidesSerialize.ts（新規）
 export function parseSlides(text: string): { data: PresentationData; errors: ValidationError[] }
-// JSON 構文エラー時は errors に構造化エラーを積む。未知キーは data にそのまま保持
-export function serializeSlides(data: PresentationData): string
-// キー順・インデントを固定して差分を最小化
+// JSON 構文エラー時は空シェル＋構造化エラー（default へフォールバックしない）。未知キーは data に保持
+export function serializeSlides(data: PresentationData): string  // JSON.stringify(data, null, 2)
 
 // src/editModeSave.ts（新規）— すべて編集モード時のみ成功（Rust 側でゲート）
 export async function enterEditMode(): Promise<void>   // invoke('set_edit_mode', { enabled: true })
 export async function exitEditMode(): Promise<void>    // invoke('set_edit_mode', { enabled: false })
 export async function saveSlidesJson(path: string, json: string): Promise<void>
 export async function exportSlidePackage(json: string, options: ExportOptions): Promise<string>
-export interface ExportOptions { outDir: string; includedAddons?: string[] }
+// 精緻化: name/version（生成 package.json 用）と baseDir（アセット収集元）を追加
+export interface ExportOptions { outDir: string; name: string; version: string; baseDir?: string; includedAddons?: string[] }
+export async function chooseSlidesSavePath(initial?: string): Promise<string | null>  // dialog save
+export async function chooseExportDir(): Promise<string | null>                        // dialog open directory
+// 層A（dev 限定・組み込み entry.ts 増減）
+export async function listBuiltinAddons(): Promise<string[]>
+export async function addBuiltinAddon(name: string): Promise<void>
+export async function removeBuiltinAddon(name: string): Promise<void>
 
 // src/localSlideLoader.ts（改修）— 層C: 実行時信頼の個別操作
+export async function getAddonTrustMap(): Promise<AddonTrustMap>
 export async function setAddonTrustDecision(path: string, decision: AddonTrustDecision): Promise<void>
-// 既存 resolveAddonTrust/resetAddonTrust/isEmbeddedAddonsDisabled を補完（個別 allow/deny の明示設定）
+export async function clearAddonTrustDecision(path: string): Promise<void>  // 追加: 「未設定」へ戻す＝キー削除
+export async function getPackageAddonNames(baseDir: string): Promise<string[]>  // 層B の候補提示用
+// setAddonTrustDecision/clearAddonTrustDecision/resetAddonTrust/isAddonAllowed の書込は直列化キュー経由（競合防止）
+// LoadedSlidePackage に rawText（書換前の生 slides.json）を追加。編集対象は rawText（相対パス保持・§9.1）
 ```
 
 ```rust
 // src-tauri/src/lib.rs（改修）
 struct EditMode(std::sync::Mutex<bool>);
 
+// 精緻化: Mutex poison を String 化して返すため Result を返す
 #[tauri::command]
-fn set_edit_mode(enabled: bool, state: tauri::State<EditMode>) {
-    *state.0.lock().unwrap() = enabled;
-}
+fn set_edit_mode(enabled: bool, state: tauri::State<EditMode>) -> Result<(), String> { /* ... */ }
 
-// 書き込み系は必ず編集モード state を検査してから実行（ゲート）
+// 書き込み系は必ず編集モード state を検査してから実行（ゲート）。純粋関数を切り出して単体テスト
 #[tauri::command]
-fn save_slides_json(path: String, json: String, state: tauri::State<EditMode>) -> Result<(), String> {
-    if !*state.0.lock().unwrap() { return Err("edit mode disabled".into()); }
-    // std::fs::write(path, json)
-    Ok(())
-}
+fn save_slides_json(path: String, json: String, state: tauri::State<EditMode>) -> Result<(), String>
 
+// 精緻化: base_dir（アセット収集元）・name・version を追加（ユーザー確認済み）
 #[tauri::command]
 fn export_slide_package(
-    json: String, out_dir: String, included_addons: Vec<String>, state: tauri::State<EditMode>,
-) -> Result<String, String> {
-    if !*state.0.lock().unwrap() { return Err("edit mode disabled".into()); }
-    // 1. extractAssetPaths 相当でアセット収集 → 2. package.json 生成 → 3. flate2+tar で .tgz 生成
-    Ok(/* 生成された .tgz パス */ String::new())
-}
+    json: String, out_dir: String, base_dir: String, name: String, version: String,
+    included_addons: Vec<String>, state: tauri::State<EditMode>,
+) -> Result<String, String>
+// 1. extract_asset_paths でアセット収集（base_dir 基準） → 2. filter_addon_manifest で層B 同梱
+//    （bundle を addons/<basename> に正規化） → 3. package.json 生成 → 4. flate2+tar で package/ 配下に .tgz
+
+// 層A（dev 限定・cfg!(debug_assertions)＋編集モードゲート＋sanitize_addon_name）
+#[tauri::command] fn list_builtin_addons(...) -> Result<Vec<String>, String>
+#[tauri::command] fn add_builtin_addon(name: String, ...) -> Result<(), String>
+#[tauri::command] fn remove_builtin_addon(name: String, ...) -> Result<(), String>
 ```
 
-`EditMode` は `tauri::Builder::manage(EditMode(Mutex::new(false)))` で登録し、3 コマンドを `invoke_handler` に追加する（`src-tauri/src/lib.rs` の `generate_handler!`）。
+`EditMode` は `tauri::Builder::manage(EditMode(Mutex::new(false)))` で登録し、上記コマンド（計 8 個）を `invoke_handler` に追加する（`src-tauri/src/lib.rs` の `generate_handler!`）。`Cargo.toml` の `serde_json` は `preserve_order` を有効化し、`extract_asset_paths` の走査順を JS（挿入順）に一致させる（DC-003・§9.1）。
 
 ---
 
@@ -259,23 +272,39 @@ fn export_slide_package(
 | export 実行場所 | A:Node スクリプト維持 / B:Rust コマンド新設 / C:フロント JS で tar 実装 | **B（Rust コマンド新設）** | Tauri ランタイムに Node の fs/child_process が無い。`flate2`/`tar` は依存済みで `extract_slide_package` と対になる。アセット規則は `extractAssetPaths` を移植（DC-003・ユーザー確認済み） |
 | Addon 付け外しの層 | 層C のみ / 層C+B / 層A も含む | **層A+B+C すべて（ただし層A は dev 限定）** | 作る側（同梱選択・組み込み）と使う側（信頼）の両面を器で扱う（ユーザー確認済み）。層A は制約付きで含める（下記） |
 | 層A の実行可能性 | 本番でも提供 / dev 限定＋層B へ委譲 | **dev 環境限定（本番は層B へ委譲）** | 組み込み `entry.ts` の増減は `npm run build:addons`（vite）の再ビルドを要し、本番パッケージ済みアプリには npm/vite が無く実行不能。本番配布では実行時ロード可能な層B（パッケージ同梱）で代替（DC-004） |
-| プレビューのテーマ適用スコープ | 同一 document で適用 / iframe・別ウィンドウ隔離 | **初期は同一 document・要監視** | `applyTheme*` は `document.documentElement` にグローバル CSS 変数を書き込む非スコープ副作用。View↔Edit の排他は `View` 型で構造的に保証済みだが、Edit 画面内でエディタ chrome UI とライブプレビューが同一 document・同一 CSS 変数スコープを共有するため、プレビュー対象の `theme.customCSS`/`colors` がエディタ chrome にも波及しうる。初期は許容し、波及が問題化すれば隔離を検討（9.2） |
+| プレビューのテーマ適用スコープ | 同一 document で適用 / iframe・別ウィンドウ隔離 | **エディタ chrome は専用 MUI テーマ（`editorUiTheme`）で分離・プレビューのみプレゼンテーマ**（実装で確定） | 本番 MUI テーマの typography は `var(--theme-font-size-*)`（スライド用の大きなサイズ・`baseFontSize` で拡大）を参照するため、同一 document のエディタ UI に波及して巨大化した。エディタ chrome は固定サイズの `editorUiTheme` を使い、プレゼンのテーマは `ThemeProvider` でプレビュー配下にのみ適用して分離した。9.2 の波及課題はこれで解消 |
 | スライドデータ型 | 新規編集用型を作る / 既存 `types.ts` を流用 | **既存 `types.ts` を流用** | 新規型は暗黙スキーマの二重管理とラウンドトリップ破壊リスクを招く。編集は既存構造の無損失往復に徹する |
 | JSON エディタの実装 | A:plain textarea（MUI TextField multiline） / B:構文強調ライブラリ（CodeMirror 等） | **A（plain textarea ＋ 外部エラー表示）** | 構文・スキーマ検証は `parseSlides` の結果を `errors` props で外部表示すれば足り、エディタ自体の高度機能は本 Feature では不要（DC-005 と整合）。将来ライブラリを追加する場合は T-003 のライフサイクル管理（`useEffect` ＋ クリーンアップ）に従う |
 | 無損失往復の型安全 | `as any` を多用 / `unknown` 保持＋狭い narrowing | **`unknown` のまま保持し狭い範囲でのみ型ガード** | 自由記述は `[key: string]: unknown` のまま往復させ、`as` の濫用を避ける（T-001）。編集で実際に触るフィールドのみ narrowing する |
+| export のアセット収集元 / 命名 | 固定ディレクトリ / base_dir 引数 | **`base_dir` 引数（読込中パッケージ基準）＋ `name`/`version` は編集 UI 入力**（ユーザー確認済み） | 読込中パッケージの相対アセットを基準に収集する。生成 package.json は `@slides/{name}`、初期値は meta.title のスラグ / `1.0.0`。存在しないアセットは `export-slides.mjs` と同様スキップ |
+| 編集対象データ | 書換後の presentationData / 元の相対パス JSON | **元の相対パス JSON（`LoadedSlidePackage.rawText`）**（ユーザー確認済み） | 読込済み `presentationData` は `resolveLocalAssetPaths` で `asset://` URL に書換済みで可搬性を失う。書換前の生テキスト `rawText` を編集の土台にし、プレビュー表示のみ `resolveLocalAssetPaths` で解決。保存・書き出しは相対パスのまま（無損失・可搬・DC-003） |
+| 層B の bundle 正規化 / 走査順 | クローンのまま / JS と挙動一致 | **`filter_addon_manifest` で bundle を `addons/<basename>` に正規化＋`preserve_order`**（レビュー修正） | 残す manifest エントリとコピー対象を同一集合にし実行時 404 を防ぐ。basename 化で層B のパストラバーサルを防止（層A の `sanitize_addon_name` と防御一貫）。`serde_json` の `preserve_order` で `extract_asset_paths` の走査順を JS（挿入順）に一致（DC-003） |
+| 層C 信頼一覧の生成元 | 最近開いた8件 / trustMap 全キー | **`getAddonTrustMap()` 全キー基点（recent は title 補完）**（レビュー修正） | 最近リスト上限（8件）を超えて追い出された「許可済み」パッケージも一覧に残し個別に取り消せる（FR-008）。書込は直列化キューで競合を防止 |
+| 編集画面レイアウト | 左右2カラム（編集/プレビュー） / 上下2段 | **上段=フォーム70%:プレビュー30%（7:3）／下段=slides.json 全幅・エラー時プレビュー非表示**（ユーザー確認済み） | プレゼン資料は横長でプレビュー右カラムにデッドスペースが多い。JSON 編集を下段で全幅化し、プレビューは上段に。グリッドは `minmax(0, ...)`（`transform: scale` はレイアウト幅を変えないためトラック肥大化を防ぐ） |
 
 ## 9.2. 未解決の課題
 
-| 課題 | 影響度 | 対応方針 |
+| 課題 | 影響度 | 対応方針 / 実装での決着 |
 |------|-----|------|
-| Edit 画面内でエディタ chrome UI とプレビューが同一 CSS 変数スコープを共有 | 中 | View↔Edit の排他（`View` 型で保証済み）では解決しない別問題。プレビュー対象テーマがエディタ chrome へ波及する場合、プレビューパネルの iframe/別ウィンドウ隔離、または `applyTheme` のスコープ化を実装時に評価 |
-| 型未定義フィールドの検証強度 | 中 | 保存前検証は既存 `getValidationErrors`（id/layout/title 等）レベルに留め、`left`/`steps`/`tiles` 等の深い検証は段階導入。無損失往復（FR-004）を優先し、過度な検証で自由記述を弾かない |
-| 層A の dev 検出手段 | 低 | dev/本番の判定（`import.meta.env.DEV` 等）で層A UI を出し分ける。ビルド実行は既存 `npm run build:addons` の呼び出し方法を実装時に確定 |
-| `.tgz` の `package/` サブディレクトリ規約 | 低 | `extract_slide_package` が `package/` を優先探索する（npm pack 慣習）。export 側も同規約で生成し往復を保証 |
+| Edit 画面内でエディタ chrome UI とプレビューが同一 CSS 変数スコープを共有 | 中 | ✅ **解消**。エディタ chrome を固定サイズの `editorUiTheme` に分離し、プレゼンテーマは `ThemeProvider` でプレビュー配下にのみ適用（§9.1）。`applyThemeData` のグローバル CSS 変数書込は残るが、フォントサイズの波及は MUI テーマ層で遮断した |
+| 型未定義フィールドの検証強度 | 中 | 保存前検証は既存 `getValidationErrors`（id/layout/title 等）レベルに留め、深い検証は段階導入。無損失往復（FR-004）を優先し過度な検証で自由記述を弾かない（実装は本方針どおり） |
+| 層A の dev 検出手段 | 低 | ✅ **確定**。UI は `import.meta.env.DEV`、Rust は `cfg!(debug_assertions)` で出し分け。増減後は `npm run build:addons` が必要な旨を UI に明示 |
+| `.tgz` の `package/` サブディレクトリ規約 | 低 | ✅ **確定**。`extract_slide_package` の `package/` 優先探索に合わせ、`build_slide_package_gated` も `package/` 配下へ格納して往復を保証 |
+| 書き込みパスのスコープ限定（DC-002） | 低 | 未対応（要件外）。`save_slides_json`/`export_slide_package` は任意絶対パスを受理するが、DC-002 は「Rust 境界＋編集モードゲート」を規定するのみでパス限定は要件外。JS に fs 書込権限を渡さない主要防御は実装済みで、パスは OS ダイアログ経由で確定する。多層防御としてスコープ限定を将来検討 |
 
 ---
 
 # 10. 変更履歴
+
+## v0.2（implement・2026-07-24）
+
+**変更内容:**
+
+- Issue #13 の実装完了に伴い、設計書を実装実態へ整合（task-cleanup）。impl-status を `implemented` に更新し、§1 実装ステータスを 🟢 実装完了へ。
+- §6 インターフェース定義を最終シグネチャに更新: `set_edit_mode` の `Result` 化、`export_slide_package` への `base_dir`/`name`/`version` 追加、層A コマンド（`list/add/remove_builtin_addon`）、`clearAddonTrustDecision`/`getPackageAddonNames`/書込直列化、`ExportOptions` の精緻化、`serde_json` の `preserve_order`。
+- §9.1 に実装で確定した設計判断を追記: export のアセット収集元（`base_dir`）と `name`/`version` 入力、編集対象データ（`rawText`＝相対パス JSON）、層B の bundle 正規化＋走査順一致、層C 信頼一覧の trustMap 全キー基点、編集画面レイアウト（上7:3／下 json 全幅・エラー時プレビュー非表示）。テーマ適用スコープの決定を `editorUiTheme` による chrome 分離に更新。
+- §9.2 の未解決課題を決着（テーマ波及＝解消、層A 検出／`package/` 規約＝確定）。DC-002 のパススコープ限定は要件外の将来検討として明記。
+- レビュー（アドオン付け外し／i18n）＋敵対的検証の結果（blocker/CONFIRMED 0）と実機検証（B/C/D）を反映。詳細は [implementation_progress.md](../task/slide-edit-mode/implementation_progress.md)。
 
 ## v0.1（draft）
 

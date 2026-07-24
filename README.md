@@ -86,6 +86,40 @@ Besides the slide content bundled at build time (see [Slide Packages](#slide-pac
 `image/`, `voice/`, `theme/`, or `font/` relative references inside the slide data are resolved against the folder
 the content lives in. The app remembers the last opened file and reloads it automatically on next launch.
 
+## Edit Mode
+
+Beyond viewing, you can author and package slides directly inside the app. Click the **Edit** button in the top-left
+toolbar (next to **Home**) to switch from view to edit mode; **Exit editing** returns to the presentation.
+
+The editor puts the metadata form and preview on top and a full-width `slides.json` editor below:
+
+- **Form** — Edit confirmed fields (title, description, author, theme colors, custom CSS). Updates are partial, so any
+  unknown or free-form fields are preserved untouched.
+- **`slides.json` editor** — Edit the raw JSON directly. The form and the JSON editor share a single source of truth.
+- **Live preview** — Rendered by the same renderer as the actual presentation (not a re-implementation); theme edits
+  are reflected live. While the JSON has a syntax or schema error, the preview is hidden and save/export are disabled
+  until the error is fixed.
+
+### Saving and Exporting
+
+| Action          | Description                                                                                                                        |
+|-----------------|------------------------------------------------------------------------------------------------------------------------------------|
+| **Save**        | Write the edited `slides.json` to a location you choose (relative asset paths are preserved)                                        |
+| **Export .tgz** | Produce a `.tgz` package (name / version from the toolbar inputs); referenced assets are bundled and it round-trips with **Open a File** |
+
+Filesystem writes happen only while edit mode is active and are performed at the Rust boundary — the web layer is never
+granted write permission (least privilege).
+
+### Addon Detachment
+
+Package-bundled addons contain executable code, so addon control is separated into three layers:
+
+| Layer                   | Where                                                                                   | What it controls                                                                                                                                            |
+|-------------------------|-----------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Runtime trust**       | Confirmation prompt on open + **Settings → Per-package add-on trust**                    | Allow / deny loading a package's bundled addons, per package (default: denied). The global **Always disable embedded add-ons** toggle takes precedence.      |
+| **Export selection**    | Edit mode **Bundled add-ons** checkboxes (and `npm run export:slides --addons a,b`)      | Choose which addons to include when exporting a `.tgz`.                                                                                                      |
+| **Built-in add/remove** | Edit mode **Built-in add-ons (dev)** panel (development builds only)                     | Scaffold or remove `addons/src/<name>/entry.ts`. Run `npm run build:addons` afterwards to rebuild.                                                            |
+
 ## Defining Slides
 
 Create `public/slides.json` to customize slide content.

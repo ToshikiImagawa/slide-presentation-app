@@ -18,6 +18,8 @@ const slidePackageStore = new LazyStore('slide-package-state.json')
 
 export interface LoadedSlidePackage {
   data: PresentationData
+  /** 書換前の元 slides.json テキスト（編集モードの無損失往復の土台）。相対アセットパスを保持する */
+  rawText: string
   baseDir: string
   /** 利用者が選択した元パス（.tgz または slides.json）。信頼判断の永続化キーに使う */
   sourcePath: string
@@ -45,7 +47,7 @@ export function extractAddonBundlePaths(manifest: unknown): string[] {
 
 /** path 単位の同梱アドオン信頼判断 */
 export type AddonTrustDecision = 'allowed' | 'denied'
-type AddonTrustMap = Record<string, AddonTrustDecision>
+export type AddonTrustMap = Record<string, AddonTrustDecision>
 
 /**
  * グローバル無効化フラグと path 単位の判断から、アドオンをどう扱うか決める（純粋関数）。
@@ -71,10 +73,29 @@ export async function setEmbeddedAddonsDisabled(disabled: boolean): Promise<void
   await slidePackageStore.save()
 }
 
+/**
+ * 同梱アドオン信頼マップ（ADDON_TRUST_KEY）への read-modify-write を直列化するキュー。
+ * 個別 allow/deny・未設定戻し・リセットが短時間に連続しても、各操作が最新のマップを読んでから
+ * 更新するため別 path の判断が失われない（fire-and-forget による取りこぼしを防ぐ）。
+ */
+let trustWriteChain: Promise<void> = Promise.resolve()
+function queueTrustWrite(mutate: (map: AddonTrustMap) => void): Promise<void> {
+  const run = trustWriteChain.then(async () => {
+    const trustMap = (await slidePackageStore.get<AddonTrustMap>(ADDON_TRUST_KEY)) ?? {}
+    mutate(trustMap)
+    await slidePackageStore.set(ADDON_TRUST_KEY, trustMap)
+    await slidePackageStore.save()
+  })
+  // 1件の失敗で後続まで詰まらないよう、チェーンには握りつぶした派生を繋ぐ（呼び出し側には実 promise を返す）
+  trustWriteChain = run.catch(() => {})
+  return run
+}
+
 /** 許可済み/拒否済みの信頼判断をすべて失効（リセット）する */
 export async function resetAddonTrust(): Promise<void> {
-  await slidePackageStore.set(ADDON_TRUST_KEY, {})
-  await slidePackageStore.save()
+  await queueTrustWrite((map) => {
+    for (const key of Object.keys(map)) delete map[key]
+  })
 }
 
 /**
@@ -95,10 +116,51 @@ export async function isAddonAllowed(path: string): Promise<boolean> {
     okLabel: '有効化する',
     cancelLabel: '無効のまま',
   })
-  trustMap[path] = allowed ? 'allowed' : 'denied'
-  await slidePackageStore.set(ADDON_TRUST_KEY, trustMap)
-  await slidePackageStore.save()
+  await queueTrustWrite((map) => {
+    map[path] = allowed ? 'allowed' : 'denied'
+  })
   return allowed
+}
+
+/** 同梱アドオンの信頼判断マップ（sourcePath → allowed/denied）を取得する（層C の個別付け外し UI 表示用） */
+export async function getAddonTrustMap(): Promise<AddonTrustMap> {
+  return (await slidePackageStore.get<AddonTrustMap>(ADDON_TRUST_KEY)) ?? {}
+}
+
+/**
+ * 指定 path の同梱アドオン信頼を個別に許可/拒否する（層C・FR-008）。
+ * 既存マップを読み、対象 path のみ更新して保存する（他パッケージの判断を消さない read-modify-write）。
+ * グローバル無効化（disableEmbeddedAddons）が個別判断より優先される点は resolveAddonTrust の通り。
+ */
+export async function setAddonTrustDecision(path: string, decision: AddonTrustDecision): Promise<void> {
+  await queueTrustWrite((map) => {
+    map[path] = decision
+  })
+}
+
+/**
+ * 指定 path の同梱アドオン信頼判断を「未設定」に戻す（層C・FR-008）。trustMap からキーを削除するため、
+ * 次回そのパッケージを開くと再び確認ダイアログ（既定拒否）が表示される。
+ */
+export async function clearAddonTrustDecision(path: string): Promise<void> {
+  await queueTrustWrite((map) => {
+    delete map[path]
+  })
+}
+
+/** baseDir/addons/manifest.json から同梱アドオンの name 一覧を取得する（層B の export 個別選択 UI 用）。無い/不正なら空配列 */
+export async function getPackageAddonNames(baseDir: string): Promise<string[]> {
+  if (!baseDir) return []
+  try {
+    const raw = await readTextFile(`${baseDir}/addons/manifest.json`)
+    const manifest: unknown = JSON.parse(raw)
+    const addons = (manifest as { addons?: Array<{ name?: unknown }> }).addons
+    if (!Array.isArray(addons)) return []
+    return addons.map((a) => (a && typeof a.name === 'string' ? a.name : null)).filter((n): n is string => n !== null)
+  } catch {
+    // manifest が存在しない・不正な場合はアドオンなし
+    return []
+  }
 }
 
 /** スライド読み込みの結果と、それに伴う最近使ったリストの更新をまとめて返す（recentPackages が null のときは変更なし＝再設定不要） */
@@ -125,8 +187,8 @@ export function removeRecentEntry(list: RecentSlidePackageEntry[], path: string)
   return list.filter((item) => item.path !== path)
 }
 
-/** JSON内の image/voice/theme/font 参照を baseDir 基準のローカル asset URL に書き換える（scripts/export-slides.mjs の extractAssetPaths と同じ規則） */
-function resolveLocalAssetPaths<T>(value: T, baseDir: string): T {
+/** JSON内の image/voice/theme/font 参照を baseDir 基準のローカル asset URL に書き換える（scripts/export-slides.mjs の extractAssetPaths と同じ規則）。編集モードのプレビュー表示でも再利用する（DC-003 単一真実源） */
+export function resolveLocalAssetPaths<T>(value: T, baseDir: string): T {
   if (typeof value === 'string') {
     const normalized = value.replace(/^\//, '')
     if (ASSET_PATH_PREFIXES.some((prefix) => normalized.startsWith(prefix))) {
@@ -184,7 +246,7 @@ async function loadSlidePackage(selectedPath: string): Promise<LoadedSlidePackag
   // allow_asset_dir 完了後に同梱アドオンを解決する（owner はパッケージ単位で一意な baseDir）
   const addonScripts = await resolvePackageAddons(baseDir)
 
-  return { data: resolveLocalAssetPaths(parsed, baseDir), baseDir, sourcePath: selectedPath, addonScripts, owner: baseDir }
+  return { data: resolveLocalAssetPaths(parsed, baseDir), rawText: raw, baseDir, sourcePath: selectedPath, addonScripts, owner: baseDir }
 }
 
 /** 最近使ったリストを取得する */

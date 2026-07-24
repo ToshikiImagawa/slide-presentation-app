@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseArgs, rewriteAddonManifestBundles, buildFilesField, extractAssetPaths } from '../export-slides.mjs'
+import { parseArgs, rewriteAddonManifestBundles, buildFilesField, extractAssetPaths, selectAddons } from '../export-slides.mjs'
 
 describe('parseArgs', () => {
   it('--addons フラグを解釈する', () => {
@@ -12,6 +12,39 @@ describe('parseArgs', () => {
   it('--addons 未指定時は false', () => {
     const r = parseArgs(['--name', 'demo', '--slides', 'slides.json'])
     expect(r.addons).toBe(false)
+  })
+
+  it('--addons a,b で個別選択（name 配列）を解釈する（層B）', () => {
+    const r = parseArgs(['--name', 'demo', '--slides', 'slides.json', '--addons', 'viz, other'])
+    expect(r.addons).toEqual(['viz', 'other'])
+  })
+
+  it('--addons の次がフラグなら全同梱（true）のまま', () => {
+    const r = parseArgs(['--addons', '--name', 'demo'])
+    expect(r.addons).toBe(true)
+    expect(r.name).toBe('demo')
+  })
+
+  it('--addons の値が空（カンマのみ/空文字/空白）なら同梱なし（false）に統一する', () => {
+    expect(parseArgs(['--addons', ',']).addons).toBe(false)
+    expect(parseArgs(['--addons', '']).addons).toBe(false)
+    expect(parseArgs(['--addons', '  ']).addons).toBe(false)
+  })
+})
+
+describe('selectAddons（層B）', () => {
+  const addons = [
+    { name: 'viz', bundle: 'addons/viz.js' },
+    { name: 'other', bundle: 'addons/other.js' },
+  ]
+
+  it('selected が配列なら name で絞り込む', () => {
+    expect(selectAddons(addons, ['viz'])).toEqual([{ name: 'viz', bundle: 'addons/viz.js' }])
+  })
+
+  it('selected が true/未指定なら全件を返す', () => {
+    expect(selectAddons(addons, true)).toEqual(addons)
+    expect(selectAddons(addons, undefined)).toEqual(addons)
   })
 })
 
