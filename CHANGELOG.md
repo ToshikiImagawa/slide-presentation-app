@@ -4,6 +4,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- **Edit Mode** — Author and package slides directly in the app (toggle from the toolbar **Edit** button)
+    - Metadata form + full-width `slides.json` editor sharing a single source of truth, with a live preview rendered by
+      the production renderer (theme edits reflected live)
+    - Save the edited `slides.json` locally, and export a `.tgz` slide package (name / version, referenced assets bundled)
+    - Validation gating: save / export disabled and preview hidden while the JSON has a syntax or schema error
+    - Filesystem writes happen only in edit mode, performed at the Rust boundary (least privilege)
+- **Addon Detachment (3 layers)** — Control over bundled executable addons
+    - Runtime trust per package (confirmation prompt on open + Settings, default denied; global disable takes precedence)
+    - Export bundling selection (in-app **Bundled add-ons** checkboxes and `npm run export:slides --addons a,b`)
+    - Dev-only built-in add/remove of `addons/src/<name>/entry.ts`
+
 ## [1.0.0] - 2026-02-02
 
 First release. A presentation tool that defines slides with JSON data and displays them in the browser.

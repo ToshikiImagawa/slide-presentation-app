@@ -16,9 +16,32 @@ export function parseArgs(args) {
     if (args[i] === '--name' && args[i + 1]) result.name = args[++i]
     else if (args[i] === '--slides' && args[i + 1]) result.slides = args[++i]
     else if (args[i] === '--version' && args[i + 1]) result.version = args[++i]
-    else if (args[i] === '--addons') result.addons = true
+    else if (args[i] === '--addons') {
+      // `--addons` 単独なら全同梱、`--addons a,b` なら name で個別選択（層B・FR-009）
+      const next = args[i + 1]
+      const hasValue = next !== undefined && !next.startsWith('--')
+      if (hasValue) {
+        const names = next
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean)
+        // 値を明示指定したが有効な name が0件（例: `,` や空文字）なら「同梱なし」に統一する
+        // （空配列を渡して stray な空 addons/manifest.json を生成しないため）
+        result.addons = names.length > 0 ? names : false
+        i++
+      } else {
+        result.addons = true
+      }
+    }
   }
   return result
+}
+
+// --- 同梱対象アドオンの選択（selected が配列なら name で絞り込み、true/未指定なら全件） ---
+export function selectAddons(addons, selected) {
+  const list = Array.isArray(addons) ? addons : []
+  if (!Array.isArray(selected)) return list
+  return list.filter((addon) => selected.includes(addon?.name))
 }
 
 // --- JSON内のアセットパスを再帰抽出 ---
@@ -44,8 +67,8 @@ export function extractAssetPaths(obj) {
 }
 
 // --- アドオン manifest の bundle をパッケージ相対（addons/xxx）へ書き換える ---
-export function rewriteAddonManifestBundles(manifest) {
-  const addons = Array.isArray(manifest?.addons) ? manifest.addons : []
+export function rewriteAddonManifestBundles(manifest, selected) {
+  const addons = selectAddons(manifest?.addons, selected)
   return {
     ...manifest,
     addons: addons.map((addon) => ({
@@ -64,7 +87,7 @@ export function buildFilesField(assetPaths, includeAddons) {
 }
 
 // --- ビルド済みアドオン（addons/dist）を outDir/addons へ同梱し、manifest を相対パス化する ---
-function bundleAddons(outDir) {
+function bundleAddons(outDir, selected) {
   const addonsDistDir = resolve(projectRoot, 'addons', 'dist')
   const manifestPath = resolve(addonsDistDir, 'manifest.json')
   if (!existsSync(manifestPath)) {
@@ -73,11 +96,21 @@ function bundleAddons(outDir) {
   }
 
   const manifest = JSON.parse(readFileSync(manifestPath, 'utf-8'))
+
+  // 明示選択した name が manifest に存在しなければ警告する（タイポ検知。0件同梱を黙って通さない）
+  if (Array.isArray(selected)) {
+    const known = new Set((manifest.addons ?? []).map((a) => a?.name))
+    for (const n of selected) {
+      if (!known.has(n)) console.warn(`Warning: 未知のアドオン name: ${n}（manifest に存在しません・スキップ）`)
+    }
+  }
+
   const outAddonsDir = resolve(outDir, 'addons')
   mkdirSync(outAddonsDir, { recursive: true })
 
+  // selected が配列なら name で絞り込み、true なら全件（層B・FR-009）
   let copied = 0
-  for (const addon of manifest.addons ?? []) {
+  for (const addon of selectAddons(manifest.addons, selected)) {
     const fileName = String(addon.bundle).split('/').pop()
     const src = resolve(addonsDistDir, fileName)
     if (existsSync(src)) {
@@ -88,7 +121,8 @@ function bundleAddons(outDir) {
     }
   }
 
-  writeFileSync(resolve(outAddonsDir, 'manifest.json'), JSON.stringify(rewriteAddonManifestBundles(manifest), null, 2))
+  // コピー側と manifest 側を同じ選択集合で絞り込む（不整合で実行時 404 を防ぐ）
+  writeFileSync(resolve(outAddonsDir, 'manifest.json'), JSON.stringify(rewriteAddonManifestBundles(manifest, selected), null, 2))
   console.log(`Bundled ${copied} addon(s)`)
   return copied > 0
 }
@@ -114,7 +148,7 @@ function main() {
     console.error('  --name     パッケージ名 (例: my-presentation)')
     console.error('  --slides   public/配下のslidesファイル名 (例: slides.json)')
     console.error('  --version  バージョン (デフォルト: 1.0.0)')
-    console.error('  --addons   ビルド済みアドオン (addons/dist) を同梱する')
+    console.error('  --addons   ビルド済みアドオン (addons/dist) を同梱する（`--addons a,b` で name を個別選択）')
     process.exit(1)
   }
 
@@ -155,10 +189,10 @@ function main() {
   }
   console.log(`Copied ${copiedCount}/${assetPaths.length} assets`)
 
-  // アドオン同梱（--addons 指定時のみ）
+  // アドオン同梱（--addons 指定時のみ。値ありなら name で個別選択）
   let includeAddons = false
   if (args.addons) {
-    includeAddons = bundleAddons(outDir)
+    includeAddons = bundleAddons(outDir, args.addons)
   }
 
   // package.json 生成

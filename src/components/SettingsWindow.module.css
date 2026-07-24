@@ -135,3 +135,48 @@
 .footerButton:hover {
   background: var(--theme-background);
 }
+
+.addonTrustSection {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.addonTrustNote {
+  margin: 0;
+  font-size: 12px;
+  color: var(--theme-text-muted);
+}
+
+.addonTrustList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.addonTrustItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.addonTrustTitle {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  color: var(--theme-text-body);
+}
+
+.addonTrustSelect {
+  padding: 4px 8px;
+  border: 1px solid var(--theme-border);
+  border-radius: 6px;
+  background: var(--theme-background);
+  color: var(--theme-text-heading);
+  font-size: 13px;
+  font-family: var(--theme-font-body), sans-serif;
+  cursor: pointer;
+}

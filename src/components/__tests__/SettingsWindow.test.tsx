@@ -176,5 +176,58 @@ describe('SettingsWindow', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Reset add-on trust history' }))
       expect(onReset).toHaveBeenCalledTimes(1)
     })
+
+    it('addonTrust を渡すとパッケージごとの許可/拒否セレクトを表示する（層C）', () => {
+      render(
+        <Wrapper>
+          <SettingsWindow
+            open={true}
+            onClose={() => {}}
+            scrollSpeed={20}
+            setScrollSpeed={() => {}}
+            embeddedAddonsDisabled={false}
+            onToggleEmbeddedAddons={() => {}}
+            addonTrust={[
+              { path: '/a/slides.json', title: 'Deck A', decision: 'allowed' },
+              { path: '/b.tgz', title: 'Deck B', decision: undefined },
+            ]}
+            onSetAddonTrust={() => {}}
+          />
+        </Wrapper>,
+      )
+      expect(screen.getByText('Deck A')).toBeDefined()
+      expect(screen.getByText('Deck B')).toBeDefined()
+      // 言語 select ＋ パッケージ2件の select = 計3（checkbox は無効化トグルの1件のまま）
+      expect(screen.getAllByRole('combobox').length).toBe(3)
+    })
+
+    it('セレクト変更で onSetAddonTrust が該当 path・判断で呼ばれる（層C）', () => {
+      const onSet = vi.fn()
+      render(
+        <Wrapper>
+          <SettingsWindow
+            open={true}
+            onClose={() => {}}
+            scrollSpeed={20}
+            setScrollSpeed={() => {}}
+            embeddedAddonsDisabled={false}
+            onToggleEmbeddedAddons={() => {}}
+            addonTrust={[{ path: '/b.tgz', title: 'Deck B', decision: undefined }]}
+            onSetAddonTrust={onSet}
+          />
+        </Wrapper>,
+      )
+      fireEvent.change(screen.getByLabelText('Deck B: アドオンの個別許可'), { target: { value: 'denied' } })
+      expect(onSet).toHaveBeenCalledWith('/b.tgz', 'denied')
+    })
+
+    it('onSetAddonTrust 未指定なら個別許可セクションを表示しない（後方互換）', () => {
+      render(
+        <Wrapper>
+          <SettingsWindow open={true} onClose={() => {}} scrollSpeed={20} setScrollSpeed={() => {}} embeddedAddonsDisabled={false} onToggleEmbeddedAddons={() => {}} addonTrust={[{ path: '/b.tgz', title: 'Deck B', decision: undefined }]} />
+        </Wrapper>,
+      )
+      expect(screen.queryByText('Deck B')).toBeNull()
+    })
   })
 })

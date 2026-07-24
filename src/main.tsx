@@ -14,6 +14,10 @@ import { I18nProvider, loadLocales, useI18n } from './i18n'
 import type { LocaleResource } from './i18n'
 import { getRecentSlidePackages, isAddonAllowed, openRecentSlidePackage, pickAndLoadSlidePackage } from './localSlideLoader'
 import type { LoadedSlidePackage, RecentSlidePackageEntry } from './localSlideLoader'
+import { SlideEditor } from './edit/SlideEditor'
+import type { EditSource } from './edit/SlideEditor'
+import { serializeSlides } from './edit/slidesSerialize'
+import { enterEditMode, exitEditMode } from './editModeSave'
 
 /** バンドル済みの slides.json を読み込む。存在しない場合はビルトインのテンプレートガイドを返す（ホーム画面の「サンプルスライド」用） */
 async function loadSamplePresentationData(locale: string): Promise<PresentationData> {
@@ -38,7 +42,7 @@ async function applyPresentationTheme(data: PresentationData | undefined): Promi
   }
 }
 
-type View = 'home' | 'presentation'
+type View = 'home' | 'presentation' | 'edit'
 
 /** ホーム画面とプレゼンテーション画面を切り替える（I18nProvider の内側で useI18n を使うための内側コンポーネント） */
 function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentSlidePackageEntry[] }) {
@@ -51,6 +55,8 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
   const [addonInfo, setAddonInfo] = useState<{ owner: string; scripts: string[] }>({ owner: '', scripts: [] })
   // 現在ロード済みのパッケージアドオンの owner（切替時のアンロード対象）
   const currentOwnerRef = useRef<string | undefined>(undefined)
+  // 編集モードの供給元（現在表示中プレゼンの生 JSON / baseDir / 読込元パス）。編集は相対パスの生 JSON を対象にする
+  const [editSource, setEditSource] = useState<EditSource | null>(null)
 
   const showPresentation = useCallback(async (data: PresentationData) => {
     // スライド内容の更新を最優先で反映する（テーマ適用の失敗で更新がブロックされないようにする）
@@ -98,6 +104,8 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
     if (recentPackages) setRecentPackages(recentPackages)
     if (!data) return
     await applyPackageAddons(data)
+    // 編集は書換前の生 JSON（相対パス）を対象にする
+    setEditSource({ rawText: data.rawText, baseDir: data.baseDir, sourcePath: data.sourcePath })
     await showPresentation(data.data)
   }, [applyPackageAddons, showPresentation])
 
@@ -107,6 +115,7 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
       if (recentPackages) setRecentPackages(recentPackages)
       if (!data) return
       await applyPackageAddons(data)
+      setEditSource({ rawText: data.rawText, baseDir: data.baseDir, sourcePath: data.sourcePath })
       await showPresentation(data.data)
     },
     [applyPackageAddons, showPresentation],
@@ -116,23 +125,43 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
     // サンプルは組み込みアドオンのみを使うため、パッケージ由来のアドオンは破棄する
     clearPackageAddons()
     const data = await loadSamplePresentationData(locale)
+    // サンプル/デフォルトは相対パスのまま。baseDir は無い（アセットは app 配下で解決される）
+    setEditSource({ rawText: serializeSlides(data), baseDir: '', sourcePath: undefined })
     await showPresentation(data)
   }, [clearPackageAddons, locale, showPresentation])
 
   const handleGoHome = useCallback(() => {
     // ホーム復帰時はパッケージ由来のカスタム登録をクリアする
     clearPackageAddons()
+    setEditSource(null)
     // プレゼンテーション固有のテーマを持ち越さず、ホーム画面はアプリのデフォルトテーマで表示する
     resetThemeOverrides()
     void applyTheme()
     setView('home')
   }, [clearPackageAddons])
 
+  const handleStartEdit = useCallback(() => {
+    // 編集モードを Rust 側で有効化してから編集画面へ（失敗しても遷移はブロックしない・A-005）
+    void enterEditMode().catch((error) => console.error('[main] 編集モードの有効化に失敗しました', error))
+    setView('edit')
+  }, [])
+
+  const handleExitEdit = useCallback(() => {
+    void exitEditMode().catch((error) => console.error('[main] 編集モードの無効化に失敗しました', error))
+    // 編集中に適用したテーマを、表示中プレゼンのテーマへ戻す
+    void applyPresentationTheme(presentationData)
+    setView('presentation')
+  }, [presentationData])
+
+  if (view === 'edit' && editSource) {
+    return <SlideEditor source={editSource} onExit={handleExitEdit} />
+  }
+
   if (view === 'home') {
     return <HomeScreen recentPackages={recentPackages} onOpenRecent={handleOpenRecent} onOpenSample={handleOpenSample} onBrowse={handleBrowse} />
   }
 
-  return <App key={presentationKey} presentationData={presentationData} onGoHome={handleGoHome} addonOwner={addonInfo.owner} addonScripts={addonInfo.scripts} />
+  return <App key={presentationKey} presentationData={presentationData} onGoHome={handleGoHome} onStartEdit={handleStartEdit} addonOwner={addonInfo.owner} addonScripts={addonInfo.scripts} />
 }
 
 interface RootProps {

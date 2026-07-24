@@ -1,5 +1,9 @@
 import { useI18n, useTranslation } from '../i18n'
+import type { AddonTrustDecision } from '../localSlideLoader'
 import styles from './SettingsWindow.module.css'
+
+/** 層C: 実行時信頼の個別付け外し対象（パッケージ単位） */
+export type AddonTrustEntry = { path: string; title: string; decision: AddonTrustDecision | undefined }
 
 type SettingsWindowProps = {
   open: boolean
@@ -12,9 +16,13 @@ type SettingsWindowProps = {
   onToggleEmbeddedAddons?: (disabled: boolean) => void
   /** アドオン許可履歴のリセットハンドラ */
   onResetAddonTrust?: () => void
+  /** 層C: 実行時信頼の個別付け外し対象（最近開いたパッケージ）。未指定/空なら表示しない */
+  addonTrust?: AddonTrustEntry[]
+  /** 層C: 個別 allow/deny の設定ハンドラ（decision が undefined なら「未設定」へ戻す） */
+  onSetAddonTrust?: (path: string, decision: AddonTrustDecision | undefined) => void
 }
 
-export function SettingsWindow({ open, onClose, scrollSpeed, setScrollSpeed, embeddedAddonsDisabled, onToggleEmbeddedAddons, onResetAddonTrust }: SettingsWindowProps) {
+export function SettingsWindow({ open, onClose, scrollSpeed, setScrollSpeed, embeddedAddonsDisabled, onToggleEmbeddedAddons, onResetAddonTrust, addonTrust, onSetAddonTrust }: SettingsWindowProps) {
   const { locale, locales, setLocale } = useI18n()
   const { t } = useTranslation()
 
@@ -76,6 +84,32 @@ export function SettingsWindow({ open, onClose, scrollSpeed, setScrollSpeed, emb
                   <button type="button" className={styles.footerButton} onClick={onResetAddonTrust}>
                     {t('settings.resetAddonTrust')}
                   </button>
+                </div>
+              )}
+              {onSetAddonTrust && addonTrust && addonTrust.length > 0 && (
+                <div className={styles.addonTrustSection}>
+                  <label className={styles.label}>{t('settings.addonTrustList', 'アドオンの個別許可')}</label>
+                  {embeddedAddonsDisabled && <p className={styles.addonTrustNote}>{t('settings.addonTrustDisabledNote', '一律無効化が有効な間は個別設定より優先されます')}</p>}
+                  <div className={styles.addonTrustList}>
+                    {addonTrust.map((entry) => (
+                      <div key={entry.path} className={styles.addonTrustItem}>
+                        <span className={styles.addonTrustTitle} title={entry.path}>
+                          {entry.title}
+                        </span>
+                        <select
+                          className={styles.addonTrustSelect}
+                          aria-label={`${entry.title}: ${t('settings.addonTrustList', 'アドオンの個別許可')}`}
+                          value={entry.decision ?? ''}
+                          disabled={embeddedAddonsDisabled}
+                          onChange={(e) => onSetAddonTrust(entry.path, e.target.value === '' ? undefined : (e.target.value as AddonTrustDecision))}
+                        >
+                          <option value="">{t('settings.addonTrustUnset', '未設定')}</option>
+                          <option value="allowed">{t('settings.addonTrustAllow', '許可')}</option>
+                          <option value="denied">{t('settings.addonTrustDeny', '拒否')}</option>
+                        </select>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </>
