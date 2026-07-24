@@ -1,3 +1,21 @@
+---
+id: prd-slide-content-customization
+title: スライドコンテンツカスタマイズ 要求仕様書
+type: prd
+status: draft
+priority: high
+risk: high
+created: 2026-02-02
+updated: 2026-07-24
+tags:
+  - slide
+  - data-driven
+  - json
+  - component-registry
+  - theme
+category: slide-content
+---
+
 # スライドコンテンツカスタマイズ 要求仕様書
 
 ## 概要

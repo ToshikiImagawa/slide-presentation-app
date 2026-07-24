@@ -1,8 +1,29 @@
+---
+id: design-presentation-foundation
+title: Reveal.js プレゼンテーション基盤 技術設計書
+type: design
+status: draft
+sdd-phase: plan
+impl-status: implemented
+created: 2026-02-02
+updated: 2026-07-24
+depends-on:
+  - spec-presentation-foundation
+tags:
+  - presentation
+  - reveal-js
+  - navigation
+  - scaling
+  - branding
+  - lifecycle
+category: presentation-foundation
+---
+
 # Reveal.js プレゼンテーション基盤
 
 **ドキュメント種別:** 技術設計書 (Design Doc)
 **SDDフェーズ:** Plan (計画/設計)
-**最終更新日:** 2026-01-30
+**最終更新日:** 2026-07-24
 **関連 Spec:** [presentation-foundation_spec.md](./presentation-foundation_spec.md)
 **関連 PRD:** [presentation-foundation.md](../requirement/presentation-foundation.md)
 
@@ -52,24 +73,34 @@
 
 ## 4.1. システム構成図
 
+起動フローは「並行初期化 → 常にホーム画面表示 → ユーザー操作で App へ遷移」の 3 段階。`main.tsx` は `Promise.all` で組み込みアドオン・言語リソース・最近開いたパッケージ・テーマを並行ロードしてから `HomeScreen` を描画する。ホーム画面でスライド（サンプルまたはローカルパッケージ）を選択すると、必要に応じてパッケージ同梱アドオンをロードしたうえで `App` をマウントする。
+
 ```mermaid
 graph TD
     subgraph "エントリーポイント"
         Main["main.tsx"]
     end
 
-    subgraph "初期化フェーズ"
+    subgraph "初期化フェーズ（Promise.all で並行）"
+        LoadBuiltin["loadBuiltinAddons()"]
+        LoadLocales["loadLocales()"]
+        GetRecent["getRecentSlidePackages()"]
         ApplyTheme["applyTheme()"]
-        LoadAddons["loadAddons()"]
-        FetchSlides["fetch /slides.json"]
     end
 
     subgraph "ビュー層"
+        Home["HomeScreen"]
         App["App.tsx"]
         UseReveal["useReveal Hook"]
         SlideRenderer["SlideRenderer"]
         Layouts["レイアウトコンポーネント群"]
         Logo["FallbackImage (Logo)"]
+    end
+
+    subgraph "スライドロード"
+        LoadSample["loadSamplePresentationData()"]
+        LoadPackage["pickAndLoadSlidePackage() / openRecentSlidePackage()"]
+        LoadAddonScripts["loadAddonScripts(scripts, owner)"]
     end
 
     subgraph "プレゼンテーションエンジン"
@@ -81,10 +112,19 @@ graph TD
         MUITheme["MUI Theme"]
     end
 
+    Main --> LoadBuiltin
+    Main --> LoadLocales
+    Main --> GetRecent
     Main --> ApplyTheme
-    Main --> LoadAddons
-    LoadAddons --> FetchSlides
-    FetchSlides --> App
+    LoadBuiltin --> Home
+    LoadLocales --> Home
+    GetRecent --> Home
+    ApplyTheme --> Home
+    Home -->|サンプル選択| LoadSample
+    Home -->|パッケージ選択| LoadPackage
+    LoadPackage --> LoadAddonScripts
+    LoadSample --> App
+    LoadPackage --> App
     App --> UseReveal
     App --> SlideRenderer
     App --> Logo
@@ -112,16 +152,20 @@ graph TD
 
 ## 4.3. ディレクトリ構造
 
+> 本機能（プレゼンテーション基盤）に関連するモジュールのみ抜粋。発表者ビュー・音声・自動スライドショー・ローカルパッケージ読み込み等のファイルは各機能の設計書を参照。
+
 ```
 src/
-├── main.tsx                    # エントリーポイント（初期化フロー制御）
-├── App.tsx                     # ルートコンポーネント
+├── main.tsx                    # エントリーポイント（初期化フロー制御・ホーム/プレゼンテーション切替）
+├── App.tsx                     # プレゼンテーション画面のルートコンポーネント
 ├── applyTheme.ts               # テーマ適用ユーティリティ
 ├── addon-bridge.ts             # アドオン用グローバルブリッジ
+├── addonLoader.ts              # 組み込み／パッケージ同梱アドオンのロード
 ├── theme.ts                    # MUI テーマ定義
 ├── hooks/
-│   └── useReveal.ts            # Reveal.js ライフサイクル管理フック
+│   └── useReveal.ts            # Reveal.js ライフサイクル管理・ナビゲーションフック
 ├── components/
+│   ├── HomeScreen.tsx          # 起動時のホーム画面（スライド選択）
 │   ├── FallbackImage.tsx       # 画像表示（エラーハンドリング付き）
 │   ├── ComponentRegistry.tsx   # コンポーネントレジストリ
 │   ├── SlideRenderer.tsx       # データ駆動型スライドレンダラー
@@ -134,8 +178,9 @@ src/
 │   └── index.ts                # re-export
 ├── data/
 │   ├── types.ts                # 型定義
-│   ├── loader.ts               # データローダー
-│   ├── default-slides.json     # デフォルトスライドデータ
+│   ├── loader.ts               # データローダー（getDefaultPresentationData でロケール出し分け）
+│   ├── default-slides-ja.json  # デフォルトスライドデータ（日本語）
+│   ├── default-slides-en.json  # デフォルトスライドデータ（英語）
 │   └── index.ts                # re-export
 └── styles/
     └── global.css              # CSS変数、アニメーション、Reveal.js オーバーライド
@@ -197,8 +242,8 @@ const revealConfig = {
     --theme-code-text: #fb923c;
 
     /* フォント */
-    --theme-font-heading: 'Roboto', sans-serif;
-    --theme-font-body: 'Roboto', sans-serif;
+    --theme-font-heading: 'Noto Sans JP', 'Inter', sans-serif;
+    --theme-font-body: 'Noto Sans JP', 'Inter', sans-serif;
     --theme-font-code: 'Roboto Mono', monospace;
 
     /* フォントサイズ（baseFontSize で動的に上書き可能） */
@@ -220,25 +265,47 @@ const revealConfig = {
 ## 6.1. useReveal フック
 
 ```typescript
+interface UseRevealOptions {
+  /** slidechanged 発火時に現在インデックスを通知するコールバック */
+  onSlideChanged?: (event: { indexh: number; indexv: number }) => void
+}
+
+interface UseRevealReturn {
+  /** .reveal コンテナ要素に設定する ref */
+  deckRef: React.RefObject<HTMLDivElement | null>
+  /** 現在のスライドインデックスを取得する（未初期化時は null） */
+  getCurrentSlide: () => { indexh: number; indexv: number } | null
+  /** 次のスライドへ移動する */
+  goToNext: () => void
+  /** 前のスライドへ移動する */
+  goToPrev: () => void
+}
+
 /**
- * Reveal.js の初期化・破棄を管理する React フック。
- * 返される ref を .reveal コンテナ要素に設定する。
+ * Reveal.js の初期化・破棄・ナビゲーションを管理する React フック。
+ * 返される deckRef を .reveal コンテナ要素に設定する。
  *
- * - マウント時: Reveal.js インスタンスを生成し initialize() を呼び出す
- * - アンマウント時: destroy() を呼び出しリソースを解放する
+ * - マウント時: Reveal.js インスタンスを生成し initialize() を呼び出す。
+ *   初期化直前に URL ハッシュをクリアし、必ず先頭スライドから開始する
+ * - slidechanged イベントを購読し options.onSlideChanged に通知する
+ *   （最新のコールバックを ref に保持し stale closure を回避）
+ * - アンマウント時: slidechanged の購読解除と destroy() を呼び出しリソースを解放する
  */
-function useReveal(): React.RefObject<HTMLDivElement> {
+function useReveal(options?: UseRevealOptions): UseRevealReturn {
 }
 ```
 
 ## 6.2. applyTheme
 
+> テーマシステム（色・フォント・カスタム CSS）の詳細な設計と所有権は [slide-content-customization_design.md](./slide-content-customization_design.md) にある。本機能では起動フロー（`main.tsx`）とプレゼンテーション切替時に利用する API のシグネチャのみを示す。
+
 ```typescript
 /**
- * public/theme-colors.json からテーマカラーを読み込み、CSS変数に適用する。
- * アプリケーション起動時に1回呼び出す。
+ * テーマカラー JSON を読み込み CSS変数に適用する（各色に -rgb 変数も設定）。
+ * path 省略時は /theme-colors.json を読み込む。meta.themeColors 経由で任意のパスを指定可能。
+ * 取得失敗時は何もしない（フォールバック）。
  */
-async function applyTheme(): Promise<void> {
+async function applyTheme(path?: string): Promise<void> {
 }
 
 /**
@@ -266,6 +333,15 @@ function applyBaseFontSize(root: HTMLElement, baseFontSize: number): void {
  */
 function loadFontSources(sources: FontSource[]): void {
 }
+
+/**
+ * 前のプレゼンテーションで適用したテーマ上書き（色・フォント・フォントサイズ・
+ * 動的フォント・カスタム CSS）をすべて解除する。
+ * applyTheme/applyThemeData は指定プロパティのみを上書きするため、
+ * プレゼンテーション切替前とホーム復帰時に必ず呼ぶ（main.tsx の applyPresentationTheme / handleGoHome）。
+ */
+function resetThemeOverrides(): void {
+}
 ```
 
 ---
@@ -274,7 +350,7 @@ function loadFontSources(sources: FontSource[]): void {
 
 | 要件                       | 実現方針                                                                                |
 |--------------------------|-------------------------------------------------------------------------------------|
-| NFR_200: スケーリングパフォーマンス   | Reveal.js 内蔵のスケーリング機能を使用。CSS transform ベースで GPU アクセラレーション対応                         |
+| NFR_200: スケーリングパフォーマンス   | Reveal.js 内蔵のスケーリング機能を使用。CSS transform ベースで GPU アクセラレーション対応し、リサイズ反映を 1 フレーム（約 16ms／60fps 相当）以内に収める |
 | NFR_201: Reveal.js DOM構造 | 全レイアウトコンポーネントが `<section>` をルート要素として返す。App.tsx で `.reveal > .slides` コンテナを固定        |
 | NFR_202: React 統合の安全性    | `useReveal` フックの `useEffect` cleanup で `deck.destroy()` を呼び出し。依存配列 `[]` で初期化は1回のみ   |
 | NFR_203: 基準解像度           | Reveal.js の `width: 1280, height: 720, margin: 0, minScale: 0.2, maxScale: 2.0` で固定 |
@@ -310,9 +386,10 @@ function loadFontSources(sources: FontSource[]): void {
 | ナビゲーションモード       | 線形 / グリッド（ネストスライド）                           | 線形（`navigationMode: 'linear'`）             | プレゼンテーションの流れが明確。ネストスライドは複雑性を追加し、聴衆の混乱を招く                                                            |
 | ロゴ配置方式           | Reveal.js プラグイン / fixed 要素 / スライド内埋め込み       | fixed 要素（`.slide-logo`）                    | Reveal.js のスライド外に配置することで、スケーリングやトランジションの影響を受けない                                                     |
 | ロゴ設定方式           | ハードコード / meta.logo 動的設定 / 環境変数               | `meta.logo` 動的設定（`LogoConfig` 型）           | `slides.json` の `meta.logo` でロゴの `src`/`width`/`height` を指定可能。未指定時はロゴ非表示。プレゼンテーション単位でロゴをカスタマイズ可能にする |
-| 背景グリッド           | CSS background-image / SVG / Canvas          | CSS background-image（linear-gradient）      | CSS のみで実装可能。40px×40px のグリッドパターンを2方向のグラデーションで表現                                                      |
-| entrance アニメーション | CSS animation / JavaScript / Reveal.js プラグイン | CSS animation（`fadeInUp`）                  | Reveal.js の `.present` クラス付与に連動。JavaScript 不要で宣言的                                                   |
-| スライド上部アクセントバー    | CSS pseudo-element / 実DOM要素                  | CSS `::before` 擬似要素                        | `.slide-container::before` で4pxのプライマリカラーバーを表示。実DOM追加不要                                              |
+| スライド個別背景・トランジション指定方式 | data 属性 / インライン style / JS API | Reveal.js の `data-*` 属性 | 各レイアウトの `<section>` に `meta.backgroundColor`／`backgroundImage`／`transition` を `data-background-color`／`data-background-image`／`data-transition` 属性としてマッピングし、Reveal.js に解釈させる（FR_702, FR_703）。JS API より宣言的で Reveal.js の標準機構に一致 |
+| 背景グリッド           | CSS background-image / SVG / Canvas          | CSS background-image（linear-gradient）      | CSS のみで実装可能。40px×40px のグリッドパターンを2方向のグラデーションで表現（FR_705）                                             |
+| entrance アニメーション | CSS animation / JavaScript / Reveal.js プラグイン | CSS animation（`fadeInUp`）                  | Reveal.js の `.present` クラス付与に連動。JavaScript 不要で宣言的（FR_704）                                          |
+| スライド上部アクセントバー    | CSS pseudo-element / 実DOM要素                  | CSS `::before` 擬似要素                        | `.slide-container::before` で4pxのプライマリカラーバーを表示。実DOM追加不要（FR_706）                                     |
 
 ## 9.2. 未解決の課題
 
@@ -323,6 +400,18 @@ function loadFontSources(sources: FontSource[]): void {
 ---
 
 # 10. 変更履歴
+
+## v1.3.0 (2026-07-24)
+
+**変更内容:**
+
+- 実装を真実の源としてドキュメントを整合（front matter 追加）
+- `useReveal` のインターフェースを実装に更新（`useReveal(options?): { deckRef, getCurrentSlide, goToNext, goToPrev }`、`onSlideChanged`）
+- 起動フローを「並行初期化 → ホーム画面 → ユーザー操作で App 遷移」に更新（`loadAddons()` を廃し `loadBuiltinAddons()`／`loadAddonScripts()` に分離）
+- デフォルトスライドをロケール分割（`default-slides-{ja,en}.json` + `getDefaultPresentationData(locale)`）に更新
+- CSS フォント変数を実装値（`'Noto Sans JP', 'Inter', sans-serif`）に修正
+- `applyTheme(path?)` の引数と `resetThemeOverrides()` を追記。テーマシステムの所有権を slide-content-customization への参照に統一
+- 背景・トランジション個別指定方式、スライド上部アクセントバー（FR_706）を設計判断表に整理
 
 ## v1.2.0 (2026-01-31)
 

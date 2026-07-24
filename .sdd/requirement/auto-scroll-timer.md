@@ -1,3 +1,21 @@
+---
+id: prd-auto-scroll-timer
+title: タイマーベース自動スクロール（Auto Scroll Timer）要求仕様書
+type: prd
+status: draft
+priority: high
+risk: high
+created: 2026-02-02
+updated: 2026-07-24
+tags:
+  - auto-slideshow
+  - timer
+  - scroll-speed
+  - presentation
+  - settings
+category: presentation-playback
+---
+
 # タイマーベース自動スクロール（Auto Scroll Timer）要求仕様書
 
 ## 概要
@@ -12,6 +30,7 @@
 
 - **requirement**: 一般的な要求
 - **functionalRequirement**: 機能要求
+- **performanceRequirement**: パフォーマンス要求（非機能要求）
 - **designConstraint**: 設計制約
 
 ## 1.2. リスクレベル
@@ -127,9 +146,30 @@ requirementDiagram
 
     designConstraint DataDrivenScrollSpeed {
         id: DC_AST_002
-        text: "スクロールスピードの設定値はデータ駆動で管理し、ハードコードを禁止すること（A-003 準拠）"
+        text: "スクロールスピードの設定値はコード内へハードコードせず、アプリケーション状態として管理すること。外部（localStorage）から読み込む値は使用前に検証し（有効な数値かつ 1 以上）、無効な場合はデフォルト値へフォールバックすること（D-002 / A-005 準拠）"
         risk: low
         verifymethod: inspection
+    }
+
+    performanceRequirement TimerAccuracy {
+        id: NFR_AST_001
+        text: "自動遷移のタイミングは秒単位精度（許容誤差 ±1 秒以内）で十分とし、ミリ秒精度は要求しないこと"
+        risk: low
+        verifymethod: test
+    }
+
+    performanceRequirement TimerLeakPrevention {
+        id: NFR_AST_002
+        text: "スライド遷移・コンポーネントアンマウント時にタイマーを確実にクリアし、同時にアクティブなタイマーを最大 1 個に保つこと（メモリリークを発生させない）"
+        risk: medium
+        verifymethod: inspection
+    }
+
+    performanceRequirement InstantSettingReflection {
+        id: NFR_AST_003
+        text: "スクロールスピード変更後、稼働中のタイマーを再設定し、追加のユーザー操作なしに次のカウントへ即座に反映すること"
+        risk: low
+        verifymethod: test
     }
 
     AutoScrollTimer - contains -> TimerBasedAutoScroll
@@ -140,11 +180,17 @@ requirementDiagram
     AutoScrollTimer - contains -> AudioPriorityOverTimer
     AutoScrollTimer - contains -> TimerLifecycleManagement
     AutoScrollTimer - contains -> DataDrivenScrollSpeed
+    AutoScrollTimer - contains -> TimerAccuracy
+    AutoScrollTimer - contains -> TimerLeakPrevention
+    AutoScrollTimer - contains -> InstantSettingReflection
     TimerBasedAutoScroll - derives -> ScrollSpeedSetting
     TimerBasedAutoScroll - derives -> DefaultScrollSpeed
     TimerResetOnManualNavigation - derives -> TimerBasedAutoScroll
     TimerStopOnLastSlide - derives -> TimerBasedAutoScroll
     AudioPriorityOverTimer - derives -> TimerBasedAutoScroll
+    TimerAccuracy - derives -> TimerBasedAutoScroll
+    TimerLeakPrevention - derives -> TimerLifecycleManagement
+    InstantSettingReflection - derives -> ScrollSpeedSetting
 ```
 
 ## 3.2. 関連PRDとのトレース
@@ -199,7 +245,7 @@ requirementDiagram
 
 ### FR-AST-002: スクロールスピード設定
 
-設定ウィンドウにスクロールスピード（秒数）の入力フィールドを配置し、発表者がスクロールスピードを任意の値に変更できるようにする。設定変更は即座に反映される。
+設定ウィンドウにスクロールスピード（秒数）の入力フィールドを配置し、発表者がスクロールスピードを変更できるようにする。設定可能範囲は 1〜300 秒（設定 UI の入力で下限・上限を強制）。設定変更は即座に反映される。
 
 **優先度:** Must
 
@@ -223,7 +269,7 @@ requirementDiagram
 
 ### FR-AST-005: 最終スライドでのタイマー停止
 
-最終スライドが表示されている場合、タイマーによる自動遷移は行わない。タイマーは動作しないか、カウントダウンを開始しない。
+最終スライド（現在インデックスがスライド総数 - 1 以上）が表示されている場合、タイマーを開始せず、自動遷移も行わない。
 
 **優先度:** Should
 
@@ -248,10 +294,31 @@ requirementDiagram
 で管理し、コンポーネントのアンマウント時やスライド遷移時にタイマーをクリアしてメモリリークを防止する（CONSTITUTION.md
 T-003 準拠）。
 
-### DC-AST-002: データ駆動型スクロールスピード
+### DC-AST-002: 設定値のハードコード禁止とバリデーション
 
-スクロールスピードの設定値はデータ駆動で管理し、コード内へのハードコードを禁止する（CONSTITUTION.md A-003
-準拠）。設定値はアプリケーション状態として管理される。
+スクロールスピードの設定値はコード内へハードコードせず、アプリケーション状態として管理する。外部（`localStorage`）から読み込む値は使用前に検証し（有効な数値かつ 1
+以上）、無効な場合はデフォルト値へフォールバックする（CONSTITUTION.md D-002 バリデーション駆動 / A-005
+フォールバックファースト準拠）。なお `DEFAULT_SCROLL_SPEED`（20 秒）はハードコード禁止対象ではなく、フォールバック用のデフォルト定数として許容される。
+
+## 4.3. 非機能要求
+
+### NFR-AST-001: タイマー精度
+
+自動遷移のタイミングは秒単位精度（許容誤差 ±1 秒以内）で十分とし、ミリ秒精度は要求しない。`setTimeout` の精度で満たされる。
+
+**検証方法:** テストによる検証
+
+### NFR-AST-002: タイマーリーク防止
+
+スライド遷移・コンポーネントアンマウント時にタイマーを確実にクリアし、同時にアクティブなタイマーを最大 1 個に保つ。メモリリークを発生させない（T-003 準拠）。
+
+**検証方法:** インスペクション（レビュー）による検証
+
+### NFR-AST-003: 設定変更の即時反映
+
+スクロールスピード変更後、稼働中のタイマーを再設定し、追加のユーザー操作なしに次のカウントへ即座に反映する。
+
+**検証方法:** テストによる検証
 
 ---
 

@@ -1,3 +1,20 @@
+---
+id: prd-visual-addon
+title: ビジュアルコンポーネントのアドオン化 要求仕様書
+type: prd
+status: draft
+priority: medium
+risk: medium
+created: 2026-02-02
+updated: 2026-07-24
+tags:
+  - addon
+  - visual-component
+  - component-registry
+  - iife-bundle
+category: addon-system
+---
+
 # ビジュアルコンポーネントのアドオン化 要求仕様書
 
 ## 概要
@@ -204,7 +221,10 @@ requirementDiagram
 
 **優先度**: Should
 
-アドオン化によるプロダクションビルドサイズの増加は最小限（ファイル分割による overhead 程度）に抑えること。
+アドオン化によるプロダクションビルドサイズの増加は最小限に抑えること。
+
+- **目標値**: 本体バンドル（`dist/assets/*.js`）のサイズを増加させない（ビジュアルはアドオン IIFE として分離配信されるため、本体バンドルはむしろ減少する）。アドオン化に伴い新たに配布されるのはアドオン IIFE（`addons.iife.js`）と `manifest.json` のみとする
+- アドオンは React を external 指定とし、React をバンドルに重複させない（重複増分 0）
 
 **検証方法:** テスト（ビルド前後のサイズ比較）による検証
 
@@ -220,8 +240,8 @@ requirementDiagram
 
 ### DC-001: ComponentRegistry 互換性
 
-既存の ComponentRegistry の仕組み（default/custom の二層構造、resolveComponent の優先順位）は変更しない。アドオンは
-custom側の登録 API を利用する。
+既存の ComponentRegistry の解決の仕組み（custom → default → fallback の3層優先解決、A-004: 多層コンポーネントレジストリ）は変更しない。アドオンは
+custom側の登録 API（`registerComponent`）を利用する。`registerComponent` にはアドオンのライフサイクル管理のためオプション引数 `owner` が後方互換な拡張として追加されているが、既存の呼び出しと解決順序には影響しない。
 
 **検証方法:** コードレビューによる検証
 
@@ -237,7 +257,7 @@ custom側の登録 API を利用する。
 
 ## 5.1. 技術的制約
 
-- 既存の ComponentRegistry のインターフェースを維持する（A-001: コンポーネント分離）
+- 既存の ComponentRegistry の解決の仕組みを維持する（A-001: コンポーネント分離、A-004: 多層コンポーネントレジストリ）。`registerComponent` のオプション引数 `owner` は後方互換な拡張として追加
 - TypeScript strict mode での型安全性を確保する（T-001）
 - Reveal.js との互換性を維持する（T-002）
 
