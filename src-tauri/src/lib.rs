@@ -448,7 +448,7 @@ fn build_slide_package_gated(
         .cloned()
         .unwrap_or_default();
       // filter_addon_manifest は entries と bundles を同順・同数で返す
-      for (entry, b) in entries.into_iter().zip(bundles.into_iter()) {
+      for (entry, b) in entries.into_iter().zip(bundles) {
         let src = base.join(&b);
         addon_items.push((entry, b, src));
       }
@@ -478,7 +478,7 @@ fn build_slide_package_gated(
             .and_then(|a| a.as_array())
             .cloned()
             .unwrap_or_default();
-          for (entry, b) in entries.into_iter().zip(bundles.into_iter()) {
+          for (entry, b) in entries.into_iter().zip(bundles) {
             // dest 衝突（層Bと同じ package パス）は層B優先でスキップ
             if addon_items.iter().any(|(_, dest, _)| dest == &b) {
               continue;
