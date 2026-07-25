@@ -120,6 +120,32 @@ Package-bundled addons contain executable code, so addon control is separated in
 | **Export selection**    | Edit mode **Bundled add-ons** checkboxes (and `npm run export:slides --addons a,b`)      | Choose which addons to include when exporting a `.tgz`.                                                                                                      |
 | **Built-in add/remove** | Edit mode **Built-in add-ons (dev)** panel (development builds only)                     | Scaffold or remove `addons/src/<name>/entry.ts`. Run `npm run build:addons` afterwards to rebuild.                                                            |
 
+### AI Generation
+
+The **AI Generate** panel in edit mode creates slides (`slides.json`) from a prompt. The result is applied to the
+editor's single source of truth as a **whole replacement**, flowing straight into preview, manual editing, saving, and
+exporting. Two generation methods are available:
+
+| Method                         | Prerequisite                                                           | Billing / online dependency                                                        |
+|--------------------------------|------------------------------------------------------------------------|------------------------------------------------------------------------------------|
+| **Built-in (Vertex AI)**       | A GCP project (Vertex AI) with project / region / model set, plus `gcloud auth application-default login` | Requires an online connection and incurs usage-based charges on your GCP project |
+| **External (Claude Code CLI)** | The local `claude` command is installed                                | Follows your Claude plan and terms (no separate API key needed)                    |
+
+- **GCP setup** — In the built-in panel, set the GCP **project ID / region / model** and **Save**, then click **GCP login**
+  (`gcloud auth application-default login`) once to create the ADC credentials. The access token is obtained from the ADC
+  at the Rust boundary (refreshed and cached for 55 minutes) and is never exposed to the web layer. Networking and token
+  handling are all confined to the Rust boundary (least privilege).
+- **Pre-gate** — The generate button is disabled when the built-in Vertex settings are incomplete or the external `claude`
+  binary is not found, with a hint to the setup path.
+- **Auto-repair loop** — Each candidate is validated on import; if invalid, it is regenerated up to 3 times with the
+  validation errors attached. On reaching the limit, the candidate with the fewest validation errors is applied so you
+  can fix it manually.
+- **Progress and cancellation** — Progress is shown during generation, and **Cancel** stops an in-flight run. On failure,
+  cancellation, or offline, the editor content is preserved and you can safely fall back to manual editing.
+
+Generation, GCP settings/login, and networking are enabled only while in edit mode with generation active (never reached in
+view or live presentation).
+
 ## Defining Slides
 
 Create `public/slides.json` to customize slide content.

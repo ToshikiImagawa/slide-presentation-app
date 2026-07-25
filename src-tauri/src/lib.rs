@@ -5,6 +5,9 @@ use std::sync::Mutex;
 use tauri::Manager;
 use tauri_plugin_fs::FsExt;
 
+mod generation;
+mod vertex_config;
+
 /// ユーザーがダイアログで選んだディレクトリを asset プロトコル・fs プラグイン双方の
 /// 読み取り許可スコープに追加する（fs プラグインの scope は asset プロトコルの scope とは別物で、
 /// readTextFile 等はこちらが許可されていないと forbidden path エラーになる）
@@ -75,6 +78,193 @@ struct EditMode(Mutex<bool>);
 fn set_edit_mode(enabled: bool, state: tauri::State<EditMode>) -> Result<(), String> {
   *state.0.lock().map_err(|e| e.to_string())? = enabled;
   Ok(())
+}
+
+/// 生成有効フラグ（生成・ネットワーク・キー操作のゲート。既定 false）。
+/// EditMode と併せて多重ゲートし、network / キーチェーンへ到達する前に検査する（DC-003 / NFR-003）
+struct GenerationEnabled(Mutex<bool>);
+
+/// 実行中の生成の中断トークン置き場（`Some` = 生成中／`None` = idle）。
+/// 同時実行 1 件の判定（`is_some()`）と in-flight への中断伝達を 1 つの state で担う（FR-010）。
+struct ActiveGeneration(Mutex<Option<generation::CancelToken>>);
+
+/// 生成種別の dev override 用環境変数（設定/UI 選択より優先。テスト・特殊環境向け）。
+const GENERATOR_ENV: &str = "SLIDE_APP_GENERATOR";
+
+/// 生成有効フラグ設定の純粋ゲートロジック（テストはこの関数を直接叩く）。
+/// 生成の有効化は編集モード時のみ許可し、無効化は編集モードに関わらず常に許可する
+/// （生成は編集モードの一入力手段であり、編集モード外では有効化させない・DC-003）
+fn resolve_generation_enabled(edit_mode: bool, requested: bool) -> Result<bool, String> {
+  if requested && !edit_mode {
+    return Err("編集モードが無効です".to_string());
+  }
+  Ok(requested)
+}
+
+/// 生成/中断コマンドのゲート判定（編集モード かつ 生成有効のときのみ true）。純関数・テスト対象（FR-009）。
+fn generation_command_allowed(edit_mode: bool, generation_enabled: bool) -> bool {
+  edit_mode && generation_enabled
+}
+
+/// 編集モードゲート（無効なら Err）。キー操作コマンドの共通前段（文言を一元化）。
+fn require_edit_mode(edit_mode: &tauri::State<EditMode>) -> Result<(), String> {
+  if *edit_mode.0.lock().map_err(|e| e.to_string())? {
+    Ok(())
+  } else {
+    Err("編集モードが無効です".to_string())
+  }
+}
+
+/// 生成有効フラグを切り替える（編集モード必須。生成パネルの有効化/無効化に同期して JS から呼ばれる）
+#[tauri::command]
+fn set_generation_enabled(
+  enabled: bool,
+  edit_mode: tauri::State<EditMode>,
+  generation: tauri::State<GenerationEnabled>,
+) -> Result<(), String> {
+  let edit = *edit_mode.0.lock().map_err(|e| e.to_string())?;
+  let next = resolve_generation_enabled(edit, enabled)?;
+  *generation.0.lock().map_err(|e| e.to_string())? = next;
+  Ok(())
+}
+
+/// 生成の実処理（Vertex 設定ロード＋生成器解決＋候補 1 件生成）。ゲート/同時実行/cancel の管理は generate_slides 側。
+/// 内蔵は Vertex 設定をロードし、GCP トークンは生成器が実行時に ADC から取得する（NFR-003）。
+async fn run_generation(
+  request: &generation::GenerateRequest,
+  app: &tauri::AppHandle,
+  cancel: &generation::CancelToken,
+) -> Result<String, generation::GenerateError> {
+  // 生成種別: dev override（env・untyped）→ UI/設定の型付き選択（request.kind）を fallback に解決する
+  let env_override = std::env::var(GENERATOR_ENV).ok();
+  let kind = generation::resolve_generator_kind(env_override.as_deref(), request.kind);
+
+  // 内蔵は Vertex 設定（project/region/model）を渡す。未設定なら factory が NotConfigured を返し事前ゲートへ戻す。
+  // 外部は設定不要（factory 側で無視）
+  let vertex_config = vertex_config::get_vertex_config(app).ok().flatten();
+  let generator = generation::create_generator(kind, vertex_config)?;
+  generator.generate(request, cancel).await
+}
+
+/// 生成器で候補 1 件を生成する（検証/自動修正ループは JS 側 aiGenerate が駆動・design §9.1）。
+/// 冒頭で「編集モード かつ 生成有効」を検査し、同時実行を 1 件に制限してから keyring/network へ到達する
+/// （DC-002/DC-003/NFR-003/FR-009/FR-010）。
+#[tauri::command]
+async fn generate_slides(
+  request: generation::GenerateRequest,
+  app: tauri::AppHandle,
+  edit_mode: tauri::State<'_, EditMode>,
+  generation: tauri::State<'_, GenerationEnabled>,
+  active: tauri::State<'_, ActiveGeneration>,
+) -> Result<String, String> {
+  // ゲート: 編集モード かつ 生成有効（どちらか欠けたら keyring/network に到達しない）
+  {
+    let edit = *edit_mode.0.lock().map_err(|e| e.to_string())?;
+    let gen = *generation.0.lock().map_err(|e| e.to_string())?;
+    if !generation_command_allowed(edit, gen) {
+      return Err("生成が有効化されていません".to_string());
+    }
+  }
+
+  // 同時実行 1 件の判定と cancel トークン設定を 1 回のロックで原子的に行う（TOCTOU 回避）。
+  // Some = 生成中。既に Some なら別の生成が実行中
+  let cancel = generation::CancelToken::new();
+  {
+    let mut slot = active.0.lock().map_err(|e| e.to_string())?;
+    if slot.is_some() {
+      return Err("別の生成が実行中です".to_string());
+    }
+    *slot = Some(cancel.clone());
+  }
+
+  // 実処理（MutexGuard は上のスコープで解放済み。await をまたいで保持しない）
+  let result = run_generation(&request, &app, &cancel).await;
+
+  // 後片付け（成功/失敗にかかわらず idle に戻す）
+  if let Ok(mut slot) = active.0.lock() {
+    *slot = None;
+  }
+
+  result.map_err(|e| e.to_string())
+}
+
+/// 実行中の生成を中断する（in-flight の生成器へ協調的に伝える。FR-010）。
+#[tauri::command]
+fn cancel_generation(active: tauri::State<ActiveGeneration>) -> Result<(), String> {
+  if let Some(token) = active.0.lock().map_err(|e| e.to_string())?.as_ref() {
+    token.cancel();
+  }
+  Ok(())
+}
+
+/// Vertex 設定（project/region/model）を保存する（編集モード必須・非秘密を plugin-store に平文保存）。
+#[tauri::command]
+fn set_vertex_config(
+  config: vertex_config::VertexConfig,
+  app: tauri::AppHandle,
+  edit_mode: tauri::State<EditMode>,
+) -> Result<(), String> {
+  require_edit_mode(&edit_mode)?;
+  vertex_config::set_vertex_config(&app, config)
+}
+
+/// Vertex 設定を消去する（編集モード必須）。
+#[tauri::command]
+fn clear_vertex_config(
+  app: tauri::AppHandle,
+  edit_mode: tauri::State<EditMode>,
+) -> Result<(), String> {
+  require_edit_mode(&edit_mode)?;
+  vertex_config::clear_vertex_config(&app)
+}
+
+/// Vertex 設定を返す（フォームのプリフィル用。非秘密）。
+#[tauri::command]
+fn get_vertex_config(app: tauri::AppHandle) -> Result<Option<vertex_config::VertexConfig>, String> {
+  vertex_config::get_vertex_config(&app)
+}
+
+/// Vertex 設定の状態（configured）のみ返す。事前ゲート表示のため常時呼べる（NFR-003）。
+#[tauri::command]
+fn get_vertex_status(app: tauri::AppHandle) -> Result<vertex_config::VertexStatus, String> {
+  vertex_config::vertex_status(&app)
+}
+
+/// `gcloud auth application-default login` を起動して ADC を生成する（初回セットアップ・編集モード必須）。
+/// 生成に必要なのは ADC ファイルのみで、以後の生成は Rust が ADC を読んでトークン交換する（実行時 gcloud 不要）。
+#[tauri::command]
+async fn gcloud_login(edit_mode: tauri::State<'_, EditMode>) -> Result<(), String> {
+  require_edit_mode(&edit_mode)?;
+  let status = tokio::process::Command::new(gcloud_binary())
+    .args(["auth", "application-default", "login"])
+    .status()
+    .await
+    .map_err(|e| {
+      format!("gcloud の起動に失敗しました（インストールと PATH を確認してください）: {e}")
+    })?;
+  if status.success() {
+    // 再ログインで ADC が更新されたため、旧アカウント/失効トークンのキャッシュを破棄する。
+    // これがないと次回生成が 55 分間キャッシュ済みの旧トークンを使い、案内どおり再ログインしても復旧しない。
+    generation::invalidate_token_cache().await;
+    Ok(())
+  } else {
+    Err("gcloud ログインに失敗しました".to_string())
+  }
+}
+
+/// gcloud バイナリ名（Windows は `.cmd` 実体）。
+fn gcloud_binary() -> &'static str {
+  if cfg!(windows) {
+    "gcloud.cmd"
+  } else {
+    "gcloud"
+  }
+}
+
+/// 外部生成（Claude Code CLI）が利用可能か返す（事前ゲート・FR-007。秘密に触れないため常時呼べる）。
+#[tauri::command]
+async fn check_claude_cli() -> Result<bool, String> {
+  Ok(generation::external_generator_available().await)
 }
 
 /// 編集モードゲートつきの slides.json 書き込み（純粋ロジック。テストはこの関数を直接叩く）。
@@ -459,6 +649,8 @@ pub fn run() {
     .plugin(tauri_plugin_dialog::init())
     .plugin(tauri_plugin_store::Builder::default().build())
     .manage(EditMode(Mutex::new(false)))
+    .manage(GenerationEnabled(Mutex::new(false)))
+    .manage(ActiveGeneration(Mutex::new(None)))
     .invoke_handler(tauri::generate_handler![
       allow_asset_dir,
       extract_slide_package,
@@ -467,7 +659,16 @@ pub fn run() {
       export_slide_package,
       list_builtin_addons,
       add_builtin_addon,
-      remove_builtin_addon
+      remove_builtin_addon,
+      set_generation_enabled,
+      generate_slides,
+      cancel_generation,
+      set_vertex_config,
+      clear_vertex_config,
+      get_vertex_config,
+      get_vertex_status,
+      gcloud_login,
+      check_claude_cli
     ])
     .setup(|app| {
       if cfg!(debug_assertions) {
@@ -830,5 +1031,26 @@ mod tests {
     assert!(remove_builtin_addon_at(&dir, "my-addon").is_err());
 
     fs::remove_dir_all(&dir).ok();
+  }
+
+  #[test]
+  fn generation_enable_requires_edit_mode() {
+    // 編集モード無効時は生成の有効化を拒否する（DC-003 / FR-009）
+    assert!(resolve_generation_enabled(false, true).is_err());
+    // 編集モード有効時は有効化できる
+    assert!(resolve_generation_enabled(true, true).unwrap());
+    // 無効化は編集モードに関わらず常に許可（生成の停止は妨げない）
+    assert!(!resolve_generation_enabled(false, false).unwrap());
+    assert!(!resolve_generation_enabled(true, false).unwrap());
+  }
+
+  #[test]
+  fn generate_command_gate_requires_edit_mode_and_generation_enabled() {
+    // 生成コマンドは「編集モード かつ 生成有効」の両方が揃うときのみ許可（FR-009・NFR-003）。
+    // どちらか欠ければ keyring/network に到達しない
+    assert!(!generation_command_allowed(false, false));
+    assert!(!generation_command_allowed(true, false));
+    assert!(!generation_command_allowed(false, true));
+    assert!(generation_command_allowed(true, true));
   }
 }

@@ -18,6 +18,11 @@ All notable changes to this project will be documented in this file.
     - Runtime trust per package (confirmation prompt on open + Settings, default denied; global disable takes precedence)
     - Export bundling selection (in-app **Bundled add-ons** checkboxes and `npm run export:slides --addons a,b`)
     - Dev-only built-in add/remove of `addons/src/<name>/entry.ts`
+- **AI Slide Generation** — Generate `slides.json` from a prompt via the **AI Generate** panel in edit mode, applied to the editor as a whole replacement
+    - Switch between built-in (Vertex AI via GCP ADC; project / region / model configured) and external (local `claude` CLI) under a single contract
+    - Auth uses GCP ADC (`gcloud auth application-default login`); the access token is obtained at the Rust boundary (cached ~55 min) and never exposed to the web layer (least privilege)
+    - Import-time validation with an auto-repair loop (up to 3 attempts; best candidate retained at the limit), progress display, cancellation, and safe fallback to manual editing on failure
+    - Generation, GCP settings/login, and networking are enabled only in edit mode with generation active (pre-gate disables when the Vertex settings are incomplete or the CLI is not found)
 
 ## [1.0.0] - 2026-02-02
 

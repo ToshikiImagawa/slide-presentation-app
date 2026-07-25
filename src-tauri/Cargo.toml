@@ -30,3 +30,12 @@ tauri-plugin-dialog = "2.7.1"
 tauri-plugin-store = "2.4.3"
 flate2 = "1.1.9"
 tar = "0.4.46"
+# AI スライド生成（#14）:
+# HTTP は Rust 境界へ集約しトークン/認証を WebView に出さない（DC-002/NFR-003）。rustls-tls で OpenSSL 非依存。
+# 内蔵は Vertex AI（GCP ADC）直・外部 CLI 実行の両経路で使用（Vertex トークン交換の form POST も reqwest）。
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json", "stream"] }
+# 生成器 trait を async 化する（SlideGenerator::generate）
+async-trait = "0.1"
+# 応答タイムアウト（NFR-005）・外部 CLI サブプロセス実行・ADC ファイル読取（fs）・トークンキャッシュ（sync::Mutex）・
+# trait の async テスト（#[tokio::test]）に使用
+tokio = { version = "1", features = ["time", "process", "io-util", "macros", "rt", "fs", "sync"] }
