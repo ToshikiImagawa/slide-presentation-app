@@ -100,17 +100,10 @@ pub fn validate_api_key(key: &str) -> Result<(), CredentialError> {
 /// メタデータ（configured / last_updated）から `ApiKeyStatus` を組み立てる純関数。
 /// keyring に触れずメタデータのみで状態を返す（NFR-003）。未登録時は last_updated を握り潰す。
 pub fn status_from_metadata(configured: bool, last_updated: Option<String>) -> ApiKeyStatus {
-  if configured {
-    ApiKeyStatus {
-      configured: true,
-      last_updated,
-    }
-  } else {
+  ApiKeyStatus {
+    configured,
     // 未登録なら最終更新日時は返さない（stale なメタデータの露出を防ぐ）
-    ApiKeyStatus {
-      configured: false,
-      last_updated: None,
-    }
+    last_updated: if configured { last_updated } else { None },
   }
 }
 

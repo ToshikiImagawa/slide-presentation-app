@@ -35,13 +35,28 @@ pub struct AnthropicGenerator {
   client: reqwest::Client,
 }
 
+/// 共有 reqwest クライアント。生成のたび（自動修正ループの試行ごと）に new せず、
+/// コネクションプール/TLS を試行・生成間で再利用する（clone は Arc 内部共有で cheap）。
+static HTTP_CLIENT: std::sync::OnceLock<reqwest::Client> = std::sync::OnceLock::new();
+
+fn shared_client() -> reqwest::Client {
+  HTTP_CLIENT
+    .get_or_init(|| {
+      reqwest::Client::builder()
+        .timeout(REQUEST_TIMEOUT)
+        .build()
+        .unwrap_or_else(|_| reqwest::Client::new())
+    })
+    .clone()
+}
+
 impl AnthropicGenerator {
   pub fn new(key: Option<SecretString>, model: String) -> Self {
-    let client = reqwest::Client::builder()
-      .timeout(REQUEST_TIMEOUT)
-      .build()
-      .unwrap_or_else(|_| reqwest::Client::new());
-    Self { key, model, client }
+    Self {
+      key,
+      model,
+      client: shared_client(),
+    }
   }
 
   /// 1 回の POST を実行し、成功なら候補 JSON 文字列（フェンス除去済み）を返す。
@@ -73,7 +88,7 @@ impl AnthropicGenerator {
         .unwrap_or_else(|_| "(レスポンス読み取り失敗)".to_string());
       return Err(GenerateError::Api {
         status: status.as_u16(),
-        message: truncate_for_error_message(&text, ERROR_PREVIEW_CHARS),
+        message: super::truncate_preview(&text, ERROR_PREVIEW_CHARS),
       });
     }
 
@@ -190,11 +205,6 @@ fn backoff_ms(attempt: usize) -> u64 {
   (INITIAL_BACKOFF_MS * 2u64.pow(attempt as u32)).min(MAX_BACKOFF_MS)
 }
 
-/// エラーボディを char 境界で切詰める（マルチバイト安全・UI 露出を制限）。共通ヘルパへ委譲する。
-pub(crate) fn truncate_for_error_message(body: &str, max_chars: usize) -> String {
-  super::truncate_preview(body, max_chars)
-}
-
 #[cfg(test)]
 mod tests {
   use super::super::{GenerateError, GenerateRequest, SlideGeneratorKind};
@@ -308,16 +318,5 @@ mod tests {
       extract_text_from_response(&value),
       Err(GenerateError::InvalidResponse(_))
     ));
-  }
-
-  #[test]
-  fn truncate_for_error_message_is_multibyte_safe() {
-    // 短いものはそのまま
-    assert_eq!(truncate_for_error_message("エラー", 10), "エラー");
-    // 長いものは char 境界で切る（マルチバイトを壊さない）
-    let body = "あ".repeat(10);
-    let truncated = truncate_for_error_message(&body, 3);
-    assert!(truncated.starts_with("あああ"));
-    assert!(truncated.contains("省略 7 文字"));
   }
 }

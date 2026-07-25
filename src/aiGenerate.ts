@@ -120,6 +120,14 @@ function summarizeValidationErrors(errors: ValidationError[]): string {
 }
 
 /**
+ * 中断時の結果を組み立てる。failed 同様に候補を返さない（契約: cancelled/failed で slidesJson は null）。
+ * 明示中断した検証 NG 候補を器へ流し込まないための安全退避（FR-008）。最良候補 best は exhausted 専用。
+ */
+function cancelledResult(attempts: number): GenerateResult {
+  return { outcome: 'cancelled', slidesJson: null, validationErrors: [], attempts }
+}
+
+/**
  * 自動修正ループを駆動するオーケストレータ（FR-005／FR-010／NFR-005）。
  *
  * `generate_slides`（Rust・候補 1 件）を上限 `MAX_GENERATE_ATTEMPTS` 回まで呼び、各候補を
@@ -136,11 +144,7 @@ export async function generateSlides(request: GenerateRequest, onProgress?: (p: 
   let repairFeedback = request.repairFeedback
 
   for (let attempt = 1; attempt <= MAX_GENERATE_ATTEMPTS; attempt++) {
-    if (cancelRequested) {
-      // 中断時は failed 同様に候補を返さない（契約: cancelled/failed で slidesJson は null）。
-      // 明示中断した検証 NG 候補を器へ流し込まない（FR-008 の安全退避）。best は exhausted 専用。
-      return { outcome: 'cancelled', slidesJson: null, validationErrors: [], attempts: attempt - 1 }
-    }
+    if (cancelRequested) return cancelledResult(attempt - 1)
 
     onProgress?.({ attempt, maxAttempts: MAX_GENERATE_ATTEMPTS, phase: 'generating' })
 
@@ -150,20 +154,14 @@ export async function generateSlides(request: GenerateRequest, onProgress?: (p: 
     } catch (e) {
       // ゲート拒否・タイムアウト・HTTP エラー・中断はいずれも Rust 側で Err になる。
       // 中断要求済みなら cancelled、それ以外は failed に分類する（Rust はキー等を漏らさず整形済み・NFR-004）。
-      if (cancelRequested) {
-        // 中断時は failed 同様に候補を返さない（契約: cancelled/failed で slidesJson は null）。
-        // 明示中断した検証 NG 候補を器へ流し込まない（FR-008 の安全退避）。best は exhausted 専用。
-        return { outcome: 'cancelled', slidesJson: null, validationErrors: [], attempts: attempt - 1 }
-      }
+      if (cancelRequested) return cancelledResult(attempt - 1)
       console.error('[ai-slide-generation] 生成に失敗しました:', e)
       return { outcome: 'failed', slidesJson: null, validationErrors: [], attempts: attempt }
     }
 
     // invoke 解決後の中断再検査。in-flight 完了と中断がわずかに競合した場合でも、明示中断した候補は
     // succeeded/exhausted として適用せず退避する（無効候補で器を破壊しない・FR-008）
-    if (cancelRequested) {
-      return { outcome: 'cancelled', slidesJson: null, validationErrors: [], attempts: attempt }
-    }
+    if (cancelRequested) return cancelledResult(attempt)
 
     onProgress?.({ attempt, maxAttempts: MAX_GENERATE_ATTEMPTS, phase: 'validating' })
     const { errors } = parseSlides(candidate)

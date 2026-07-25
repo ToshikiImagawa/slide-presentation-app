@@ -153,9 +153,10 @@ describe('AiGeneratePanel 事前ゲート・退避（FR-007/FR-008）', () => {
       </Wrapper>,
     )
     expandPanel()
-    await waitFor(() => expect(h.checkExternalAvailable).toHaveBeenCalled())
     fireEvent.change(screen.getByRole('textbox'), { target: { value: 'p' } })
+    // 外部方式へ切替えたときに初めて CLI 可用性チェックが走る（builtin 時は spawn しない）
     fireEvent.click(screen.getByRole('button', { name: '外部（Claude Code CLI）' }))
+    await waitFor(() => expect(h.checkExternalAvailable).toHaveBeenCalled())
     expect((screen.getByRole('button', { name: '生成' }) as HTMLButtonElement).disabled).toBe(true)
   })
 })

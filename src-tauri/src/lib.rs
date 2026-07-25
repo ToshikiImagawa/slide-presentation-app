@@ -84,12 +84,9 @@ fn set_edit_mode(enabled: bool, state: tauri::State<EditMode>) -> Result<(), Str
 /// EditMode と併せて多重ゲートし、network / キーチェーンへ到達する前に検査する（DC-003 / NFR-003）
 struct GenerationEnabled(Mutex<bool>);
 
-/// 生成の同時実行を 1 件に制限する busy ロック（FR-010）。generate_slides で取得・解放する。
-struct GenerationBusy(Mutex<bool>);
-
-/// 実行中の生成をキャンセルするトークン置き場（FR-010）。generate_slides が設定し、
-/// cancel_generation が参照して in-flight の生成器に中断を伝える。
-struct GenerationCancel(Mutex<Option<generation::CancelToken>>);
+/// 実行中の生成の中断トークン置き場（`Some` = 生成中／`None` = idle）。
+/// 同時実行 1 件の判定（`is_some()`）と in-flight への中断伝達を 1 つの state で担う（FR-010）。
+struct ActiveGeneration(Mutex<Option<generation::CancelToken>>);
 
 /// 生成種別の dev override 用環境変数（設定/UI 選択より優先。テスト・特殊環境向け）。
 const GENERATOR_ENV: &str = "SLIDE_APP_GENERATOR";
@@ -107,6 +104,15 @@ fn resolve_generation_enabled(edit_mode: bool, requested: bool) -> Result<bool, 
 /// 生成/中断コマンドのゲート判定（編集モード かつ 生成有効のときのみ true）。純関数・テスト対象（FR-009）。
 fn generation_command_allowed(edit_mode: bool, generation_enabled: bool) -> bool {
   edit_mode && generation_enabled
+}
+
+/// 編集モードゲート（無効なら Err）。キー操作コマンドの共通前段（文言を一元化）。
+fn require_edit_mode(edit_mode: &tauri::State<EditMode>) -> Result<(), String> {
+  if *edit_mode.0.lock().map_err(|e| e.to_string())? {
+    Ok(())
+  } else {
+    Err("編集モードが無効です".to_string())
+  }
 }
 
 /// 生成有効フラグを切り替える（編集モード必須。生成パネルの有効化/無効化に同期して JS から呼ばれる）
@@ -129,13 +135,9 @@ async fn run_generation(
   app: &tauri::AppHandle,
   cancel: &generation::CancelToken,
 ) -> Result<String, generation::GenerateError> {
-  // 生成種別: dev override（env）→ UI/設定の選択（request.kind）→ 既定（内蔵）
-  let request_kind_str = match request.kind {
-    generation::SlideGeneratorKind::BuiltinAnthropic => "builtin-anthropic",
-    generation::SlideGeneratorKind::ExternalClaudeCode => "external-claude-code",
-  };
+  // 生成種別: dev override（env・untyped）→ UI/設定の型付き選択（request.kind）を fallback に解決する
   let env_override = std::env::var(GENERATOR_ENV).ok();
-  let kind = generation::resolve_generator_kind(env_override.as_deref(), Some(request_kind_str));
+  let kind = generation::resolve_generator_kind(env_override.as_deref(), request.kind);
 
   // 内蔵は keyring からキーを取得（未設定は NotConfigured で事前ゲートに戻す）。外部は不要
   let key = match kind {
@@ -162,8 +164,7 @@ async fn generate_slides(
   app: tauri::AppHandle,
   edit_mode: tauri::State<'_, EditMode>,
   generation: tauri::State<'_, GenerationEnabled>,
-  busy: tauri::State<'_, GenerationBusy>,
-  cancel_state: tauri::State<'_, GenerationCancel>,
+  active: tauri::State<'_, ActiveGeneration>,
 ) -> Result<String, String> {
   // ゲート: 編集モード かつ 生成有効（どちらか欠けたら keyring/network に到達しない）
   {
@@ -174,32 +175,23 @@ async fn generate_slides(
     }
   }
 
-  // 同時実行 1 件（busy を立てる。ここで Err なら busy には触れない）
-  {
-    let mut b = busy.0.lock().map_err(|e| e.to_string())?;
-    if *b {
-      return Err("別の生成が実行中です".to_string());
-    }
-    *b = true;
-  }
-
-  // キャンセルトークンを設定（in-flight を cancel_generation から中断可能にする）
+  // 同時実行 1 件の判定と cancel トークン設定を 1 回のロックで原子的に行う（TOCTOU 回避）。
+  // Some = 生成中。既に Some なら別の生成が実行中
   let cancel = generation::CancelToken::new();
   {
-    *cancel_state.0.lock().map_err(|e| e.to_string())? = Some(cancel.clone());
+    let mut slot = active.0.lock().map_err(|e| e.to_string())?;
+    if slot.is_some() {
+      return Err("別の生成が実行中です".to_string());
+    }
+    *slot = Some(cancel.clone());
   }
 
   // 実処理（MutexGuard は上のスコープで解放済み。await をまたいで保持しない）
   let result = run_generation(&request, &app, &cancel).await;
 
-  // 後片付け（成功/失敗にかかわらず解放する）。cancel トークンを先に消してから busy を解放する:
-  // busy を先に解放すると、並行 generate_slides B が busy ゲートを通過して自分の cancel トークンを
-  // 設定した直後に、こちらが誤って None 消去し B を中断不能にしうるため（順序で窓を閉じる・FR-010）
-  if let Ok(mut c) = cancel_state.0.lock() {
-    *c = None;
-  }
-  if let Ok(mut b) = busy.0.lock() {
-    *b = false;
+  // 後片付け（成功/失敗にかかわらず idle に戻す）
+  if let Ok(mut slot) = active.0.lock() {
+    *slot = None;
   }
 
   result.map_err(|e| e.to_string())
@@ -207,8 +199,8 @@ async fn generate_slides(
 
 /// 実行中の生成を中断する（in-flight の生成器へ協調的に伝える。FR-010）。
 #[tauri::command]
-fn cancel_generation(cancel_state: tauri::State<GenerationCancel>) -> Result<(), String> {
-  if let Some(token) = cancel_state.0.lock().map_err(|e| e.to_string())?.as_ref() {
+fn cancel_generation(active: tauri::State<ActiveGeneration>) -> Result<(), String> {
+  if let Some(token) = active.0.lock().map_err(|e| e.to_string())?.as_ref() {
     token.cancel();
   }
   Ok(())
@@ -221,18 +213,14 @@ fn set_api_key(
   app: tauri::AppHandle,
   edit_mode: tauri::State<EditMode>,
 ) -> Result<(), String> {
-  if !*edit_mode.0.lock().map_err(|e| e.to_string())? {
-    return Err("編集モードが無効です".to_string());
-  }
+  require_edit_mode(&edit_mode)?;
   credential::set_api_key(&app, &key).map_err(|e| e.to_string())
 }
 
 /// API キーを削除する（編集モード必須）。
 #[tauri::command]
 fn delete_api_key(app: tauri::AppHandle, edit_mode: tauri::State<EditMode>) -> Result<(), String> {
-  if !*edit_mode.0.lock().map_err(|e| e.to_string())? {
-    return Err("編集モードが無効です".to_string());
-  }
+  require_edit_mode(&edit_mode)?;
   credential::delete_api_key(&app).map_err(|e| e.to_string())
 }
 
@@ -631,8 +619,7 @@ pub fn run() {
     .plugin(tauri_plugin_store::Builder::default().build())
     .manage(EditMode(Mutex::new(false)))
     .manage(GenerationEnabled(Mutex::new(false)))
-    .manage(GenerationBusy(Mutex::new(false)))
-    .manage(GenerationCancel(Mutex::new(None)))
+    .manage(ActiveGeneration(Mutex::new(None)))
     .invoke_handler(tauri::generate_handler![
       allow_asset_dir,
       extract_slide_package,

@@ -46,16 +46,21 @@ export function AiGeneratePanel({ currentText, onApply }: { currentText: string;
     }
   }, [])
 
-  // 事前ゲート状態（キー登録状態・外部 CLI 可用性）を取得する
-  const refreshGate = () => {
+  // 内蔵の事前ゲート: キー登録状態（keyring に触れない）を取得する。マウント時とキー操作後に呼ぶ
+  const refreshKeyStatus = () => {
     void getApiKeyStatus()
       .then((s) => setConfigured(s.configured))
       .catch(() => setConfigured(false))
+  }
+  useEffect(refreshKeyStatus, [])
+
+  // 外部の事前ゲート: 外部方式を選んだときだけ CLI 可用性を確認する（builtin 時に `claude --version` を spawn しない）
+  useEffect(() => {
+    if (kind !== 'external-claude-code') return
     void checkExternalAvailable()
       .then(setExternalAvailable)
       .catch(() => setExternalAvailable(false))
-  }
-  useEffect(refreshGate, [])
+  }, [kind])
 
   const canGenerate = useMemo(() => {
     if (running || prompt.trim() === '') return false
@@ -76,7 +81,7 @@ export function AiGeneratePanel({ currentText, onApply }: { currentText: string;
       await setApiKey(apiKeyInput)
       setApiKeyInput('')
       setStatus({ kind: 'ok', message: t('aiGenerate.apiKeySaved', 'API キーを保存しました') })
-      refreshGate()
+      refreshKeyStatus()
     } catch (e) {
       setStatus({ kind: 'error', message: `${t('aiGenerate.apiKeySaveFailed', 'API キーの保存に失敗しました')}: ${e instanceof Error ? e.message : String(e)}` })
     }
@@ -86,7 +91,7 @@ export function AiGeneratePanel({ currentText, onApply }: { currentText: string;
     try {
       await deleteApiKey()
       setStatus({ kind: 'ok', message: t('aiGenerate.apiKeyDeleted', 'API キーを削除しました') })
-      refreshGate()
+      refreshKeyStatus()
     } catch (e) {
       setStatus({ kind: 'error', message: `${t('aiGenerate.apiKeyDeleteFailed', 'API キーの削除に失敗しました')}: ${e instanceof Error ? e.message : String(e)}` })
     }

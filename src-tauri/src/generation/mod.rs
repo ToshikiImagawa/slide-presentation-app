@@ -130,22 +130,19 @@ pub trait SlideGenerator: Send + Sync {
   ) -> Result<String, GenerateError>;
 }
 
-/// 生成種別を解決する純関数（dev override → 設定 provider → 既定＝内蔵）。副作用なし・分岐網羅テスト対象。
-/// 不明値は次のソースへフォールバックし、最終的に内蔵（`BuiltinAnthropic`）へ落ちる（design §5）。
+/// 生成種別を解決する純関数（dev override（env・untyped）→ UI/設定の型付き選択 fallback）。副作用なし。
+/// UI/設定の選択は既に型付き `SlideGeneratorKind` として届くため文字列化して再パースせず、
+/// 生文字列パースは唯一 untyped な env override に限定する（型安全を手放さない・design §9.1）。
 pub fn resolve_generator_kind(
   env_override: Option<&str>,
-  config_provider: Option<&str>,
+  fallback: SlideGeneratorKind,
 ) -> SlideGeneratorKind {
-  if let Some(kind) = env_override.and_then(parse_generator_kind) {
-    return kind;
-  }
-  if let Some(kind) = config_provider.and_then(parse_generator_kind) {
-    return kind;
-  }
-  SlideGeneratorKind::BuiltinAnthropic
+  env_override
+    .and_then(parse_generator_kind)
+    .unwrap_or(fallback)
 }
 
-/// 設定値/環境変数の文字列を生成種別へパースする（TS ワイヤー値と別名の両方を受ける）。不明・空は `None`。
+/// 環境変数（dev override）の文字列を生成種別へパースする（TS ワイヤー値と別名の両方を受ける）。不明・空は `None`。
 fn parse_generator_kind(value: &str) -> Option<SlideGeneratorKind> {
   match value.trim() {
     "" => None,
@@ -289,31 +286,31 @@ mod tests {
   }
 
   #[test]
-  fn resolve_generator_kind_prefers_env_then_provider_then_default() {
-    // env 最優先
+  fn resolve_generator_kind_uses_env_override_else_fallback() {
+    // env override が解決できればそれを最優先
     assert_eq!(
-      resolve_generator_kind(Some("external-claude-code"), Some("builtin-anthropic")),
+      resolve_generator_kind(
+        Some("external-claude-code"),
+        SlideGeneratorKind::BuiltinAnthropic
+      ),
       SlideGeneratorKind::ExternalClaudeCode
     );
-    // env 不明値は次（provider）へフォールバック
     assert_eq!(
-      resolve_generator_kind(Some("???"), Some("external")),
+      resolve_generator_kind(Some("builtin"), SlideGeneratorKind::ExternalClaudeCode),
+      SlideGeneratorKind::BuiltinAnthropic
+    );
+    // env override が不明値・空・None なら fallback（＝UI/設定の型付き選択）を返す
+    assert_eq!(
+      resolve_generator_kind(Some("???"), SlideGeneratorKind::ExternalClaudeCode),
       SlideGeneratorKind::ExternalClaudeCode
     );
-    // env なし → provider
     assert_eq!(
-      resolve_generator_kind(None, Some("anthropic")),
+      resolve_generator_kind(Some("  "), SlideGeneratorKind::BuiltinAnthropic),
       SlideGeneratorKind::BuiltinAnthropic
     );
-    // 空文字は無指定扱い → 既定（内蔵）
     assert_eq!(
-      resolve_generator_kind(Some(""), Some("  ")),
-      SlideGeneratorKind::BuiltinAnthropic
-    );
-    // すべて None → 既定（内蔵）
-    assert_eq!(
-      resolve_generator_kind(None, None),
-      SlideGeneratorKind::BuiltinAnthropic
+      resolve_generator_kind(None, SlideGeneratorKind::ExternalClaudeCode),
+      SlideGeneratorKind::ExternalClaudeCode
     );
   }
 
@@ -333,6 +330,17 @@ mod tests {
     assert!(p.contains("現在のスライド"));
     assert!(p.contains("{\"meta\":{\"title\":\"t\"}}"));
     assert!(p.contains("meta.title が空です"));
+  }
+
+  #[test]
+  fn truncate_preview_is_multibyte_safe() {
+    // 短いものはそのまま
+    assert_eq!(truncate_preview("エラー", 10), "エラー");
+    // 長いものは char 境界で切る（マルチバイトを壊さない）
+    let body = "あ".repeat(10);
+    let truncated = truncate_preview(&body, 3);
+    assert!(truncated.starts_with("あああ"));
+    assert!(truncated.contains("省略 7 文字"));
   }
 
   #[test]
