@@ -13,6 +13,7 @@ import { applyTheme, applyThemeData, resetThemeOverrides } from '../applyTheme'
 import { getPackageAddonNames, resolveLocalAssetPaths } from '../localSlideLoader'
 import type { PresentationData, SlideData } from '../data'
 import { parseSlides, serializeSlides } from './slidesSerialize'
+import { AiGeneratePanel } from './AiGeneratePanel'
 import { SlideJsonEditor } from './SlideJsonEditor'
 import { SlideMetaForm } from './SlideMetaForm'
 import { SlidePreview } from './SlidePreview'
@@ -149,6 +150,14 @@ export function SlideEditor({ source, onExit }: { source: EditSource; onExit: ()
     }
   }
 
+  // AI 生成結果を単一真実源 text へ全体置換で流し込む受け口（#14・FR-004/DC-005）。
+  // 生成結果は既存の useMemo(parseSlides) → プレビュー/フォームへそのまま反映される（無損失・NFR-002）。
+  const applyGeneratedSlides = (json: string) => {
+    setText(json)
+    setSelectedIndex(0)
+    setStatus({ kind: 'ok', message: t('aiGenerate.applied', '生成結果を反映しました') })
+  }
+
   const handleExport = async () => {
     if (!canWrite) {
       setStatus({ kind: 'error', message: t('edit.exportBlocked', '検証エラーがあるため書き出せません') })
@@ -188,6 +197,9 @@ export function SlideEditor({ source, onExit }: { source: EditSource; onExit: ()
             {status.message}
           </Box>
         )}
+
+        {/* AI 生成パネル（#14）。生成結果は applyGeneratedSlides で単一真実源 text へ全体置換で流し込む */}
+        <AiGeneratePanel currentText={text} onApply={applyGeneratedSlides} />
 
         {/* 層B: 同梱アドオンの個別選択（同梱可能なアドオンがある場合のみ） */}
         {availableAddons.length > 0 && (

@@ -2,7 +2,7 @@
 id: task-ai-slide-generation
 title: AI スライド生成機能（内蔵生成）
 type: task
-status: pending
+status: completed
 sdd-phase: tasks
 created: 2026-07-25
 updated: 2026-07-25
@@ -60,7 +60,7 @@ priority: high
 | 3.2 | `SlideEditor` に生成結果の注入受け口 | `src/edit/SlideEditor.tsx` に、生成結果 `slides.json` を単一真実源 `text` へ流し込む受け口（`applyGeneratedSlides(json)` 等・全体置換）を追加。現状 `text` は useState 初期化のみのため外部注入経路を新設。器のプレビュー・保存・書き出しは再利用（DC-001） | 生成結果が器の `text` に全体置換で載り、ライブプレビューへ反映される。`tsc` 通過（FR-004・DC-005・NFR-002） | 1.3 |
 | 3.3 | `AiGeneratePanel.tsx`（生成パネル UI） | `src/edit/AiGeneratePanel.tsx` を新規作成し `SlideEditor` に統合。プロンプト入力・方式選択（内蔵/外部）・事前ゲート（`getApiKeyStatus().configured`／外部は `claude --version` 終了コード 0＋PATH 解決で判定・未検出は無効化）・進捗表示・中断・方式別の課金/オンライン依存注意書き。色は `--theme-*`／editorUiTheme に載せる | 生成パネルからプロンプト生成でき、前提未充足時は導線が無効化される。`tsc` 通過（FR-001・FR-007・FR-010・DC-006・A-002） | 2.5, 3.2 |
 | 3.4 | 失敗・中断時の安全退避 | `failed`/`cancelled`/オフライン時は `AiGeneratePanel` の `onError` から器の手動編集へ退避し、既存データを保持。破損した生成結果を既存読込の全体フォールバックへ流さない | 失敗/中断で器の現状が壊れず手動編集に戻れる。`tsc` 通過（FR-008・D-002） | 3.3 |
-| 3.5 | i18n（`aiGenerate.*`） | 生成 UI 文言（プロンプト・方式選択・事前ゲート・進捗・中断・エラー）と方式別注意書き（`aiGenerate.billingNotice.builtin`／`.external`）を ja/en/fr に追加 | 3 ロケールで文言が解決され欠落しない（PRD §5.2・DC-006 の周知） | 3.3 |
+| 3.5 | i18n（`aiGenerate.*`） | 生成 UI 文言（プロンプト・方式選択・事前ゲート・進捗・中断・エラー）と方式別注意書き（`aiGenerate.billingNoticeBuiltin`／`.billingNoticeExternal`。i18n `t()` が 2 階層までのため平坦キー）を ja/en/fr に追加 | 3 ロケールで文言が解決され欠落しない（PRD §5.2・DC-006 の周知） | 3.3 |
 
 ### Phase 4: テスト
 

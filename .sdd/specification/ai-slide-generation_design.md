@@ -4,7 +4,7 @@ title: AI スライド生成機能（内蔵生成） 技術設計書
 type: design
 status: approved
 sdd-phase: plan
-impl-status: not-implemented
+impl-status: implemented
 priority: high
 risk: high
 created: 2026-07-25
@@ -33,22 +33,22 @@ category: authoring
 
 # 1. 実装ステータス
 
-**ステータス:** 🔴 未実装（設計フェーズ・Issue #14）。器（#13 [slide-edit-mode_design.md](./slide-edit-mode_design.md)）の上に生成・ネットワーク・秘密情報の各層を新設する。参照実装は姉妹アプリ ticketvc-jira-management-app(NexusBoard) の Anthropic/LLM 連携（`ai_tool` feature）。
+**ステータス:** ✅ 実装済み（Issue #14・ブランチ `feature/ai-slide-generation-impl`）。器（#13 [slide-edit-mode_design.md](./slide-edit-mode_design.md)）の上に生成・ネットワーク・秘密情報の各層を新設した。参照実装は姉妹アプリ ticketvc-jira-management-app(NexusBoard) の Anthropic/LLM 連携（`ai_tool` feature）。全ゲート green（`cargo test`/`clippy -D warnings`/`fmt` ・ `npm run typecheck`/`test`/`format:check`/`build`）。実機 macOS の手動検証（実 API キー疎通・キー非露出・ゲート）は完了条件に残る（tasks 4.5）。
 
 ## 1.1. 実装進捗
 
 | モジュール/機能 | ステータス | 備考 |
 |----------|--------|------|
-| 生成器抽象（`SlideGenerator` trait ＋ enum ＋ resolve/factory ＋ Mock） | 🔴 | FR-002。ticketvc `llm_backend.rs` パターンを流用 |
-| 内蔵生成（Anthropic 直・reqwest） | 🔴 | FR-003。`x-api-key`＋`anthropic-version`・既定 `claude-opus-4-8`・with_retry |
-| 外部生成（Claude Code CLI） | 🔴 | FR-002。`claude --print --output-format json --strict-mcp-config` を spawn（ticketvc `claude_cli/llm_client.rs` 流用） |
-| API キー保管（keyring／OS キーチェーン） | 🔴 | FR-006。取得は存在のみ・fail-closed・マスク |
-| 生成/network/キー操作の Rust ゲート（EditMode＋生成有効） | 🔴 | FR-009/DC-003。#13 `EditMode(Mutex<bool>)` 拡張 |
-| 取り込み検証＋自動修正ループ | 🔴 | FR-005。`getValidationErrors`＋上限 N＋最良候補退避 |
-| 器への流し込み（`SlideEditor` text 受け口） | 🔴 | FR-004/DC-004。現状 `text` は useState 初期化のみ→外部注入の受け口追加 |
-| 生成パネル UI（`AiGeneratePanel`・事前ゲート・進捗・中断） | 🔴 | FR-001/007/010。editorUiTheme・`--theme-*` |
-| 進捗イベント＋中断＋同時実行1件 | 🔴 | FR-010。Tauri event＋`AtomicBool`＋`Mutex` busy |
-| i18n（`aiGenerate.*`） | 🔴 | ja/en/fr の生成 UI 文言。方式別の課金/オンライン依存注意書き（`aiGenerate.billingNotice.builtin` / `.external`）を含む（PRD §5.2） |
+| 生成器抽象（`SlideGenerator` trait ＋ enum ＋ resolve/factory ＋ Mock） | ✅ | FR-002。ticketvc `llm_backend.rs` パターンを流用 |
+| 内蔵生成（Anthropic 直・reqwest） | ✅ | FR-003。`x-api-key`＋`anthropic-version`・既定 `claude-opus-4-8`・with_retry |
+| 外部生成（Claude Code CLI） | ✅ | FR-002。`claude --print --output-format json --strict-mcp-config` を spawn（ticketvc `claude_cli/llm_client.rs` 流用） |
+| API キー保管（keyring／OS キーチェーン） | ✅ | FR-006。取得は存在のみ・fail-closed・マスク |
+| 生成/network/キー操作の Rust ゲート（EditMode＋生成有効） | ✅ | FR-009/DC-003。#13 `EditMode(Mutex<bool>)` 拡張 |
+| 取り込み検証＋自動修正ループ | ✅ | FR-005。`getValidationErrors`＋上限 N＋最良候補退避 |
+| 器への流し込み（`SlideEditor` text 受け口） | ✅ | FR-004/DC-004。現状 `text` は useState 初期化のみ→外部注入の受け口追加 |
+| 生成パネル UI（`AiGeneratePanel`・事前ゲート・進捗・中断） | ✅ | FR-001/007/010。editorUiTheme・`--theme-*` |
+| 進捗イベント＋中断＋同時実行1件 | ✅ | FR-010。Tauri event＋`AtomicBool`＋`Mutex` busy |
+| i18n（`aiGenerate.*`） | ✅ | ja/en/fr の生成 UI 文言。方式別の課金/オンライン依存注意書き（`aiGenerate.billingNoticeBuiltin` / `.billingNoticeExternal`。i18n の `t()` が 2 階層までのため平坦キー）を含む（PRD §5.2） |
 
 ---
 
@@ -79,7 +79,7 @@ category: authoring
 | 生成結果の取り込み | 既存 `slidesSerialize.parseSlides` / `SlideEditor` の `text` 単一真実源（#13） | 無損失往復（NFR-002）。生成 JSON をそのまま器へ流し込み、以降の調整は器の手動編集（DC-001） |
 | リトライ／エラー整形 | `with_retry`（429/529 指数バックオフ）＋ エラーボディ切詰め＋ `tools` 空時 `tool_choice` 省略 | 一時的失敗に強く、UI へ内部情報を漏らさない（NFR-005・FR-008）。ticketvc `anthropic_client.rs` の実績パターン |
 | 生成 UI | 編集モード内パネル（React / MUI・`editorUiTheme`） | 器と同じ固定 UI テーマに載せ、色は `--theme-*` 経由（A-002/DC-006）。フロントは軽量 hooks 構成を維持（ticketvc の 4層/RxJS/MVVM は移植しない） |
-| 進捗・中断・同時実行制御 | Tauri event（`emit`/`listen`）＋ `Arc<AtomicBool>` cancel ＋ `Mutex` busy | 長時間の生成を非ブロッキングで進捗通知・中断し、同時実行を 1 件に制限（FR-010）。ticketvc `AppState`（cancel_flag＋busy_lock）相当 |
+| 進捗・中断・同時実行制御 | JS 進捗コールバック（Tauri event 非使用・T-003）＋ `CancelToken`（`Arc<AtomicBool>`＋`cancelled()` を `tokio::select!` で in-flight と競合させドロップ中断）＋ `Mutex` busy | 長時間の生成を非ブロッキングで進捗通知・中断し、同時実行を 1 件に制限（FR-010）。進捗は JS オーケストレータ内で完結（購読ライフサイクル不要）。ticketvc `AppState`（cancel_flag＋busy_lock）相当 |
 | モデル | 既定 `claude-opus-4-8` ＋ 設定上書き ＋ 将来キュレート選択 | 実装時点の最新モデル。既定定数 → 利用者設定 → 将来一覧取得の三段解決（FR-003） |
 
 ---
@@ -285,6 +285,10 @@ Anthropic 内蔵呼び出しのヘッダ（`AnthropicGenerator`・Rust reqwest�
 | 結合 | 生成 → 検証 → 自動修正 → 器のプレビュー反映のフロー（Mock 生成器）。失敗/中断時に器の手動編集へ退避し既存データを壊さない | 主要ユースケース（成功／exhausted／失敗／中断） |
 | 手動（実機・macOS） | 実 API キーでの内蔵生成疎通、外部 CLI 検出・生成、キーが WebView/ログに出ないことの確認、capability ゲート（生成無効時にコマンド拒否） | #13 と同様に実機検証を完了条件に含める |
 
+> **e2e（Playwright）は本 Feature ではスコープ外**とする。UI 配線（事前ゲート・退避・全体置換注入）は JS component テスト（jsdom）で、実生成の統合は手動（実機・macOS）で担保する。e2e/screenshot ハーネスは `@tauri-apps/api/core`（`invoke`）を意図的に非モックのため（実 plugin-fs/dialog が依存）、e2e を追加しても IPC はモックのままで「実生成」ギャップは埋まらない（実 API/CLI が必要）。
+
+**実装結果**: Rust 単体 42・JS 単体/component 264（30 ファイル）で上記の Rust 単体・JS 単体・結合の目標を満たし green。手動（実機・macOS）は完了条件として残る（tasks 4.5）。
+
 ---
 
 # 9. 設計判断
@@ -303,7 +307,8 @@ Anthropic 内蔵呼び出しのヘッダ（`AnthropicGenerator`・Rust reqwest�
 | 未設定時 UX | (A) 事前ゲート（無効化＋設定導線） / (B) 事後エラー | **(A) 事前ゲート** | capability 分離思想に忠実で UX が明確。フロント無効化に加え Rust 入口でもゲート検証（DC-003） |
 | 永続化 | (A) 生成器は候補のみ返す（確定は器経由） / (B) 生成器が保存も行う | **(A) 候補のみ返す（DC-004 型）** | 誤生成が無自覚に保存・配布されるのを構造的に防ぐ。ticketvc DC-014「利用者確認まで永続化しない」と同型（※ DC-014 は姉妹アプリ ticketvc 側の制約 ID。本 PRD の DC ではない） |
 | フロント構成 | (A) 軽量 React+hooks / (B) 4層 DI＋RxJS＋MVVM（ticketvc 流） | **(A) 軽量 React+hooks** | 本アプリの既存構成に合わせ過剰設計を回避（CONSTITUTION「シンプルさ」）。Rust 側の抽象・境界パターンのみ ticketvc から流用 |
-| 器への注入方式 | (A) 生成結果で新規 `EditSource` を作り再マウント（key 更新） / (B) `SlideEditor` に注入受け口を追加 | **(B) 注入受け口を追加**（暫定・実装で最終確認） | 全体置換 v1 では (A) の再マウントでも成立するが、生成→手動調整の連続性・進捗表示との統合を考えると (B) が素直。現状 `text` は useState 初期化のみで外部再注入経路がないため受け口追加が必要 |
+| 器への注入方式 | (A) 生成結果で新規 `EditSource` を作り再マウント（key 更新） / (B) `SlideEditor` に注入受け口を追加 | **(B) 注入受け口を追加**（実装で確定） | 全体置換 v1 では (A) の再マウントでも成立するが、生成→手動調整の連続性・進捗表示との統合を考えると (B) が素直。実装では `SlideEditor` に `applyGeneratedSlides(json)`（全体置換で単一真実源 `text` へ流し込み）を追加した |
+| 中断の実装方式 | (A) `AtomicBool` フラグ監視のみ / (B) `tokio::select!` で in-flight と競わせ future ドロップで中断 | **(B) select! ＋ future ドロップ**（実装で確定） | フラグ監視だけでは in-flight の HTTP／サブプロセスを止められない（敵対的レビューで判明）。`CancelToken::cancelled()`（100ms ポーリング）を各生成器の実行 future と `select!` で競わせ、キャンセル時に処理 future をドロップして reqwest を abort・サブプロセスを `kill_on_drop` で kill する。JS 側も invoke 解決後に中断を再検査し無効候補を器へ適用しない（§6 の契約を実装で確定・FR-010/FR-008） |
 | 自動修正ループの実行場所 | (A) Rust 内完結（検証も Rust） / (B) JS 駆動（`aiGenerate.ts`） | **(B) JS 駆動** | 検証の単一真実源は JS `getValidationErrors`（D-002）。Rust に検証を複製せず、Rust は候補 1 件生成に限定する。FR-005「取り込み時バリデーション」を器の JS フローに一致させる。JS が上限 N 回ループし、各試行で `generate_slides` を呼ぶ |
 | タイムアウト・自動修正上限 N | (A) 実装フェーズへ全送り / (B) 設計で暫定確定 | **(B) 内蔵タイムアウト 120 秒・N=3（暫定確定・実測見直し可）** | PRD NFR-005 は「設計フェーズで確定」を要求。無制限リトライ/生成を避けコストを境界付ける。実測で見直す |
 | 事前ゲート判定条件（初期セット） | — | **内蔵=`getApiKeyStatus().configured`／外部=`claude --version` の終了コード 0＋PATH 解決可否（タイムアウトは未検出扱い）** | FR-007「判定条件は設計フェーズで確定」。UI 文言等の細部のみ実装フェーズに残す |
@@ -314,13 +319,22 @@ Anthropic 内蔵呼び出しのヘッダ（`AnthropicGenerator`・Rust reqwest�
 | 課題 | 影響度 | 対応方針 |
 |------|-----|------|
 | ストリーミング（SSE）採否 | 低 | v1 は全体置換・試行/フェーズ単位進捗のため非ストリーミング（一括生成）で十分か検証。逐次プレビューが要る場合のみ ticketvc `sse_parser.rs` 相当を導入（スコープ外候補） |
-| タイムアウト・上限 N の実測チューニング | 低 | §9.1 で暫定確定（内蔵 120 秒・N=3）。実運用データで見直す（NFR-005） |
+| タイムアウト・上限 N の実測チューニング | 低 | 実装で確定（内蔵 120 秒・外部 CLI 180 秒・N=3）。実運用データで見直す（NFR-005） |
 | モデルのキュレート一覧取得の要否 | 低 | v1 は既定 `claude-opus-4-8`＋設定上書きで足りるか検証。動的一覧取得は後続 |
-| 外部 Claude Code の検出・設定 UX の細部 | 低 | 判定条件の初期セットは §9.1 で確定。未検出時の設定導線・UI 文言・再検出操作の細部を実装フェーズで具体化（ticketvc `ClaudeCliStatus` 相当） |
+| 外部 Claude Code の検出・設定 UX の細部 | 低 | 実装で確定: `check_claude_cli`（`claude --version` 終了コード＋PATH/代表配置解決・5 秒タイムアウト）で判定し、未検出時はパネルで無効化＋導線表示。再検出操作の細部は後続 |
 
 ---
 
 # 10. 変更履歴
+
+## v0.3（2026-07-25）
+
+**変更内容（実装完了・`impl-status` を `implemented` に更新）:**
+
+- Phase 1〜5 を実装（`generation` モジュール〔trait/enum/resolve/factory/内蔵 reqwest/外部 CLI〕・`credential`〔keyring 二層〕・`aiGenerate.ts`〔オーケストレータ〕・`AiGeneratePanel`・Rust コマンド配線・i18n ja/en/fr）。全ゲート green（`cargo test` 42・`clippy -D warnings`・`fmt` / `npm run typecheck`・`test` 264・`format:check`・`build`）。
+- 敵対的レビュー（Phase 2・3）で確定した修正を反映: (1) 中断は `CancelToken::cancelled()`＋`tokio::select!` で in-flight を実際に中断（reqwest ドロップ abort・サブプロセス `kill_on_drop`）、(2) JS は invoke 解決後にも中断を再検査し無効候補を適用しない、(3) `cancelled` は候補を返さない（`slidesJson: null`）、(4) `set_api_key` はストア失敗時に keyring をロールバック、(5) 後片付けは cancel トークン→busy の順、(6) warn 色は `--theme-primary` へフォールバック。
+- §9.1 の暫定判断を確定（器への注入方式＝受け口 `applyGeneratedSlides`／タイムアウト 120s・N=3／中断の実装方式を追記）。§9.2 の該当課題を「実装で確定」に更新。
+- §3 進捗・中断行を実装に整合（Tauri event 非使用・JS コールバック進捗＋`select!` 中断）。§8 に e2e スコープ外（手動 4.5 で代替）を明記。
 
 ## v0.2（2026-07-25）
 

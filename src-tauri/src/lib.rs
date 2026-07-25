@@ -5,6 +5,9 @@ use std::sync::Mutex;
 use tauri::Manager;
 use tauri_plugin_fs::FsExt;
 
+mod credential;
+mod generation;
+
 /// ユーザーがダイアログで選んだディレクトリを asset プロトコル・fs プラグイン双方の
 /// 読み取り許可スコープに追加する（fs プラグインの scope は asset プロトコルの scope とは別物で、
 /// readTextFile 等はこちらが許可されていないと forbidden path エラーになる）
@@ -75,6 +78,174 @@ struct EditMode(Mutex<bool>);
 fn set_edit_mode(enabled: bool, state: tauri::State<EditMode>) -> Result<(), String> {
   *state.0.lock().map_err(|e| e.to_string())? = enabled;
   Ok(())
+}
+
+/// 生成有効フラグ（生成・ネットワーク・キー操作のゲート。既定 false）。
+/// EditMode と併せて多重ゲートし、network / キーチェーンへ到達する前に検査する（DC-003 / NFR-003）
+struct GenerationEnabled(Mutex<bool>);
+
+/// 生成の同時実行を 1 件に制限する busy ロック（FR-010）。generate_slides で取得・解放する。
+struct GenerationBusy(Mutex<bool>);
+
+/// 実行中の生成をキャンセルするトークン置き場（FR-010）。generate_slides が設定し、
+/// cancel_generation が参照して in-flight の生成器に中断を伝える。
+struct GenerationCancel(Mutex<Option<generation::CancelToken>>);
+
+/// 生成種別の dev override 用環境変数（設定/UI 選択より優先。テスト・特殊環境向け）。
+const GENERATOR_ENV: &str = "SLIDE_APP_GENERATOR";
+
+/// 生成有効フラグ設定の純粋ゲートロジック（テストはこの関数を直接叩く）。
+/// 生成の有効化は編集モード時のみ許可し、無効化は編集モードに関わらず常に許可する
+/// （生成は編集モードの一入力手段であり、編集モード外では有効化させない・DC-003）
+fn resolve_generation_enabled(edit_mode: bool, requested: bool) -> Result<bool, String> {
+  if requested && !edit_mode {
+    return Err("編集モードが無効です".to_string());
+  }
+  Ok(requested)
+}
+
+/// 生成/中断コマンドのゲート判定（編集モード かつ 生成有効のときのみ true）。純関数・テスト対象（FR-009）。
+fn generation_command_allowed(edit_mode: bool, generation_enabled: bool) -> bool {
+  edit_mode && generation_enabled
+}
+
+/// 生成有効フラグを切り替える（編集モード必須。生成パネルの有効化/無効化に同期して JS から呼ばれる）
+#[tauri::command]
+fn set_generation_enabled(
+  enabled: bool,
+  edit_mode: tauri::State<EditMode>,
+  generation: tauri::State<GenerationEnabled>,
+) -> Result<(), String> {
+  let edit = *edit_mode.0.lock().map_err(|e| e.to_string())?;
+  let next = resolve_generation_enabled(edit, enabled)?;
+  *generation.0.lock().map_err(|e| e.to_string())? = next;
+  Ok(())
+}
+
+/// 生成の実処理（キー取得＋生成器解決＋候補 1 件生成）。ゲート/busy/cancel の管理は generate_slides 側。
+/// 内蔵のみ keyring からキーを取得する（ゲート通過後に初めてキーチェーンへ到達・NFR-003）。
+async fn run_generation(
+  request: &generation::GenerateRequest,
+  app: &tauri::AppHandle,
+  cancel: &generation::CancelToken,
+) -> Result<String, generation::GenerateError> {
+  // 生成種別: dev override（env）→ UI/設定の選択（request.kind）→ 既定（内蔵）
+  let request_kind_str = match request.kind {
+    generation::SlideGeneratorKind::BuiltinAnthropic => "builtin-anthropic",
+    generation::SlideGeneratorKind::ExternalClaudeCode => "external-claude-code",
+  };
+  let env_override = std::env::var(GENERATOR_ENV).ok();
+  let kind = generation::resolve_generator_kind(env_override.as_deref(), Some(request_kind_str));
+
+  // 内蔵は keyring からキーを取得（未設定は NotConfigured で事前ゲートに戻す）。外部は不要
+  let key = match kind {
+    generation::SlideGeneratorKind::BuiltinAnthropic => match credential::load_api_key(app) {
+      Ok(k) => Some(k),
+      Err(credential::CredentialError::NotConfigured) => {
+        return Err(generation::GenerateError::NotConfigured)
+      }
+      Err(e) => return Err(generation::GenerateError::Credential(e.to_string())),
+    },
+    generation::SlideGeneratorKind::ExternalClaudeCode => None,
+  };
+
+  let generator = generation::create_generator(kind, key, generation::DEFAULT_MODEL);
+  generator.generate(request, cancel).await
+}
+
+/// 生成器で候補 1 件を生成する（検証/自動修正ループは JS 側 aiGenerate が駆動・design §9.1）。
+/// 冒頭で「編集モード かつ 生成有効」を検査し、同時実行を 1 件に制限してから keyring/network へ到達する
+/// （DC-002/DC-003/NFR-003/FR-009/FR-010）。
+#[tauri::command]
+async fn generate_slides(
+  request: generation::GenerateRequest,
+  app: tauri::AppHandle,
+  edit_mode: tauri::State<'_, EditMode>,
+  generation: tauri::State<'_, GenerationEnabled>,
+  busy: tauri::State<'_, GenerationBusy>,
+  cancel_state: tauri::State<'_, GenerationCancel>,
+) -> Result<String, String> {
+  // ゲート: 編集モード かつ 生成有効（どちらか欠けたら keyring/network に到達しない）
+  {
+    let edit = *edit_mode.0.lock().map_err(|e| e.to_string())?;
+    let gen = *generation.0.lock().map_err(|e| e.to_string())?;
+    if !generation_command_allowed(edit, gen) {
+      return Err("生成が有効化されていません".to_string());
+    }
+  }
+
+  // 同時実行 1 件（busy を立てる。ここで Err なら busy には触れない）
+  {
+    let mut b = busy.0.lock().map_err(|e| e.to_string())?;
+    if *b {
+      return Err("別の生成が実行中です".to_string());
+    }
+    *b = true;
+  }
+
+  // キャンセルトークンを設定（in-flight を cancel_generation から中断可能にする）
+  let cancel = generation::CancelToken::new();
+  {
+    *cancel_state.0.lock().map_err(|e| e.to_string())? = Some(cancel.clone());
+  }
+
+  // 実処理（MutexGuard は上のスコープで解放済み。await をまたいで保持しない）
+  let result = run_generation(&request, &app, &cancel).await;
+
+  // 後片付け（成功/失敗にかかわらず解放する）。cancel トークンを先に消してから busy を解放する:
+  // busy を先に解放すると、並行 generate_slides B が busy ゲートを通過して自分の cancel トークンを
+  // 設定した直後に、こちらが誤って None 消去し B を中断不能にしうるため（順序で窓を閉じる・FR-010）
+  if let Ok(mut c) = cancel_state.0.lock() {
+    *c = None;
+  }
+  if let Ok(mut b) = busy.0.lock() {
+    *b = false;
+  }
+
+  result.map_err(|e| e.to_string())
+}
+
+/// 実行中の生成を中断する（in-flight の生成器へ協調的に伝える。FR-010）。
+#[tauri::command]
+fn cancel_generation(cancel_state: tauri::State<GenerationCancel>) -> Result<(), String> {
+  if let Some(token) = cancel_state.0.lock().map_err(|e| e.to_string())?.as_ref() {
+    token.cancel();
+  }
+  Ok(())
+}
+
+/// API キーを OS キーチェーンへ保管する（編集モード必須。keyring/plugin-store は Rust 境界に閉じる）。
+#[tauri::command]
+fn set_api_key(
+  key: String,
+  app: tauri::AppHandle,
+  edit_mode: tauri::State<EditMode>,
+) -> Result<(), String> {
+  if !*edit_mode.0.lock().map_err(|e| e.to_string())? {
+    return Err("編集モードが無効です".to_string());
+  }
+  credential::set_api_key(&app, &key).map_err(|e| e.to_string())
+}
+
+/// API キーを削除する（編集モード必須）。
+#[tauri::command]
+fn delete_api_key(app: tauri::AppHandle, edit_mode: tauri::State<EditMode>) -> Result<(), String> {
+  if !*edit_mode.0.lock().map_err(|e| e.to_string())? {
+    return Err("編集モードが無効です".to_string());
+  }
+  credential::delete_api_key(&app).map_err(|e| e.to_string())
+}
+
+/// API キーの登録状態のみ返す（生値非開放・keyring 非アクセス）。事前ゲート表示のため常時呼べる（NFR-003）。
+#[tauri::command]
+fn has_api_key(app: tauri::AppHandle) -> Result<credential::ApiKeyStatus, String> {
+  credential::has_api_key(&app).map_err(|e| e.to_string())
+}
+
+/// 外部生成（Claude Code CLI）が利用可能か返す（事前ゲート・FR-007。秘密に触れないため常時呼べる）。
+#[tauri::command]
+async fn check_claude_cli() -> Result<bool, String> {
+  Ok(generation::external_generator_available().await)
 }
 
 /// 編集モードゲートつきの slides.json 書き込み（純粋ロジック。テストはこの関数を直接叩く）。
@@ -459,6 +630,9 @@ pub fn run() {
     .plugin(tauri_plugin_dialog::init())
     .plugin(tauri_plugin_store::Builder::default().build())
     .manage(EditMode(Mutex::new(false)))
+    .manage(GenerationEnabled(Mutex::new(false)))
+    .manage(GenerationBusy(Mutex::new(false)))
+    .manage(GenerationCancel(Mutex::new(None)))
     .invoke_handler(tauri::generate_handler![
       allow_asset_dir,
       extract_slide_package,
@@ -467,7 +641,14 @@ pub fn run() {
       export_slide_package,
       list_builtin_addons,
       add_builtin_addon,
-      remove_builtin_addon
+      remove_builtin_addon,
+      set_generation_enabled,
+      generate_slides,
+      cancel_generation,
+      set_api_key,
+      delete_api_key,
+      has_api_key,
+      check_claude_cli
     ])
     .setup(|app| {
       if cfg!(debug_assertions) {
@@ -830,5 +1011,26 @@ mod tests {
     assert!(remove_builtin_addon_at(&dir, "my-addon").is_err());
 
     fs::remove_dir_all(&dir).ok();
+  }
+
+  #[test]
+  fn generation_enable_requires_edit_mode() {
+    // 編集モード無効時は生成の有効化を拒否する（DC-003 / FR-009）
+    assert!(resolve_generation_enabled(false, true).is_err());
+    // 編集モード有効時は有効化できる
+    assert!(resolve_generation_enabled(true, true).unwrap());
+    // 無効化は編集モードに関わらず常に許可（生成の停止は妨げない）
+    assert!(!resolve_generation_enabled(false, false).unwrap());
+    assert!(!resolve_generation_enabled(true, false).unwrap());
+  }
+
+  #[test]
+  fn generate_command_gate_requires_edit_mode_and_generation_enabled() {
+    // 生成コマンドは「編集モード かつ 生成有効」の両方が揃うときのみ許可（FR-009・NFR-003）。
+    // どちらか欠ければ keyring/network に到達しない
+    assert!(!generation_command_allowed(false, false));
+    assert!(!generation_command_allowed(true, false));
+    assert!(!generation_command_allowed(false, true));
+    assert!(generation_command_allowed(true, true));
   }
 }
