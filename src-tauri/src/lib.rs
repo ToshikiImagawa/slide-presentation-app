@@ -382,7 +382,8 @@ fn filter_addon_manifest(
       .and_then(|b| b.as_str())
       .map(|b| b.strip_prefix('/').unwrap_or(b))
       .filter(|b| b.starts_with("addons/"))
-      .and_then(|b| b.rsplit('/').next())
+      // basename 化はパストラバーサル防止も兼ねる。Windows のバックスラッシュ区切りも分割対象にする
+      .and_then(|b| b.rsplit(['/', '\\']).next())
       .map(|basename| format!("addons/{}", basename))
     else {
       continue;
@@ -417,6 +418,7 @@ fn build_slide_package_gated(
   name: &str,
   version: &str,
   included_addons: &[String],
+  builtin_dist_dir: Option<&Path>,
 ) -> Result<String, String> {
   if !enabled {
     return Err("編集モードが無効です".to_string());
@@ -426,21 +428,86 @@ fn build_slide_package_gated(
   let asset_paths = extract_asset_paths(&value);
   let base = Path::new(base_dir);
 
-  // 層B: included_addons が非空なら base_dir/addons/manifest.json から選択アドオンだけを同梱する（FR-009）
-  let mut addon_manifest_text: Option<String> = None;
-  let mut addon_bundles: Vec<String> = Vec::new();
+  // 選択アドオンを層B（base_dir/addons）＋層A（組み込み dist・dev のみ）から集約して同梱する（FR-009・②）。
+  // 層B優先で、層Aは層Bに無い名前だけを補完する。bundle の dest（package/addons/<basename>）が衝突する場合は
+  // 別々の単一バンドルを統合できないため層Bを優先し層Aをスキップする。
+  // (entry, dest 相対パス, コピー元ファイル) の三つ組。dest は package/ 配下の addons/<basename>。
+  // entry と src を一体で持ち、後段で「実体のある bundle だけ」を manifest とコピー双方に反映する（レビュー#3）。
+  let mut addon_items: Vec<(serde_json::Value, String, PathBuf)> = Vec::new();
+  // 合成 manifest のベース（層Bの非 addons キーを保持。無ければ空オブジェクト）
+  let mut manifest_base = serde_json::json!({});
   if !included_addons.is_empty() {
+    // 層B: 読み込んだパッケージ自身のアドオン（base_dir/addons/manifest.json）
     if let Ok(text) = fs::read_to_string(base.join("addons").join("manifest.json")) {
       let manifest: serde_json::Value = serde_json::from_str(&text).map_err(|e| e.to_string())?;
+      manifest_base = manifest.clone();
       let (filtered, bundles) = filter_addon_manifest(&manifest, included_addons);
-      addon_bundles = bundles;
-      addon_manifest_text =
-        Some(serde_json::to_string_pretty(&filtered).map_err(|e| e.to_string())?);
+      let entries: Vec<serde_json::Value> = filtered
+        .get("addons")
+        .and_then(|a| a.as_array())
+        .cloned()
+        .unwrap_or_default();
+      // filter_addon_manifest は entries と bundles を同順・同数で返す
+      for (entry, b) in entries.into_iter().zip(bundles.into_iter()) {
+        let src = base.join(&b);
+        addon_items.push((entry, b, src));
+      }
+    }
+    // 層A: 組み込みアドオン（dev の addons/dist）。層Bで未取得の名前だけ補完する
+    if let Some(dist) = builtin_dist_dir {
+      let matched: Vec<String> = addon_items
+        .iter()
+        .filter_map(|(e, _, _)| {
+          e.get("name")
+            .and_then(|n| n.as_str())
+            .map(|s| s.to_string())
+        })
+        .collect();
+      let remaining: Vec<String> = included_addons
+        .iter()
+        .filter(|n| !matched.contains(n))
+        .cloned()
+        .collect();
+      if !remaining.is_empty() {
+        if let Ok(text) = fs::read_to_string(dist.join("manifest.json")) {
+          let manifest: serde_json::Value =
+            serde_json::from_str(&text).map_err(|e| e.to_string())?;
+          let (filtered, bundles) = filter_addon_manifest(&manifest, &remaining);
+          let entries: Vec<serde_json::Value> = filtered
+            .get("addons")
+            .and_then(|a| a.as_array())
+            .cloned()
+            .unwrap_or_default();
+          for (entry, b) in entries.into_iter().zip(bundles.into_iter()) {
+            // dest 衝突（層Bと同じ package パス）は層B優先でスキップ
+            if addon_items.iter().any(|(_, dest, _)| dest == &b) {
+              continue;
+            }
+            // b は addons/<basename> に正規化済み。source は dist 直下の basename
+            let basename = b.rsplit(['/', '\\']).next().unwrap_or(&b).to_string();
+            let src = dist.join(basename);
+            addon_items.push((entry, b, src));
+          }
+        }
+      }
     }
   }
-  // 実ファイルが1つ以上存在するときだけ addons を同梱する（export-slides.mjs の includeAddons = copied>0 相当）。
-  // 選択したが bundle 実体が無い場合に files へ空の "addons" を足さないため（DC-003）
-  let include_addons = addon_bundles.iter().any(|b| base.join(b).is_file());
+  // manifest とコピー対象を「実体のある bundle」に一致させる（存在しない bundle を manifest が参照して 404 になるのを防ぐ・レビュー#3）。
+  let present: Vec<&(serde_json::Value, String, PathBuf)> = addon_items
+    .iter()
+    .filter(|(_, _, src)| src.is_file())
+    .collect();
+  let include_addons = !present.is_empty();
+  // 合成 manifest（層Bの非 addons キーを保持しつつ addons を「実体のある選択集合」へ差し替え）
+  let addon_manifest_text: Option<String> = if include_addons {
+    let kept: Vec<serde_json::Value> = present.iter().map(|(e, _, _)| e.clone()).collect();
+    if let Some(obj) = manifest_base.as_object_mut() {
+      obj.insert("addons".to_string(), serde_json::Value::Array(kept));
+    }
+    Some(serde_json::to_string_pretty(&manifest_base).map_err(|e| e.to_string())?)
+  } else {
+    None
+  };
 
   let package_json = serde_json::json!({
     "name": format!("@slides/{}", name),
@@ -472,13 +539,12 @@ fn build_slide_package_gated(
       }
     }
 
-    // 層B: 選択アドオンの同梱（bundle 本体＋絞り込み後の manifest）
+    // 選択アドオンの同梱（層A/層B の bundle 本体＋合成 manifest）。is_file() ガードで manifest(present) と一致
     if include_addons {
-      for bundle in &addon_bundles {
-        let src = base.join(bundle);
+      for (_, dest, src) in &addon_items {
         if src.is_file() {
-          let bytes = fs::read(&src).map_err(|e| e.to_string())?;
-          append_tar_file(&mut builder, &format!("package/{}", bundle), &bytes)?;
+          let bytes = fs::read(src).map_err(|e| e.to_string())?;
+          append_tar_file(&mut builder, &format!("package/{}", dest), &bytes)?;
         }
       }
       if let Some(text) = &addon_manifest_text {
@@ -523,6 +589,13 @@ fn export_slide_package(
   state: tauri::State<EditMode>,
 ) -> Result<String, String> {
   let enabled = *state.0.lock().map_err(|e| e.to_string())?;
+  // 層A（組み込み addons/dist）の同梱は dev 限定。release では成果物が無いため渡さない（層Bのみ）
+  let builtin_dist = builtin_dist_dir();
+  let builtin_dist_opt = if cfg!(debug_assertions) {
+    Some(builtin_dist.as_path())
+  } else {
+    None
+  };
   build_slide_package_gated(
     enabled,
     &json,
@@ -531,6 +604,7 @@ fn export_slide_package(
     &name,
     &version,
     &included_addons,
+    builtin_dist_opt,
   )
 }
 
@@ -545,6 +619,17 @@ fn builtin_addons_dir() -> PathBuf {
     .unwrap_or_else(|| PathBuf::from("."))
     .join("addons")
     .join("src")
+}
+
+/// 組み込みアドオンのビルド成果物ディレクトリ（addons/dist）。層A を export に同梱する際の bundle/manifest 源。
+/// 層A は dev 限定のため、成果物が同一マシンの addons/dist に存在する前提（release では export へ渡さない）。
+fn builtin_dist_dir() -> PathBuf {
+  Path::new(env!("CARGO_MANIFEST_DIR"))
+    .parent()
+    .map(|p| p.to_path_buf())
+    .unwrap_or_else(|| PathBuf::from("."))
+    .join("addons")
+    .join("dist")
 }
 
 /// アドオン名を検証する（パストラバーサル防止。英数字・ハイフン・アンダースコアのみ許可）
@@ -609,13 +694,47 @@ fn remove_builtin_addon_at(dir: &Path, name: &str) -> Result<(), String> {
   fs::remove_dir_all(&addon_dir).map_err(|e| e.to_string())
 }
 
-/// 組み込みアドオン（addons/src 配下）の一覧を返す（層A・dev 限定。release では空）
+/// 組み込みアドオン（addons/src 配下）の一覧を返す（層A・dev 限定。release では空）。増減 UI 用（ソース）。
 #[tauri::command]
 fn list_builtin_addons() -> Result<Vec<String>, String> {
   if !cfg!(debug_assertions) {
     return Ok(Vec::new());
   }
   list_builtin_addons_at(&builtin_addons_dir())
+}
+
+/// manifest（`addons/dist/manifest.json` 等）から addon の name 一覧を取り出す純関数（テスト対象）。
+fn addon_names_from_manifest(text: &str) -> Result<Vec<String>, String> {
+  let manifest: serde_json::Value = serde_json::from_str(text).map_err(|e| e.to_string())?;
+  Ok(
+    manifest
+      .get("addons")
+      .and_then(|a| a.as_array())
+      .map(|arr| {
+        arr
+          .iter()
+          .filter_map(|a| {
+            a.get("name")
+              .and_then(|n| n.as_str())
+              .map(|s| s.to_string())
+          })
+          .collect::<Vec<_>>()
+      })
+      .unwrap_or_default(),
+  )
+}
+
+/// **ビルド済み**の組み込みアドオン（`addons/dist/manifest.json` に載る＝export で同梱可能）の name 一覧を返す。
+/// export の層A選択候補はこちらを真実源にする（src にあるが未ビルドの名前を候補に出さない・レビュー#4/#6）。dev 限定。
+#[tauri::command]
+fn list_builtin_dist_addons() -> Result<Vec<String>, String> {
+  if !cfg!(debug_assertions) {
+    return Ok(Vec::new());
+  }
+  match fs::read_to_string(builtin_dist_dir().join("manifest.json")) {
+    Ok(text) => addon_names_from_manifest(&text),
+    Err(_) => Ok(Vec::new()),
+  }
 }
 
 /// 組み込みアドオンを新規作成する（層A・dev 限定＋編集モードゲート。要 npm run build:addons 再ビルド）
@@ -658,6 +777,7 @@ pub fn run() {
       save_slides_json,
       export_slide_package,
       list_builtin_addons,
+      list_builtin_dist_addons,
       add_builtin_addon,
       remove_builtin_addon,
       set_generation_enabled,
@@ -810,6 +930,7 @@ mod tests {
       "demo",
       "1.0.0",
       &[],
+      None,
     );
 
     assert!(result.is_err());
@@ -836,6 +957,7 @@ mod tests {
       "demo",
       "1.0.0",
       &[],
+      None,
     )
     .expect("編集モード有効時は書き出す");
 
@@ -960,6 +1082,7 @@ mod tests {
       "demo",
       "1.0.0",
       &["viz".to_string()],
+      None,
     )
     .expect("編集モード有効時は書き出す");
 
@@ -984,6 +1107,131 @@ mod tests {
     assert_eq!(kept[0].get("name").unwrap().as_str().unwrap(), "viz");
 
     fs::remove_dir_all(&dir).ok();
+  }
+
+  #[test]
+  fn export_bundles_builtin_layer_a_when_not_in_package() {
+    // 新規オーサリング（層B 無し）で組み込みアドオン（層A・addons/dist）を選択同梱できる（②）
+    let dir = std::env::temp_dir().join(format!("slide-export-builtin-{}", std::process::id()));
+    fs::remove_dir_all(&dir).ok();
+    let base_dir = dir.join("src"); // 層B は空
+    let dist_dir = dir.join("dist"); // 層A（組み込み）dist
+    let out_dir = dir.join("out");
+    fs::create_dir_all(&base_dir).unwrap();
+    fs::create_dir_all(&dist_dir).unwrap();
+    fs::write(
+      dist_dir.join("manifest.json"),
+      br#"{"addons":[{"name":"biz","bundle":"/addons/addons.iife.js"}]}"#,
+    )
+    .unwrap();
+    fs::write(dist_dir.join("addons.iife.js"), b"BUILTIN_BUNDLE").unwrap();
+
+    let json = r#"{"meta":{"title":"t"},"slides":[]}"#;
+    let tgz_path = build_slide_package_gated(
+      true,
+      json,
+      out_dir.to_str().unwrap(),
+      base_dir.to_str().unwrap(),
+      "demo",
+      "1.0.0",
+      &["biz".to_string()],
+      Some(dist_dir.as_path()),
+    )
+    .expect("編集モード有効時は書き出す");
+
+    let bytes = fs::read(&tgz_path).unwrap();
+    let extract_dir = dir.join("extract");
+    let pkg = extract_tgz(&bytes, &extract_dir).expect("展開できる");
+
+    // 組み込みバンドルが dist から同梱される
+    assert_eq!(
+      fs::read(pkg.join("addons").join("addons.iife.js")).unwrap(),
+      b"BUILTIN_BUNDLE"
+    );
+    // manifest に biz が入る
+    let manifest: serde_json::Value =
+      serde_json::from_str(&fs::read_to_string(pkg.join("addons").join("manifest.json")).unwrap())
+        .unwrap();
+    let kept = manifest.get("addons").unwrap().as_array().unwrap();
+    assert_eq!(kept.len(), 1);
+    assert_eq!(kept[0].get("name").unwrap().as_str().unwrap(), "biz");
+
+    fs::remove_dir_all(&dir).ok();
+  }
+
+  #[test]
+  fn export_prefers_layer_b_on_bundle_dest_collision() {
+    // 層B と層A の bundle dest が同一（addons.iife.js）なら層B優先で層Aをスキップする
+    let dir = std::env::temp_dir().join(format!("slide-export-collide-{}", std::process::id()));
+    fs::remove_dir_all(&dir).ok();
+    let base_dir = dir.join("src");
+    let dist_dir = dir.join("dist");
+    let out_dir = dir.join("out");
+    fs::create_dir_all(base_dir.join("addons")).unwrap();
+    fs::create_dir_all(&dist_dir).unwrap();
+    // 層B: a → addons/addons.iife.js（本体 = PKG）
+    fs::write(
+      base_dir.join("addons").join("manifest.json"),
+      br#"{"addons":[{"name":"a","bundle":"addons/addons.iife.js"}]}"#,
+    )
+    .unwrap();
+    fs::write(base_dir.join("addons").join("addons.iife.js"), b"PKG").unwrap();
+    // 層A: b → 同じ addons/addons.iife.js（本体 = BUILTIN）
+    fs::write(
+      dist_dir.join("manifest.json"),
+      br#"{"addons":[{"name":"b","bundle":"/addons/addons.iife.js"}]}"#,
+    )
+    .unwrap();
+    fs::write(dist_dir.join("addons.iife.js"), b"BUILTIN").unwrap();
+
+    let json = r#"{"meta":{"title":"t"},"slides":[]}"#;
+    let tgz_path = build_slide_package_gated(
+      true,
+      json,
+      out_dir.to_str().unwrap(),
+      base_dir.to_str().unwrap(),
+      "demo",
+      "1.0.0",
+      &["a".to_string(), "b".to_string()],
+      Some(dist_dir.as_path()),
+    )
+    .expect("書き出す");
+
+    let bytes = fs::read(&tgz_path).unwrap();
+    let extract_dir = dir.join("extract");
+    let pkg = extract_tgz(&bytes, &extract_dir).expect("展開できる");
+
+    // dest 衝突は層B優先: バンドル本体は PKG（層B）が残る
+    assert_eq!(
+      fs::read(pkg.join("addons").join("addons.iife.js")).unwrap(),
+      b"PKG"
+    );
+    // manifest には層Bの a のみ（衝突した層A b は落とす）
+    let manifest: serde_json::Value =
+      serde_json::from_str(&fs::read_to_string(pkg.join("addons").join("manifest.json")).unwrap())
+        .unwrap();
+    let kept = manifest.get("addons").unwrap().as_array().unwrap();
+    assert_eq!(kept.len(), 1);
+    assert_eq!(kept[0].get("name").unwrap().as_str().unwrap(), "a");
+
+    fs::remove_dir_all(&dir).ok();
+  }
+
+  #[test]
+  fn addon_names_from_manifest_extracts_names() {
+    // 層A export 候補の真実源（dist manifest）から name を取り出す
+    let names = addon_names_from_manifest(
+      r#"{"addons":[{"name":"a","bundle":"/addons/x.js"},{"name":"b"}]}"#,
+    )
+    .unwrap();
+    assert_eq!(names, vec!["a".to_string(), "b".to_string()]);
+    // addons 無し・空は空配列
+    assert!(addon_names_from_manifest(r#"{}"#).unwrap().is_empty());
+    assert!(addon_names_from_manifest(r#"{"addons":[]}"#)
+      .unwrap()
+      .is_empty());
+    // 不正 JSON は Err
+    assert!(addon_names_from_manifest("nope").is_err());
   }
 
   #[test]

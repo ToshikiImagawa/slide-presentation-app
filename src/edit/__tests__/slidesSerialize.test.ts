@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseSlides, serializeSlides } from '../slidesSerialize'
+import { parseSlides, serializeSlides, prettyPrintJson } from '../slidesSerialize'
 import type { PresentationData } from '../../data/types'
 
 // 自由記述の全類型（未知キー・HTML・空白・customCSS・props・fragment）を含むデータ
@@ -95,5 +95,37 @@ describe('slidesSerialize', () => {
 
     expect(errors.length).toBeGreaterThan(0)
     expect(data).toEqual(input)
+  })
+})
+
+describe('prettyPrintJson（③生成JSONの整形）', () => {
+  it('1 行 JSON を 2 スペース整形へ正規化する', () => {
+    const oneLine = '{"meta":{"title":"AI の歴史"},"slides":[{"id":"s1","layout":"center","content":{}}]}'
+    const pretty = prettyPrintJson(oneLine)
+
+    // 2 スペースインデントで展開される
+    expect(pretty).toContain('\n  "meta"')
+    expect(pretty).toContain('\n  "slides"')
+    // 内容は保持され、再パースで元と一致
+    expect(JSON.parse(pretty)).toEqual(JSON.parse(oneLine))
+  })
+
+  it('スキーマ検証 NG でも構文的に妥当なら整形する（未知キー・id 欠落を保持）', () => {
+    const oneLine = '{"meta":{"title":""},"slides":[{"layout":"center","content":{},"foo":1}]}'
+    const pretty = prettyPrintJson(oneLine)
+
+    expect(pretty).toContain('\n  "meta"')
+    // 未知キー foo・title 空・id 欠落もそのまま保持（スキーマ検証はしない）
+    expect(JSON.parse(pretty)).toEqual(JSON.parse(oneLine))
+  })
+
+  it('構文エラーの JSON は原文をそのまま返す（内容を失わない・FR-008）', () => {
+    const broken = '{ "meta": { "title": "x" }, '
+    expect(prettyPrintJson(broken)).toBe(broken)
+  })
+
+  it('serializeSlides の出力に対して冪等（既に整形済みなら不変）', () => {
+    const text = serializeSlides({ meta: { title: 't' }, slides: [{ id: 's1', layout: 'center', content: {} }] } as unknown as PresentationData)
+    expect(prettyPrintJson(text)).toBe(text)
   })
 })

@@ -45,7 +45,7 @@ category: authoring
 | Rust 書き込みコマンド（`save_slides_json`/`export_slide_package`/`set_edit_mode`） | 🟢 | FR-006/007/011。`lib.rs` に新設・`EditMode(Mutex<bool>)` ゲート・純粋関数を切出しテスト |
 | `.tgz` 生成（Rust・`flate2`/`tar`） | 🟢 | FR-007/DC-003。`extract_asset_paths` 移植・`package/` 規約・`extract_slide_package` と往復 |
 | Addon 付け外し 層C（実行時信頼 UI） | 🟢 | FR-008。`getAddonTrustMap`/`setAddonTrustDecision`/`clearAddonTrustDecision`＋書込直列化、`SettingsWindow` UI、信頼一覧は trustMap 全キー基点 |
-| Addon 付け外し 層B（export 同梱選択） | 🟢 | FR-009。Rust `filter_addon_manifest`（bundle 正規化＋同梱）、`export-slides.mjs --addons`、編集 UI チェックボックス |
+| Addon 付け外し 層B（export 同梱選択） | 🟢 | FR-009。Rust `filter_addon_manifest`（bundle 正規化＋同梱）、`export-slides.mjs --addons`、編集 UI チェックボックス。**（後続 feature/edit-apply-ux）** 同梱候補を層B∪層A（組み込み `addons/dist`）の和集合に拡張し、0 件時も UI を消さず明示表示。`build_slide_package_gated` に `builtin_dist_dir` を追加し層Aを補完同梱（dest 衝突は層B優先） |
 | Addon 付け外し 層A（組み込み entry.ts・dev 限定） | 🟢 | FR-010/DC-004。Rust `list/add/remove_builtin_addon`（`cfg!(debug_assertions)`＋ゲート＋`sanitize_addon_name`）、編集 UI dev パネル |
 | i18n / エディタ UI テーマ分離 | 🟢 | ja/en/fr の `edit.*`/`settings.addonTrust*` を追加。編集 chrome は `editorUiTheme`（固定 UI サイズ）、プレビューのみプレゼンテーマ（§9.1） |
 
@@ -295,6 +295,13 @@ fn export_slide_package(
 ---
 
 # 10. 変更履歴
+
+## v0.3（2026-07-26・後続 feature/edit-apply-ux）
+
+**変更内容（#14 出荷後の編集操作性改善）:**
+
+- 層B export 同梱選択を拡張: 同梱候補を**層B（パッケージ `addons/manifest.json`）∪層A（組み込み `addons/dist`）**の和集合にし、層Bは既定選択・層Aはオプトイン。候補 0 件でもチェックボックス UI を消さず「同梱できるアドオンがありません」を明示（従来は UI ごと非表示でユーザーが状態を把握できなかった）。
+- Rust `build_slide_package_gated` に `builtin_dist_dir: Option<&Path>` を追加。選択集合のうち層Bに無い名前を `addons/dist/manifest.json` から補完同梱（bundle は `addons/<basename>` 正規化を層Bと共有＝パストラバーサル防御一貫）。bundle の dest 衝突は層B優先で層Aをスキップ（別々の単一バンドルは統合しない）。release では `None`＝層Bのみ（挙動不変）。
 
 ## v0.2（implement・2026-07-24）
 

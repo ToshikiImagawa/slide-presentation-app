@@ -265,7 +265,8 @@ export async function getVertexStatus(): Promise<VertexStatus>              // c
 export async function gcloudLogin(): Promise<void>                          // GCP ADC ログイン（初回のみ）
 
 // src/edit/SlideEditor.tsx（改修）— 生成結果を単一真実源へ流し込む受け口
-// applyGeneratedSlides(json) を追加し、生成結果を全体置換で text へ流し込む（§9.1 で (B) 受け口追加に確定）。
+// applyGeneratedSlides(json) は即時置換せず差分確認ダイアログ（GeneratedDiffDialog・構造サマリ）へ候補を渡し、
+// [適用する]で prettyPrintJson（2スペース整形）して text へ全体置換、[キャンセル]で破棄（器に触れない・FR-008）。
 ```
 
 Vertex 内蔵呼び出し（`VertexGenerator`・Rust reqwest）: `Authorization: Bearer <gcp_auth の ADC トークン>` ＋ `content-type: application/json`。エンドポイントは `POST https://{region-or-global}-aiplatform.googleapis.com/v1/projects/{project}/locations/{region}/publishers/anthropic/models/{model}:rawPredict`（`global` はホスト名を分岐）、body に `anthropic_version:"vertex-2023-10-16"`・`max_tokens`・`system`・`messages`（`model` は URL 側で body には入れない）。長い出力に備えストリーミング採否は §9.2。認証は API キーではなく GCP ADC（Bearer）で、ticketvc の Vertex 経路と同方式（§9.1）。
@@ -337,6 +338,13 @@ HTTP エラー分類は原因に対応させ、UI の案内が誤誘導になら
 ---
 
 # 10. 変更履歴
+
+## v0.5（2026-07-26・後続 feature/edit-apply-ux）
+
+**変更内容（#14 出荷後の適用フロー改善）:**
+
+- 生成結果の適用を**即時全体置換→差分確認ダイアログ経由**に変更（案3 構造サマリ）。`SlideEditor.applyGeneratedSlides` は pending 候補を保持して `GeneratedDiffDialog`（`src/edit/GeneratedDiffDialog.tsx`・`slidesDiff.computeSlidesDiff`）を開き、[適用する]で `prettyPrintJson`（`slidesSerialize`・2スペース整形）して全体置換、[キャンセル]で破棄（FR-008 の退避を UI 化）。`succeeded`/`exhausted` 双方が対象。構造解析不能な候補は「全体置換」フォールバック表示。
+- 生成 JSON の1行出力を適用時に 2 スペース整形（`prettyPrintJson`。壊れた JSON は原文維持で内容を失わない）。
 
 ## v0.4（2026-07-25）
 

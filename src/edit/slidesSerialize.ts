@@ -42,3 +42,19 @@ export function parseSlides(text: string): { data: PresentationData; errors: Val
 export function serializeSlides(data: PresentationData): string {
   return JSON.stringify(data, null, 2)
 }
+
+/**
+ * JSON テキストを 2 スペース整形へ正規化する（AI 生成結果の適用時など）。
+ *
+ * - 構文的に妥当な JSON なら `serializeSlides` と同じ 2 スペースで再整形する（1 行出力の可視性改善・③）。
+ * - 構文エラーの場合は例外を投げず**原文をそのまま返す**。検証 NG の候補（exhausted）でも内容を失わず、
+ *   器の生 JSON エディタで手直しできるようにするため（FR-008）。
+ * - スキーマ検証は行わない（未知キーや部分的に不正な構造も、妥当な JSON でありさえすれば整形する）。
+ */
+export function prettyPrintJson(text: string): string {
+  try {
+    return JSON.stringify(JSON.parse(text), null, 2)
+  } catch {
+    return text
+  }
+}

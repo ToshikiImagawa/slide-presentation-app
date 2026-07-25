@@ -8,6 +8,9 @@ const h = vi.hoisted(() => ({
   exportSlidePackage: vi.fn(),
   chooseSlidesSavePath: vi.fn(),
   chooseExportDir: vi.fn(),
+  listBuiltinAddons: vi.fn(),
+  listBuiltinDistAddons: vi.fn(),
+  getPackageAddonNames: vi.fn(),
 }))
 vi.mock('../../editModeSave', () => ({
   saveSlidesJson: h.saveSlidesJson,
@@ -16,12 +19,13 @@ vi.mock('../../editModeSave', () => ({
   chooseExportDir: h.chooseExportDir,
   enterEditMode: vi.fn(),
   exitEditMode: vi.fn(),
-  listBuiltinAddons: () => Promise.resolve([]),
+  listBuiltinAddons: h.listBuiltinAddons,
+  listBuiltinDistAddons: h.listBuiltinDistAddons,
   addBuiltinAddon: vi.fn(),
   removeBuiltinAddon: vi.fn(),
 }))
 vi.mock('../../applyTheme', () => ({ applyTheme: vi.fn().mockResolvedValue(undefined), applyThemeData: vi.fn(), resetThemeOverrides: vi.fn() }))
-vi.mock('../../localSlideLoader', () => ({ resolveLocalAssetPaths: (v: unknown) => v, getPackageAddonNames: () => Promise.resolve([]) }))
+vi.mock('../../localSlideLoader', () => ({ resolveLocalAssetPaths: (v: unknown) => v, getPackageAddonNames: h.getPackageAddonNames }))
 
 import { SlideEditor } from '../SlideEditor'
 import { I18nProvider } from '../../i18n'
@@ -58,6 +62,9 @@ describe('SlideEditor 保存前バリデーション（FR-005）', () => {
     h.exportSlidePackage.mockReset()
     h.chooseSlidesSavePath.mockReset().mockResolvedValue('/tmp/slides.json')
     h.chooseExportDir.mockReset()
+    h.listBuiltinAddons.mockReset().mockResolvedValue([])
+    h.listBuiltinDistAddons.mockReset().mockResolvedValue([])
+    h.getPackageAddonNames.mockReset().mockResolvedValue([])
   })
 
   it('妥当な JSON では保存が有効で、saveSlidesJson が編集テキストで呼ばれる', async () => {
@@ -94,5 +101,62 @@ describe('SlideEditor 保存前バリデーション（FR-005）', () => {
     fireEvent.click(saveButton())
 
     expect(h.saveSlidesJson).not.toHaveBeenCalled()
+  })
+})
+
+describe('SlideEditor 同梱アドオン選択（②・層A∪層B・0件表示）', () => {
+  beforeEach(() => {
+    h.saveSlidesJson.mockReset()
+    h.exportSlidePackage.mockReset()
+    h.chooseSlidesSavePath.mockReset().mockResolvedValue('/tmp/slides.json')
+    h.chooseExportDir.mockReset()
+    h.listBuiltinAddons.mockReset().mockResolvedValue([])
+    h.listBuiltinDistAddons.mockReset().mockResolvedValue([])
+    h.getPackageAddonNames.mockReset().mockResolvedValue([])
+  })
+
+  it('同梱可能なアドオンが無いとき、UI を消さず「同梱できるアドオンがありません」を明示する', async () => {
+    render(
+      <Wrapper>
+        <SlideEditor source={{ rawText: validJson, baseDir: '' }} onExit={() => {}} />
+      </Wrapper>,
+    )
+    await waitFor(() => expect(screen.getByText('同梱できるアドオンがありません')).toBeTruthy())
+  })
+
+  it('層B（パッケージ）と層A（組み込み）を和集合で候補表示し、層Bは既定選択・層Aは既定未選択', async () => {
+    h.getPackageAddonNames.mockResolvedValue(['pkg-a'])
+    h.listBuiltinDistAddons.mockResolvedValue(['builtin-b'])
+    render(
+      <Wrapper>
+        <SlideEditor source={{ rawText: validJson, baseDir: '/pkg' }} onExit={() => {}} />
+      </Wrapper>,
+    )
+    // 両方が候補チェックボックスとして現れる
+    const pkg = (await screen.findByLabelText('pkg-a')) as HTMLInputElement
+    const builtin = screen.getByLabelText('builtin-b') as HTMLInputElement
+    // 層B は既定で選択、層A（組み込み）はオプトインで既定未選択
+    expect(pkg.checked).toBe(true)
+    expect(builtin.checked).toBe(false)
+    // 「同梱できるアドオンがありません」は出ない
+    expect(screen.queryByText('同梱できるアドオンがありません')).toBeNull()
+  })
+
+  it('層Aのチェックを入れて書き出すと、選択集合に組み込みアドオンが含まれて export される', async () => {
+    h.getPackageAddonNames.mockResolvedValue(['pkg-a'])
+    h.listBuiltinDistAddons.mockResolvedValue(['builtin-b'])
+    h.chooseExportDir.mockResolvedValue('/out')
+    h.exportSlidePackage.mockResolvedValue('/out/slides.tgz')
+    render(
+      <Wrapper>
+        <SlideEditor source={{ rawText: validJson, baseDir: '/pkg' }} onExit={() => {}} />
+      </Wrapper>,
+    )
+    const builtin = (await screen.findByLabelText('builtin-b')) as HTMLInputElement
+    fireEvent.click(builtin) // 層A をオプトインで選択
+    fireEvent.click(screen.getByRole('button', { name: '.tgz 書き出し' }))
+    await waitFor(() => expect(h.exportSlidePackage).toHaveBeenCalled())
+    const opts = h.exportSlidePackage.mock.calls[0][1] as { includedAddons: string[] }
+    expect(opts.includedAddons).toEqual(expect.arrayContaining(['pkg-a', 'builtin-b']))
   })
 })

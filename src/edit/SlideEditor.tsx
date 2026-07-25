@@ -12,12 +12,13 @@ import { useTranslation } from '../i18n'
 import { applyTheme, applyThemeData, resetThemeOverrides } from '../applyTheme'
 import { getPackageAddonNames, resolveLocalAssetPaths } from '../localSlideLoader'
 import type { PresentationData, SlideData } from '../data'
-import { parseSlides, serializeSlides } from './slidesSerialize'
+import { parseSlides, serializeSlides, prettyPrintJson } from './slidesSerialize'
 import { AiGeneratePanel } from './AiGeneratePanel'
+import { GeneratedDiffDialog } from './GeneratedDiffDialog'
 import { SlideJsonEditor } from './SlideJsonEditor'
 import { SlideMetaForm } from './SlideMetaForm'
 import { SlidePreview } from './SlidePreview'
-import { addBuiltinAddon, chooseExportDir, chooseSlidesSavePath, exportSlidePackage, listBuiltinAddons, removeBuiltinAddon, saveSlidesJson } from '../editModeSave'
+import { addBuiltinAddon, chooseExportDir, chooseSlidesSavePath, exportSlidePackage, listBuiltinAddons, listBuiltinDistAddons, removeBuiltinAddon, saveSlidesJson } from '../editModeSave'
 
 /** 編集対象データの供給元。相対パスの生 JSON を土台にし、プレビューだけ baseDir 基準でアセット解決する */
 export interface EditSource {
@@ -55,12 +56,16 @@ export function SlideEditor({ source, onExit }: { source: EditSource; onExit: ()
   const [name, setName] = useState(() => slugify(parseSlides(source.rawText).data.meta?.title ?? 'slides'))
   const [version, setVersion] = useState('1.0.0')
   const [status, setStatus] = useState<StatusState>({ kind: 'idle', message: '' })
-  // 層B: 同梱可能なアドオンと、export に含める選択
-  const [availableAddons, setAvailableAddons] = useState<string[]>([])
+  // AI 生成結果の適用待ち候補（差分確認ダイアログで承認するまで器に触れない・①/FR-008）
+  const [pendingGenerated, setPendingGenerated] = useState<string | null>(null)
+  // 層B: パッケージ自身の同梱可能アドオン（baseDir/addons/manifest.json）と、export に含める選択
+  const [packageAddons, setPackageAddons] = useState<string[]>([])
   const [selectedAddons, setSelectedAddons] = useState<string[]>([])
-  // 層A: 組み込みアドオン（dev 限定・要再ビルド）
+  // 層A: 組み込みアドオン（dev 限定・要再ビルド）。builtinAddons=ソース(addons/src・増減UI用)、
+  // builtinDistAddons=ビルド済み(addons/dist・export の同梱候補＝実際に同梱できるものだけ)
   const isDev = import.meta.env.DEV
   const [builtinAddons, setBuiltinAddons] = useState<string[]>([])
+  const [builtinDistAddons, setBuiltinDistAddons] = useState<string[]>([])
   const [newBuiltinName, setNewBuiltinName] = useState('')
 
   const { data, errors } = useMemo(() => parseSlides(text), [text])
@@ -81,20 +86,29 @@ export function SlideEditor({ source, onExit }: { source: EditSource; onExit: ()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [themeKey])
 
-  // 層B: 同梱可能なアドオン一覧を baseDir/addons/manifest.json から読み、既定で全選択にする（従来の全同梱と同挙動）
+  // 層B: パッケージ同梱アドオン一覧を baseDir/addons/manifest.json から読み、既定で全選択にする（従来の全同梱と同挙動）。
+  // 層A（組み込み）は既定では未選択＝オプトインで同梱に加える（②）
   useEffect(() => {
     void getPackageAddonNames(source.baseDir).then((names) => {
-      setAvailableAddons(names)
+      setPackageAddons(names)
       setSelectedAddons(names)
     })
   }, [source.baseDir])
 
-  // 層A: dev 環境でのみ組み込みアドオン一覧を読み込む（本番配布では非表示・DC-004）
+  // 同梱候補 = 層B（パッケージ）∪ 層A の**ビルド済み**（dist・実際に同梱可能なものだけ）。name で重複排除（層B 優先の並び）。
+  // 未ビルドの src だけの層Aは候補に出さない（選んでも黙って落ちる齟齬を防ぐ・レビュー#4/#6）
+  const availableAddons = useMemo(() => Array.from(new Set([...packageAddons, ...builtinDistAddons])), [packageAddons, builtinDistAddons])
+
+  // 層A: dev 環境でのみ組み込みアドオン一覧を読み込む（本番配布では非表示・DC-004）。
+  // src（増減 UI 用）と dist（export 同梱候補用）を別々に保持する
   useEffect(() => {
     if (!isDev) return
     void listBuiltinAddons()
       .then(setBuiltinAddons)
       .catch(() => setBuiltinAddons([]))
+    void listBuiltinDistAddons()
+      .then(setBuiltinDistAddons)
+      .catch(() => setBuiltinDistAddons([]))
   }, [isDev])
 
   const refreshBuiltins = () => {
@@ -150,12 +164,24 @@ export function SlideEditor({ source, onExit }: { source: EditSource; onExit: ()
     }
   }
 
-  // AI 生成結果を単一真実源 text へ全体置換で流し込む受け口（#14・FR-004/DC-005）。
-  // 生成結果は既存の useMemo(parseSlides) → プレビュー/フォームへそのまま反映される（無損失・NFR-002）。
+  // AI 生成結果の受け口（#14・FR-004/DC-005）。即時置換せず、まず差分確認ダイアログへ候補を渡す（①）。
   const applyGeneratedSlides = (json: string) => {
-    setText(json)
+    setPendingGenerated(json)
+  }
+
+  // 差分確認で [適用する]。候補を 2 スペース整形して単一真実源 text へ全体置換（③）。
+  // 以降は既存の useMemo(parseSlides) → プレビュー/フォームへ反映される（無損失・NFR-002）。
+  const confirmApplyGenerated = () => {
+    if (pendingGenerated === null) return
+    setText(prettyPrintJson(pendingGenerated))
     setSelectedIndex(0)
+    setPendingGenerated(null)
     setStatus({ kind: 'ok', message: t('aiGenerate.applied', '生成結果を反映しました') })
+  }
+
+  // 差分確認で [キャンセル]。候補を破棄し器に一切触れない（安全退避・FR-008）。
+  const cancelApplyGenerated = () => {
+    setPendingGenerated(null)
   }
 
   const handleExport = async () => {
@@ -198,24 +224,31 @@ export function SlideEditor({ source, onExit }: { source: EditSource; onExit: ()
           </Box>
         )}
 
-        {/* AI 生成パネル（#14）。生成結果は applyGeneratedSlides で単一真実源 text へ全体置換で流し込む */}
+        {/* AI 生成パネル（#14）。生成結果は applyGeneratedSlides で差分確認ダイアログへ渡す（①） */}
         <AiGeneratePanel currentText={text} onApply={applyGeneratedSlides} />
 
-        {/* 層B: 同梱アドオンの個別選択（同梱可能なアドオンがある場合のみ） */}
-        {availableAddons.length > 0 && (
-          <Stack direction="row" spacing={1} alignItems="center" sx={{ px: 1, py: 0.5, borderBottom: '1px solid var(--theme-border)', flexWrap: 'wrap' }}>
+        {/* 生成結果の適用前 差分確認ダイアログ（①・案3）。承認で整形して全体置換、キャンセルで破棄 */}
+        <GeneratedDiffDialog open={pendingGenerated !== null} beforeText={text} afterText={pendingGenerated ?? ''} onApply={confirmApplyGenerated} onCancel={cancelApplyGenerated} />
+
+        {/* 同梱アドオンの個別選択（層B∪層A）。候補が無くても非表示にせず状態を明示する（②） */}
+        <Stack direction="row" spacing={1} alignItems="center" sx={{ px: 1, py: 0.5, borderBottom: '1px solid var(--theme-border)', flexWrap: 'wrap' }}>
+          <Typography variant="body2" sx={{ color: 'var(--theme-text-muted)' }}>
+            {t('edit.includeAddons', '同梱アドオン')}:
+          </Typography>
+          {availableAddons.length === 0 ? (
             <Typography variant="body2" sx={{ color: 'var(--theme-text-muted)' }}>
-              {t('edit.includeAddons', '同梱アドオン')}:
+              {t('edit.noAddons', '同梱できるアドオンがありません')}
             </Typography>
-            {availableAddons.map((addon) => (
+          ) : (
+            availableAddons.map((addon) => (
               <FormControlLabel
                 key={addon}
                 control={<Checkbox size="small" checked={selectedAddons.includes(addon)} onChange={(e) => setSelectedAddons((prev) => (e.target.checked ? [...prev, addon] : prev.filter((a) => a !== addon)))} />}
                 label={addon}
               />
-            ))}
-          </Stack>
-        )}
+            ))
+          )}
+        </Stack>
 
         {/* 層A: 組み込みアドオンの増減（dev 限定・要再ビルド・DC-004。本番配布では非表示） */}
         {isDev && (

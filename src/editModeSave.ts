@@ -74,9 +74,17 @@ export async function chooseExportDir(): Promise<string | null> {
   return typeof selected === 'string' ? selected : null
 }
 
-/** 組み込みアドオン（addons/src）の一覧を取得する（層A・dev 限定。release では空配列）。 */
+/** 組み込みアドオン（addons/src）の一覧を取得する（層A・dev 限定。release では空配列）。増減 UI 用（ソース）。 */
 export async function listBuiltinAddons(): Promise<string[]> {
   return invoke<string[]>('list_builtin_addons')
+}
+
+/**
+ * ビルド済みの組み込みアドオン（`addons/dist/manifest.json` に載る＝export で同梱可能）の name 一覧を取得する。
+ * export の層A選択候補はこちらを真実源にする（src にあるが未ビルドの名前を候補に出さない）。dev 限定・release では空配列。
+ */
+export async function listBuiltinDistAddons(): Promise<string[]> {
+  return invoke<string[]>('list_builtin_dist_addons')
 }
 
 /** 組み込みアドオンを新規作成する（層A・dev 限定＋編集モード）。反映には npm run build:addons の再ビルドが必要。 */
