@@ -32,6 +32,14 @@ priority: high
 | 抽象仕様書 | `.sdd/specification/ai-slide-generation_spec.md` |
 | 作成日 | 2026-07-25 |
 
+> **追補（2026-07-25・要件変更反映）**: 内蔵生成の接続先を **Anthropic 直（x-api-key・keyring）→ Vertex AI（GCP ADC）** へ置換した（利用者要件が Vertex／DeNA・GCP 文脈。design §9.1「内蔵の接続先」を (B) へ改訂・§10 v0.4）。以下の各タスク行は当初計画（Anthropic 直）の記述だが、実装は次のとおり読み替える:
+> - 1.1: `keyring`/`secrecy` は**撤去**、`tokio` に `fs`/`sync` を追加。
+> - 2.1 `credential.rs`（keyring 二層）→ **`vertex_config.rs`**（project/region/model を plugin-store 平文保存）＋ **`generation/gcp_auth.rs`**（ADC トークン取得・55 分キャッシュ）。
+> - 2.3 `anthropic.rs`（`x-api-key`）→ **`vertex.rs`**（Vertex rawPredict・`Authorization: Bearer`（ADC）・body `anthropic_version`・model は URL 側・`global` ホスト分岐）。
+> - 3.1 コマンド: `set/delete/has_api_key` → **`set/clear/get_vertex_config`・`get_vertex_status`・`gcloud_login`**。ワイヤー値 `'builtin-anthropic'`→`'builtin-vertex'`。
+> - 4.1/4.5: 「API キー」→「Vertex 設定（project/region/model）＋GCP ログイン」、「キー非露出」→「トークン非露出」と読み替える。
+> - 全ゲート green（`cargo test` 45・clippy・fmt / `npm run typecheck`・`test` 265・format・build）。
+
 ## タスク一覧
 
 ### Phase 1: 基盤

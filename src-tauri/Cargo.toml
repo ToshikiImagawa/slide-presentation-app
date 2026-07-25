@@ -30,16 +30,12 @@ tauri-plugin-dialog = "2.7.1"
 tauri-plugin-store = "2.4.3"
 flate2 = "1.1.9"
 tar = "0.4.46"
-# AI スライド生成（#14・Phase 2 以降で使用）:
-# HTTP は Rust 境界へ集約しキーを WebView に出さない（DC-002/NFR-003）。rustls-tls で OpenSSL 非依存。
+# AI スライド生成（#14）:
+# HTTP は Rust 境界へ集約しトークン/認証を WebView に出さない（DC-002/NFR-003）。rustls-tls で OpenSSL 非依存。
+# 内蔵は Vertex AI（GCP ADC）直・外部 CLI 実行の両経路で使用（Vertex トークン交換の form POST も reqwest）。
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json", "stream"] }
-# API キーは OS キーチェーン（keyring）に保管。各 native feature は対象 OS のみ有効化される
-keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service"] }
-# 復号後のキーを平文 String で持ち回らずログ/Debug に出さない（NFR-003/NFR-004）
-secrecy = "0.10"
 # 生成器 trait を async 化する（SlideGenerator::generate）
 async-trait = "0.1"
-# 応答タイムアウト（NFR-005）・外部 CLI サブプロセス実行・trait の async テスト（#[tokio::test]）に使用
-tokio = { version = "1", features = ["time", "process", "io-util", "macros", "rt"] }
-# API キー登録メタデータの last_updated（RFC3339）生成。Cargo.lock に transitive で既存（追加コスト小）
-time = { version = "0.3", features = ["formatting"] }
+# 応答タイムアウト（NFR-005）・外部 CLI サブプロセス実行・ADC ファイル読取（fs）・トークンキャッシュ（sync::Mutex）・
+# trait の async テスト（#[tokio::test]）に使用
+tokio = { version = "1", features = ["time", "process", "io-util", "macros", "rt", "fs", "sync"] }

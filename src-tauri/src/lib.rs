@@ -5,8 +5,8 @@ use std::sync::Mutex;
 use tauri::Manager;
 use tauri_plugin_fs::FsExt;
 
-mod credential;
 mod generation;
+mod vertex_config;
 
 /// ユーザーがダイアログで選んだディレクトリを asset プロトコル・fs プラグイン双方の
 /// 読み取り許可スコープに追加する（fs プラグインの scope は asset プロトコルの scope とは別物で、
@@ -128,8 +128,8 @@ fn set_generation_enabled(
   Ok(())
 }
 
-/// 生成の実処理（キー取得＋生成器解決＋候補 1 件生成）。ゲート/busy/cancel の管理は generate_slides 側。
-/// 内蔵のみ keyring からキーを取得する（ゲート通過後に初めてキーチェーンへ到達・NFR-003）。
+/// 生成の実処理（Vertex 設定ロード＋生成器解決＋候補 1 件生成）。ゲート/同時実行/cancel の管理は generate_slides 側。
+/// 内蔵は Vertex 設定をロードし、GCP トークンは生成器が実行時に ADC から取得する（NFR-003）。
 async fn run_generation(
   request: &generation::GenerateRequest,
   app: &tauri::AppHandle,
@@ -139,19 +139,10 @@ async fn run_generation(
   let env_override = std::env::var(GENERATOR_ENV).ok();
   let kind = generation::resolve_generator_kind(env_override.as_deref(), request.kind);
 
-  // 内蔵は keyring からキーを取得（未設定は NotConfigured で事前ゲートに戻す）。外部は不要
-  let key = match kind {
-    generation::SlideGeneratorKind::BuiltinAnthropic => match credential::load_api_key(app) {
-      Ok(k) => Some(k),
-      Err(credential::CredentialError::NotConfigured) => {
-        return Err(generation::GenerateError::NotConfigured)
-      }
-      Err(e) => return Err(generation::GenerateError::Credential(e.to_string())),
-    },
-    generation::SlideGeneratorKind::ExternalClaudeCode => None,
-  };
-
-  let generator = generation::create_generator(kind, key, generation::DEFAULT_MODEL);
+  // 内蔵は Vertex 設定（project/region/model）を渡す。未設定なら factory が NotConfigured を返し事前ゲートへ戻す。
+  // 外部は設定不要（factory 側で無視）
+  let vertex_config = vertex_config::get_vertex_config(app).ok().flatten();
+  let generator = generation::create_generator(kind, vertex_config)?;
   generator.generate(request, cancel).await
 }
 
@@ -206,28 +197,68 @@ fn cancel_generation(active: tauri::State<ActiveGeneration>) -> Result<(), Strin
   Ok(())
 }
 
-/// API キーを OS キーチェーンへ保管する（編集モード必須。keyring/plugin-store は Rust 境界に閉じる）。
+/// Vertex 設定（project/region/model）を保存する（編集モード必須・非秘密を plugin-store に平文保存）。
 #[tauri::command]
-fn set_api_key(
-  key: String,
+fn set_vertex_config(
+  config: vertex_config::VertexConfig,
   app: tauri::AppHandle,
   edit_mode: tauri::State<EditMode>,
 ) -> Result<(), String> {
   require_edit_mode(&edit_mode)?;
-  credential::set_api_key(&app, &key).map_err(|e| e.to_string())
+  vertex_config::set_vertex_config(&app, config)
 }
 
-/// API キーを削除する（編集モード必須）。
+/// Vertex 設定を消去する（編集モード必須）。
 #[tauri::command]
-fn delete_api_key(app: tauri::AppHandle, edit_mode: tauri::State<EditMode>) -> Result<(), String> {
+fn clear_vertex_config(
+  app: tauri::AppHandle,
+  edit_mode: tauri::State<EditMode>,
+) -> Result<(), String> {
   require_edit_mode(&edit_mode)?;
-  credential::delete_api_key(&app).map_err(|e| e.to_string())
+  vertex_config::clear_vertex_config(&app)
 }
 
-/// API キーの登録状態のみ返す（生値非開放・keyring 非アクセス）。事前ゲート表示のため常時呼べる（NFR-003）。
+/// Vertex 設定を返す（フォームのプリフィル用。非秘密）。
 #[tauri::command]
-fn has_api_key(app: tauri::AppHandle) -> Result<credential::ApiKeyStatus, String> {
-  credential::has_api_key(&app).map_err(|e| e.to_string())
+fn get_vertex_config(app: tauri::AppHandle) -> Result<Option<vertex_config::VertexConfig>, String> {
+  vertex_config::get_vertex_config(&app)
+}
+
+/// Vertex 設定の状態（configured）のみ返す。事前ゲート表示のため常時呼べる（NFR-003）。
+#[tauri::command]
+fn get_vertex_status(app: tauri::AppHandle) -> Result<vertex_config::VertexStatus, String> {
+  vertex_config::vertex_status(&app)
+}
+
+/// `gcloud auth application-default login` を起動して ADC を生成する（初回セットアップ・編集モード必須）。
+/// 生成に必要なのは ADC ファイルのみで、以後の生成は Rust が ADC を読んでトークン交換する（実行時 gcloud 不要）。
+#[tauri::command]
+async fn gcloud_login(edit_mode: tauri::State<'_, EditMode>) -> Result<(), String> {
+  require_edit_mode(&edit_mode)?;
+  let status = tokio::process::Command::new(gcloud_binary())
+    .args(["auth", "application-default", "login"])
+    .status()
+    .await
+    .map_err(|e| {
+      format!("gcloud の起動に失敗しました（インストールと PATH を確認してください）: {e}")
+    })?;
+  if status.success() {
+    // 再ログインで ADC が更新されたため、旧アカウント/失効トークンのキャッシュを破棄する。
+    // これがないと次回生成が 55 分間キャッシュ済みの旧トークンを使い、案内どおり再ログインしても復旧しない。
+    generation::invalidate_token_cache().await;
+    Ok(())
+  } else {
+    Err("gcloud ログインに失敗しました".to_string())
+  }
+}
+
+/// gcloud バイナリ名（Windows は `.cmd` 実体）。
+fn gcloud_binary() -> &'static str {
+  if cfg!(windows) {
+    "gcloud.cmd"
+  } else {
+    "gcloud"
+  }
 }
 
 /// 外部生成（Claude Code CLI）が利用可能か返す（事前ゲート・FR-007。秘密に触れないため常時呼べる）。
@@ -632,9 +663,11 @@ pub fn run() {
       set_generation_enabled,
       generate_slides,
       cancel_generation,
-      set_api_key,
-      delete_api_key,
-      has_api_key,
+      set_vertex_config,
+      clear_vertex_config,
+      get_vertex_config,
+      get_vertex_status,
+      gcloud_login,
       check_claude_cli
     ])
     .setup(|app| {

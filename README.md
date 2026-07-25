@@ -128,22 +128,22 @@ exporting. Two generation methods are available:
 
 | Method                         | Prerequisite                                                           | Billing / online dependency                                                        |
 |--------------------------------|------------------------------------------------------------------------|------------------------------------------------------------------------------------|
-| **Built-in (Anthropic API)**   | An Anthropic API key is configured (default model `claude-opus-4-8`)   | Requires an online connection and incurs usage-based API key charges               |
+| **Built-in (Vertex AI)**       | A GCP project (Vertex AI) with project / region / model set, plus `gcloud auth application-default login` | Requires an online connection and incurs usage-based charges on your GCP project |
 | **External (Claude Code CLI)** | The local `claude` command is installed                                | Follows your Claude plan and terms (no separate API key needed)                    |
 
-- **Setting / deleting the API key** — In the built-in panel, enter the key and **Save**; **Delete** it when no longer
-  needed. The key is stored in the OS keychain (macOS Keychain / Windows Credential Manager / Linux Secret Service) and
-  is never exposed to the web layer. Key access, network calls, and API invocation are all confined to the Rust boundary
-  (least privilege).
-- **Pre-gate** — The generate button is disabled when the built-in key is unset or the external `claude` binary is not
-  found, with a hint to the setup path.
+- **GCP setup** — In the built-in panel, set the GCP **project ID / region / model** and **Save**, then click **GCP login**
+  (`gcloud auth application-default login`) once to create the ADC credentials. The access token is obtained from the ADC
+  at the Rust boundary (refreshed and cached for 55 minutes) and is never exposed to the web layer. Networking and token
+  handling are all confined to the Rust boundary (least privilege).
+- **Pre-gate** — The generate button is disabled when the built-in Vertex settings are incomplete or the external `claude`
+  binary is not found, with a hint to the setup path.
 - **Auto-repair loop** — Each candidate is validated on import; if invalid, it is regenerated up to 3 times with the
   validation errors attached. On reaching the limit, the candidate with the fewest validation errors is applied so you
   can fix it manually.
 - **Progress and cancellation** — Progress is shown during generation, and **Cancel** stops an in-flight run. On failure,
   cancellation, or offline, the editor content is preserved and you can safely fall back to manual editing.
 
-Generation, key operations, and networking are enabled only while in edit mode with generation active (never reached in
+Generation, GCP settings/login, and networking are enabled only while in edit mode with generation active (never reached in
 view or live presentation).
 
 ## Defining Slides

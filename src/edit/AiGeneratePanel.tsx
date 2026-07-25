@@ -11,29 +11,33 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Typography from '@mui/material/Typography'
 import { useTranslation } from '../i18n'
 import type { GenerateProgress, GeneratorKind } from '../aiGenerate'
-import { cancelGenerate, checkExternalAvailable, deleteApiKey, generateSlides, getApiKeyStatus, setApiKey, setGenerationEnabled } from '../aiGenerate'
+import { cancelGenerate, checkExternalAvailable, clearVertexConfig, gcloudLogin, generateSlides, getVertexConfig, getVertexStatus, setGenerationEnabled, setVertexConfig } from '../aiGenerate'
 
 type PanelStatus = { kind: 'idle' | 'ok' | 'warn' | 'error'; message: string }
 
 /**
  * 編集モード内の AI 生成パネル（#14・FR-001/007/010）。
  *
- * プロンプト入力・方式選択（内蔵/外部）・事前ゲート（内蔵=キー登録状態／外部=CLI 可用性）・
+ * プロンプト入力・方式選択（内蔵 Vertex / 外部 CLI）・事前ゲート（内蔵=Vertex 設定済み／外部=CLI 可用性）・
  * 進捗表示・中断・方式別の課金/オンライン依存注意書きを提供する。生成結果は `onApply`（全体置換）で
  * 器の単一真実源 `text` へ流し込む。失敗/中断時は器に触れず手動編集へ退避する（FR-008）。
  *
- * マウント時に生成を有効化し、アンマウントで無効化する（編集モード かつ 生成有効の capability ゲート・DC-003）。
+ * 内蔵は Vertex AI（GCP）。project/region/model を設定し、`gcloud auth application-default login` で ADC を用意する。
+ * マウント時に生成を有効化し、アンマウントで無効化する（capability ゲート・DC-003）。
  * 色は editorUiTheme と `--theme-*` 経由（親 SlideEditor の ThemeProvider を継承・A-002/DC-006）。
  */
 export function AiGeneratePanel({ currentText, onApply }: { currentText: string; onApply: (json: string) => void }) {
   const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
   const [prompt, setPrompt] = useState('')
-  const [kind, setKind] = useState<GeneratorKind>('builtin-anthropic')
+  const [kind, setKind] = useState<GeneratorKind>('builtin-vertex')
   const [useBase, setUseBase] = useState(false)
   const [configured, setConfigured] = useState(false)
   const [externalAvailable, setExternalAvailable] = useState(false)
-  const [apiKeyInput, setApiKeyInput] = useState('')
+  // 内蔵（Vertex）設定フォーム
+  const [projectId, setProjectId] = useState('')
+  const [region, setRegion] = useState('')
+  const [model, setModel] = useState('')
   const [running, setRunning] = useState(false)
   const [progress, setProgress] = useState<GenerateProgress | null>(null)
   const [status, setStatus] = useState<PanelStatus>({ kind: 'idle', message: '' })
@@ -46,13 +50,22 @@ export function AiGeneratePanel({ currentText, onApply }: { currentText: string;
     }
   }, [])
 
-  // 内蔵の事前ゲート: キー登録状態（keyring に触れない）を取得する。マウント時とキー操作後に呼ぶ
-  const refreshKeyStatus = () => {
-    void getApiKeyStatus()
+  // 内蔵の事前ゲート: 保存済み設定を取得してフォームへプリフィル＋設定済み状態を反映する
+  const refreshVertex = () => {
+    void getVertexConfig()
+      .then((c) => {
+        if (c) {
+          setProjectId(c.projectId)
+          setRegion(c.region)
+          setModel(c.model)
+        }
+      })
+      .catch(() => undefined)
+    void getVertexStatus()
       .then((s) => setConfigured(s.configured))
       .catch(() => setConfigured(false))
   }
-  useEffect(refreshKeyStatus, [])
+  useEffect(refreshVertex, [])
 
   // 外部の事前ゲート: 外部方式を選んだときだけ CLI 可用性を確認する（builtin 時に `claude --version` を spawn しない）
   useEffect(() => {
@@ -64,8 +77,11 @@ export function AiGeneratePanel({ currentText, onApply }: { currentText: string;
 
   const canGenerate = useMemo(() => {
     if (running || prompt.trim() === '') return false
-    return kind === 'builtin-anthropic' ? configured : externalAvailable
+    return kind === 'builtin-vertex' ? configured : externalAvailable
   }, [running, prompt, kind, configured, externalAvailable])
+
+  // 3 項目すべて入力済みなら保存可能
+  const canSaveVertex = projectId.trim() !== '' && region.trim() !== '' && model.trim() !== ''
 
   // warn は accent 系。--theme-accent は未定義環境があるため --theme-primary へフォールバックし色が消えないようにする
   const statusColor = status.kind === 'error' ? 'var(--theme-primary)' : status.kind === 'warn' ? 'var(--theme-accent, var(--theme-primary))' : 'var(--theme-success)'
@@ -76,24 +92,32 @@ export function AiGeneratePanel({ currentText, onApply }: { currentText: string;
     return t('aiGenerate.phaseRepairing', '自動修正中')
   }
 
-  const handleSaveKey = async () => {
+  const handleSaveVertex = async () => {
     try {
-      await setApiKey(apiKeyInput)
-      setApiKeyInput('')
-      setStatus({ kind: 'ok', message: t('aiGenerate.apiKeySaved', 'API キーを保存しました') })
-      refreshKeyStatus()
+      await setVertexConfig({ projectId: projectId.trim(), region: region.trim(), model: model.trim() })
+      setConfigured(true)
+      setStatus({ kind: 'ok', message: t('aiGenerate.vertexSaved', 'Vertex 設定を保存しました') })
     } catch (e) {
-      setStatus({ kind: 'error', message: `${t('aiGenerate.apiKeySaveFailed', 'API キーの保存に失敗しました')}: ${e instanceof Error ? e.message : String(e)}` })
+      setStatus({ kind: 'error', message: `${t('aiGenerate.vertexSaveFailed', 'Vertex 設定の保存に失敗しました')}: ${e instanceof Error ? e.message : String(e)}` })
     }
   }
 
-  const handleDeleteKey = async () => {
+  const handleClearVertex = async () => {
     try {
-      await deleteApiKey()
-      setStatus({ kind: 'ok', message: t('aiGenerate.apiKeyDeleted', 'API キーを削除しました') })
-      refreshKeyStatus()
+      await clearVertexConfig()
+      setConfigured(false)
+      setStatus({ kind: 'ok', message: t('aiGenerate.vertexCleared', 'Vertex 設定を削除しました') })
     } catch (e) {
-      setStatus({ kind: 'error', message: `${t('aiGenerate.apiKeyDeleteFailed', 'API キーの削除に失敗しました')}: ${e instanceof Error ? e.message : String(e)}` })
+      setStatus({ kind: 'error', message: `${t('aiGenerate.vertexClearFailed', 'Vertex 設定の削除に失敗しました')}: ${e instanceof Error ? e.message : String(e)}` })
+    }
+  }
+
+  const handleGcloudLogin = async () => {
+    try {
+      await gcloudLogin()
+      setStatus({ kind: 'ok', message: t('aiGenerate.gcloudLoginDone', 'GCP ログインが完了しました') })
+    } catch (e) {
+      setStatus({ kind: 'error', message: `${t('aiGenerate.gcloudLoginFailed', 'GCP ログインに失敗しました')}: ${e instanceof Error ? e.message : String(e)}` })
     }
   }
 
@@ -143,7 +167,7 @@ export function AiGeneratePanel({ currentText, onApply }: { currentText: string;
 
       {expanded && (
         <Stack spacing={1} sx={{ px: 1, pb: 1 }}>
-          {/* 方式選択（内蔵/外部） */}
+          {/* 方式選択（内蔵 Vertex / 外部 CLI） */}
           <ToggleButtonGroup
             size="small"
             exclusive
@@ -152,39 +176,48 @@ export function AiGeneratePanel({ currentText, onApply }: { currentText: string;
               if (v) setKind(v as GeneratorKind)
             }}
           >
-            <ToggleButton value="builtin-anthropic">{t('aiGenerate.methodBuiltin', '内蔵（Anthropic API）')}</ToggleButton>
+            <ToggleButton value="builtin-vertex">{t('aiGenerate.methodBuiltin', '内蔵（Vertex AI）')}</ToggleButton>
             <ToggleButton value="external-claude-code">{t('aiGenerate.methodExternal', '外部（Claude Code CLI）')}</ToggleButton>
           </ToggleButtonGroup>
 
           {/* 方式別の課金/オンライン依存の注意書き（PRD §5.2・DC-006） */}
           <Typography variant="caption" sx={{ color: 'var(--theme-text-muted)' }}>
-            {kind === 'builtin-anthropic'
-              ? t('aiGenerate.billingNoticeBuiltin', '内蔵生成は Anthropic API を利用します。オンライン接続と API キーの従量課金が発生します。')
+            {kind === 'builtin-vertex'
+              ? t('aiGenerate.billingNoticeBuiltin', '内蔵生成は GCP Vertex AI を利用します。オンライン接続と GCP プロジェクトの従量課金が発生します。')
               : t('aiGenerate.billingNoticeExternal', '外部生成はローカルの Claude Code を利用します。お使いの Claude の契約・利用条件に従います。')}
           </Typography>
 
-          {/* 内蔵: API キー管理（事前ゲートの設定導線・FR-006） */}
-          {kind === 'builtin-anthropic' && (
-            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+          {/* 内蔵: Vertex 設定（project/region/model）＋GCP ログイン（事前ゲートの設定導線・FR-006） */}
+          {kind === 'builtin-vertex' && (
+            <Stack spacing={1}>
               <Typography variant="body2" sx={{ color: 'var(--theme-text-muted)' }}>
-                {t('aiGenerate.apiKeyLabel', 'Anthropic API キー')}: {configured ? t('aiGenerate.apiKeyConfigured', '登録済み') : t('aiGenerate.apiKeyNotConfigured', '未登録')}
+                {t('aiGenerate.vertexLabel', 'Vertex AI 設定')}: {configured ? t('aiGenerate.vertexConfigured', '設定済み') : t('aiGenerate.vertexNotConfigured', '未設定')}
               </Typography>
-              <TextField type="password" size="small" placeholder={t('aiGenerate.apiKeyPlaceholder', 'sk-ant-…')} value={apiKeyInput} onChange={(e) => setApiKeyInput(e.target.value)} sx={{ width: 220 }} />
-              <Button size="small" variant="outlined" onClick={() => void handleSaveKey()} disabled={apiKeyInput.trim() === ''}>
-                {t('aiGenerate.apiKeySave', '保存')}
-              </Button>
-              {configured && (
-                <Button size="small" color="inherit" onClick={() => void handleDeleteKey()}>
-                  {t('aiGenerate.apiKeyDelete', '削除')}
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                <TextField size="small" label={t('aiGenerate.vertexProjectId', 'GCP プロジェクト ID')} value={projectId} onChange={(e) => setProjectId(e.target.value)} sx={{ width: 220 }} />
+                <TextField size="small" label={t('aiGenerate.vertexRegion', 'リージョン')} placeholder="us-east5 / global" value={region} onChange={(e) => setRegion(e.target.value)} sx={{ width: 160 }} />
+                <TextField size="small" label={t('aiGenerate.vertexModel', 'モデル ID')} placeholder="claude-...@YYYYMMDD" value={model} onChange={(e) => setModel(e.target.value)} sx={{ width: 240 }} />
+              </Stack>
+              <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                <Button size="small" variant="outlined" onClick={() => void handleSaveVertex()} disabled={!canSaveVertex}>
+                  {t('aiGenerate.vertexSave', '設定を保存')}
                 </Button>
-              )}
+                <Button size="small" variant="outlined" onClick={() => void handleGcloudLogin()}>
+                  {t('aiGenerate.gcloudLogin', 'GCP ログイン')}
+                </Button>
+                {configured && (
+                  <Button size="small" color="inherit" onClick={() => void handleClearVertex()}>
+                    {t('aiGenerate.vertexClear', '設定を削除')}
+                  </Button>
+                )}
+              </Stack>
             </Stack>
           )}
 
           {/* 事前ゲート未充足のヒント（FR-007） */}
-          {kind === 'builtin-anthropic' && !configured && (
+          {kind === 'builtin-vertex' && !configured && (
             <Typography variant="caption" sx={{ color: 'var(--theme-primary)' }}>
-              {t('aiGenerate.gateBuiltinNoKey', 'API キーが未登録です。上でキーを設定してください。')}
+              {t('aiGenerate.gateBuiltinNotConfigured', 'project ID・リージョン・モデルを設定してください（初回は「GCP ログイン」も必要です）。')}
             </Typography>
           )}
           {kind === 'external-claude-code' && !externalAvailable && (

@@ -5,21 +5,25 @@ import type { ReactNode } from 'react'
 // aiGenerate（invoke ラッパ＆オーケストレータ）をモックし、ゲート状態と生成結果を制御する
 const h = vi.hoisted(() => ({
   setGenerationEnabled: vi.fn().mockResolvedValue(undefined),
-  getApiKeyStatus: vi.fn(),
+  getVertexConfig: vi.fn(),
+  getVertexStatus: vi.fn(),
   checkExternalAvailable: vi.fn().mockResolvedValue(false),
   generateSlides: vi.fn(),
   cancelGenerate: vi.fn().mockResolvedValue(undefined),
-  setApiKey: vi.fn().mockResolvedValue(undefined),
-  deleteApiKey: vi.fn().mockResolvedValue(undefined),
+  setVertexConfig: vi.fn().mockResolvedValue(undefined),
+  clearVertexConfig: vi.fn().mockResolvedValue(undefined),
+  gcloudLogin: vi.fn().mockResolvedValue(undefined),
 }))
 vi.mock('../../aiGenerate', () => ({
   setGenerationEnabled: h.setGenerationEnabled,
-  getApiKeyStatus: h.getApiKeyStatus,
+  getVertexConfig: h.getVertexConfig,
+  getVertexStatus: h.getVertexStatus,
   checkExternalAvailable: h.checkExternalAvailable,
   generateSlides: h.generateSlides,
   cancelGenerate: h.cancelGenerate,
-  setApiKey: h.setApiKey,
-  deleteApiKey: h.deleteApiKey,
+  setVertexConfig: h.setVertexConfig,
+  clearVertexConfig: h.clearVertexConfig,
+  gcloudLogin: h.gcloudLogin,
 }))
 
 // SlideEditor 注入テスト用に Tauri 依存モジュールをモック
@@ -63,11 +67,18 @@ const VALID = JSON.stringify({ meta: { title: 'T' }, slides: [{ id: 's1', layout
 function expandPanel() {
   fireEvent.click(screen.getByRole('button', { name: 'AI 生成' }))
 }
+function promptField(): HTMLElement {
+  return screen.getByLabelText('プロンプト')
+}
+function generateButton(): HTMLButtonElement {
+  return screen.getByRole('button', { name: '生成' }) as HTMLButtonElement
+}
 
-describe('AiGeneratePanel 事前ゲート・退避（FR-007/FR-008）', () => {
+describe('AiGeneratePanel 事前ゲート・退避（Vertex・FR-007/FR-008）', () => {
   beforeEach(() => {
     h.setGenerationEnabled.mockClear()
-    h.getApiKeyStatus.mockReset().mockResolvedValue({ configured: false })
+    h.getVertexConfig.mockReset().mockResolvedValue(null)
+    h.getVertexStatus.mockReset().mockResolvedValue({ configured: false })
     h.checkExternalAvailable.mockReset().mockResolvedValue(false)
     h.generateSlides.mockReset()
   })
@@ -81,21 +92,21 @@ describe('AiGeneratePanel 事前ゲート・退避（FR-007/FR-008）', () => {
     await waitFor(() => expect(h.setGenerationEnabled).toHaveBeenCalledWith(true))
   })
 
-  it('内蔵でキー未登録なら、プロンプトを入れても生成ボタンが無効（事前ゲート）', async () => {
-    h.getApiKeyStatus.mockResolvedValue({ configured: false })
+  it('内蔵で Vertex 未設定なら、プロンプトを入れても生成ボタンが無効（事前ゲート）', async () => {
+    h.getVertexStatus.mockResolvedValue({ configured: false })
     render(
       <Wrapper>
         <AiGeneratePanel currentText={VALID} onApply={() => {}} />
       </Wrapper>,
     )
     expandPanel()
-    await waitFor(() => expect(h.getApiKeyStatus).toHaveBeenCalled())
-    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'AI の歴史' } })
-    expect((screen.getByRole('button', { name: '生成' }) as HTMLButtonElement).disabled).toBe(true)
+    await waitFor(() => expect(h.getVertexStatus).toHaveBeenCalled())
+    fireEvent.change(promptField(), { target: { value: 'AI の歴史' } })
+    expect(generateButton().disabled).toBe(true)
   })
 
-  it('キー登録済み＆プロンプトありで生成でき、succeeded で onApply に候補を渡す', async () => {
-    h.getApiKeyStatus.mockResolvedValue({ configured: true })
+  it('Vertex 設定済み＆プロンプトありで生成でき、succeeded で onApply に候補を渡す', async () => {
+    h.getVertexStatus.mockResolvedValue({ configured: true })
     h.generateSlides.mockResolvedValue({ outcome: 'succeeded', slidesJson: VALID, validationErrors: [], attempts: 1 })
     const onApply = vi.fn()
     render(
@@ -104,14 +115,14 @@ describe('AiGeneratePanel 事前ゲート・退避（FR-007/FR-008）', () => {
       </Wrapper>,
     )
     expandPanel()
-    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'AI の歴史' } })
-    await waitFor(() => expect((screen.getByRole('button', { name: '生成' }) as HTMLButtonElement).disabled).toBe(false))
-    fireEvent.click(screen.getByRole('button', { name: '生成' }))
+    fireEvent.change(promptField(), { target: { value: 'AI の歴史' } })
+    await waitFor(() => expect(generateButton().disabled).toBe(false))
+    fireEvent.click(generateButton())
     await waitFor(() => expect(onApply).toHaveBeenCalledWith(VALID))
   })
 
   it('failed では onApply を呼ばない（器に触れず退避・FR-008）', async () => {
-    h.getApiKeyStatus.mockResolvedValue({ configured: true })
+    h.getVertexStatus.mockResolvedValue({ configured: true })
     h.generateSlides.mockResolvedValue({ outcome: 'failed', slidesJson: null, validationErrors: [], attempts: 1 })
     const onApply = vi.fn()
     render(
@@ -120,15 +131,15 @@ describe('AiGeneratePanel 事前ゲート・退避（FR-007/FR-008）', () => {
       </Wrapper>,
     )
     expandPanel()
-    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'p' } })
-    await waitFor(() => expect((screen.getByRole('button', { name: '生成' }) as HTMLButtonElement).disabled).toBe(false))
-    fireEvent.click(screen.getByRole('button', { name: '生成' }))
+    fireEvent.change(promptField(), { target: { value: 'p' } })
+    await waitFor(() => expect(generateButton().disabled).toBe(false))
+    fireEvent.click(generateButton())
     await waitFor(() => expect(h.generateSlides).toHaveBeenCalled())
     expect(onApply).not.toHaveBeenCalled()
   })
 
   it('cancelled では onApply を呼ばない（退避・FR-008）', async () => {
-    h.getApiKeyStatus.mockResolvedValue({ configured: true })
+    h.getVertexStatus.mockResolvedValue({ configured: true })
     h.generateSlides.mockResolvedValue({ outcome: 'cancelled', slidesJson: null, validationErrors: [], attempts: 0 })
     const onApply = vi.fn()
     render(
@@ -137,15 +148,33 @@ describe('AiGeneratePanel 事前ゲート・退避（FR-007/FR-008）', () => {
       </Wrapper>,
     )
     expandPanel()
-    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'p' } })
-    await waitFor(() => expect((screen.getByRole('button', { name: '生成' }) as HTMLButtonElement).disabled).toBe(false))
-    fireEvent.click(screen.getByRole('button', { name: '生成' }))
+    fireEvent.change(promptField(), { target: { value: 'p' } })
+    await waitFor(() => expect(generateButton().disabled).toBe(false))
+    fireEvent.click(generateButton())
     await waitFor(() => expect(h.generateSlides).toHaveBeenCalled())
     expect(onApply).not.toHaveBeenCalled()
   })
 
+  it('設定を保存すると setVertexConfig が入力値で呼ばれ、生成が有効化される', async () => {
+    h.getVertexStatus.mockResolvedValue({ configured: false })
+    render(
+      <Wrapper>
+        <AiGeneratePanel currentText={VALID} onApply={() => {}} />
+      </Wrapper>,
+    )
+    expandPanel()
+    fireEvent.change(screen.getByLabelText('GCP プロジェクト ID'), { target: { value: 'my-proj' } })
+    fireEvent.change(screen.getByLabelText('リージョン'), { target: { value: 'us-east5' } })
+    fireEvent.change(screen.getByLabelText('モデル ID'), { target: { value: 'claude-sonnet-4-5@20250929' } })
+    fireEvent.click(screen.getByRole('button', { name: '設定を保存' }))
+    await waitFor(() => expect(h.setVertexConfig).toHaveBeenCalledWith({ projectId: 'my-proj', region: 'us-east5', model: 'claude-sonnet-4-5@20250929' }))
+    // 保存後は configured=true になりプロンプトありで生成有効
+    fireEvent.change(promptField(), { target: { value: 'p' } })
+    await waitFor(() => expect(generateButton().disabled).toBe(false))
+  })
+
   it('外部方式で CLI 未検出なら生成ボタンが無効（外部の事前ゲート）', async () => {
-    h.getApiKeyStatus.mockResolvedValue({ configured: true })
+    h.getVertexStatus.mockResolvedValue({ configured: true })
     h.checkExternalAvailable.mockResolvedValue(false)
     render(
       <Wrapper>
@@ -153,18 +182,19 @@ describe('AiGeneratePanel 事前ゲート・退避（FR-007/FR-008）', () => {
       </Wrapper>,
     )
     expandPanel()
-    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'p' } })
+    fireEvent.change(promptField(), { target: { value: 'p' } })
     // 外部方式へ切替えたときに初めて CLI 可用性チェックが走る（builtin 時は spawn しない）
     fireEvent.click(screen.getByRole('button', { name: '外部（Claude Code CLI）' }))
     await waitFor(() => expect(h.checkExternalAvailable).toHaveBeenCalled())
-    expect((screen.getByRole('button', { name: '生成' }) as HTMLButtonElement).disabled).toBe(true)
+    expect(generateButton().disabled).toBe(true)
   })
 })
 
 describe('SlideEditor への生成結果の全体置換注入（FR-004/DC-005）', () => {
   beforeEach(() => {
     h.setGenerationEnabled.mockClear()
-    h.getApiKeyStatus.mockReset().mockResolvedValue({ configured: true })
+    h.getVertexConfig.mockReset().mockResolvedValue(null)
+    h.getVertexStatus.mockReset().mockResolvedValue({ configured: true })
     h.checkExternalAvailable.mockReset().mockResolvedValue(false)
     h.generateSlides.mockReset()
   })
@@ -181,9 +211,8 @@ describe('SlideEditor への生成結果の全体置換注入（FR-004/DC-005）
 
     expandPanel()
     fireEvent.change(screen.getByLabelText('プロンプト'), { target: { value: 'AI の歴史' } })
-    // 生成ボタンを押下（キー登録済み＆プロンプトありで有効）
-    await waitFor(() => expect((screen.getByRole('button', { name: '生成' }) as HTMLButtonElement).disabled).toBe(false))
-    fireEvent.click(screen.getByRole('button', { name: '生成' }))
+    await waitFor(() => expect(generateButton().disabled).toBe(false))
+    fireEvent.click(generateButton())
 
     // 全体置換で meta.title がフォームへ反映される
     await waitFor(() => expect(screen.getByDisplayValue('GENERATED')).toBeTruthy())

@@ -12,10 +12,10 @@ import { parseSlides } from './edit/slidesSerialize'
  */
 
 /**
- * 生成種別。内蔵（Anthropic API 直）と外部（Claude Code 等）を切り替える（FR-002）。
+ * 生成種別。内蔵（Vertex AI 直）と外部（Claude Code CLI）を切り替える（FR-002）。
  * Rust の `SlideGeneratorKind` と同一のワイヤー値（kebab-case 文字列）。
  */
-export type GeneratorKind = 'builtin-anthropic' | 'external-claude-code'
+export type GeneratorKind = 'builtin-vertex' | 'external-claude-code'
 
 /**
  * 生成リクエスト。Rust の `GenerateRequest`（camelCase）とワイヤーフォーマットを一致させる。
@@ -59,12 +59,20 @@ export interface GenerateProgress {
   phase: 'generating' | 'validating' | 'repairing'
 }
 
-/** API キーの状態（生値は返さない。FR-006 / NFR-003）。Rust の `ApiKeyStatus` と一致。 */
-export interface ApiKeyStatus {
-  /** キーが登録済みか */
+/** 内蔵（Vertex AI）生成の設定（非秘密。FR-006）。Rust の `VertexConfig` と camelCase で一致。 */
+export interface VertexConfig {
+  /** GCP プロジェクト ID */
+  projectId: string
+  /** リージョン（`global` またはリージョン名） */
+  region: string
+  /** Vertex のモデル ID（`@date` 付き。例 `claude-sonnet-4-5@20250929`） */
+  model: string
+}
+
+/** 内蔵生成の設定状態（事前ゲート用。生値は返さない）。Rust の `VertexStatus` と一致。 */
+export interface VertexStatus {
+  /** project/region/model がすべて設定済みか */
   configured: boolean
-  /** 最終更新日時（未登録なら省略） */
-  lastUpdated?: string
 }
 
 /** 自動修正ループの試行上限 N（NFR-005・design §9.1 で暫定確定＝3）。 */
@@ -82,22 +90,35 @@ export async function setGenerationEnabled(enabled: boolean): Promise<void> {
   await invoke('set_generation_enabled', { enabled })
 }
 
-/** API キーを OS キーチェーンへ保管する（編集モード必須。生値は Rust 境界で keyring に閉じる）。 */
-export async function setApiKey(key: string): Promise<void> {
-  await invoke('set_api_key', { key })
+/** Vertex 設定（project/region/model）を保存する（編集モード必須。非秘密を Rust 境界で plugin-store に保存）。 */
+export async function setVertexConfig(config: VertexConfig): Promise<void> {
+  await invoke('set_vertex_config', { config })
 }
 
-/** API キーを削除する（編集モード必須。keyring エントリとメタデータを消去）。 */
-export async function deleteApiKey(): Promise<void> {
-  await invoke('delete_api_key')
+/** Vertex 設定を消去する（編集モード必須）。 */
+export async function clearVertexConfig(): Promise<void> {
+  await invoke('clear_vertex_config')
+}
+
+/** Vertex 設定を取得する（フォームのプリフィル用。未設定は null）。 */
+export async function getVertexConfig(): Promise<VertexConfig | null> {
+  return invoke<VertexConfig | null>('get_vertex_config')
 }
 
 /**
- * API キーの登録状態のみ取得する（生値は受け取らない・keyring に触れない）。
+ * 内蔵生成の設定状態のみ取得する（生値は受け取らない）。
  * 事前ゲート表示のため生成無効時でも呼べる（design §5／NFR-003）。
  */
-export async function getApiKeyStatus(): Promise<ApiKeyStatus> {
-  return invoke<ApiKeyStatus>('has_api_key')
+export async function getVertexStatus(): Promise<VertexStatus> {
+  return invoke<VertexStatus>('get_vertex_status')
+}
+
+/**
+ * `gcloud auth application-default login` を起動して GCP ADC を生成する（初回セットアップ・編集モード必須）。
+ * 以後の生成は Rust が ADC を読んでトークン交換するため、実行時に gcloud は不要。
+ */
+export async function gcloudLogin(): Promise<void> {
+  await invoke('gcloud_login')
 }
 
 /** 外部生成（Claude Code CLI）が利用可能か判定する（事前ゲート・FR-007）。秘密に触れないため常時呼べる。 */

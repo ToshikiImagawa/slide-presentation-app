@@ -5,7 +5,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 const h = vi.hoisted(() => ({ invoke: vi.fn() }))
 vi.mock('@tauri-apps/api/core', () => ({ invoke: h.invoke }))
 
-import { generateSlides, cancelGenerate, setApiKey, deleteApiKey, getApiKeyStatus, setGenerationEnabled, checkExternalAvailable, MAX_GENERATE_ATTEMPTS } from '../aiGenerate'
+import { generateSlides, cancelGenerate, setVertexConfig, clearVertexConfig, getVertexConfig, getVertexStatus, gcloudLogin, setGenerationEnabled, checkExternalAvailable, MAX_GENERATE_ATTEMPTS } from '../aiGenerate'
 import type { GenerateProgress } from '../aiGenerate'
 
 // getValidationErrors を満たす妥当な slides.json
@@ -15,7 +15,7 @@ const INVALID = JSON.stringify({ meta: { title: '' }, slides: [] })
 // slides が1件だけ妥当性を欠く（INVALID より検証エラーが少ない＝より良い候補）
 const LESS_INVALID = JSON.stringify({ meta: { title: 'T' }, slides: [{ id: '', layout: 'center', content: {} }] })
 
-const REQ = { prompt: 'AI の歴史', kind: 'builtin-anthropic' as const }
+const REQ = { prompt: 'AI の歴史', kind: 'builtin-vertex' as const }
 
 describe('aiGenerate オーケストレータ（generateSlides）', () => {
   beforeEach(() => {
@@ -108,19 +108,27 @@ describe('aiGenerate invoke ラッパ', () => {
     h.invoke.mockResolvedValue(undefined)
   })
 
-  it('setGenerationEnabled / setApiKey / deleteApiKey / getApiKeyStatus / checkExternalAvailable が対応コマンドを呼ぶ', async () => {
+  it('設定・認証・可用性のラッパが対応コマンドを呼ぶ（Vertex）', async () => {
     await setGenerationEnabled(true)
     expect(h.invoke).toHaveBeenCalledWith('set_generation_enabled', { enabled: true })
 
-    await setApiKey('sk-ant-xxx')
-    expect(h.invoke).toHaveBeenCalledWith('set_api_key', { key: 'sk-ant-xxx' })
+    const config = { projectId: 'proj', region: 'us-east5', model: 'claude-sonnet-4-5@20250929' }
+    await setVertexConfig(config)
+    expect(h.invoke).toHaveBeenCalledWith('set_vertex_config', { config })
 
-    await deleteApiKey()
-    expect(h.invoke).toHaveBeenCalledWith('delete_api_key')
+    await clearVertexConfig()
+    expect(h.invoke).toHaveBeenCalledWith('clear_vertex_config')
 
-    h.invoke.mockResolvedValueOnce({ configured: true, lastUpdated: '2026-07-25T00:00:00Z' })
-    await expect(getApiKeyStatus()).resolves.toEqual({ configured: true, lastUpdated: '2026-07-25T00:00:00Z' })
-    expect(h.invoke).toHaveBeenCalledWith('has_api_key')
+    h.invoke.mockResolvedValueOnce(config)
+    await expect(getVertexConfig()).resolves.toEqual(config)
+    expect(h.invoke).toHaveBeenCalledWith('get_vertex_config')
+
+    h.invoke.mockResolvedValueOnce({ configured: true })
+    await expect(getVertexStatus()).resolves.toEqual({ configured: true })
+    expect(h.invoke).toHaveBeenCalledWith('get_vertex_status')
+
+    await gcloudLogin()
+    expect(h.invoke).toHaveBeenCalledWith('gcloud_login')
 
     h.invoke.mockResolvedValueOnce(true)
     await expect(checkExternalAvailable()).resolves.toBe(true)

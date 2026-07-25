@@ -1,6 +1,6 @@
 //! AI スライド生成の生成器抽象（#14）。
 //!
-//! 「プロンプト → slides.json 候補 1 件」を単一契約とする生成器（内蔵 Anthropic 直 / 外部 Claude Code CLI）を、
+//! 「プロンプト → slides.json 候補 1 件」を単一契約とする生成器（内蔵 Vertex AI 直 / 外部 Claude Code CLI）を、
 //! `SlideGenerator` trait ＋ 閉じた `SlideGeneratorKind` enum ＋ `resolve_generator_kind`（純関数）＋
 //! `create_generator`（factory）で差し替え可能にする（ticketvc `llm_backend.rs` パターン）。
 //!
@@ -8,30 +8,33 @@
 //! Rust は候補 1 件を返す責務に限定する（design §4.1／§9.1）。送出内容（プロンプト構築）は
 //! `system_prompt` / `user_prompt` の純関数に集約し、機密最小化（NFR-004）を構造的に担保する。
 
-use secrecy::SecretString;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
-mod anthropic;
 mod claude_cli;
-
-/// 既定の生成モデル（実装時点の最新。設定で上書き可能・FR-003）。
-pub const DEFAULT_MODEL: &str = "claude-opus-4-8";
+mod gcp_auth;
+mod vertex;
 
 /// 外部生成（Claude Code CLI）が利用可能かを判定する（事前ゲート用・FR-007）。
 pub async fn external_generator_available() -> bool {
   claude_cli::is_available().await
 }
 
-/// 生成種別（内蔵 Anthropic 直 / 外部 Claude Code）。
+/// GCP ADC トークンのキャッシュを破棄する（`gcloud_login` 再実行後に呼ぶ）。
+/// 再ログインで ADC が更新されても旧トークンが 55 分キャッシュに残ると復旧できないため、明示的に捨てる。
+pub async fn invalidate_token_cache() {
+  gcp_auth::invalidate_token_cache().await;
+}
+
+/// 生成種別（内蔵 Vertex AI 直 / 外部 Claude Code）。
 ///
-/// TS 側は同一のワイヤー値（`'builtin-anthropic'` / `'external-claude-code'`）を `GeneratorKind`
+/// TS 側は同一のワイヤー値（`'builtin-vertex'` / `'external-claude-code'`）を `GeneratorKind`
 /// として持つ（spec §4.1）。enum 名（PascalCase）を kebab-case 文字列へ serde 変換し、
 /// 属性漏れによる実行時の TS 契約ずれ（`tsc` で検出できない）を防ぐ（design §9.1）。
 #[derive(serde::Serialize, serde::Deserialize, Clone, Copy, PartialEq, Debug)]
 #[serde(rename_all = "kebab-case")]
 pub enum SlideGeneratorKind {
-  BuiltinAnthropic,
+  BuiltinVertex,
   ExternalClaudeCode,
 }
 
@@ -87,7 +90,7 @@ pub enum GenerateError {
   Cancelled,
   /// 応答タイムアウト（NFR-005）。
   Timeout,
-  /// API キー未設定（内蔵生成）。
+  /// 内蔵生成の設定未完了（Vertex の project/region/model が未設定）。
   NotConfigured,
   /// ネットワーク/通信エラー。
   Network(String),
@@ -97,7 +100,7 @@ pub enum GenerateError {
   Cli(String),
   /// レスポンスが不正（result 欠落・パース不能）。
   InvalidResponse(String),
-  /// 資格情報の取得失敗（keyring アクセス障害等。未設定は NotConfigured で別扱い）。
+  /// GCP 認証/トークン取得の失敗（ADC 未ログイン・トークン交換失敗等。設定未完了は NotConfigured で別扱い）。
   Credential(String),
 }
 
@@ -106,7 +109,9 @@ impl std::fmt::Display for GenerateError {
     match self {
       GenerateError::Cancelled => write!(f, "生成を中断しました"),
       GenerateError::Timeout => write!(f, "生成がタイムアウトしました"),
-      GenerateError::NotConfigured => write!(f, "API キーが登録されていません"),
+      GenerateError::NotConfigured => {
+        write!(f, "Vertex AI の設定（project/region/model）が未完了です")
+      }
       GenerateError::Network(msg) => write!(f, "通信エラー: {msg}"),
       GenerateError::Api { status, message } => {
         write!(f, "API エラー ({status}): {message}")
@@ -149,25 +154,33 @@ fn parse_generator_kind(value: &str) -> Option<SlideGeneratorKind> {
     "external-claude-code" | "external" | "claude-code" | "claude_cli" => {
       Some(SlideGeneratorKind::ExternalClaudeCode)
     }
-    "builtin-anthropic" | "builtin" | "anthropic" => Some(SlideGeneratorKind::BuiltinAnthropic),
+    "builtin-vertex" | "builtin" | "vertex" => Some(SlideGeneratorKind::BuiltinVertex),
     _ => None,
   }
 }
 
 /// 解決済み種別から生成器を生成する factory（利用側は内蔵/外部を意識しない）。
-/// 内蔵はキー（keyring から取得済み）を受け取り、外部は CLI 実行のためキー不要。
+/// 内蔵は `VertexConfig`（project/region/model）を受け取り、未設定なら `NotConfigured` を返す。
+/// 外部は Vertex 設定不要（CLI 実行）。GCP トークンは各生成器が実行時に ADC から取得する（キーは持ち回らない）。
 pub fn create_generator(
   kind: SlideGeneratorKind,
-  key: Option<SecretString>,
-  model: &str,
-) -> Box<dyn SlideGenerator> {
+  vertex_config: Option<crate::vertex_config::VertexConfig>,
+) -> Result<Box<dyn SlideGenerator>, GenerateError> {
   match kind {
-    SlideGeneratorKind::BuiltinAnthropic => {
-      Box::new(anthropic::AnthropicGenerator::new(key, model.to_string()))
+    SlideGeneratorKind::BuiltinVertex => {
+      let config = vertex_config
+        .filter(|c| c.is_complete())
+        .ok_or(GenerateError::NotConfigured)?;
+      Ok(Box::new(vertex::VertexGenerator::new(
+        config.project_id,
+        config.region,
+        config.model,
+      )))
     }
-    SlideGeneratorKind::ExternalClaudeCode => {
-      Box::new(claude_cli::ClaudeCodeGenerator::new(model.to_string()))
-    }
+    // 外部 CLI は Vertex 設定不要。model 未指定（空）で CLI 既定に委ねる
+    SlideGeneratorKind::ExternalClaudeCode => Ok(Box::new(claude_cli::ClaudeCodeGenerator::new(
+      String::new(),
+    ))),
   }
 }
 
@@ -255,10 +268,10 @@ mod tests {
 
   #[test]
   fn generator_kind_serializes_to_kebab_case() {
-    // TS 契約（'builtin-anthropic' / 'external-claude-code'）と一致するワイヤー値を検証（design §9.1）
+    // TS 契約（'builtin-vertex' / 'external-claude-code'）と一致するワイヤー値を検証（design §9.1）
     assert_eq!(
-      serde_json::to_string(&SlideGeneratorKind::BuiltinAnthropic).unwrap(),
-      "\"builtin-anthropic\""
+      serde_json::to_string(&SlideGeneratorKind::BuiltinVertex).unwrap(),
+      "\"builtin-vertex\""
     );
     assert_eq!(
       serde_json::to_string(&SlideGeneratorKind::ExternalClaudeCode).unwrap(),
@@ -270,9 +283,9 @@ mod tests {
   fn generate_request_uses_camel_case_and_defaults_optionals() {
     // JS が baseSlides / repairFeedback を省略しても None にデシリアライズされる（初回生成）
     let req: GenerateRequest =
-      serde_json::from_str(r#"{"prompt":"p","kind":"builtin-anthropic"}"#).unwrap();
+      serde_json::from_str(r#"{"prompt":"p","kind":"builtin-vertex"}"#).unwrap();
     assert_eq!(req.prompt, "p");
-    assert_eq!(req.kind, SlideGeneratorKind::BuiltinAnthropic);
+    assert_eq!(req.kind, SlideGeneratorKind::BuiltinVertex);
     assert!(req.base_slides.is_none());
     assert!(req.repair_feedback.is_none());
 
@@ -291,13 +304,13 @@ mod tests {
     assert_eq!(
       resolve_generator_kind(
         Some("external-claude-code"),
-        SlideGeneratorKind::BuiltinAnthropic
+        SlideGeneratorKind::BuiltinVertex
       ),
       SlideGeneratorKind::ExternalClaudeCode
     );
     assert_eq!(
       resolve_generator_kind(Some("builtin"), SlideGeneratorKind::ExternalClaudeCode),
-      SlideGeneratorKind::BuiltinAnthropic
+      SlideGeneratorKind::BuiltinVertex
     );
     // env override が不明値・空・None なら fallback（＝UI/設定の型付き選択）を返す
     assert_eq!(
@@ -305,8 +318,8 @@ mod tests {
       SlideGeneratorKind::ExternalClaudeCode
     );
     assert_eq!(
-      resolve_generator_kind(Some("  "), SlideGeneratorKind::BuiltinAnthropic),
-      SlideGeneratorKind::BuiltinAnthropic
+      resolve_generator_kind(Some("  "), SlideGeneratorKind::BuiltinVertex),
+      SlideGeneratorKind::BuiltinVertex
     );
     assert_eq!(
       resolve_generator_kind(None, SlideGeneratorKind::ExternalClaudeCode),
@@ -317,7 +330,7 @@ mod tests {
   #[test]
   fn user_prompt_includes_only_allowed_fields() {
     // 機密最小化（NFR-004）: プロンプトは含み、base_slides/repair_feedback は指定時のみ含む
-    let mut req = sample_request(SlideGeneratorKind::BuiltinAnthropic);
+    let mut req = sample_request(SlideGeneratorKind::BuiltinVertex);
     let p = user_prompt(&req);
     assert!(p.contains("AI の歴史"));
     assert!(!p.contains("現在のスライド"));
@@ -376,7 +389,7 @@ mod tests {
 
   #[tokio::test]
   async fn mock_generator_dispatches_and_respects_cancel() {
-    let req = sample_request(SlideGeneratorKind::BuiltinAnthropic);
+    let req = sample_request(SlideGeneratorKind::BuiltinVertex);
     let gen: Box<dyn SlideGenerator> = Box::new(MockGenerator {
       response: "{\"meta\":{\"title\":\"t\"},\"slides\":[]}".to_string(),
       fail: false,
