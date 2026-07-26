@@ -196,6 +196,33 @@
   cursor: not-allowed;
 }
 
+.primaryCard:disabled,
+.secondaryButton:disabled,
+.recentItem:disabled,
+.removeButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.spinner {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loadingStatus {
+  margin: 0;
+  text-align: center;
+  font-size: 13px;
+  font-family: var(--theme-font-body), sans-serif;
+  color: var(--theme-text-muted);
+}
+
 /* --- 最近開いたスライド --- */
 .section {
   display: flex;

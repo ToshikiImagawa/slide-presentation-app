@@ -18,7 +18,8 @@
       "urlPlaceholder": "https://example.com/deck.spkg",
       "urlInputLabel": "Slide package URL",
       "urlSubmit": "Open",
-      "urlOpening": "Opening…"
+      "urlOpening": "Opening…",
+      "loading": "Loading…"
     },
     "toolbar": {
       "hide": "Hide toolbar (T)",

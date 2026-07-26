@@ -18,7 +18,8 @@
       "urlPlaceholder": "https://example.com/deck.spkg",
       "urlInputLabel": "スライドパッケージのURL",
       "urlSubmit": "開く",
-      "urlOpening": "開いています…"
+      "urlOpening": "開いています…",
+      "loading": "読み込んでいます…"
     },
     "toolbar": {
       "hide": "ツールバーを隠す (T)",
