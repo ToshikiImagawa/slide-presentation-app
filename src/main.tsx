@@ -12,7 +12,7 @@ import { getBlankPresentationData, getDefaultPresentationData } from './data'
 import type { PresentationData } from './data'
 import { I18nProvider, loadLocales, useI18n } from './i18n'
 import type { LocaleResource } from './i18n'
-import { ToastProvider } from './toast'
+import { ToastProvider, useToast } from './toast'
 import { getRecentSlidePackages, isAddonAllowed, loadSlidePackageFromUrl, openRecentSlidePackage, pickAndLoadSlidePackage, removeRecentSlidePackage } from './localSlideLoader'
 import type { LoadedSlidePackage, RecentSlidePackageEntry, SlidePackageLoadResult } from './localSlideLoader'
 import { SlideEditor } from './edit/SlideEditor'
@@ -38,7 +38,8 @@ type View = 'home' | 'presentation' | 'edit'
 
 /** ホーム画面とプレゼンテーション画面を切り替える（I18nProvider の内側で useI18n を使うための内側コンポーネント） */
 function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentSlidePackageEntry[] }) {
-  const { locale } = useI18n()
+  const { locale, t } = useI18n()
+  const { showToast } = useToast()
   const [view, setView] = useState<View>('home')
   const [presentationData, setPresentationData] = useState<PresentationData | undefined>(undefined)
   const [presentationKey, setPresentationKey] = useState(0)
@@ -63,13 +64,12 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
       applyPresentationData(data)
       setView('presentation')
 
-      try {
-        await applyPresentationTheme(data.meta?.themeColors, data.theme)
-      } catch (error) {
-        console.error('[main] テーマの適用に失敗しました', error)
+      const themeApplied = await applyPresentationTheme(data.meta?.themeColors, data.theme)
+      if (!themeApplied) {
+        showToast(t('theme.applyFailed'))
       }
     },
-    [applyPresentationData],
+    [applyPresentationData, showToast, t],
   )
 
   /** 現在のパッケージアドオンを破棄し、許可された場合のみ新パッケージのアドオンをロードする（再マウント前に完了させる） */
@@ -174,9 +174,11 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
   const handleExitEdit = useCallback(() => {
     void exitEditMode().catch((error) => console.error('[main] 編集モードの無効化に失敗しました', error))
     // 編集中に適用したテーマを、表示中プレゼンのテーマへ戻す
-    void applyPresentationTheme(presentationData?.meta?.themeColors, presentationData?.theme)
+    void applyPresentationTheme(presentationData?.meta?.themeColors, presentationData?.theme).then((themeApplied) => {
+      if (!themeApplied) showToast(t('theme.applyFailed'))
+    })
     setView('presentation')
-  }, [presentationData])
+  }, [presentationData, showToast, t])
 
   if (view === 'edit' && editSource) {
     return <SlideEditor source={editSource} onExit={handleExitEdit} />

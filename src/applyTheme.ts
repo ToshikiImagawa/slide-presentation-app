@@ -22,15 +22,28 @@ const keyToCssVar: Record<string, string> = {
   success: '--theme-success',
 }
 
-export async function applyTheme(path?: string) {
+/**
+ * テーマカラー定義（JSON）を取得して CSS 変数へ適用する。
+ * path 省略時はデフォルトの `/theme-colors.json` を読む。存在しないのはカスタムテーマ未使用の正常系なので false は返さない。
+ * path 指定時は取得・パースに失敗すると false を返す（呼び出し元でユーザーへの通知に使う）。
+ * @returns 適用に成功したか（path 未指定でファイルが存在しない場合も true）
+ */
+export async function applyTheme(path?: string): Promise<boolean> {
+  let res: Response
+  try {
+    res = await fetch(path ?? '/theme-colors.json')
+  } catch {
+    return path === undefined
+  }
+  if (!res.ok) return path === undefined
+
   let theme: Record<string, string>
   try {
-    const res = await fetch(path ?? '/theme-colors.json')
-    if (!res.ok) return
     theme = await res.json()
   } catch {
-    return
+    return false
   }
+
   const root = document.documentElement
   for (const [key, value] of Object.entries(theme)) {
     const cssVar = keyToCssVar[key]
@@ -39,6 +52,7 @@ export async function applyTheme(path?: string) {
       root.style.setProperty(`${cssVar}-rgb`, hexToRgb(value))
     }
   }
+  return true
 }
 
 /** フォントサイズ比率（body1 = 1.0 基準） */
@@ -177,11 +191,13 @@ export function resetThemeOverrides(): void {
 /**
  * プレゼンテーションのテーマを一括適用する（本編・発表者ビューの両エントリで共通の手順）。
  * 前のテーマの上書きが残らないよう、必ずリセットしてから themeColors → theme の順に適用する。
+ * @returns テーマカラーの適用に成功したか（呼び出し元でユーザーへの通知に使う）
  */
-export async function applyPresentationTheme(themeColors?: string, theme?: ThemeData): Promise<void> {
+export async function applyPresentationTheme(themeColors?: string, theme?: ThemeData): Promise<boolean> {
   resetThemeOverrides()
-  await applyTheme(themeColors)
+  const ok = await applyTheme(themeColors)
   if (theme) {
     applyThemeData(theme)
   }
+  return ok
 }

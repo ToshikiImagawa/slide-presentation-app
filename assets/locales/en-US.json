@@ -24,6 +24,9 @@
       "hide": "Hide toolbar (T)",
       "show": "Show toolbar (T)"
     },
+    "theme": {
+      "applyFailed": "Failed to apply the theme"
+    },
     "settings": {
       "title": "Settings",
       "language": "Language",
