@@ -28,9 +28,18 @@ type PanelStatus = { kind: 'idle' | 'ok' | 'warn' | 'error'; message: string }
  * マウント時に生成を有効化し、アンマウントで無効化する（capability ゲート・DC-003）。
  * 色は editorUiTheme と `--theme-*` 経由（親 SlideEditor の ThemeProvider を継承・A-002/DC-006）。
  */
-export function AiGeneratePanel({ currentText, onApply }: { currentText: string; onApply: (candidate: GeneratedCandidate) => void }) {
+export function AiGeneratePanel({
+  currentText,
+  onApply,
+  defaultExpanded = false,
+}: {
+  currentText: string
+  onApply: (candidate: GeneratedCandidate) => void
+  /** マウント時にパネルを展開済みにするか（ホーム画面の「AIで新規作成」導線から遷移した場合に使用） */
+  defaultExpanded?: boolean
+}) {
   const { t } = useTranslation()
-  const [expanded, setExpanded] = useState(false)
+  const [expanded, setExpanded] = useState(defaultExpanded)
   const [prompt, setPrompt] = useState('')
   const [kind, setKind] = useState<GeneratorKind>('builtin-vertex')
   const [useBase, setUseBase] = useState(false)

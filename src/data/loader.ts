@@ -10,6 +10,15 @@ export function getDefaultPresentationData(locale: string): PresentationData {
   return defaultSlidesEn as PresentationData
 }
 
+/** AI新規作成（ホーム画面）の土台となる最小構成のプレゼンテーションデータを返す */
+export function getBlankPresentationData(locale: string): PresentationData {
+  const title = locale.startsWith('ja') ? '新しいプレゼンテーション' : 'New Presentation'
+  return {
+    meta: { title },
+    slides: [{ id: 'slide-1', layout: 'center', content: { title } }],
+  }
+}
+
 function addError(errors: ValidationError[], path: string, message: string, expected: string, actual: string): void {
   errors.push({ path, message, expected, actual })
 }

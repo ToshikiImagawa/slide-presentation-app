@@ -8,6 +8,7 @@ type HomeScreenProps = {
   onRemoveRecent: (path: string) => void
   onOpenSample: () => void
   onBrowse: () => void
+  onCreateWithAi: () => void
 }
 
 /** フォルダアイコン（ファイルを開く） */
@@ -25,6 +26,17 @@ function SparkleIcon() {
     <svg className={styles.icon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z" />
       <path d="M18 15l.7 1.8L20.5 17.5l-1.8.7L18 20l-.7-1.8L15.5 17.5l1.8-.7z" />
+    </svg>
+  )
+}
+
+/** 魔法の杖アイコン（AIで新規作成） */
+function WandIcon() {
+  return (
+    <svg className={styles.icon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4 20 16 8" />
+      <path d="M15 4l1 2 2 1-2 1-1 2-1-2-2-1 2-1z" />
+      <path d="M19 11l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z" />
     </svg>
   )
 }
@@ -51,7 +63,7 @@ function TrashIcon() {
   )
 }
 
-export function HomeScreen({ recentPackages, onOpenRecent, onRemoveRecent, onOpenSample, onBrowse }: HomeScreenProps) {
+export function HomeScreen({ recentPackages, onOpenRecent, onRemoveRecent, onOpenSample, onBrowse, onCreateWithAi }: HomeScreenProps) {
   const { t } = useTranslation()
 
   return (
@@ -63,6 +75,16 @@ export function HomeScreen({ recentPackages, onOpenRecent, onRemoveRecent, onOpe
         </header>
 
         <div className={styles.actions}>
+          <button className={styles.primaryCard} onClick={onCreateWithAi} data-testid="home-create-ai">
+            <span className={styles.primaryIcon}>
+              <WandIcon />
+            </span>
+            <span className={styles.primaryText}>
+              <span className={styles.primaryLabel}>{t('home.createWithAiButton')}</span>
+              <span className={styles.primaryHint}>{t('home.createWithAiHint', 'ゼロからAIでスライドを生成')}</span>
+            </span>
+          </button>
+
           <button className={styles.primaryCard} onClick={onBrowse} data-testid="home-browse">
             <span className={styles.primaryIcon}>
               <FolderIcon />

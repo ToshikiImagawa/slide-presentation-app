@@ -101,6 +101,16 @@ describe('SlideEditor 保存前バリデーション（FR-005）', () => {
     await waitFor(() => expect(saveButton().disabled).toBe(true))
   })
 
+  it('initialAiPanelExpanded=true のとき AI 生成パネルが展開済みで表示される（#42 AIで新規作成）', async () => {
+    render(
+      <Wrapper>
+        <SlideEditor source={{ rawText: validJson, baseDir: '' }} onExit={() => {}} initialAiPanelExpanded />
+      </Wrapper>,
+    )
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'AI 生成' }).getAttribute('aria-expanded')).toBe('true'))
+  })
+
   it('破損データで保存を試みても保存されない（default へフォールバックして上書きしない）', async () => {
     render(
       <Wrapper>
