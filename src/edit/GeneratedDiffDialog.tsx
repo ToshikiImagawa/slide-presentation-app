@@ -12,6 +12,7 @@ import { useTranslation } from '../i18n'
 import type { ValidationError } from '../data/types'
 import { computeSlidesDiff, hasChanges, type FieldChange, type SlideChange } from './slidesDiff'
 import { prettyPrintJson } from './slidesSerialize'
+import { ValidationErrorList } from './ValidationErrorList'
 
 /**
  * AI 生成結果を器へ適用する前の確認ダイアログ（①・案3「構造サマリ」）。
@@ -93,19 +94,7 @@ export function GeneratedDiffDialog({ open, beforeText, afterText, validationErr
         </Typography>
       </DialogTitle>
       <DialogContent dividers>
-        {validationErrors.length > 0 && (
-          <Box role="alert" sx={{ p: 1, mb: 1.5, borderRadius: 1, backgroundColor: 'var(--theme-background-alt)', border: '1px solid var(--theme-border)', maxHeight: 160, overflow: 'auto' }}>
-            <Typography variant="subtitle2" sx={{ color: 'var(--theme-primary)', fontWeight: 600 }}>
-              {t('edit.validationErrors', '検証エラー')} ({validationErrors.length})
-            </Typography>
-            {validationErrors.map((err, i) => (
-              <Typography key={`${err.path}-${i}`} variant="body2" sx={{ color: 'var(--theme-text-body)', fontFamily: 'var(--theme-font-code, monospace)', fontSize: 12 }}>
-                {err.path ? `${err.path}: ` : ''}
-                {err.message}
-              </Typography>
-            ))}
-          </Box>
-        )}
+        <ValidationErrorList errors={validationErrors} sx={{ mb: 1.5 }} />
         {diff && diff.parseable ? (
           <Stack spacing={1.5}>
             {/* 集計サマリ */}

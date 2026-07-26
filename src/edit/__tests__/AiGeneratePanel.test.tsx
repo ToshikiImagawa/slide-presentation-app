@@ -135,7 +135,7 @@ describe('AiGeneratePanel 事前ゲート・退避（Vertex・FR-007/FR-008）',
     fireEvent.change(promptField(), { target: { value: 'AI の歴史' } })
     await waitFor(() => expect(generateButton().disabled).toBe(false))
     fireEvent.click(generateButton())
-    await waitFor(() => expect(onApply).toHaveBeenCalledWith(VALID, []))
+    await waitFor(() => expect(onApply).toHaveBeenCalledWith({ slidesJson: VALID, validationErrors: [] }))
   })
 
   it('exhausted でも onApply に候補と残存 validationErrors を渡す（#47）', async () => {
@@ -152,7 +152,7 @@ describe('AiGeneratePanel 事前ゲート・退避（Vertex・FR-007/FR-008）',
     fireEvent.change(promptField(), { target: { value: 'AI の歴史' } })
     await waitFor(() => expect(generateButton().disabled).toBe(false))
     fireEvent.click(generateButton())
-    await waitFor(() => expect(onApply).toHaveBeenCalledWith(VALID, validationErrors))
+    await waitFor(() => expect(onApply).toHaveBeenCalledWith({ slidesJson: VALID, validationErrors }))
   })
 
   it('failed では onApply を呼ばない（器に触れず退避・FR-008）', async () => {

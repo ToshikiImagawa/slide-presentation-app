@@ -12,9 +12,8 @@ import { useTranslation } from '../i18n'
 import { applyTheme, applyThemeData, resetThemeOverrides } from '../applyTheme'
 import { getPackageAddonNames, resolveLocalAssetPaths } from '../localSlideLoader'
 import type { PresentationData, SlideData } from '../data'
-import type { ValidationError } from '../data/types'
 import { parseSlides, serializeSlides, prettyPrintJson } from './slidesSerialize'
-import { AiGeneratePanel } from './AiGeneratePanel'
+import { AiGeneratePanel, type GeneratedCandidate } from './AiGeneratePanel'
 import { GeneratedDiffDialog } from './GeneratedDiffDialog'
 import { ConfirmDialog } from './ConfirmDialog'
 import { SlideJsonEditor } from './SlideJsonEditor'
@@ -58,10 +57,9 @@ export function SlideEditor({ source, onExit }: { source: EditSource; onExit: ()
   const [name, setName] = useState(() => slugify(parseSlides(source.rawText).data.meta?.title ?? 'slides'))
   const [version, setVersion] = useState('1.0.0')
   const [status, setStatus] = useState<StatusState>({ kind: 'idle', message: '' })
-  // AI 生成結果の適用待ち候補（差分確認ダイアログで承認するまで器に触れない・①/FR-008）
-  const [pendingGenerated, setPendingGenerated] = useState<string | null>(null)
-  // 適用待ち候補に残る検証エラー（exhausted で非空。差分確認ダイアログへ渡す・#47）
-  const [pendingGeneratedErrors, setPendingGeneratedErrors] = useState<ValidationError[]>([])
+  // AI 生成結果の適用待ち候補（差分確認ダイアログで承認するまで器に触れない・①/FR-008）。
+  // validationErrors は exhausted で非空になりうる残存検証エラー（差分確認ダイアログへ渡す・#47）
+  const [pendingGenerated, setPendingGenerated] = useState<GeneratedCandidate | null>(null)
   // 層B: パッケージ自身の同梱可能アドオン（baseDir/addons/manifest.json）と、export に含める選択
   const [packageAddons, setPackageAddons] = useState<string[]>([])
   const [selectedAddons, setSelectedAddons] = useState<string[]>([])
@@ -190,27 +188,23 @@ export function SlideEditor({ source, onExit }: { source: EditSource; onExit: ()
   }
 
   // AI 生成結果の受け口（#14・FR-004/DC-005）。即時置換せず、まず差分確認ダイアログへ候補を渡す（①）。
-  // 上限到達（exhausted）で残る validationErrors も併せて渡し、差分確認ダイアログで確認できるようにする（#47）
-  const applyGeneratedSlides = (json: string, validationErrors: ValidationError[]) => {
-    setPendingGenerated(json)
-    setPendingGeneratedErrors(validationErrors)
+  const applyGeneratedSlides = (candidate: GeneratedCandidate) => {
+    setPendingGenerated(candidate)
   }
 
   // 差分確認で [適用する]。候補を 2 スペース整形して単一真実源 text へ全体置換（③）。
   // 以降は既存の useMemo(parseSlides) → プレビュー/フォームへ反映される（無損失・NFR-002）。
   const confirmApplyGenerated = () => {
     if (pendingGenerated === null) return
-    setText(prettyPrintJson(pendingGenerated))
+    setText(prettyPrintJson(pendingGenerated.slidesJson))
     setSelectedIndex(0)
     setPendingGenerated(null)
-    setPendingGeneratedErrors([])
     setStatus({ kind: 'ok', message: t('aiGenerate.applied', '生成結果を反映しました') })
   }
 
   // 差分確認で [キャンセル]。候補を破棄し器に一切触れない（安全退避・FR-008）。
   const cancelApplyGenerated = () => {
     setPendingGenerated(null)
-    setPendingGeneratedErrors([])
   }
 
   const handleExport = async () => {
@@ -254,7 +248,14 @@ export function SlideEditor({ source, onExit }: { source: EditSource; onExit: ()
         )}
 
         {/* 生成結果の適用前 差分確認ダイアログ（①・案3）。承認で整形して全体置換、キャンセルで破棄 */}
-        <GeneratedDiffDialog open={pendingGenerated !== null} beforeText={text} afterText={pendingGenerated ?? ''} validationErrors={pendingGeneratedErrors} onApply={confirmApplyGenerated} onCancel={cancelApplyGenerated} />
+        <GeneratedDiffDialog
+          open={pendingGenerated !== null}
+          beforeText={text}
+          afterText={pendingGenerated?.slidesJson ?? ''}
+          validationErrors={pendingGenerated?.validationErrors ?? []}
+          onApply={confirmApplyGenerated}
+          onCancel={cancelApplyGenerated}
+        />
 
         {/* 組み込みアドオン削除の確認（× は確認経由。addons/src を完全削除し git 管理外＝復元不可のため誤クリック防止） */}
         <ConfirmDialog
