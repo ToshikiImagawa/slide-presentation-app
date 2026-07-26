@@ -22,7 +22,7 @@ export interface LoadedSlidePackage {
   /** 書換前の元 slides.json テキスト（編集モードの無損失往復の土台）。相対アセットパスを保持する */
   rawText: string
   baseDir: string
-  /** 利用者が選択した元パス（.tgz または slides.json）。信頼判断の永続化キーに使う */
+  /** 利用者が選択した元パス（.spkg/.tgz または slides.json）。信頼判断の永続化キーに使う */
   sourcePath: string
   /** convertFileSrc で asset URL 化済みのアドオンバンドル URL（manifest 宣言かつ addons/ 配下のみ） */
   addonScripts: string[]
@@ -231,7 +231,7 @@ async function resolvePackageAddons(baseDir: string): Promise<string[]> {
   }
 }
 
-/** 指定パス（slides.json または .tgz パッケージ）を読み込み、バリデーション・ローカルアセット解決を行う。失敗時は例外を投げる */
+/** 指定パス（slides.json または .spkg/.tgz パッケージ）を読み込み、バリデーション・ローカルアセット解決を行う。失敗時は例外を投げる */
 async function loadSlidePackage(selectedPath: string): Promise<LoadedSlidePackage> {
   const { slidesJsonPath, baseDir } = await resolvePackageEntry(selectedPath)
 

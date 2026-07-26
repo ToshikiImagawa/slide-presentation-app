@@ -31,7 +31,7 @@ fn allow_asset_dir(app: tauri::AppHandle, dir: String) -> Result<(), String> {
 /// tar+gzip バイト列（.spkg・旧 .tgz とも同一形式）を extract_dir に展開し、slides.json のあるディレクトリを返す
 /// （`npm pack` は内容を package/ 配下にネストするため、scripts/export-slides.mjs 由来の
 /// パッケージと同じ規則で package/ を優先的に探す）
-fn extract_tgz(bytes: &[u8], extract_dir: &Path) -> Result<PathBuf, String> {
+fn extract_slide_archive(bytes: &[u8], extract_dir: &Path) -> Result<PathBuf, String> {
   if extract_dir.exists() {
     fs::remove_dir_all(extract_dir).map_err(|e| e.to_string())?;
   }
@@ -66,7 +66,7 @@ fn extract_slide_package(app: tauri::AppHandle, package_path: String) -> Result<
     .join("slide-packages")
     .join(stem);
 
-  let result_dir = extract_tgz(&bytes, &extract_dir)?;
+  let result_dir = extract_slide_archive(&bytes, &extract_dir)?;
   result_dir
     .to_str()
     .map(|s| s.to_string())
@@ -893,13 +893,13 @@ mod tests {
   }
 
   #[test]
-  fn extract_tgz_prefers_npm_pack_package_dir() {
+  fn extract_slide_archive_prefers_npm_pack_package_dir() {
     let content = b"{\"meta\":{\"title\":\"t\"},\"slides\":[]}";
     let gz_bytes = build_npm_pack_tgz(content);
 
     let extract_dir =
       std::env::temp_dir().join(format!("slide-extract-test-{}", std::process::id()));
-    let result = extract_tgz(&gz_bytes, &extract_dir).expect("extraction should succeed");
+    let result = extract_slide_archive(&gz_bytes, &extract_dir).expect("extraction should succeed");
 
     assert_eq!(result, extract_dir.join("package"));
     let slides_json_path = result.join("slides.json");
@@ -910,14 +910,14 @@ mod tests {
   }
 
   #[test]
-  fn extract_tgz_replaces_existing_dir() {
+  fn extract_slide_archive_replaces_existing_dir() {
     let extract_dir =
       std::env::temp_dir().join(format!("slide-extract-test-replace-{}", std::process::id()));
     fs::create_dir_all(&extract_dir).unwrap();
     fs::write(extract_dir.join("stale.txt"), b"old").unwrap();
 
     let gz_bytes = build_npm_pack_tgz(b"{\"meta\":{\"title\":\"t\"},\"slides\":[]}");
-    extract_tgz(&gz_bytes, &extract_dir).expect("extraction should succeed");
+    extract_slide_archive(&gz_bytes, &extract_dir).expect("extraction should succeed");
 
     assert!(!extract_dir.join("stale.txt").exists());
     assert!(extract_dir.join("package").join("slides.json").is_file());
@@ -1028,10 +1028,10 @@ mod tests {
       SLIDE_PACKAGE_EXTENSION
     );
 
-    // 生成した .spkg を extract_tgz で展開し往復一致を検証（FR-007/DC-003）
+    // 生成した .spkg を extract_slide_archive で展開し往復一致を検証（FR-007/DC-003）
     let bytes = fs::read(&pkg_path).unwrap();
     let extract_dir = dir.join("extract");
-    let pkg = extract_tgz(&bytes, &extract_dir).expect("展開できる");
+    let pkg = extract_slide_archive(&bytes, &extract_dir).expect("展開できる");
 
     assert_eq!(pkg, extract_dir.join("package"));
     assert_eq!(
@@ -1148,7 +1148,7 @@ mod tests {
 
     let bytes = fs::read(&pkg_path).unwrap();
     let extract_dir = dir.join("extract");
-    let pkg = extract_tgz(&bytes, &extract_dir).expect("展開できる");
+    let pkg = extract_slide_archive(&bytes, &extract_dir).expect("展開できる");
 
     // 選択した viz のみ同梱され、other は含まれない（FR-009）
     assert_eq!(
@@ -1201,7 +1201,7 @@ mod tests {
 
     let bytes = fs::read(&pkg_path).unwrap();
     let extract_dir = dir.join("extract");
-    let pkg = extract_tgz(&bytes, &extract_dir).expect("展開できる");
+    let pkg = extract_slide_archive(&bytes, &extract_dir).expect("展開できる");
 
     // 組み込みバンドルが dist から同梱される
     assert_eq!(
@@ -1259,7 +1259,7 @@ mod tests {
 
     let bytes = fs::read(&pkg_path).unwrap();
     let extract_dir = dir.join("extract");
-    let pkg = extract_tgz(&bytes, &extract_dir).expect("展開できる");
+    let pkg = extract_slide_archive(&bytes, &extract_dir).expect("展開できる");
 
     // dest 衝突は層B優先: バンドル本体は PKG（層B）が残る
     assert_eq!(
@@ -1281,7 +1281,7 @@ mod tests {
   fn issue35_uncheck_and_reexport_with_same_name_version_excludes_addon() {
     // #35 再現調査: 「同梱アドオンをアンチェックして再書き出し」を、同名・同バージョンでの
     // 上書き書き出し→再オープン（extract_slide_package はファイル名 stem 基準の展開先を再利用する）
-    // まで含めて模擬する。展開先を1回目・2回目とも同一ディレクトリで extract_tgz し、
+    // まで含めて模擬する。展開先を1回目・2回目とも同一ディレクトリで extract_slide_archive し、
     // 古い（除外前の）アドオンが残存しないことを確認する。
     let dir = std::env::temp_dir().join(format!("slide-issue35-{}", std::process::id()));
     fs::remove_dir_all(&dir).ok();
@@ -1313,7 +1313,8 @@ mod tests {
       .unwrap()
       .to_string();
     let extract_dir = dir.join("slide-packages").join(&stem);
-    let pkg1 = extract_tgz(&fs::read(&pkg_path_1).unwrap(), &extract_dir).expect("1回目展開できる");
+    let pkg1 = extract_slide_archive(&fs::read(&pkg_path_1).unwrap(), &extract_dir)
+      .expect("1回目展開できる");
     assert!(
       pkg1.join("addons").join("other.iife.js").is_file(),
       "1回目は other も同梱されている"
@@ -1336,9 +1337,10 @@ mod tests {
       "同名・同バージョンなら同じ出力パスを上書きする"
     );
 
-    // 再オープン: 同じ展開先ディレクトリへ再展開（extract_tgz は毎回 remove_dir_all するため
+    // 再オープン: 同じ展開先ディレクトリへ再展開（extract_slide_archive は毎回 remove_dir_all するため
     // 古い other.iife.js が残存すればキャッシュ/掃除漏れのバグ）
-    let pkg2 = extract_tgz(&fs::read(&pkg_path_2).unwrap(), &extract_dir).expect("2回目展開できる");
+    let pkg2 = extract_slide_archive(&fs::read(&pkg_path_2).unwrap(), &extract_dir)
+      .expect("2回目展開できる");
     assert!(
       !pkg2.join("addons").join("other.iife.js").exists(),
       "アンチェックした other は再書き出し後の再展開でも残存しない"
