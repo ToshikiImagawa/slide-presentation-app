@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { upsertRecentEntry, removeRecentEntry, extractAddonBundlePaths, resolveAddonTrust, isSlidePackageArchivePath } from '../localSlideLoader'
+import { upsertRecentEntry, removeRecentEntry, extractAddonBundlePaths, resolveAddonTrust } from '../localSlideLoader'
 import type { RecentSlidePackageEntry } from '../localSlideLoader'
+import { isSlidePackageArchivePath } from '../slidePackageArchive'
 
 function entry(path: string, openedAt = 0): RecentSlidePackageEntry {
   return { path, title: path, openedAt }

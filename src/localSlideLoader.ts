@@ -210,12 +210,10 @@ export function resolveLocalAssetPaths<T>(value: T, baseDir: string): T {
   return value
 }
 
-export { isSlidePackageArchivePath }
-
 /** 選択されたパスから slides.json の実パスとその基準ディレクトリを求める（.spkg/.tgz は Rust 側で展開） */
 async function resolvePackageEntry(selectedPath: string): Promise<{ slidesJsonPath: string; baseDir: string }> {
   if (isSlidePackageArchivePath(selectedPath)) {
-    const extractedDir = await invoke<string>('extract_slide_package', { tgzPath: selectedPath })
+    const extractedDir = await invoke<string>('extract_slide_package', { packagePath: selectedPath })
     return { slidesJsonPath: `${extractedDir}/slides.json`, baseDir: extractedDir }
   }
   return { slidesJsonPath: selectedPath, baseDir: await dirname(selectedPath) }

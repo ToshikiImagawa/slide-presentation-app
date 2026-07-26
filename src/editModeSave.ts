@@ -43,7 +43,7 @@ export async function saveSlidesJson(path: string, json: string): Promise<void> 
 /**
  * 編集した slides.json をアセットとともに .spkg パッケージへ書き出す（編集モード時のみ成功）。
  * 生成された .spkg のパスを返す。JS の camelCase 引数は Tauri が Rust の snake_case へ変換する
- * （既存 `invoke('extract_slide_package', { tgzPath })` と同規約）。
+ * （既存 `invoke('extract_slide_package', { packagePath })` と同規約）。
  */
 export async function exportSlidePackage(json: string, options: ExportOptions): Promise<string> {
   return invoke<string>('export_slide_package', {

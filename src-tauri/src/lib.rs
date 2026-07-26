@@ -52,10 +52,10 @@ fn extract_tgz(bytes: &[u8], extract_dir: &Path) -> Result<PathBuf, String> {
 
 /// スライドパッケージ (.spkg・旧 .tgz) をアプリのキャッシュディレクトリに展開し、slides.json のあるディレクトリを返す
 #[tauri::command]
-fn extract_slide_package(app: tauri::AppHandle, tgz_path: String) -> Result<String, String> {
-  let bytes = fs::read(&tgz_path).map_err(|e| e.to_string())?;
+fn extract_slide_package(app: tauri::AppHandle, package_path: String) -> Result<String, String> {
+  let bytes = fs::read(&package_path).map_err(|e| e.to_string())?;
 
-  let stem = Path::new(&tgz_path)
+  let stem = Path::new(&package_path)
     .file_stem()
     .and_then(|s| s.to_str())
     .unwrap_or("package");
