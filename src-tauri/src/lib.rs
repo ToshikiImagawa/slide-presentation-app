@@ -922,6 +922,11 @@ pub fn run() {
             .build(),
         )?;
       }
+      // updater は mobile 未対応のため desktop 限定で登録する
+      #[cfg(desktop)]
+      app
+        .handle()
+        .plugin(tauri_plugin_updater::Builder::new().build())?;
       Ok(())
     })
     .run(tauri::generate_context!())

@@ -16,8 +16,8 @@
 | `WINDOWS_CERTIFICATE` | Windows Authenticode 署名用 PFX 証明書（base64 化した内容） | 未登録・Windows 署名導入時に必須 |
 | `WINDOWS_CERTIFICATE_PASSWORD` | 上記 PFX のパスワード | 未登録・Windows 署名導入時に必須 |
 | `GITHUB_TOKEN` | GitHub Releases の作成・アセットアップロード | GitHub Actions が自動的に注入する組み込み secret。手動登録不要 |
-| `TAURI_SIGNING_PRIVATE_KEY` | Tauri updater の minisign 署名用秘密鍵 | **現状不要**（下記「不要と判断した secrets」参照） |
-| `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | 上記秘密鍵のパスワード | **現状不要**（同上） |
+| `TAURI_SIGNING_PRIVATE_KEY` | Tauri updater の minisign 署名用秘密鍵 | 登録済み・`release.yml` の `tauri:build` ステップに env として渡している |
+| `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | 上記秘密鍵のパスワード | 登録済み・同上 |
 
 ## 取得手順
 
@@ -48,15 +48,15 @@ Export-PfxCertificate -Cert $cert -FilePath certificate.pfx -Password (ConvertTo
 [Convert]::ToBase64String([IO.File]::ReadAllBytes("certificate.pfx")) | Set-Clipboard
 ```
 
-### Tauri updater 鍵（導入時のみ）
+### Tauri updater 鍵
 
-updater を導入する場合は `npm run tauri signer generate` で minisign 鍵ペアを生成する。
+`npx tauri signer generate` で minisign 鍵ペアを生成する。
 
 ```bash
-npm run tauri signer generate -- -w ~/.tauri/slide-presentation-app.key
+npx tauri signer generate -w ~/.tauri/slide-presentation-app_updater.key
 ```
 
-生成された秘密鍵ファイルの内容を `TAURI_SIGNING_PRIVATE_KEY` に、対話式で設定したパスワードを `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` に設定する。表示される公開鍵は `tauri.conf.json` の `plugins.updater.pubkey` に設定する。
+生成された秘密鍵ファイルの内容を `TAURI_SIGNING_PRIVATE_KEY` に、対話式で設定したパスワードを `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` に設定する。表示される公開鍵は `tauri.conf.json` の `plugins.updater.pubkey` に設定済み。
 
 ## 登録先
 
@@ -66,6 +66,7 @@ npm run tauri signer generate -- -w ~/.tauri/slide-presentation-app.key
 
 - macOS 署名系（`APPLE_CERTIFICATE` 等）が未設定の場合、codesign をスキップし ad-hoc / 未署名ビルドとして生成する
 - Windows 署名系（`WINDOWS_CERTIFICATE` 等）が未設定の場合、Authenticode 署名をスキップし未署名ビルドとして生成する
+- `TAURI_SIGNING_PRIVATE_KEY` が未設定の場合、`scripts/tauri-build.mjs`（`npm run tauri:build` 経由）が `createUpdaterArtifacts` を無効化してビルドする（理由は同ファイルのコメント参照）
 - いずれの場合もビルド自体は失敗させず、署名ステップのみ縮退させる方針とする
 
 ## 不要と判断した secrets
@@ -74,12 +75,4 @@ npm run tauri signer generate -- -w ~/.tauri/slide-presentation-app.key
 
 - `GH_OAUTH_CLIENT_ID` / `GH_OAUTH_CLIENT_SECRET`: NexusBoard の GitHub OAuth アプリ機能用。本プロジェクトに GitHub OAuth を用いる機能は無いため **不要**
 - Vertex AI 認証情報 / GitHub App 認証（`CLAUDE_APP_ID` 等）: リリース準備自動化 workflow（AI による自動化）を採用する場合にのみ検討対象となる。本プロジェクトでは現時点で採用していないため **不要**。将来的にリリース準備自動化 workflow を導入する場合は、本ドキュメントに secrets を追記すること
-- `TAURI_SIGNING_PRIVATE_KEY` / `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`: `src-tauri/tauri.conf.json` の `plugins` に updater 設定（`updater` / `pubkey` / エンドポイント）が存在せず、Tauri updater は現状未構成のため **不要**。updater 導入時の対応手順は下記「Tauri updater 導入時の対応」を参照
-
-## Tauri updater 導入時の対応
-
-updater 導入を決定した時点で、以下を本ドキュメントに追加すること。
-
-1. 「Tauri updater 鍵」節の鍵生成手順（上記コマンドをそのまま実行）に沿って secrets を登録する
-2. `tauri.conf.json` に `plugins.updater`（`pubkey` / `endpoints`）を追加する
-3. リリース workflow の署名ステップに `TAURI_SIGNING_PRIVATE_KEY` / `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` を環境変数として渡す
+- NexusBoard の `app_update` 機能（GitHub OAuth 認可・トークンストア・refresh・private repo 向け asset API 認証ヘッダー）: 本プロジェクトは public repo であり静的 `latest.json` URL で認証不要のため **不要**。private 化する場合のみ検討対象
