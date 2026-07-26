@@ -94,6 +94,7 @@
       "open": "発表者ビュー",
       "opened": "表示中",
       "alreadyOpen": "発表者ビューは既に開いています",
+      "openFailed": "発表者ビューの起動に失敗しました",
       "navPrev": "前のスライド (←)",
       "navNext": "次のスライド (→ / Space)",
       "autoPlay": "自動音声再生",

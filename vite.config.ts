@@ -242,6 +242,7 @@ export default defineConfig(({ mode }) => {
               '@tauri-apps/plugin-store': resolve(__dirname, 'src/__screenshot__/tauri-store.ts'),
               '@tauri-apps/api/event': resolve(__dirname, 'src/__screenshot__/tauri-event.ts'),
               '@tauri-apps/api/webviewWindow': resolve(__dirname, 'src/__screenshot__/tauri-webview.ts'),
+              '@tauri-apps/api/window': resolve(__dirname, 'src/__screenshot__/tauri-window.ts'),
             }
           : {}),
       },

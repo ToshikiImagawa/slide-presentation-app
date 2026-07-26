@@ -1,0 +1,11 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "presenter-view",
+  "description": "presenterView ウィンドウが自身のクローズ処理（onCloseRequested）に必要とする権限",
+  "windows": [
+    "presenterView"
+  ],
+  "permissions": [
+    "core:window:allow-destroy"
+  ]
+}

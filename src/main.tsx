@@ -12,6 +12,7 @@ import { getBlankPresentationData, getDefaultPresentationData } from './data'
 import type { PresentationData } from './data'
 import { I18nProvider, loadLocales, useI18n } from './i18n'
 import type { LocaleResource } from './i18n'
+import { ToastProvider } from './toast'
 import { getRecentSlidePackages, isAddonAllowed, loadSlidePackageFromUrl, openRecentSlidePackage, pickAndLoadSlidePackage, removeRecentSlidePackage } from './localSlideLoader'
 import type { LoadedSlidePackage, RecentSlidePackageEntry, SlidePackageLoadResult } from './localSlideLoader'
 import { SlideEditor } from './edit/SlideEditor'
@@ -198,7 +199,9 @@ interface RootProps {
 function Root({ locales, initialRecentPackages }: RootProps) {
   return (
     <I18nProvider locales={locales}>
-      <RootContent initialRecentPackages={initialRecentPackages} />
+      <ToastProvider>
+        <RootContent initialRecentPackages={initialRecentPackages} />
+      </ToastProvider>
     </I18nProvider>
   )
 }

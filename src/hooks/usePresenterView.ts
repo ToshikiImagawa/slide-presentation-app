@@ -3,6 +3,8 @@ import { emit, listen } from '@tauri-apps/api/event'
 import type { UnlistenFn } from '@tauri-apps/api/event'
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
 import type { SlideData, PresenterViewMessage, PresenterControlState, ThemeData } from '../data'
+import { useTranslation } from '../i18n'
+import { useToast } from '../toast'
 
 const EVENT_NAME = 'presenter-view'
 const PRESENTER_WINDOW_LABEL = 'presenterView'
@@ -34,6 +36,8 @@ export interface UsePresenterViewReturn {
 
 export function usePresenterView({ slides, addonOwner = '', addonScripts = [], themeColors, theme, onNavigate, onAudioToggle, onAutoPlayToggle, onAutoSlideshowToggle, onScrollSpeedChange }: UsePresenterViewOptions): UsePresenterViewReturn {
   const [isOpen, setIsOpen] = useState(false)
+  const { t } = useTranslation()
+  const { showToast } = useToast()
 
   // コールバックを useRef で保持（stale closure 回避）
   const onNavigateRef = useRef(onNavigate)
@@ -159,10 +163,11 @@ export function usePresenterView({ slides, addonOwner = '', addonScripts = [], t
         height: 700,
       })
       win.once('tauri://error', (e) => {
-        console.warn('[presenter-view] ウィンドウの作成に失敗しました', e)
+        console.error('[presenter-view] ウィンドウの作成に失敗しました', e)
+        showToast(t('presenterView.openFailed'))
       })
     })
-  }, [])
+  }, [showToast, t])
 
   return { openPresenterView, isOpen, sendSlideState, sendControlState, sendProgressState }
 }

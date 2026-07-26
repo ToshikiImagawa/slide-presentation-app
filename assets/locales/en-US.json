@@ -94,6 +94,7 @@
       "open": "Presenter View",
       "opened": "Opened",
       "alreadyOpen": "Presenter view is already open",
+      "openFailed": "Failed to open the presenter view",
       "navPrev": "Previous slide (←)",
       "navNext": "Next slide (→ / Space)",
       "autoPlay": "Auto audio play",

@@ -94,6 +94,7 @@
       "open": "Vue présentateur",
       "opened": "Ouvert",
       "alreadyOpen": "La vue présentateur est déjà ouverte",
+      "openFailed": "Échec de l'ouverture de la vue présentateur",
       "navPrev": "Diapositive précédente (←)",
       "navNext": "Diapositive suivante (→ / Espace)",
       "autoPlay": "Lecture audio automatique",
