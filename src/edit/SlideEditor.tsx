@@ -246,9 +246,6 @@ export function SlideEditor({ source, onExit }: { source: EditSource; onExit: ()
           </Box>
         )}
 
-        {/* AI 生成パネル（#14）。生成結果は applyGeneratedSlides で差分確認ダイアログへ渡す（①） */}
-        <AiGeneratePanel currentText={text} onApply={applyGeneratedSlides} />
-
         {/* 生成結果の適用前 差分確認ダイアログ（①・案3）。承認で整形して全体置換、キャンセルで破棄 */}
         <GeneratedDiffDialog open={pendingGenerated !== null} beforeText={text} afterText={pendingGenerated ?? ''} onApply={confirmApplyGenerated} onCancel={cancelApplyGenerated} />
 
@@ -341,8 +338,11 @@ export function SlideEditor({ source, onExit }: { source: EditSource; onExit: ()
               ...(showPreview ? { height: '42%' } : {}),
             }}
           >
-            {/* フォーム（確定フィールド）。上段が固定高さのとき、はみ出せばこの中でスクロールする */}
+            {/* フォーム（確定フィールド）。上段が固定高さのとき、はみ出せばこの中でスクロールする。
+                AI 生成パネル（#14）はフォームの上（＝プレビューの左）に配置する（#33）。
+                生成結果は applyGeneratedSlides で差分確認ダイアログへ渡す（①） */}
             <Box sx={{ minWidth: 0, minHeight: 0, overflow: 'auto' }}>
+              <AiGeneratePanel currentText={text} onApply={applyGeneratedSlides} />
               {hasSyntaxError ? (
                 <Typography variant="body2" sx={{ p: 1, color: 'var(--theme-primary)' }}>
                   {t('edit.formDisabled', 'JSON に構文エラーがあるためフォーム編集は無効です')}
