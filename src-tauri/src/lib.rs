@@ -872,6 +872,19 @@ mod tests {
     gz_bytes
   }
 
+  /// base_dir/addons に viz・other の2アドオン（manifest + バンドル本体）を書き込む共通フィクスチャ。
+  /// 層B の選択的同梱を検証する複数のテストで使い回す
+  fn write_viz_other_addon_fixture(base_dir: &Path) {
+    fs::create_dir_all(base_dir.join("addons")).unwrap();
+    fs::write(
+      base_dir.join("addons").join("manifest.json"),
+      br#"{"addons":[{"name":"viz","bundle":"addons/viz.iife.js"},{"name":"other","bundle":"addons/other.iife.js"}]}"#,
+    )
+    .unwrap();
+    fs::write(base_dir.join("addons").join("viz.iife.js"), b"VIZ").unwrap();
+    fs::write(base_dir.join("addons").join("other.iife.js"), b"OTHER").unwrap();
+  }
+
   #[test]
   fn extract_tgz_prefers_npm_pack_package_dir() {
     let content = b"{\"meta\":{\"title\":\"t\"},\"slides\":[]}";
@@ -1105,14 +1118,7 @@ mod tests {
     fs::remove_dir_all(&dir).ok();
     let base_dir = dir.join("src");
     let out_dir = dir.join("out");
-    fs::create_dir_all(base_dir.join("addons")).unwrap();
-    fs::write(
-      base_dir.join("addons").join("manifest.json"),
-      br#"{"addons":[{"name":"viz","bundle":"addons/viz.iife.js"},{"name":"other","bundle":"addons/other.iife.js"}]}"#,
-    )
-    .unwrap();
-    fs::write(base_dir.join("addons").join("viz.iife.js"), b"VIZ").unwrap();
-    fs::write(base_dir.join("addons").join("other.iife.js"), b"OTHER").unwrap();
+    write_viz_other_addon_fixture(&base_dir);
 
     let json = r#"{"meta":{"title":"t"},"slides":[]}"#;
     let tgz_path = build_slide_package_gated(
@@ -1268,14 +1274,7 @@ mod tests {
     fs::remove_dir_all(&dir).ok();
     let base_dir = dir.join("src");
     let out_dir = dir.join("out"); // 1回目・2回目とも同じ出力先ディレクトリ（上書き相当）
-    fs::create_dir_all(base_dir.join("addons")).unwrap();
-    fs::write(
-      base_dir.join("addons").join("manifest.json"),
-      br#"{"addons":[{"name":"viz","bundle":"addons/viz.iife.js"},{"name":"other","bundle":"addons/other.iife.js"}]}"#,
-    )
-    .unwrap();
-    fs::write(base_dir.join("addons").join("viz.iife.js"), b"VIZ").unwrap();
-    fs::write(base_dir.join("addons").join("other.iife.js"), b"OTHER").unwrap();
+    write_viz_other_addon_fixture(&base_dir);
 
     let json = r#"{"meta":{"title":"t"},"slides":[]}"#;
 
@@ -1293,8 +1292,14 @@ mod tests {
     .expect("1回目は両方選択で書き出す");
 
     // extract_slide_package は tgz のファイル名 stem（例: slides-demo-1.0.0）で展開先を決めるため、
-    // 名前・バージョン不変の再書き出しは同じ展開先ディレクトリを再利用する（ここではそれを模擬する）
-    let extract_dir = dir.join("extract-slide-packages").join("slides-demo-1.0.0");
+    // 名前・バージョン不変の再書き出しは同じ展開先ディレクトリを再利用する。
+    // ここでは実コマンドと同じ file_stem 由来の名前で展開先を作り、その再利用を模擬する
+    let stem = Path::new(&tgz_path_1)
+      .file_stem()
+      .and_then(|s| s.to_str())
+      .unwrap()
+      .to_string();
+    let extract_dir = dir.join("slide-packages").join(&stem);
     let pkg1 = extract_tgz(&fs::read(&tgz_path_1).unwrap(), &extract_dir).expect("1回目展開できる");
     assert!(
       pkg1.join("addons").join("other.iife.js").is_file(),
@@ -1333,9 +1338,15 @@ mod tests {
     let manifest: serde_json::Value =
       serde_json::from_str(&fs::read_to_string(pkg2.join("addons").join("manifest.json")).unwrap())
         .unwrap();
-    let kept = manifest.get("addons").unwrap().as_array().unwrap();
-    assert_eq!(kept.len(), 1, "manifest にも other は残らない");
-    assert_eq!(kept[0].get("name").unwrap().as_str().unwrap(), "viz");
+    let kept_names: Vec<&str> = manifest
+      .get("addons")
+      .unwrap()
+      .as_array()
+      .unwrap()
+      .iter()
+      .map(|a| a.get("name").unwrap().as_str().unwrap())
+      .collect();
+    assert_eq!(kept_names, vec!["viz"], "manifest にも other は残らない");
 
     fs::remove_dir_all(&dir).ok();
   }

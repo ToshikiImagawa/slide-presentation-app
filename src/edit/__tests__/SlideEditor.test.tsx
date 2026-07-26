@@ -59,6 +59,14 @@ function saveButton(): HTMLButtonElement {
   return screen.getByRole('button', { name: '保存' }) as HTMLButtonElement
 }
 
+/** 「.tgz 書き出し」を押し、exportSlidePackage に渡された includedAddons を取り出す */
+async function exportAndGetIncludedAddons(): Promise<string[]> {
+  fireEvent.click(screen.getByRole('button', { name: '.tgz 書き出し' }))
+  await waitFor(() => expect(h.exportSlidePackage).toHaveBeenCalled())
+  const opts = h.exportSlidePackage.mock.calls[0][1] as { includedAddons: string[] }
+  return opts.includedAddons
+}
+
 describe('SlideEditor 保存前バリデーション（FR-005）', () => {
   beforeEach(() => {
     h.saveSlidesJson.mockReset()
@@ -173,11 +181,9 @@ describe('SlideEditor 同梱アドオン選択（②・層A∪層B・0件表示�
     await screen.findByLabelText('pkg-a')
     const x = screen.getByRole('button', { name: 'pkg-a をパッケージから除外' })
     fireEvent.click(x)
-    fireEvent.click(screen.getByRole('button', { name: '.tgz 書き出し' }))
-    await waitFor(() => expect(h.exportSlidePackage).toHaveBeenCalled())
-    const opts = h.exportSlidePackage.mock.calls[0][1] as { includedAddons: string[] }
-    expect(opts.includedAddons).not.toContain('pkg-a')
-    expect(opts.includedAddons).toContain('pkg-b')
+    const includedAddons = await exportAndGetIncludedAddons()
+    expect(includedAddons).not.toContain('pkg-a')
+    expect(includedAddons).toContain('pkg-b')
   })
 
   it('層Aのチェックを入れて書き出すと、選択集合に組み込みアドオンが含まれて export される', async () => {
@@ -192,10 +198,8 @@ describe('SlideEditor 同梱アドオン選択（②・層A∪層B・0件表示�
     )
     const builtin = (await screen.findByLabelText('builtin-b')) as HTMLInputElement
     fireEvent.click(builtin) // 層A をオプトインで選択
-    fireEvent.click(screen.getByRole('button', { name: '.tgz 書き出し' }))
-    await waitFor(() => expect(h.exportSlidePackage).toHaveBeenCalled())
-    const opts = h.exportSlidePackage.mock.calls[0][1] as { includedAddons: string[] }
-    expect(opts.includedAddons).toEqual(expect.arrayContaining(['pkg-a', 'builtin-b']))
+    const includedAddons = await exportAndGetIncludedAddons()
+    expect(includedAddons).toEqual(expect.arrayContaining(['pkg-a', 'builtin-b']))
   })
 })
 
