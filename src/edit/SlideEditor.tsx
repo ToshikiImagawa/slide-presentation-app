@@ -311,8 +311,8 @@ export function SlideEditor({ source, onExit }: { source: EditSource; onExit: ()
         {/* 同梱アドオンの個別選択（層B∪層A）。候補が無くても非表示にせず状態を明示する（②）。
             ×ボタンを層A（builtinAddons）と同じ見た目で用意し削除導線を統一する（#36）。
             チェック解除と同じ効果の可逆操作（再チェックで復帰可）のため確認ダイアログは設けない。 */}
-        <Stack direction="row" spacing={1} alignItems="center" sx={{ px: 1, py: 0.5, borderBottom: '1px solid var(--theme-border)', flexWrap: 'wrap' }}>
-          <Typography variant="body2" sx={{ color: 'var(--theme-text-muted)' }}>
+        <Stack direction="row" spacing={1} alignItems="center" role="group" aria-labelledby="include-addons-label" sx={{ px: 1, py: 0.5, borderBottom: '1px solid var(--theme-border)', flexWrap: 'wrap' }}>
+          <Typography id="include-addons-label" variant="body2" sx={{ color: 'var(--theme-text-muted)' }}>
             {t('edit.includeAddons', '同梱アドオン')}:
           </Typography>
           {availableAddons.length === 0 ? (

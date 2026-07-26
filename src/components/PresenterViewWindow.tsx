@@ -107,7 +107,7 @@ export function PresenterViewWindow({ slides, currentIndex, controlState, progre
       {/* 上部コントロールバー */}
       <div ref={controlBarRef} className={styles.controlBar}>
         <div className={styles.navControls}>
-          <button className={styles.navButton} onClick={() => onNavigate('prev')} disabled={isFirst} title={t('presenterView.navPrev')}>
+          <button className={styles.navButton} onClick={() => onNavigate('prev')} disabled={isFirst} title={t('presenterView.navPrev')} aria-label={t('presenterView.navPrev')}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
               <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" />
             </svg>
@@ -115,7 +115,7 @@ export function PresenterViewWindow({ slides, currentIndex, controlState, progre
           <span className={styles.slideProgress}>
             {currentIndex + 1} / {slides.length}
           </span>
-          <button className={styles.navButton} onClick={() => onNavigate('next')} disabled={isLast} title={t('presenterView.navNext')}>
+          <button className={styles.navButton} onClick={() => onNavigate('next')} disabled={isLast} title={t('presenterView.navNext')} aria-label={t('presenterView.navNext')}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
               <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />
             </svg>
@@ -127,6 +127,7 @@ export function PresenterViewWindow({ slides, currentIndex, controlState, progre
             onClick={onAudioToggle}
             disabled={!controlState?.hasVoice || controlState?.hasError}
             title={controlState?.hasError ? t('audio.error') : controlState?.isPlaying ? t('audio.stop') : t('audio.play')}
+            aria-label={controlState?.hasError ? t('audio.error') : controlState?.isPlaying ? t('audio.stop') : t('audio.play')}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
               {controlState?.hasError ? (
@@ -145,14 +146,14 @@ export function PresenterViewWindow({ slides, currentIndex, controlState, progre
               )}
             </svg>
           </button>
-          <button className={`${styles.audioButton} ${controlState?.autoPlay ? styles.active : ''}`} onClick={onAutoPlayToggle} title={t('presenterView.autoPlay')}>
+          <button className={`${styles.audioButton} ${controlState?.autoPlay ? styles.active : ''}`} onClick={onAutoPlayToggle} title={t('presenterView.autoPlay')} aria-label={t('presenterView.autoPlay')}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
               <path d="M8 5v14l11-7z" />
             </svg>
             <span className={styles.autoLabel}>A</span>
           </button>
           <div className={styles.buttonWrapper}>
-            <button className={`${styles.audioButton} ${controlState?.autoSlideshow ? styles.active : ''}`} onClick={onAutoSlideshowToggle} title={t('presenterView.autoSlideshow')}>
+            <button className={`${styles.audioButton} ${controlState?.autoSlideshow ? styles.active : ''}`} onClick={onAutoSlideshowToggle} title={t('presenterView.autoSlideshow')} aria-label={t('presenterView.autoSlideshow')}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M4 18l8.5-6L4 6v12zm9-12v12l8.5-6L13 6z" />
               </svg>
