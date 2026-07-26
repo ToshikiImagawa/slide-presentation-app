@@ -93,6 +93,21 @@ describe('AiGeneratePanel 事前ゲート・退避（Vertex・FR-007/FR-008）',
     await waitFor(() => expect(h.setGenerationEnabled).toHaveBeenCalledWith(true))
   })
 
+  it('トグルボタンの aria-expanded が展開状態と一致する（#34）', async () => {
+    render(
+      <Wrapper>
+        <AiGeneratePanel currentText={VALID} onApply={() => {}} />
+      </Wrapper>,
+    )
+    await waitFor(() => expect(h.getVertexStatus).toHaveBeenCalled())
+    const toggleButton = screen.getByRole('button', { name: 'AI 生成' })
+    expect(toggleButton.getAttribute('aria-expanded')).toBe('false')
+    fireEvent.click(toggleButton)
+    expect(toggleButton.getAttribute('aria-expanded')).toBe('true')
+    fireEvent.click(toggleButton)
+    expect(toggleButton.getAttribute('aria-expanded')).toBe('false')
+  })
+
   it('内蔵で Vertex 未設定なら、プロンプトを入れても生成ボタンが無効（事前ゲート）', async () => {
     h.getVertexStatus.mockResolvedValue({ configured: false })
     render(
