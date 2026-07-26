@@ -22,9 +22,21 @@ vi.mock('@tauri-apps/api/webviewWindow', () => ({
 
 import { usePresenterView } from '../usePresenterView'
 import type { SlideData } from '../../data'
+import type { ReactNode } from 'react'
+import { I18nProvider } from '../../i18n'
+import { ToastProvider } from '../../toast'
 
 const EVENT_NAME = 'presenter-view'
 const slides = [{ id: 's1', layout: 'center' }] as unknown as SlideData[]
+
+/** usePresenterView は useTranslation/useToast を使うため、テストでも Provider でラップする */
+function wrapper({ children }: { children: ReactNode }) {
+  return (
+    <I18nProvider locales={[]}>
+      <ToastProvider>{children}</ToastProvider>
+    </I18nProvider>
+  )
+}
 
 /** emit 呼び出しのうち addonsChanged のものを抽出 */
 function addonsChangedCalls() {
@@ -38,7 +50,7 @@ describe('usePresenterView アドオン伝搬', () => {
   })
 
   it('マウント時に addonsChanged を emit する（既に開いている発表者ビュー向け）', () => {
-    renderHook(() => usePresenterView({ slides, addonOwner: '/pkgA', addonScripts: ['asset://localhost/pkgA/addons/a.js'] }))
+    renderHook(() => usePresenterView({ slides, addonOwner: '/pkgA', addonScripts: ['asset://localhost/pkgA/addons/a.js'] }), { wrapper })
     const calls = addonsChangedCalls()
     expect(calls.length).toBeGreaterThanOrEqual(1)
     expect(calls[0][0]).toBe(EVENT_NAME)
@@ -46,7 +58,7 @@ describe('usePresenterView アドオン伝搬', () => {
   })
 
   it('presenterViewReady 受信時に addonsChanged を slideChanged より先に emit する', async () => {
-    renderHook(() => usePresenterView({ slides, addonOwner: '/pkgA', addonScripts: ['asset://localhost/pkgA/addons/a.js'] }))
+    renderHook(() => usePresenterView({ slides, addonOwner: '/pkgA', addonScripts: ['asset://localhost/pkgA/addons/a.js'] }), { wrapper })
 
     // listen 登録を待つ
     await waitFor(() => expect(h.listeners.length).toBe(1))
@@ -79,7 +91,7 @@ describe('usePresenterView テーマ伝搬', () => {
   })
 
   it('マウント時に themeChanged を emit する（既に開いている発表者ビュー向け）', () => {
-    renderHook(() => usePresenterView({ slides, themeColors: 'theme/colors.json', theme: { colors: { primary: '#000000' } } }))
+    renderHook(() => usePresenterView({ slides, themeColors: 'theme/colors.json', theme: { colors: { primary: '#000000' } } }), { wrapper })
     const calls = themeChangedCalls()
     expect(calls.length).toBeGreaterThanOrEqual(1)
     expect(calls[0][0]).toBe(EVENT_NAME)
@@ -87,7 +99,7 @@ describe('usePresenterView テーマ伝搬', () => {
   })
 
   it('presenterViewReady 受信時に themeChanged を slideChanged より先に emit する', async () => {
-    renderHook(() => usePresenterView({ slides, themeColors: 'theme/colors.json' }))
+    renderHook(() => usePresenterView({ slides, themeColors: 'theme/colors.json' }), { wrapper })
 
     // listen 登録を待つ
     await waitFor(() => expect(h.listeners.length).toBe(1))

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { ThemeProvider } from '@mui/material/styles'
 import { emit, listen } from '@tauri-apps/api/event'
 import type { UnlistenFn } from '@tauri-apps/api/event'
+import { getCurrentWindow } from '@tauri-apps/api/window'
 import 'reveal.js/dist/reveal.css'
 import './styles/global.css'
 import './addon-bridge'
@@ -33,6 +34,7 @@ function PresenterViewApp() {
 
   useEffect(() => {
     let unlisten: UnlistenFn | undefined
+    let unlistenClose: UnlistenFn | undefined
 
     listen<PresenterViewMessage>(EVENT_NAME, async (event) => {
       if (event.payload.type === 'themeChanged') {
@@ -71,15 +73,20 @@ function PresenterViewApp() {
     const readyMessage: PresenterViewMessage = { type: 'presenterViewReady' }
     void emit(EVENT_NAME, readyMessage)
 
-    // ウィンドウが閉じられるときにメインウィンドウに通知
-    const handleBeforeUnload = () => {
-      const closedMessage: PresenterViewMessage = { type: 'presenterViewClosed' }
-      void emit(EVENT_NAME, closedMessage)
-    }
-    window.addEventListener('beforeunload', handleBeforeUnload)
+    // ウィンドウが閉じられるときにメインウィンドウに通知する。
+    // DOM の beforeunload は WKWebView では赤信号ボタン等の操作で発火しないケースがあるため、
+    // Tauri のネイティブなクローズリクエストイベントを使う。destroy() 前に emit を待つことで通知漏れを防ぐ
+    getCurrentWindow()
+      .onCloseRequested(async () => {
+        const closedMessage: PresenterViewMessage = { type: 'presenterViewClosed' }
+        await emit(EVENT_NAME, closedMessage)
+      })
+      .then((fn) => {
+        unlistenClose = fn
+      })
 
     return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload)
+      unlistenClose?.()
       unlisten?.()
     }
   }, [])
