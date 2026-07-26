@@ -282,20 +282,11 @@ export function SlideEditor({ source, onExit }: { source: EditSource; onExit: ()
             <>
               {availableAddons.map((addon) => {
                 const included = selectedAddons.includes(addon)
+                const exclude = () => setSelectedAddons((prev) => prev.filter((a) => a !== addon))
                 return (
                   <Stack key={addon} direction="row" spacing={0.5} alignItems="center" sx={{ border: '1px solid var(--theme-border)', borderRadius: 1, pl: 1, opacity: included ? 1 : 0.6 }}>
-                    <FormControlLabel
-                      sx={{ mr: 0 }}
-                      control={<Checkbox size="small" checked={included} onChange={(e) => setSelectedAddons((prev) => (e.target.checked ? [...prev, addon] : prev.filter((a) => a !== addon)))} />}
-                      label={addon}
-                    />
-                    <Button
-                      size="small"
-                      color="inherit"
-                      onClick={() => setSelectedAddons((prev) => prev.filter((a) => a !== addon))}
-                      disabled={!included}
-                      aria-label={t('edit.packageAddonRemoveAria', '{name} をパッケージから除外').replace('{name}', addon)}
-                    >
+                    <FormControlLabel sx={{ mr: 0 }} control={<Checkbox size="small" checked={included} onChange={(e) => (e.target.checked ? setSelectedAddons((prev) => [...prev, addon]) : exclude())} />} label={addon} />
+                    <Button size="small" color="inherit" onClick={exclude} disabled={!included} aria-label={t('edit.packageAddonRemoveAria', '{name} をパッケージから除外').replace('{name}', addon)}>
                       ×
                     </Button>
                   </Stack>
