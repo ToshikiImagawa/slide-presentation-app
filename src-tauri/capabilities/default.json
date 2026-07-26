@@ -10,7 +10,6 @@
     "core:default",
     "core:event:default",
     "core:webview:allow-create-webview-window",
-    "core:window:allow-destroy",
     "dialog:default",
     "fs:allow-read-text-file",
     "fs:allow-exists",

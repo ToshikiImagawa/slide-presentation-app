@@ -73,9 +73,7 @@ function PresenterViewApp() {
     const readyMessage: PresenterViewMessage = { type: 'presenterViewReady' }
     void emit(EVENT_NAME, readyMessage)
 
-    // ウィンドウが閉じられるときにメインウィンドウに通知する。
-    // DOM の beforeunload は WKWebView では赤信号ボタン等の操作で発火しないケースがあるため、
-    // Tauri のネイティブなクローズリクエストイベントを使う。destroy() 前に emit を待つことで通知漏れを防ぐ
+    // WKWebView では beforeunload が赤信号ボタン等の操作で発火しないため、Tauri のネイティブなクローズリクエストイベントで通知する
     getCurrentWindow()
       .onCloseRequested(async () => {
         const closedMessage: PresenterViewMessage = { type: 'presenterViewClosed' }

@@ -2,15 +2,9 @@ import { createContext, useCallback, useContext, useMemo, useState } from 'react
 import type { ReactNode } from 'react'
 import Snackbar from '@mui/material/Snackbar'
 import Alert from '@mui/material/Alert'
-import type { AlertColor } from '@mui/material/Alert'
-
-interface ToastState {
-  message: string
-  severity: AlertColor
-}
 
 interface ToastContextValue {
-  showToast: (message: string, severity?: AlertColor) => void
+  showToast: (message: string) => void
 }
 
 const ToastContext = createContext<ToastContextValue | null>(null)
@@ -20,25 +14,23 @@ type ToastProviderProps = {
 }
 
 export function ToastProvider({ children }: ToastProviderProps) {
-  const [toast, setToast] = useState<ToastState | null>(null)
+  const [message, setMessage] = useState<string | null>(null)
 
-  const showToast = useCallback((message: string, severity: AlertColor = 'error') => {
-    setToast({ message, severity })
+  const showToast = useCallback((message: string) => {
+    setMessage(message)
   }, [])
 
-  const handleClose = useCallback(() => setToast(null), [])
+  const handleClose = useCallback(() => setMessage(null), [])
 
   const value = useMemo<ToastContextValue>(() => ({ showToast }), [showToast])
 
   return (
     <ToastContext.Provider value={value}>
       {children}
-      <Snackbar open={toast !== null} autoHideDuration={6000} onClose={handleClose} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
-        {toast ? (
-          <Alert onClose={handleClose} severity={toast.severity} variant="filled" sx={{ width: '100%' }}>
-            {toast.message}
-          </Alert>
-        ) : undefined}
+      <Snackbar open={message !== null} autoHideDuration={6000} onClose={handleClose} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
+        <Alert onClose={handleClose} severity="error" variant="filled" sx={{ width: '100%' }}>
+          {message}
+        </Alert>
       </Snackbar>
     </ToastContext.Provider>
   )
