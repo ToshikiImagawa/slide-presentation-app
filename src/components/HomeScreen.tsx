@@ -56,7 +56,7 @@ export function HomeScreen({ recentPackages, onOpenRecent, onOpenSample, onBrows
             </span>
             <span className={styles.primaryText}>
               <span className={styles.primaryLabel}>{t('home.browseButton')}</span>
-              <span className={styles.primaryHint}>{t('home.browseHint', '.json / .tgz')}</span>
+              <span className={styles.primaryHint}>{t('home.browseHint', '.json / .spkg')}</span>
             </span>
           </button>
 

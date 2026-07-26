@@ -11,9 +11,17 @@ All notable changes to this project will be documented in this file.
 - **Edit Mode** — Author and package slides directly in the app (toggle from the toolbar **Edit** button)
     - Metadata form + full-width `slides.json` editor sharing a single source of truth, with a live preview rendered by
       the production renderer (theme edits reflected live)
-    - Save the edited `slides.json` locally, and export a `.tgz` slide package (name / version, referenced assets bundled)
+    - Save the edited `slides.json` locally, and export a `.spkg` slide package (name / version, referenced assets bundled)
     - Validation gating: save / export disabled and preview hidden while the JSON has a syntax or schema error
     - Filesystem writes happen only in edit mode, performed at the Rust boundary (least privilege)
+
+### Changed
+
+- **Slide package extension** — Exported slide packages now use a project-specific `.spkg` extension instead of `.tgz`
+  (same tar+gzip format under the hood). Opening a package still accepts legacy `.tgz` files for backward
+  compatibility. The CLI export (`npm run export:slides`) renames the `npm pack` output accordingly; as a result,
+  installing a freshly exported package as a local npm tarball (`npm install ./dist-slides/xxx.tgz`) is no longer
+  supported — use the `VITE_SLIDE_PACKAGE` local-path method instead (see [Slide Packages](README.md#slide-packages))
 - **Addon Detachment (3 layers)** — Control over bundled executable addons
     - Runtime trust per package (confirmation prompt on open + Settings, default denied; global disable takes precedence)
     - Export bundling selection (in-app **Bundled add-ons** checkboxes and `npm run export:slides --addons a,b`); the choices union package add-ons with dev built-in add-ons, and the list stays visible with an empty-state note even when none are available

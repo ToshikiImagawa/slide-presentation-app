@@ -209,9 +209,18 @@ export function resolveLocalAssetPaths<T>(value: T, baseDir: string): T {
   return value
 }
 
-/** 選択されたパスから slides.json の実パスとその基準ディレクトリを求める（.tgz は Rust 側で展開） */
+/** スライドパッケージのアーカイブ拡張子（.spkg が既定。旧 .tgz も後方互換で開ける） */
+const PACKAGE_ARCHIVE_EXTENSIONS = ['.spkg', '.tgz']
+
+/** path がスライドパッケージのアーカイブ（.spkg または旧 .tgz）かどうかを判定する（純粋関数） */
+export function isSlidePackageArchivePath(path: string): boolean {
+  const lower = path.toLowerCase()
+  return PACKAGE_ARCHIVE_EXTENSIONS.some((ext) => lower.endsWith(ext))
+}
+
+/** 選択されたパスから slides.json の実パスとその基準ディレクトリを求める（.spkg/.tgz は Rust 側で展開） */
 async function resolvePackageEntry(selectedPath: string): Promise<{ slidesJsonPath: string; baseDir: string }> {
-  if (selectedPath.toLowerCase().endsWith('.tgz')) {
+  if (isSlidePackageArchivePath(selectedPath)) {
     const extractedDir = await invoke<string>('extract_slide_package', { tgzPath: selectedPath })
     return { slidesJsonPath: `${extractedDir}/slides.json`, baseDir: extractedDir }
   }
@@ -285,7 +294,7 @@ export async function pickAndLoadSlidePackage(): Promise<SlidePackageLoadResult>
     title: 'スライドを開く',
     filters: [
       { name: 'slides.json', extensions: ['json'] },
-      { name: 'スライドパッケージ (.tgz)', extensions: ['tgz'] },
+      { name: 'スライドパッケージ (.spkg / .tgz)', extensions: ['spkg', 'tgz'] },
     ],
     multiple: false,
     directory: false,

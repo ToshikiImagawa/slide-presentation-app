@@ -24,9 +24,9 @@ fn allow_asset_dir(app: tauri::AppHandle, dir: String) -> Result<(), String> {
   Ok(())
 }
 
-/// tgz バイト列を extract_dir に展開し、slides.json のあるディレクトリを返す
+/// tar+gzip バイト列（.spkg・旧 .tgz とも同一形式）を extract_dir に展開し、slides.json のあるディレクトリを返す
 /// （`npm pack` は内容を package/ 配下にネストするため、scripts/export-slides.mjs 由来の
-/// tgz と同じ規則で package/ を優先的に探す）
+/// パッケージと同じ規則で package/ を優先的に探す）
 fn extract_tgz(bytes: &[u8], extract_dir: &Path) -> Result<PathBuf, String> {
   if extract_dir.exists() {
     fs::remove_dir_all(extract_dir).map_err(|e| e.to_string())?;
@@ -46,7 +46,7 @@ fn extract_tgz(bytes: &[u8], extract_dir: &Path) -> Result<PathBuf, String> {
   })
 }
 
-/// スライドパッケージ (.tgz) をアプリのキャッシュディレクトリに展開し、slides.json のあるディレクトリを返す
+/// スライドパッケージ (.spkg・旧 .tgz) をアプリのキャッシュディレクトリに展開し、slides.json のあるディレクトリを返す
 #[tauri::command]
 fn extract_slide_package(app: tauri::AppHandle, tgz_path: String) -> Result<String, String> {
   let bytes = fs::read(&tgz_path).map_err(|e| e.to_string())?;
@@ -405,7 +405,7 @@ fn filter_addon_manifest(
   (filtered, bundles)
 }
 
-/// 編集モードゲートつきのスライドパッケージ (.tgz) 生成（純粋ロジック。テストはこの関数を直接叩く）。
+/// 編集モードゲートつきのスライドパッケージ (.spkg) 生成（純粋ロジック。テストはこの関数を直接叩く）。
 /// slides.json は無損失のため受け取った json 文字列をそのまま格納し、アセットは base_dir 基準で
 /// 収集する（存在しないものは export-slides.mjs と同様スキップ）。全ファイルを package/ 配下へ
 /// 格納して npm pack 慣習に合わせ、extract_slide_package で往復展開できる形にする（DC-003）
@@ -568,7 +568,7 @@ fn build_slide_package_gated(
 
   let out = Path::new(out_dir);
   fs::create_dir_all(out).map_err(|e| e.to_string())?;
-  let tgz_path = out.join(format!("slides-{}-{}.tgz", name, version));
+  let tgz_path = out.join(format!("slides-{}-{}.spkg", name, version));
   fs::write(&tgz_path, &gz_bytes).map_err(|e| e.to_string())?;
 
   tgz_path
@@ -577,7 +577,7 @@ fn build_slide_package_gated(
     .ok_or_else(|| "出力パスの文字列化に失敗しました".to_string())
 }
 
-/// 編集した slides.json をアセットとともに .tgz パッケージへ書き出す（編集モード時のみ成功）
+/// 編集した slides.json をアセットとともに .spkg パッケージへ書き出す（編集モード時のみ成功）
 #[tauri::command]
 fn export_slide_package(
   json: String,
@@ -1015,7 +1015,12 @@ mod tests {
     )
     .expect("編集モード有効時は書き出す");
 
-    // 生成した .tgz を extract_tgz で展開し往復一致を検証（FR-007/DC-003）
+    assert!(
+      tgz_path.ends_with(".spkg"),
+      "出力拡張子は .spkg（issue #41: 独自拡張子への変更）"
+    );
+
+    // 生成した .spkg を extract_tgz で展開し往復一致を検証（FR-007/DC-003）
     let bytes = fs::read(&tgz_path).unwrap();
     let extract_dir = dir.join("extract");
     let pkg = extract_tgz(&bytes, &extract_dir).expect("展開できる");

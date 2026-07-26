@@ -10,7 +10,7 @@
       "recentEmpty": "Vous n'avez pas encore ouvert de diapositives",
       "sampleButton": "Ouvrir l'exemple",
       "browseButton": "Ouvrir un fichier",
-      "browseHint": "Choisissez un fichier .json / .tgz"
+      "browseHint": "Choisissez un fichier .json / .spkg"
     },
     "settings": {
       "title": "Paramètres",
@@ -31,7 +31,7 @@
       "startEdit": "Éditer",
       "exit": "Quitter l'édition",
       "save": "Enregistrer",
-      "export": "Exporter .tgz",
+      "export": "Exporter .spkg",
       "packageName": "Nom du paquet",
       "version": "Version",
       "jsonLabel": "slides.json",
@@ -56,7 +56,7 @@
       "themeCustomCss": "CSS personnalisé",
       "includeAddons": "Modules intégrés au paquet",
       "packageAddonRemoveAria": "Exclure {name} du paquet",
-      "packageAddonRemoveNote": "Utilisez × ou décochez pour exclure du paquet (recochez pour restaurer). Réexportez le .tgz pour appliquer le changement",
+      "packageAddonRemoveNote": "Utilisez × ou décochez pour exclure du paquet (recochez pour restaurer). Réexportez le .spkg pour appliquer le changement",
       "builtinAddons": "Modules intégrés (dev)",
       "builtinNamePlaceholder": "Nom du nouveau module",
       "builtinAdd": "Ajouter",

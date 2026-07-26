@@ -99,8 +99,8 @@ main.tsx
 `src-tauri/` に Tauri 2 + Rust のネイティブシェルがある。フロントエンドは通常の Vite アプリのままで、`tauri.conf.json` の `devUrl`/`frontendDist` を通じて Tauri の WebView にホストされる。
 
 - **発表者ビュー（別ウィンドウ）**: `usePresenterView`（`src/hooks/usePresenterView.ts`）が `@tauri-apps/api/webviewWindow` の `WebviewWindow` でネイティブウィンドウを生成し、`@tauri-apps/api/event` の `emit`/`listen`（イベント名 `presenter-view`）でメインウィンドウと相互通信する。メッセージ型 `PresenterViewMessage`（`src/data/types.ts`）はブラウザ版当時の設計を維持
-- **ローカルスライド選択**: `src/localSlideLoader.ts` が `@tauri-apps/plugin-dialog` でファイル選択（`slides.json` または `.tgz` パッケージ）、`@tauri-apps/plugin-fs` で読み込み、Rust コマンド `allow_asset_dir`（`src-tauri/src/lib.rs`）で asset プロトコルの読み取りスコープを動的に許可し、`convertFileSrc` で `image/`・`voice/`・`theme/`・`font/` の相対参照をローカル asset URL に書き換える（`scripts/export-slides.mjs` の `extractAssetPaths` と同じ規則）。`.tgz` は Rust コマンド `extract_slide_package`（`flate2`/`tar` クレート）でアプリのキャッシュディレクトリに展開し、`npm pack` の慣習に従って `package/` サブディレクトリを優先的に探す。最後に開いたパスは `@tauri-apps/plugin-store` で永続化し、次回起動時に自動復元する
-- ビルド時同梱（`public/slides.json`、`VITE_SLIDE_PACKAGE` 経由の npm パッケージ／`.tgz` 配布）は変更なし。ローカル選択はあくまで起動後の上書きとして追加された機能
+- **ローカルスライド選択**: `src/localSlideLoader.ts` が `@tauri-apps/plugin-dialog` でファイル選択（`slides.json` または `.spkg` パッケージ。旧 `.tgz` も後方互換で開ける）、`@tauri-apps/plugin-fs` で読み込み、Rust コマンド `allow_asset_dir`（`src-tauri/src/lib.rs`）で asset プロトコルの読み取りスコープを動的に許可し、`convertFileSrc` で `image/`・`voice/`・`theme/`・`font/` の相対参照をローカル asset URL に書き換える（`scripts/export-slides.mjs` の `extractAssetPaths` と同じ規則）。`.spkg`/`.tgz` は Rust コマンド `extract_slide_package`（`flate2`/`tar` クレート。バイト列は同一の tar+gzip 形式で拡張子に依存しない）でアプリのキャッシュディレクトリに展開し、`npm pack` の慣習に従って `package/` サブディレクトリを優先的に探す。最後に開いたパスは `@tauri-apps/plugin-store` で永続化し、次回起動時に自動復元する
+- ビルド時同梱（`public/slides.json`、`VITE_SLIDE_PACKAGE` 経由の npm パッケージ／`.spkg` 配布）は変更なし。ローカル選択はあくまで起動後の上書きとして追加された機能。CLI 書き出し（`scripts/export-slides.mjs`）は `npm pack` 出力を `.spkg` へリネームするため、書き出し直後のパッケージをローカル tarball として `npm install` する運用は非対応（詳細は README.md の Slide Packages 節）
 
 ### テーマシステム
 

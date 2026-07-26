@@ -52,8 +52,8 @@ function slideContentPlugin(): Plugin {
     const absPath = resolve(__dirname, value)
     if (!existsSync(absPath)) return null
 
-    // .tgz の場合は展開して使用
-    if (absPath.endsWith('.tgz')) {
+    // .spkg（旧 .tgz）の場合は展開して使用。いずれも tar+gzip 形式で拡張子に依存しない
+    if (absPath.endsWith('.spkg') || absPath.endsWith('.tgz')) {
       const extractDir = resolve(__dirname, 'node_modules/.slide-content-cache')
       if (existsSync(extractDir)) rmSync(extractDir, { recursive: true })
       mkdirSync(extractDir, { recursive: true })

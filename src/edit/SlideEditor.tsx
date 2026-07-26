@@ -47,7 +47,7 @@ const JSON_SYNTAX_ERROR_MARK = 'JSON 構文エラー'
 
 /**
  * 編集画面のルート。JSON エディタ・確定フィールドのフォーム・本番同一レンダラのライブプレビューを束ね、
- * 保存 / .tgz 書き出しを行う。編集対象は相対パスの生 JSON（source.rawText）で、プレビュー表示のみ
+ * 保存 / .spkg 書き出しを行う。編集対象は相対パスの生 JSON（source.rawText）で、プレビュー表示のみ
  * baseDir 基準でアセット解決する（保存・書き出しは相対パスのまま＝可搬・無損失）。
  */
 export function SlideEditor({ source, onExit }: { source: EditSource; onExit: () => void }) {
@@ -214,8 +214,8 @@ export function SlideEditor({ source, onExit }: { source: EditSource; onExit: ()
     try {
       const outDir = await chooseExportDir()
       if (!outDir) return
-      const tgz = await exportSlidePackage(text, { outDir, name: name || 'slides', version: version || '1.0.0', baseDir: source.baseDir, includedAddons: selectedAddons })
-      setStatus({ kind: 'ok', message: `${t('edit.exported', '書き出しました')}: ${tgz}` })
+      const pkgPath = await exportSlidePackage(text, { outDir, name: name || 'slides', version: version || '1.0.0', baseDir: source.baseDir, includedAddons: selectedAddons })
+      setStatus({ kind: 'ok', message: `${t('edit.exported', '書き出しました')}: ${pkgPath}` })
     } catch (e) {
       setStatus({ kind: 'error', message: `${t('edit.exportFailed', '書き出しに失敗しました')}: ${e instanceof Error ? e.message : String(e)}` })
     }
@@ -236,7 +236,7 @@ export function SlideEditor({ source, onExit }: { source: EditSource; onExit: ()
             {t('edit.save', '保存')}
           </Button>
           <Button variant="contained" size="small" onClick={handleExport} disabled={!canWrite}>
-            {t('edit.export', '.tgz 書き出し')}
+            {t('edit.export', '.spkg 書き出し')}
           </Button>
         </Stack>
 
@@ -290,7 +290,7 @@ export function SlideEditor({ source, onExit }: { source: EditSource; onExit: ()
                 )
               })}
               <Typography variant="caption" sx={{ color: 'var(--theme-text-muted)' }}>
-                {t('edit.packageAddonRemoveNote', '×またはチェック解除でパッケージから除外されます（再チェックで復帰可）。反映には「.tgz 書き出し」が必要です')}
+                {t('edit.packageAddonRemoveNote', '×またはチェック解除でパッケージから除外されます（再チェックで復帰可）。反映には「.spkg 書き出し」が必要です')}
               </Typography>
             </>
           )}
