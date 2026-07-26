@@ -16,8 +16,8 @@ type ToastProviderProps = {
 export function ToastProvider({ children }: ToastProviderProps) {
   const [message, setMessage] = useState<string | null>(null)
 
-  const showToast = useCallback((message: string) => {
-    setMessage(message)
+  const showToast = useCallback((text: string) => {
+    setMessage(text)
   }, [])
 
   const handleClose = useCallback(() => setMessage(null), [])
