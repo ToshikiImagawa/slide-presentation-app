@@ -11,6 +11,7 @@ EXPECTED_IDENTITY="$(printf '%s' "$2" | tr -d '\r\n' | sed -E "s/^[[:space:]\"'�
 AUTHORITY="$(codesign -dvv "$TARGET_PATH" 2>&1 | grep '^Authority=' | head -1)"
 echo "$AUTHORITY"
 echo "debug: authority_len=${#AUTHORITY} identity_len=${#EXPECTED_IDENTITY}"
+echo "debug: identity_hex=$(printf '%s' "$EXPECTED_IDENTITY" | od -An -tx1 | tr -d '\n')"
 if ! grep -qF "$EXPECTED_IDENTITY" <<< "$AUTHORITY"; then
   echo "::error::codesign の Authority が期待する signing identity と一致しません(ad-hoc 署名への縮退の可能性): $AUTHORITY"
   exit 1
