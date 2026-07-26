@@ -210,8 +210,17 @@ export function resolveLocalAssetPaths<T>(value: T, baseDir: string): T {
   return value
 }
 
-/** 選択されたパスから slides.json の実パスとその基準ディレクトリを求める（.spkg/.tgz は Rust 側で展開） */
+/** https の URL かどうかを判定する（純粋関数。issue #40: ダウンロード対象を https スキームのみに限定する） */
+function isRemoteUrl(path: string): boolean {
+  return /^https:\/\//i.test(path)
+}
+
+/** 選択されたパスから slides.json の実パスとその基準ディレクトリを求める（.spkg/.tgz・URL は Rust 側でダウンロード/展開） */
 async function resolvePackageEntry(selectedPath: string): Promise<{ slidesJsonPath: string; baseDir: string }> {
+  if (isRemoteUrl(selectedPath)) {
+    const extractedDir = await invoke<string>('download_slide_package', { url: selectedPath })
+    return { slidesJsonPath: `${extractedDir}/slides.json`, baseDir: extractedDir }
+  }
   if (isSlidePackageArchivePath(selectedPath)) {
     const extractedDir = await invoke<string>('extract_slide_package', { packagePath: selectedPath })
     return { slidesJsonPath: `${extractedDir}/slides.json`, baseDir: extractedDir }
@@ -280,6 +289,18 @@ async function reportLoadError(error: unknown): Promise<void> {
   await message(`スライドの読み込みに失敗しました。\n\n${detail}`, { title: 'スライドを開く', kind: 'error' })
 }
 
+/** 指定パスを読み込み、成功時は最近使ったリストに記録する。失敗時はエラーダイアログを表示する（recentPackages は変更なしの null） */
+async function loadAndRecordSlidePackage(selectedPath: string): Promise<SlidePackageLoadResult> {
+  try {
+    const result = await loadSlidePackage(selectedPath)
+    const recentPackages = await recordRecentSlidePackage(selectedPath, result.data.meta.title)
+    return { data: result, recentPackages }
+  } catch (error) {
+    await reportLoadError(error)
+    return { data: null, recentPackages: null }
+  }
+}
+
 /** ダイアログでローカルの slides.json または .spkg パッケージ（旧 .tgz も対応）を選択して読み込む。成功時は最近使ったリストに記録し、失敗時はエラーダイアログを表示する */
 export async function pickAndLoadSlidePackage(): Promise<SlidePackageLoadResult> {
   const selected = await open({
@@ -291,17 +312,14 @@ export async function pickAndLoadSlidePackage(): Promise<SlidePackageLoadResult>
     multiple: false,
     directory: false,
   })
-  // キャンセル時・読み込み失敗時は最近使ったリストを変更しないため recentPackages は null（再設定不要）
+  // キャンセル時は最近使ったリストを変更しないため recentPackages は null（再設定不要）
   if (!selected || Array.isArray(selected)) return { data: null, recentPackages: null }
+  return loadAndRecordSlidePackage(selected)
+}
 
-  try {
-    const result = await loadSlidePackage(selected)
-    const recentPackages = await recordRecentSlidePackage(selected, result.data.meta.title)
-    return { data: result, recentPackages }
-  } catch (error) {
-    await reportLoadError(error)
-    return { data: null, recentPackages: null }
-  }
+/** 指定 URL のスライドパッケージ（.spkg/.tgz）をダウンロードして読み込む（issue #40）。成功時は最近使ったリストに記録し、失敗時はエラーダイアログを表示する */
+export async function loadSlidePackageFromUrl(url: string): Promise<SlidePackageLoadResult> {
+  return loadAndRecordSlidePackage(url)
 }
 
 /** 最近使ったリストの1件を再読み込みする。成功時はリスト先頭に更新し、失敗時はエラーダイアログを表示してリストから取り除く */

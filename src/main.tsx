@@ -12,7 +12,7 @@ import { getBlankPresentationData, getDefaultPresentationData } from './data'
 import type { PresentationData } from './data'
 import { I18nProvider, loadLocales, useI18n } from './i18n'
 import type { LocaleResource } from './i18n'
-import { getRecentSlidePackages, isAddonAllowed, openRecentSlidePackage, pickAndLoadSlidePackage, removeRecentSlidePackage } from './localSlideLoader'
+import { getRecentSlidePackages, isAddonAllowed, loadSlidePackageFromUrl, openRecentSlidePackage, pickAndLoadSlidePackage, removeRecentSlidePackage } from './localSlideLoader'
 import type { LoadedSlidePackage, RecentSlidePackageEntry } from './localSlideLoader'
 import { SlideEditor } from './edit/SlideEditor'
 import type { EditSource } from './edit/SlideEditor'
@@ -121,6 +121,18 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
     [applyPackageAddons, showPresentation],
   )
 
+  const handleOpenUrl = useCallback(
+    async (url: string) => {
+      const { data, recentPackages } = await loadSlidePackageFromUrl(url)
+      if (recentPackages) setRecentPackages(recentPackages)
+      if (!data) return
+      await applyPackageAddons(data)
+      setEditSource({ rawText: data.rawText, baseDir: data.baseDir, sourcePath: data.sourcePath })
+      await showPresentation(data.data)
+    },
+    [applyPackageAddons, showPresentation],
+  )
+
   const handleRemoveRecent = useCallback(async (path: string) => {
     const updated = await removeRecentSlidePackage(path)
     setRecentPackages(updated)
@@ -173,7 +185,17 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
   }
 
   if (view === 'home') {
-    return <HomeScreen recentPackages={recentPackages} onOpenRecent={handleOpenRecent} onRemoveRecent={handleRemoveRecent} onOpenSample={handleOpenSample} onBrowse={handleBrowse} onCreateWithAi={handleCreateWithAi} />
+    return (
+      <HomeScreen
+        recentPackages={recentPackages}
+        onOpenRecent={handleOpenRecent}
+        onRemoveRecent={handleRemoveRecent}
+        onOpenSample={handleOpenSample}
+        onBrowse={handleBrowse}
+        onCreateWithAi={handleCreateWithAi}
+        onOpenUrl={handleOpenUrl}
+      />
+    )
   }
 
   return <App key={presentationKey} presentationData={presentationData} onGoHome={handleGoHome} onStartEdit={handleStartEdit} addonOwner={addonInfo.owner} addonScripts={addonInfo.scripts} />

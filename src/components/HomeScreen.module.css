@@ -117,6 +117,13 @@
   flex-shrink: 0;
 }
 
+.secondaryRow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
 .secondaryButton {
   align-self: center;
   display: inline-flex;
@@ -146,6 +153,47 @@
   color: var(--theme-primary);
   background: rgba(var(--theme-primary-rgb), 0.1);
   outline: none;
+}
+
+.urlForm {
+  display: flex;
+  gap: 8px;
+  animation: fadeInUp 0.2s ease-out both;
+}
+
+.urlInput {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 14px;
+  border: 1px solid var(--theme-border);
+  border-radius: 8px;
+  background: var(--theme-background-alt);
+  color: var(--theme-text-heading);
+  font-size: 14px;
+  font-family: var(--theme-font-body), sans-serif;
+}
+
+.urlInput:focus {
+  outline: 2px solid var(--theme-primary);
+  outline-offset: -1px;
+}
+
+.urlSubmitButton {
+  flex-shrink: 0;
+  padding: 10px 18px;
+  border: none;
+  border-radius: 8px;
+  background: var(--theme-primary);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: var(--theme-font-body), sans-serif;
+  cursor: pointer;
+}
+
+.urlSubmitButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* --- 最近開いたスライド --- */

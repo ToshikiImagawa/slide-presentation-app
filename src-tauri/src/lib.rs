@@ -73,6 +73,81 @@ fn extract_slide_package(app: tauri::AppHandle, package_path: String) -> Result<
     .ok_or_else(|| "抽出先パスの文字列化に失敗しました".to_string())
 }
 
+/// ダウンロード元 URL を検証する（純粋ロジック・テスト対象）。https 以外のスキームは拒否する
+/// （issue #40: 任意 URL を許可する以上、tauri-plugin-http のような事前許可ドメイン方式は本要件と相性が悪いため
+/// 採用せず、既存の reqwest 経由で Rust 境界に集約する。スキームのみ最小限の制約として課す）
+fn validate_download_url(raw: &str) -> Result<reqwest::Url, String> {
+  let parsed = reqwest::Url::parse(raw).map_err(|_| "URLの形式が正しくありません".to_string())?;
+  if parsed.scheme() != "https" {
+    return Err("https の URL のみ指定できます".to_string());
+  }
+  Ok(parsed)
+}
+
+/// スライドパッケージのダウンロード用共有 reqwest クライアント（generation::vertex の shared_client と同パターン）。
+/// タイムアウトはパッケージのファイルサイズを考慮し生成系の応答タイムアウトより長めに取る。
+static DOWNLOAD_HTTP_CLIENT: std::sync::OnceLock<reqwest::Client> = std::sync::OnceLock::new();
+const DOWNLOAD_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(300);
+
+fn download_http_client() -> reqwest::Client {
+  DOWNLOAD_HTTP_CLIENT
+    .get_or_init(|| {
+      reqwest::Client::builder()
+        .timeout(DOWNLOAD_TIMEOUT)
+        .build()
+        .unwrap_or_else(|_| reqwest::Client::new())
+    })
+    .clone()
+}
+
+/// URL からキャッシュ展開先ディレクトリ名を導出する（純粋ロジック・テスト対象）。
+/// extract_slide_package がローカルパスの file_stem を展開先名に使うのと同様、
+/// 同一 URL は同じ展開先を再利用・上書きする
+fn url_cache_stem(url: &str) -> String {
+  use std::collections::hash_map::DefaultHasher;
+  use std::hash::{Hash, Hasher};
+  let mut hasher = DefaultHasher::new();
+  url.hash(&mut hasher);
+  format!("url-{:x}", hasher.finish())
+}
+
+/// URL からスライドパッケージ（.spkg・旧 .tgz と同一 tar+gzip 形式）をダウンロードし、
+/// アプリのキャッシュディレクトリに展開して slides.json のあるディレクトリを返す（issue #40）。
+/// https の URL のみ許可する
+#[tauri::command]
+async fn download_slide_package(app: tauri::AppHandle, url: String) -> Result<String, String> {
+  let parsed = validate_download_url(&url)?;
+
+  let response = download_http_client()
+    .get(parsed)
+    .send()
+    .await
+    .map_err(|e| format!("ダウンロードに失敗しました: {e}"))?;
+  if !response.status().is_success() {
+    return Err(format!(
+      "ダウンロードに失敗しました（HTTP {}）",
+      response.status()
+    ));
+  }
+  let bytes = response
+    .bytes()
+    .await
+    .map_err(|e| format!("ダウンロードに失敗しました: {e}"))?;
+
+  let extract_dir = app
+    .path()
+    .app_cache_dir()
+    .map_err(|e| e.to_string())?
+    .join("slide-packages")
+    .join(url_cache_stem(&url));
+
+  let result_dir = extract_slide_archive(&bytes, &extract_dir)?;
+  result_dir
+    .to_str()
+    .map(|s| s.to_string())
+    .ok_or_else(|| "抽出先パスの文字列化に失敗しました".to_string())
+}
+
 /// 編集モードの書き込み許可フラグ（発表本番での誤書き込みを構造的に防ぐゲート）。
 /// save_slides_json / export_slide_package はこの state が true のときのみ書き込む（NFR-003: 最小権限）
 struct EditMode(Mutex<bool>);
@@ -820,6 +895,7 @@ pub fn run() {
     .invoke_handler(tauri::generate_handler![
       allow_asset_dir,
       extract_slide_package,
+      download_slide_package,
       set_edit_mode,
       save_slides_json,
       export_slide_package,
@@ -1439,6 +1515,31 @@ mod tests {
     // 無効化は編集モードに関わらず常に許可（生成の停止は妨げない）
     assert!(!resolve_generation_enabled(false, false).unwrap());
     assert!(!resolve_generation_enabled(true, false).unwrap());
+  }
+
+  #[test]
+  fn validate_download_url_accepts_https_only() {
+    // https は許可（issue #40）
+    assert!(validate_download_url("https://example.com/deck.spkg").is_ok());
+    // http・file 等の非 https スキームは拒否
+    assert!(validate_download_url("http://example.com/deck.spkg").is_err());
+    assert!(validate_download_url("file:///etc/passwd").is_err());
+    // URL として不正な文字列も拒否
+    assert!(validate_download_url("not a url").is_err());
+  }
+
+  #[test]
+  fn url_cache_stem_is_deterministic_and_unique_per_url() {
+    // 同一 URL は同じ展開先名（再オープン時の上書き再利用）
+    assert_eq!(
+      url_cache_stem("https://example.com/a.spkg"),
+      url_cache_stem("https://example.com/a.spkg")
+    );
+    // 異なる URL は異なる展開先名（衝突回避）
+    assert_ne!(
+      url_cache_stem("https://example.com/a.spkg"),
+      url_cache_stem("https://example.com/b.spkg")
+    );
   }
 
   #[test]
