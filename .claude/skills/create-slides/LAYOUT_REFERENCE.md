@@ -1,5 +1,9 @@
 # レイアウトリファレンス
 
+> 機械可読なスキーマ定義（AI生成プロンプト・生成専用の厳格チェックが参照する単一ソース）は
+> [`schema/slide-content-schema.json`](../../../schema/slide-content-schema.json) にある。
+> 本ファイルはその人間向けの詳細例であり、内容を変更する際は両者を同期させること。
+
 ## center
 
 タイトル・まとめ用の中央寄せレイアウト。
@@ -71,7 +75,7 @@
 }
 ```
 
-利用可能アイコン: `Description`, `PlaylistAddCheck`, `Traffic`, `Memory`, `Search`
+利用可能アイコン: `Description`, `PlaylistAddCheck`, `Traffic`, `FactCheck`, `Memory`, `Search`
 
 ### component（カスタムコンポーネント）
 

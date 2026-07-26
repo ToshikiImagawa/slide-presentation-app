@@ -8,7 +8,7 @@ impl-status: implemented
 priority: high
 risk: high
 created: 2026-07-25
-updated: 2026-07-25
+updated: 2026-07-27
 depends-on:
   - spec-ai-slide-generation
 tags:
@@ -25,7 +25,7 @@ category: authoring
 
 **ドキュメント種別:** 技術設計書 (Design Doc)
 **SDDフェーズ:** Plan (計画/設計)
-**最終更新日:** 2026-07-25
+**最終更新日:** 2026-07-27
 **関連 Spec:** [ai-slide-generation_spec.md](./ai-slide-generation_spec.md)
 **関連 PRD:** [ai-slide-generation.md](../requirement/ai-slide-generation.md)
 
@@ -338,6 +338,17 @@ HTTP エラー分類は原因に対応させ、UI の案内が誤誘導になら
 ---
 
 # 10. 変更履歴
+
+## v0.6（2026-07-27・生成精度改善: 参照スキーマの単一ソース化）
+
+**変更内容（生成プロンプトが最小スキーマしか提示しておらず、レイアウト別 content 構造を持っていなかった問題への対応）:**
+
+- `system_prompt()`（L189 以降）にはこれまで `meta.title` / `slides[].id,layout,content` という最小構造しか含まれておらず、`.claude/skills/create-slides/LAYOUT_REFERENCE.md`（Claude Code skill 専用の詳細リファレンス）はプロンプトから一切参照されていなかった。加えて LAYOUT_REFERENCE.md は既にドリフトしていた（組み込みアイコン `FactCheck` が抜けていた）。
+- 新設 `schema/slide-content-schema.json` をレイアウト別 content 構造の単一ソースとし、以下の両方がこれを参照する構成へ変更した:
+  - Rust `system_prompt()`: `include_str!` でコンパイル時埋め込みし、プロンプト末尾に同梱（`SLIDE_CONTENT_SCHEMA_JSON`）。
+  - TS 新設 `src/data/slideContentSchema.ts`（`getSchemaConformanceErrors`）: AI生成の自動修正ループ（`aiGenerate.ts` `generateSlides()`）専用の厳格チェック。未知 layout・既知フィールドの型不一致を検出し `repairFeedback` に反映する。
+- 既存 `src/data/loader.ts` の `getValidationErrors`（一般ロード・編集時バリデーション）は**変更していない**。`layout` を意図的に緩く検証する既存設計（`SlideRenderer.tsx` の未知 layout フォールバック・手動編集やアドオンの拡張性）を壊さないため、厳格チェックは生成専用の別関数として追加した（D-002 の検証単一真実源は維持しつつ、生成という別ユースケースに専用の追加チェックを設けた）。
+- `LAYOUT_REFERENCE.md` に `schema/slide-content-schema.json` への相互参照注記を追加し、`FactCheck` アイコンのドリフトを修正。
 
 ## v0.5（2026-07-26・後続 feature/edit-apply-ux）
 

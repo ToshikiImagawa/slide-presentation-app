@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core'
 import type { ValidationError } from './data/types'
 import { parseSlides } from './edit/slidesSerialize'
+import { getSchemaConformanceErrors } from './data/slideContentSchema'
 
 /**
  * AI スライド生成の契約型＋invoke ラッパ＆オーケストレータ（#14）。
@@ -169,7 +170,9 @@ function cancelledResult(attempts: number): GenerateResult {
  * 自動修正ループを駆動するオーケストレータ（FR-005／FR-010／NFR-005）。
  *
  * `generate_slides`（Rust・候補 1 件）を上限 `MAX_GENERATE_ATTEMPTS` 回まで呼び、各候補を
- * `parseSlides`（＝`getValidationErrors`）で検証する。妥当なら `succeeded`。不正なら検証エラー要約を
+ * `parseSlides`（＝`getValidationErrors`。一般用途の構造チェック）と `getSchemaConformanceErrors`
+ * （`schema/slide-content-schema.json` を単一ソースとする生成専用の厳格チェック。未知 layout・型不一致を検出）
+ * の両方で検証する。妥当なら `succeeded`。不正なら検証エラー要約を
  * 次試行の `repairFeedback` に載せて再投入し、上限到達時は検証エラー最小の最良候補を退避して `exhausted`。
  * invoke が中断要求後に reject したら `cancelled`、その他の失敗は `failed` とする（器の手動編集へ退避・FR-008）。
  *
@@ -202,7 +205,9 @@ export async function generateSlides(request: GenerateRequest, onProgress?: (p: 
     if (cancelRequested) return cancelledResult(attempt)
 
     onProgress?.({ attempt, maxAttempts: MAX_GENERATE_ATTEMPTS, phase: 'validating' })
-    const { errors } = parseSlides(candidate)
+    const { data, errors: structuralErrors } = parseSlides(candidate)
+    // 構造的バリデーション（getValidationErrors）＋生成専用のスキーマ適合チェック（schema/slide-content-schema.json）
+    const errors = [...structuralErrors, ...getSchemaConformanceErrors(data)]
 
     if (errors.length === 0) {
       return { outcome: 'succeeded', slidesJson: candidate, validationErrors: [], attempts: attempt }

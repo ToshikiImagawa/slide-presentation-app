@@ -186,18 +186,27 @@ pub fn create_generator(
 
 // ---- 送出内容（プロンプト）構築の単一チョークポイント（NFR-004 機密最小化） ----
 
+/// レイアウト別 content 構造の単一ソース（`schema/slide-content-schema.json`）。
+/// `src/data/slideContentSchema.ts`（生成専用の厳格チェック）と同一ファイルを参照し、
+/// プロンプトと検証がドリフトしないようにする。コンパイル時埋め込みのため実行時ファイル I/O はない。
+const SLIDE_CONTENT_SCHEMA_JSON: &str = include_str!("../../../schema/slide-content-schema.json");
+
 /// 内蔵/外部 共通のシステムプロンプト（出力スキーマの指示）。送出スキーマ/テンプレートの単一真実源。
 pub(crate) fn system_prompt() -> String {
-  // getValidationErrors（loader.ts）の検証規則に一致する最小スキーマを提示する
-  "あなたはスライドプレゼンテーションの JSON（slides.json）を生成するアシスタントです。\n\
+  // getValidationErrors（loader.ts）の検証規則に一致する最小スキーマ＋
+  // レイアウト別 content 構造の単一ソース（SLIDE_CONTENT_SCHEMA_JSON）を提示する
+  format!(
+    "あなたはスライドプレゼンテーションの JSON（slides.json）を生成するアシスタントです。\n\
      出力は必ず単一の JSON オブジェクトのみとし、説明文・前置き・コードフェンス（```）を含めないでください。\n\
      構造:\n\
-     {\n\
-       \"meta\": { \"title\": string(空でない) },\n\
-       \"slides\": [ { \"id\": string(空でない), \"layout\": string, \"content\": object }, ... ](1件以上)\n\
-     }\n\
-     layout は \"center\" | \"content\" | \"two-column\" | \"bleed\" | \"custom\" のいずれかを推奨します。"
-        .to_string()
+     {{\n\
+       \"meta\": {{ \"title\": string(空でない) }},\n\
+       \"slides\": [ {{ \"id\": string(空でない), \"layout\": string, \"content\": object }}, ... ](1件以上)\n\
+     }}\n\
+     layout は \"center\" | \"content\" | \"two-column\" | \"bleed\" | \"custom\" のいずれかを推奨します。\n\
+     以下は各 layout で有効な content フィールドの定義です。この定義に厳密に従い、未知のフィールドや型不一致を避けてください:\n\
+     {SLIDE_CONTENT_SCHEMA_JSON}"
+  )
 }
 
 /// 生成リクエストからユーザープロンプトを構築する純関数（機密最小化の単一チョークポイント・NFR-004）。
@@ -325,6 +334,16 @@ mod tests {
       resolve_generator_kind(None, SlideGeneratorKind::ExternalClaudeCode),
       SlideGeneratorKind::ExternalClaudeCode
     );
+  }
+
+  #[test]
+  fn system_prompt_includes_slide_content_schema() {
+    // schema/slide-content-schema.json（単一ソース）が system_prompt に同梱されていることを検証する。
+    // ドリフト検知: このファイルを更新した際、schema 側の更新を忘れると失敗する
+    let prompt = system_prompt();
+    assert!(prompt.contains("two-column"));
+    assert!(prompt.contains("FactCheck"));
+    assert!(prompt.contains("columnContentFields"));
   }
 
   #[test]
