@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/release.yml'
       - '.github/workflows/macos-signing-test.yml'
+      - '.github/scripts/verify-codesign-authority.sh'
   workflow_dispatch:
 
 concurrency:
@@ -29,6 +30,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
+          cache-on-failure: true
       - run: npm ci
       - name: Set up macOS signing keychain (self-signed)
         # release.yml の同名ステップと完全同一の手順にすること。
@@ -66,12 +68,7 @@ jobs:
           cp /bin/ls "$SMOKE_BIN"
           codesign --sign "$APPLE_SIGNING_IDENTITY" --force "$SMOKE_BIN"
           codesign --verify "$SMOKE_BIN"
-          AUTHORITY="$(codesign -dvv "$SMOKE_BIN" 2>&1 | grep '^Authority=' | head -1)"
-          echo "$AUTHORITY"
-          grep -qF "$APPLE_SIGNING_IDENTITY" <<< "$AUTHORITY" || {
-            echo "::error::smoke test の codesign Authority が APPLE_SIGNING_IDENTITY と一致しません: $AUTHORITY"
-            exit 1
-          }
+          .github/scripts/verify-codesign-authority.sh "$SMOKE_BIN" "$APPLE_SIGNING_IDENTITY"
       - name: Build app bundle (release.yml と同一 env)
         run: npm run tauri:build
         env:
@@ -81,9 +78,4 @@ jobs:
         run: |
           APP_PATH="$(find src-tauri/target/release/bundle/macos -maxdepth 1 -name '*.app' -print -quit)"
           codesign --verify --deep --strict --verbose=2 "$APP_PATH"
-          AUTHORITY="$(codesign -dvv "$APP_PATH" 2>&1 | grep '^Authority=' | head -1)"
-          echo "$AUTHORITY"
-          grep -qF "$APPLE_SIGNING_IDENTITY" <<< "$AUTHORITY" || {
-            echo "::error::codesign の Authority が APPLE_SIGNING_IDENTITY と一致しません(ad-hoc 署名への縮退の可能性): $AUTHORITY"
-            exit 1
-          }
+          .github/scripts/verify-codesign-authority.sh "$APP_PATH" "$APPLE_SIGNING_IDENTITY"
