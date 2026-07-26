@@ -2,11 +2,11 @@
 id: prd-visual-addon
 title: ビジュアルコンポーネントのアドオン化 要求仕様書
 type: prd
-status: draft
+status: approved
 priority: medium
 risk: medium
 created: 2026-02-02
-updated: 2026-07-24
+updated: 2026-07-26
 tags:
   - addon
   - visual-component
@@ -21,6 +21,8 @@ category: addon-system
 
 `src/visuals/` 配下のビジュアルコンポーネント（VibeCodingDemo, HierarchyFlowVisual,
 PersistenceVisual）を「アドオン」として本体コードから分離し、独立したモジュールとして管理可能にする。これにより、プレゼンテーション本体の変更なしにビジュアル要素の追加・削除が可能となり、拡張性と保守性を向上させる。
+
+なお、本 PRD が対象とする組み込みアドオン（層A）は**開発補助として dev 環境限定**で用い、release ビルドではロードも同梱もしない。エンドユーザーへのアドオン配布は層B（`.spkg` 同梱）へ委譲する（[slide-edit-mode.md](./slide-edit-mode.md) / [package-embedded-addon.md](./package-embedded-addon.md)）。
 
 ## 背景・目的
 
@@ -152,12 +154,20 @@ requirementDiagram
         verifymethod: demonstration
     }
 
+    designConstraint BuiltinDevOnly {
+        id: DC_003
+        text: "組み込みアドオン層Aは dev 限定とし release ではロードも同梱もしないこと"
+        risk: medium
+        verifymethod: inspection
+    }
+
     AddonSystem - contains -> AddonBundle
     AddonSystem - contains -> AddonRegistration
     AddonSystem - contains -> AddonToggle
     AddonSystem - contains -> VisualMigration
     AddonSystem - contains -> ExistingRegistryCompat
     AddonSystem - contains -> NoBehaviorChange
+    AddonSystem - contains -> BuiltinDevOnly
     AddonRegistration - derives -> AddonBundle
     VisualMigration - derives -> AddonBundle
 ```
@@ -251,6 +261,12 @@ custom側の登録 API（`registerComponent`）を利用する。`registerCompon
 
 **検証方法:** デモンストレーション（目視確認）による検証
 
+### DC-003: 組み込みアドオンの dev 限定
+
+組み込みアドオン（層A）は開発補助であり、**dev 環境限定**とする。release ビルドでは起動時に `loadBuiltinAddons()` を呼ばず、`copyAddonsPlugin` も `addons/dist` を配信ディレクトリへコピーしない。したがって release ではビジュアルアドオンをロードも同梱もしない。開発者ローカルの層A（gitignore された `addons/src/`）が release ビルドへ焼き込まれる問題（#35）を根治するための制約であり、エンドユーザーへの配布は層B（`.spkg` 同梱）へ委譲する。
+
+**検証方法:** インスペクション（コードレビュー）による検証
+
 ---
 
 # 5. 制約事項
@@ -283,6 +299,7 @@ custom側の登録 API（`registerComponent`）を利用する。`registerCompon
 - MUI アイコンのアドオン化
 - アドオンのバージョン管理・依存関係解決
 - アドオンのホットリロード（開発中はビルド後にリロードが必要）
+- 組み込みアドオン（層A）の release 配布（release への配布は層B＝`.spkg` 同梱へ委譲。[slide-edit-mode.md](./slide-edit-mode.md) / [package-embedded-addon.md](./package-embedded-addon.md)）
 
 ---
 

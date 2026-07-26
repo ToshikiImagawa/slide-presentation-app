@@ -20,6 +20,7 @@ describe('addonLoader', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals()
+    vi.unstubAllEnvs()
     vi.restoreAllMocks()
   })
 
@@ -90,6 +91,15 @@ describe('addonLoader', () => {
     it('fetch 失敗時も例外を投げない（フォールバック）', async () => {
       vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network')))
       await expect(loadBuiltinAddons()).resolves.toBeUndefined()
+      expect(document.head.querySelectorAll('script').length).toBe(0)
+    })
+
+    it('release（dev でない）では manifest を fetch せず何もロードしない（層A は dev 限定・#35・DC-003）', async () => {
+      vi.stubEnv('DEV', false)
+      const fetchMock = vi.fn()
+      vi.stubGlobal('fetch', fetchMock)
+      await expect(loadBuiltinAddons()).resolves.toBeUndefined()
+      expect(fetchMock).not.toHaveBeenCalled()
       expect(document.head.querySelectorAll('script').length).toBe(0)
     })
   })
