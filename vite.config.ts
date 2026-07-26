@@ -7,11 +7,24 @@ import { execSync } from 'child_process'
 import { createRequire } from 'module'
 import { isSlidePackageArchivePath } from './src/slidePackageArchive'
 
-/** addons dist to dist/addons copy plugin */
+/**
+ * 組み込みアドオン（層A）の dist を配信ディレクトリへコピーするプラグイン。
+ * 層Aは dev 限定のため、release（本番）ビルドではコピーしない（#35・DC-003）。
+ * ゲートはランタイムの `loadBuiltinAddons`（`import.meta.env.DEV`）と同一軸の
+ * `resolved.env.DEV` で判定し、ビルドとロードのゲートを 1 つの真実源に揃える
+ * （`mode` 文字列軸だと `vite build --mode development` 等で両者が乖離するため）。
+ * dev server では `resolve.alias['/addons']` が addons/dist を直接配信するためコピーは不要
+ * （`closeBundle` はそもそも build 時しか発火しない）。
+ */
 function copyAddonsPlugin(): Plugin {
+  let isDev = false
   return {
     name: 'copy-addons',
+    configResolved(resolved) {
+      isDev = resolved.env.DEV
+    },
     closeBundle() {
+      if (!isDev) return
       cpSync(resolve(__dirname, 'addons/dist'), resolve(__dirname, 'dist/addons'), {
         recursive: true,
       })
@@ -214,6 +227,7 @@ export default defineConfig(({ mode }) => {
   const isScreenshot = mode === 'screenshot'
 
   return {
+    // copyAddonsPlugin は内部で env.DEV をゲートし release では層Aをコピーしない（#35・DC-003）
     plugins: [react(), assetsPlugin(), slideContentPlugin(), copyAddonsPlugin(), ...(isScreenshot ? [screenshotFixturePlugin()] : [])],
     build: {
       rollupOptions: {

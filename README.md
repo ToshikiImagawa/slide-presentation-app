@@ -2,6 +2,8 @@
 
 **English** | [日本語](README.ja.md)
 
+![version](https://img.shields.io/badge/version-1.0.0-blue)
+
 A slide presentation tool built with React + Reveal.js, packaged as a local desktop app with Tauri.
 Define slide content and themes using JSON files and display them as presentations in a native window.
 

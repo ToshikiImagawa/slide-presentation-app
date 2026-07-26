@@ -2,9 +2,9 @@
 id: prd-package-embedded-addon
 title: パッケージ同梱アドオンのランタイムロード 要求仕様書
 type: prd
-status: draft
+status: approved
 created: 2026-07-22
-updated: 2026-07-22
+updated: 2026-07-26
 priority: high
 risk: high
 tags:

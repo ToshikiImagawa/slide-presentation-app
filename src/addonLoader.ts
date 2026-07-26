@@ -49,6 +49,9 @@ export async function loadAddonScripts(scripts: string[], owner: string): Promis
  * manifest が存在しない・ロード失敗時はフォールバック（アドオンなし）。
  */
 export async function loadBuiltinAddons(): Promise<void> {
+  // 層A（組み込みアドオン）は開発補助として dev 限定。release ビルドではロードしない（#35・DC-003）。
+  // エンドユーザーへのアドオン配布は層B（.spkg 同梱）へ委譲する。
+  if (!import.meta.env.DEV) return
   try {
     const res = await fetch('/addons/manifest.json')
     if (!res.ok) return

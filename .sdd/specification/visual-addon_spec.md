@@ -2,10 +2,10 @@
 id: spec-visual-addon
 title: ビジュアルコンポーネントのアドオン化 抽象仕様書
 type: spec
-status: draft
+status: approved
 sdd-phase: specify
 created: 2026-02-02
-updated: 2026-07-24
+updated: 2026-07-26
 depends-on:
   - prd-visual-addon
 tags:
@@ -39,7 +39,7 @@ AI-SDD デモ用の特化コンポーネントであり、プレゼンテーシ�
 
 ビジュアルコンポーネントを「アドオン」という単位でグループ化し、独立した IIFE バンドルとしてビルドする。アドオンはホストアプリの `src/` ディレクトリ外（`addons/`）に配置され、独自のビルド設定を持つ。
 
-ホストアプリは起動時に `manifest.json` を fetch し、記載されたアドオンバンドルを動的にスクリプトロードする。アドオンは `window.__ADDON_REGISTER__` グローバルコールバックを通じて ComponentRegistry の custom 側にコンポーネントを登録する。
+ホストアプリは起動時に `manifest.json` を fetch し、記載されたアドオンバンドルを動的にスクリプトロードする。アドオンは `window.__ADDON_REGISTER__` グローバルコールバックを通じて ComponentRegistry の custom 側にコンポーネントを登録する。ただし組み込みアドオン（層A）は**開発補助として dev 環境限定**であり、release ビルドでは起動時ロード（`loadBuiltinAddons()`）を行わない（FR-005 / DC-003）。
 
 アドオンの有効/無効は、manifest.json のエントリの追加/削除で管理する。
 
@@ -53,6 +53,7 @@ AI-SDD デモ用の特化コンポーネントであり、プレゼンテーシ�
 | FR-002 | アドオンのコンポーネントは registerComponent で登録する      | 必須  | 既存の ComponentRegistry を活用し、本体コードの変更を最小化して互換性を維持するため      | FR-002 |
 | FR-003 | manifest.json のエントリ追加/削除で有効/無効を管理する        | 必須  | 宣言的な設定でアドオン管理を実現し、ホストアプリのソースコード変更を不要にするため              | FR-003 |
 | FR-004 | 既存3ビジュアルを addons/ 配下に移動し独立バンドルとして再構成する    | 必須  | AI-SDD デモ用の特化ビジュアルを本体の汎用コンポーネントから分離し、独立管理を実現するため         | FR-004 |
+| FR-005 | 組み込みアドオンのロードは dev 限定とし release では `loadBuiltinAddons()` を呼ばない | 必須  | 開発者ローカルの層A（gitignore された `addons/src`）が release ビルドへ焼き込まれる #35 を防止するため | DC-003 |
 
 ## 3.2. 非機能要件 (Non-Functional Requirements)
 
@@ -67,6 +68,7 @@ AI-SDD デモ用の特化コンポーネントであり、プレゼンテーシ�
 |--------|------------------------------|------------|--------|
 | DC-001 | ComponentRegistry の仕組みを変更しない | 既存機能の互換性維持 | DC-001 |
 | DC-002 | プレゼンテーションの表示・動作に変更がないこと      | ビジネス価値の維持  | DC-002 |
+| DC-003 | 組み込みアドオン層Aは dev 限定・release ではロード/同梱しない | release への層A漏れ防止（#35） | DC-003 |
 
 # 4. API
 
@@ -166,6 +168,7 @@ if (register) {
 ```typescript
 // ホストアプリ側の組み込みアドオンロード（src/addonLoader.ts）
 export async function loadBuiltinAddons(): Promise<void> {
+  if (!import.meta.env.DEV) return // 層Aは dev 限定。release では読み込まない（#35・DC-003）
   const res = await fetch('/addons/manifest.json')
   if (!res.ok) return
   const manifest: AddonManifest = await res.json()
@@ -189,6 +192,7 @@ sequenceDiagram
     Bridge ->> Bridge: window.React, window.ReactJSXRuntime を公開
     Main ->> Main: registerDefaultComponents()
     Main ->> Manifest: loadBuiltinAddons() → fetch('/addons/manifest.json')
+    Note over Main: release では loadBuiltinAddons をスキップ（層A は dev 限定・DC-003）
     Manifest -->> Main: { addons: [{ name, bundle }] }
     Main ->> Addon: <script> タグで動的ロード
     Addon ->> Addon: IIFE 即時実行（CSS インライン注入）
@@ -214,4 +218,4 @@ sequenceDiagram
 ## PRD参照
 
 - 対応PRD: [visual-addon.md](../requirement/visual-addon.md)
-- カバーする要求: UR-001, FR-001, FR-002, FR-003, FR-004, NFR-001, NFR-002, DC-001, DC-002
+- カバーする要求: UR-001, FR-001, FR-002, FR-003, FR-004, FR-005, NFR-001, NFR-002, DC-001, DC-002, DC-003

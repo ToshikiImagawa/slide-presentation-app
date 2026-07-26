@@ -2,10 +2,10 @@
 id: spec-package-embedded-addon
 title: パッケージ同梱アドオンのランタイムロード 抽象仕様書
 type: spec
-status: draft
+status: approved
 sdd-phase: specify
 created: 2026-07-22
-updated: 2026-07-24
+updated: 2026-07-26
 depends-on:
   - prd-package-embedded-addon
 tags:

@@ -2,11 +2,11 @@
 id: design-visual-addon
 title: ビジュアルコンポーネントのアドオン化 技術設計書
 type: design
-status: draft
+status: approved
 sdd-phase: plan
 impl-status: implemented
 created: 2026-02-02
-updated: 2026-07-24
+updated: 2026-07-26
 depends-on:
   - spec-visual-addon
 tags:
@@ -30,7 +30,7 @@ category: addon-system
 
 # 1. 実装ステータス
 
-**ステータス:** 🟢 実装完了
+**ステータス:** 🟢 実装完了（アドオン基盤に加え、組み込みアドオン層Aの dev/release ゲートを実装・#35）
 
 ## 1.1. 実装進捗
 
@@ -46,6 +46,8 @@ category: addon-system
 | `src/components/registerDefaults.tsx` 修正     | 🟢       | ビジュアル3つの登録を削除 |
 | `vite.config.ts` dev/prod アドオン配信設定          | 🟢       | alias + copyAddonsPlugin |
 | `src/visuals/` 削除                            | 🟢       |      |
+| `addonLoader.ts` の `loadBuiltinAddons` dev gate | 🟢       | `import.meta.env.DEV` で gate。release では manifest を fetch せず層Aを読み込まない（#35・DC-003）。単体テストで release 経路を検証 |
+| `vite.config.ts` `copyAddonsPlugin` dev gate    | 🟢       | `configResolved` で `resolved.env.DEV`（ランタイムの `import.meta.env.DEV` と同一軸）を取得し、`closeBundle` を dev のみで実行。release では `addons/dist → dist/addons` をコピーしない（#35・DC-003）。ビルド実地で `dist/addons` 非生成を確認 |
 
 ---
 
@@ -139,7 +141,7 @@ project-root/
 │   └── components/
 │       ├── ComponentRegistry.tsx             # owner スコープ管理を追加（registerComponent owner / unregisterOwner。後方互換）
 │       └── registerDefaults.tsx              # ビジュアル3つの登録を削除
-└── vite.config.ts                           # dev: alias, prod: copyAddonsPlugin
+└── vite.config.ts                           # dev: alias + copyAddonsPlugin / prod: 層A非同梱（copyAddonsPlugin を追加しない・#35）
 ```
 
 ---
@@ -227,8 +229,9 @@ export async function loadAddonScripts(scripts: string[], owner: string): Promis
   }
 }
 
-/** ビルド時同梱の組み込みアドオン（owner なし）をロードする */
+/** ビルド時同梱の組み込みアドオン（owner なし）をロードする（層A・dev 限定） */
 export async function loadBuiltinAddons(): Promise<void> {
+  if (!import.meta.env.DEV) return // 層Aは dev 限定。release では読み込まない（#35・DC-003）
   try {
     const res = await fetch('/addons/manifest.json')
     if (!res.ok) return
@@ -271,7 +274,7 @@ if (register) {
 | ビルドサイズ（NFR-001）      | React を external 指定しバンドルに含めない（重複増分 0）。CSS はインライン化し追加の配信ファイルを増やさない。**目標値**: 本体バンドル（`dist/assets/*.js`）の増分 ≤ 0 バイト（ビジュアルの分離により本体は減少）。新規配布物はアドオン IIFE（`addons.iife.js`）と `manifest.json` のみ |
 | 開発者体験（NFR-002）        | manifest.json のエントリ追加/削除のみでアドオン管理。ホストアプリのソースコード変更不要 |
 | dev server 対応          | `resolve.alias` で `/addons` を `addons/.../dist/` にマッピング |
-| prod ビルド対応            | `copyAddonsPlugin` で `addons/.../dist/` を `dist/addons/` にコピー |
+| prod ビルド対応            | `copyAddonsPlugin` は **dev のみ** `addons/.../dist/` を `dist/addons/` にコピーする。release では層Aを同梱しない（#35・DC-003） |
 
 ---
 
@@ -303,10 +306,36 @@ if (register) {
 | prod ビルド配信方式          | (A) public/ にコピー (B) カスタムプラグインで dist/ にコピー               | (B) カスタムプラグイン（copyAddonsPlugin）      | アドオンの dist/ をそのまま配信ディレクトリにコピー。public/ への依存を排除           |
 | アドオンのライフサイクル管理       | (A) owner を持たず全アドオン恒久登録 (B) owner スコープ + `unregisterOwner`  | (B) owner スコープ管理（`registerComponent` の第3引数 owner・後方互換） | パッケージ同梱アドオン（Epic #4）でパッケージ切替時に該当アドオンのみアンロードするため。組み込みアドオンは owner=undefined で恒久登録。既存の解決順序は不変 |
 | ローダーの配置                | (A) main.tsx に内包 (B) `addonLoader.ts` に分離                     | (B) `addonLoader.ts` に分離             | 組み込み（`loadBuiltinAddons`）とパッケージ同梱（`loadAddonScripts`）の2経路を単一モジュールに集約し、テスト容易性を確保 |
+| 組み込みアドオン層Aの dev/release ゲート | (A) 常時ロード (B) dev 限定                                         | (B) dev 限定                            | 開発者ローカルの層A（gitignore された `addons/src`）が release ビルドへ焼き込まれる #35 を根治する。release への配布は層B（`.spkg` 同梱・slide-edit-mode FR-009）へ委譲する |
 
 ---
 
 # 10. 変更履歴
+
+## v5.1.0 (2026-07-26)
+
+**変更内容:**
+
+- 組み込みアドオン層Aの dev/release ゲートを実装（#35 根治）。`src/addonLoader.ts` の `loadBuiltinAddons()` 冒頭に `if (!import.meta.env.DEV) return` を追加し、`vite.config.ts` の `copyAddonsPlugin` は `configResolved` で取得した `resolved.env.DEV`（ランタイムの `import.meta.env.DEV` と同一軸）で `closeBundle` を dev のみに限定した。ビルドとロードのゲートを単一の真実源（`env.DEV`）に揃え、`mode` 文字列軸との乖離（`vite build --mode development` 等）を排除（dev server は従来どおり `resolve.alias['/addons']` で配信）
+- `impl-status` を `in-progress` → `implemented`、`status` を `review` → `approved` に更新
+- 検証: `npm run typecheck` / 単体テスト 313 件（release 経路で `loadBuiltinAddons` が fetch しないことを検証するテストを追加）/ `npm run format:check` を通過。`npm run build`（production）で `dist/addons` が生成されないことを実地確認
+
+**経緯 / 依存:**
+
+- 報告症状（編集モードで層Bをアンチェックして再書き出ししても除外されない）の真因は、dev 実行時に層A（owner=undefined）が起動時グローバル登録され、パッケージ切替時の `unregisterOwner`（層Bのみ対象）でアンロードされないことにあった。`.spkg` 書き出し経路（`build_slide_package_gated`）は未選択名を同梱しない正しい実装であり、release ビルドから層Aを排除することでエンドユーザー側の症状が根治する
+
+## v5.0.0 (2026-07-26)
+
+**変更内容:**
+
+- 組み込みアドオン（層A）を **dev 限定**化する設計に改訂。release ビルドでは起動時に `loadBuiltinAddons()` を呼ばず（`import.meta.env.DEV` で gate）、`copyAddonsPlugin` も `addons/dist` を `dist/addons` へコピーしない。release では層Aをロードも同梱もしない
+- エンドユーザーへのアドオン配布は層B（`.spkg` 同梱・[slide-edit-mode.md](../requirement/slide-edit-mode.md) FR-009 / [package-embedded-addon_design.md](./package-embedded-addon_design.md)）へ一本化
+- `impl-status` を `implemented` → `in-progress`（dev/release ゲートが未実装のため）、`status` を `draft` → `review` に更新
+- PRD/spec に DC-003（組み込みアドオンの dev 限定）と FR-005（release で loadBuiltinAddons を呼ばない）を additive 追加
+
+**経緯 / 依存:**
+
+- 実機テストで、開発者ローカルの層A（`ai-sdd-visuals`）が release ビルドへ焼き込まれて表示される問題（#35）を確認したことによる設計変更。原因は `loadBuiltinAddons()` の無差別ロードと `copyAddonsPlugin` の無差別コピーで、いずれも dev 限定に gate することで根治する
 
 ## v4.0.0 (2026-07-24)
 
