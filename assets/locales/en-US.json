@@ -11,7 +11,7 @@
       "removeRecentAria": "Remove {title}",
       "sampleButton": "Open Sample",
       "browseButton": "Open a File",
-      "browseHint": "Choose a .json / .tgz file"
+      "browseHint": "Choose a .json / .spkg file"
     },
     "toolbar": {
       "hide": "Hide toolbar (T)",
@@ -36,7 +36,7 @@
       "startEdit": "Edit",
       "exit": "Exit editing",
       "save": "Save",
-      "export": "Export .tgz",
+      "export": "Export .spkg",
       "packageName": "Package name",
       "version": "Version",
       "jsonLabel": "slides.json",
@@ -61,7 +61,7 @@
       "themeCustomCss": "Custom CSS",
       "includeAddons": "Bundled add-ons",
       "packageAddonRemoveAria": "Exclude {name} from the package",
-      "packageAddonRemoveNote": "Use × or uncheck to exclude from the package (re-check to restore). Re-export the .tgz to apply the change",
+      "packageAddonRemoveNote": "Use × or uncheck to exclude from the package (re-check to restore). Re-export the .spkg to apply the change",
       "builtinAddons": "Built-in add-ons (dev)",
       "builtinNamePlaceholder": "New add-on name",
       "builtinAdd": "Add",

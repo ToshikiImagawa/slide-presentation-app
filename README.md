@@ -59,7 +59,7 @@ Running the app requires a Rust toolchain (`cargo`/`rustc`) for Tauri. See the
 | `npm run typecheck`            | TypeScript type check                                                                   |
 | `npm run test`                 | Run tests (Vitest)                                                                      |
 | `npm run test:watch`           | Run tests in watch mode                                                                 |
-| `npm run export:slides`        | Export slide content as an npm package (.tgz)                                           |
+| `npm run export:slides`        | Export slide content as a distributable package (.spkg)                                 |
 | `npm run format:check`         | Check formatting with Prettier (no writes; used in CI)                                  |
 | `npm run generate-icons`       | Regenerate `src-tauri/icons/` from `resources/icon.svg` (macOS only)                    |
 | `npm run generate-screenshots` | Capture README screenshots with Playwright WebKit (macOS only; doubles as an e2e smoke) |
@@ -72,7 +72,7 @@ On launch, the app opens on a home screen where you choose what to present.
 
 | Action              | Description                                                                                 |
 |---------------------|---------------------------------------------------------------------------------------------|
-| **Open a File**     | Pick a `slides.json` or a `.tgz` slide package from disk                                    |
+| **Open a File**     | Pick a `slides.json` or a `.spkg` slide package from disk (legacy `.tgz` also supported)    |
 | **Open Sample**     | Load the bundled sample deck (the built-in template guide when no `slides.json` is bundled) |
 | **Recently Opened** | Re-open a recently used package; the list is persisted across launches                      |
 
@@ -81,8 +81,9 @@ While presenting, the **Home** button in the top-left toolbar returns to this sc
 ## Opening a Local Slide Package
 
 Besides the slide content bundled at build time (see [Slide Packages](#slide-packages) below), you can pick a
-`slides.json` file, or a `.tgz` slide package produced by `npm run export:slides`, from disk at any time using the
-**Open a File** button on the home screen. `.tgz` packages are extracted into the app's cache directory first. Any
+`slides.json` file, or a `.spkg` slide package produced by `npm run export:slides` (legacy `.tgz` packages exported by
+older versions can still be opened), from disk at any time using the **Open a File** button on the home screen.
+`.spkg`/`.tgz` packages are extracted into the app's cache directory first. Any
 `image/`, `voice/`, `theme/`, or `font/` relative references inside the slide data are resolved against the folder
 the content lives in. The app remembers the last opened file and reloads it automatically on next launch.
 
@@ -105,7 +106,7 @@ The editor puts the metadata form and preview on top and a full-width `slides.js
 | Action          | Description                                                                                                                        |
 |-----------------|------------------------------------------------------------------------------------------------------------------------------------|
 | **Save**        | Write the edited `slides.json` to a location you choose (relative asset paths are preserved)                                        |
-| **Export .tgz** | Produce a `.tgz` package (name / version from the toolbar inputs); referenced assets are bundled and it round-trips with **Open a File** |
+| **Export .spkg** | Produce a `.spkg` package (name / version from the toolbar inputs); referenced assets are bundled and it round-trips with **Open a File** |
 
 Filesystem writes happen only while edit mode is active and are performed at the Rust boundary — the web layer is never
 granted write permission (least privilege).
@@ -117,7 +118,7 @@ Package-bundled addons contain executable code, so addon control is separated in
 | Layer                   | Where                                                                                   | What it controls                                                                                                                                            |
 |-------------------------|-----------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | **Runtime trust**       | Confirmation prompt on open + **Settings → Per-package add-on trust**                    | Allow / deny loading a package's bundled addons, per package (default: denied). The global **Always disable embedded add-ons** toggle takes precedence.      |
-| **Export selection**    | Edit mode **Bundled add-ons** checkboxes (and `npm run export:slides --addons a,b`)      | Choose which addons to include when exporting a `.tgz`. The choices union package add-ons with dev built-in add-ons; the list stays visible (with an empty-state note) even when none are available. |
+| **Export selection**    | Edit mode **Bundled add-ons** checkboxes (and `npm run export:slides --addons a,b`)      | Choose which addons to include when exporting a `.spkg`. The choices union package add-ons with dev built-in add-ons; the list stays visible (with an empty-state note) even when none are available. |
 | **Built-in add/remove** | Edit mode **Built-in add-ons (dev)** panel (development builds only)                     | Scaffold or remove `addons/src/<name>/entry.ts` (delete asks for confirmation — it is permanent and outside git), then click **Build** in the panel to rebuild from the app (runs `npm run build:addons`) so the addon appears in the bundle candidates. |
 
 ### AI Generation
@@ -708,13 +709,14 @@ npm run export:slides -- --name my-presentation --slides slides.json
 | `--version` |          | Version (default: `1.0.0`)                            |
 | `--addons`  |          | Bundle built add-ons (`addons/dist`) into the package |
 
-This generates a `.tgz` file in `dist-slides/`. Asset paths referenced in slides.json (`image/`, `voice/`, `theme/`,
-`font/`) are auto-detected and included in the package. When `--addons` is passed, the built add-ons are bundled under
-`addons/` and are dynamically loaded after the package is opened (Tauri runtime only — see below).
+This generates a `.spkg` file in `dist-slides/` (same tar+gzip format as `.tgz`, produced via `npm pack` and renamed
+to a project-specific extension). Asset paths referenced in slides.json (`image/`, `voice/`, `theme/`, `font/`) are
+auto-detected and included in the package. When `--addons` is passed, the built add-ons are bundled under `addons/`
+and are dynamically loaded after the package is opened (Tauri runtime only — see below).
 
 ### Embedded Add-ons (Runtime Loading)
 
-When a `.tgz` is opened in the desktop app, any add-ons bundled under its `addons/` directory are loaded at runtime and
+When a `.spkg` (or legacy `.tgz`) is opened in the desktop app, any add-ons bundled under its `addons/` directory are loaded at runtime and
 their components become resolvable from `{ "component": { "name": ... } }`. Add-ons are scoped per package (owner), so
 switching between packages unloads the previous package's add-ons and prevents name collisions.
 
@@ -733,39 +735,41 @@ switching between packages unloads the previous package's add-ons and prevents n
 
 ### Import (Use Package)
 
-Specify a slide package via the `VITE_SLIDE_PACKAGE` environment variable. Both local paths and npm packages are
-supported.
+Specify a slide package via the `VITE_SLIDE_PACKAGE` environment variable.
 
 #### Use with local path (no npm install required)
 
-Specify the `.tgz` file or extracted directory path in `.env.local`.
+Specify the `.spkg` file (or a legacy `.tgz`) or extracted directory path in `.env.local`.
 
 ```bash
-# Specify .tgz directly
-VITE_SLIDE_PACKAGE=./dist-slides/slides-my-presentation-1.0.0.tgz
+# Specify .spkg directly
+VITE_SLIDE_PACKAGE=./dist-slides/slides-my-presentation-1.0.0.spkg
 
 # Specify extracted directory
 VITE_SLIDE_PACKAGE=./dist-slides/my-presentation
 ```
 
-#### Use as npm package
+#### Use an installed npm package
+
+If the package is already available as an npm dependency (e.g. published to a registry and installed with
+`npm install @slides/my-presentation`), specify its package name directly.
 
 ```bash
-# Install the .tgz
-npm install ./dist-slides/slides-my-presentation-1.0.0.tgz
-
-# Specify the package name in .env.local
 VITE_SLIDE_PACKAGE=@slides/my-presentation
 ```
 
+> **Note:** `npm run export:slides` outputs a `.spkg` file, and npm does not recognize that extension as an
+> installable local tarball (unlike `.tgz`/`.tar.gz`/`.tar`), so `npm install ./dist-slides/xxx.spkg` does not work.
+> To use a freshly exported package, use the local-path method above instead.
+
 #### `VITE_SLIDE_PACKAGE` Value Reference
 
-| Value                         | Behavior                                                |
-|-------------------------------|---------------------------------------------------------|
-| `./dist-slides/xxx-1.0.0.tgz` | Auto-extract .tgz for local use (no npm install)        |
-| `./dist-slides/xxx/`          | Read directly from extracted directory (no npm install) |
-| `@slides/xxx`                 | Read from npm package                                   |
-| (unset)                       | Auto-detect `@slides/*` packages                        |
+| Value                          | Behavior                                                               |
+|--------------------------------|-------------------------------------------------------------------------|
+| `./dist-slides/xxx-1.0.0.spkg` | Auto-extract `.spkg` (or legacy `.tgz`) for local use (no npm install) |
+| `./dist-slides/xxx/`           | Read directly from extracted directory (no npm install)               |
+| `@slides/xxx`                  | Read from an installed npm package                                    |
+| (unset)                        | Auto-detect `@slides/*` packages                                      |
 
 ### Behavior
 

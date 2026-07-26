@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { upsertRecentEntry, removeRecentEntry, extractAddonBundlePaths, resolveAddonTrust } from '../localSlideLoader'
 import type { RecentSlidePackageEntry } from '../localSlideLoader'
+import { isSlidePackageArchivePath } from '../slidePackageArchive'
 
 function entry(path: string, openedAt = 0): RecentSlidePackageEntry {
   return { path, title: path, openedAt }
@@ -67,6 +68,25 @@ describe('extractAddonBundlePaths', () => {
   it('bundle が文字列でないエントリを除外する', () => {
     const manifest = { addons: [{ bundle: 42 }, { bundle: 'addons/ok.js' }, {}] }
     expect(extractAddonBundlePaths(manifest)).toEqual(['addons/ok.js'])
+  })
+})
+
+describe('isSlidePackageArchivePath', () => {
+  it('.spkg を true と判定する（既定の拡張子）', () => {
+    expect(isSlidePackageArchivePath('/path/to/deck.spkg')).toBe(true)
+  })
+
+  it('.tgz を true と判定する（旧拡張子との後方互換）', () => {
+    expect(isSlidePackageArchivePath('/path/to/deck.tgz')).toBe(true)
+  })
+
+  it('大文字小文字を区別しない', () => {
+    expect(isSlidePackageArchivePath('/path/to/DECK.SPKG')).toBe(true)
+    expect(isSlidePackageArchivePath('/path/to/DECK.TGZ')).toBe(true)
+  })
+
+  it('slides.json など他の拡張子は false', () => {
+    expect(isSlidePackageArchivePath('/path/to/slides.json')).toBe(false)
   })
 })
 

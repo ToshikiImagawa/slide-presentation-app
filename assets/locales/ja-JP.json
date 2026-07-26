@@ -11,7 +11,7 @@
       "removeRecentAria": "{title} を削除",
       "sampleButton": "サンプルを開く",
       "browseButton": "ファイルを開く",
-      "browseHint": ".json / .tgz ファイルを選択"
+      "browseHint": ".json / .spkg ファイルを選択"
     },
     "toolbar": {
       "hide": "ツールバーを隠す (T)",
@@ -36,7 +36,7 @@
       "startEdit": "編集",
       "exit": "編集を終了",
       "save": "保存",
-      "export": ".tgz 書き出し",
+      "export": ".spkg 書き出し",
       "packageName": "パッケージ名",
       "version": "バージョン",
       "jsonLabel": "slides.json",
@@ -61,7 +61,7 @@
       "themeCustomCss": "カスタム CSS",
       "includeAddons": "同梱アドオン",
       "packageAddonRemoveAria": "{name} をパッケージから除外",
-      "packageAddonRemoveNote": "×またはチェック解除でパッケージから除外されます（再チェックで復帰可）。反映には「.tgz 書き出し」が必要です",
+      "packageAddonRemoveNote": "×またはチェック解除でパッケージから除外されます（再チェックで復帰可）。反映には「.spkg 書き出し」が必要です",
       "builtinAddons": "組み込みアドオン (dev)",
       "builtinNamePlaceholder": "新規アドオン名",
       "builtinAdd": "追加",

@@ -59,9 +59,9 @@ function saveButton(): HTMLButtonElement {
   return screen.getByRole('button', { name: '保存' }) as HTMLButtonElement
 }
 
-/** 「.tgz 書き出し」を押し、exportSlidePackage に渡された includedAddons を取り出す */
+/** 「.spkg 書き出し」を押し、exportSlidePackage に渡された includedAddons を取り出す */
 async function exportAndGetIncludedAddons(): Promise<string[]> {
-  fireEvent.click(screen.getByRole('button', { name: '.tgz 書き出し' }))
+  fireEvent.click(screen.getByRole('button', { name: '.spkg 書き出し' }))
   await waitFor(() => expect(h.exportSlidePackage).toHaveBeenCalled())
   const opts = h.exportSlidePackage.mock.calls[0][1] as { includedAddons: string[] }
   return opts.includedAddons

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { readFileSync, writeFileSync, mkdirSync, cpSync, existsSync, rmSync } from 'fs'
+import { readFileSync, writeFileSync, mkdirSync, cpSync, existsSync, rmSync, renameSync } from 'fs'
 import { resolve, dirname } from 'path'
 import { execSync } from 'child_process'
 import { fileURLToPath, pathToFileURL } from 'url'
@@ -218,18 +218,18 @@ function main() {
   const packOutput = execSync('npm pack', { cwd: outDir, encoding: 'utf-8' }).trim()
   const tgzName = packOutput.split('\n').pop()
   const tgzSource = resolve(outDir, tgzName)
-  const tgzDest = resolve(projectRoot, 'dist-slides', tgzName)
 
-  // .tgz を dist-slides/ 直下に移動
-  if (tgzSource !== tgzDest) {
-    cpSync(tgzSource, tgzDest)
-    rmSync(tgzSource)
-  }
+  // npm pack は拡張子を .tgz に固定するため、独自拡張子 .spkg へリネームして dist-slides/ 直下に配置する
+  // （issue #41: 同形式の tar+gzip だが拡張子のみ変更。npm install でのローカル tarball インストールは
+  //  拡張子判定により使えなくなるため、利用はローカルパス指定の VITE_SLIDE_PACKAGE を案内する）
+  const spkgName = tgzName.replace(/\.tgz$/, '.spkg')
+  const spkgDest = resolve(projectRoot, 'dist-slides', spkgName)
+  renameSync(tgzSource, spkgDest)
 
   console.log(`\nExport complete!`)
-  console.log(`Package: dist-slides/${tgzName}`)
-  console.log(`\nTo install:`)
-  console.log(`  npm install ./dist-slides/${tgzName}`)
+  console.log(`Package: dist-slides/${spkgName}`)
+  console.log(`\nTo use, set in .env.local:`)
+  console.log(`  VITE_SLIDE_PACKAGE=./dist-slides/${spkgName}`)
 }
 
 // 直接実行時のみ main() を走らせる（テストからの import では実行しない）

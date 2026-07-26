@@ -40,7 +40,7 @@
       "content": {
         "title": "layout: content — タイムライン (steps)",
         "steps": [
-          { "number": 1, "title": "スライドを開く", "description": "ローカルの slides.json / .tgz パッケージを選択", "command": "OpenSlideButton" },
+          { "number": 1, "title": "スライドを開く", "description": "ローカルの slides.json / .spkg パッケージを選択", "command": "OpenSlideButton" },
           { "number": 2, "title": "レイアウトで描画", "description": "layout フィールドに応じて自動レンダリング" },
           { "number": 3, "title": "テーマを適用", "description": "色・フォント・カスタム CSS を JSON で指定", "command": "theme" },
           { "number": 4, "title": "発表する", "description": "発表者ビューを別ウィンドウで開いて進行" }

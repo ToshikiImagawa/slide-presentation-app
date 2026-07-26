@@ -71,7 +71,7 @@ npm i -D @wdio/cli @wdio/local-runner @wdio/mocha-framework @wdio/spec-reporter 
 
 スペックが検証する項目:
 
-1. 同梱アドオン付き `.tgz` を開き、コンポーネントが解決される（AC-1）
+1. 同梱アドオン付き `.spkg` を開き、コンポーネントが解決される（AC-1）
 2. A→B→A 切替で残留・混線が起きない（AC-2）
 3. 同一パッケージ再オープンで `<script>` が二重注入されない（AC-3）
 4. 発表者ビューでも解決される（AC-4）
@@ -79,5 +79,5 @@ npm i -D @wdio/cli @wdio/local-runner @wdio/mocha-framework @wdio/spec-reporter 
 
 ### 補足
 
-- テスト用 `.tgz` は事前に `npm run export:slides -- --name pkgA --slides slides.json --addons` で生成しておく
+- テスト用 `.spkg` は事前に `npm run export:slides -- --name pkgA --slides slides.json --addons` で生成しておく
 - 確認ダイアログ（`plugin-dialog` の `ask`）は E2E ではネイティブダイアログのため、テスト前に `plugin-store` の `addonTrust` を書き込むか、モックビルドフラグで自動許可する経路を用意すると安定する

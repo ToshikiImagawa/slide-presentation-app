@@ -69,7 +69,7 @@ export function HomeScreen({ recentPackages, onOpenRecent, onRemoveRecent, onOpe
             </span>
             <span className={styles.primaryText}>
               <span className={styles.primaryLabel}>{t('home.browseButton')}</span>
-              <span className={styles.primaryHint}>{t('home.browseHint', '.json / .tgz')}</span>
+              <span className={styles.primaryHint}>{t('home.browseHint', '.json / .spkg')}</span>
             </span>
           </button>
 

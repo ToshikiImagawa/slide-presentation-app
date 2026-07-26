@@ -2,7 +2,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { open, save } from '@tauri-apps/plugin-dialog'
 
 /**
- * .tgz 書き出しのオプション。
+ * .spkg 書き出しのオプション。
  * name/version は編集 UI の入力欄から受け取り（生成 package.json は `@slides/{name}`）、
  * baseDir は相対アセット（image/ voice/ theme/ font/）の収集元ディレクトリ（読込中パッケージの baseDir）。
  */
@@ -41,9 +41,9 @@ export async function saveSlidesJson(path: string, json: string): Promise<void> 
 }
 
 /**
- * 編集した slides.json をアセットとともに .tgz パッケージへ書き出す（編集モード時のみ成功）。
- * 生成された .tgz のパスを返す。JS の camelCase 引数は Tauri が Rust の snake_case へ変換する
- * （既存 `invoke('extract_slide_package', { tgzPath })` と同規約）。
+ * 編集した slides.json をアセットとともに .spkg パッケージへ書き出す（編集モード時のみ成功）。
+ * 生成された .spkg のパスを返す。JS の camelCase 引数は Tauri が Rust の snake_case へ変換する
+ * （既存 `invoke('extract_slide_package', { packagePath })` と同規約）。
  */
 export async function exportSlidePackage(json: string, options: ExportOptions): Promise<string> {
   return invoke<string>('export_slide_package', {
@@ -68,7 +68,7 @@ export async function chooseSlidesSavePath(defaultPath?: string): Promise<string
   return selected ?? null
 }
 
-/** .tgz の出力先ディレクトリを選ぶ（ディレクトリ選択ダイアログ）。キャンセル時は null。 */
+/** .spkg の出力先ディレクトリを選ぶ（ディレクトリ選択ダイアログ）。キャンセル時は null。 */
 export async function chooseExportDir(): Promise<string | null> {
   const selected = await open({ directory: true, multiple: false })
   return typeof selected === 'string' ? selected : null
