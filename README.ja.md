@@ -2,6 +2,8 @@
 
 [English](README.md) | **日本語**
 
+![version](https://img.shields.io/badge/version-1.0.0-blue)
+
 React + Reveal.js で構築し、Tauri でローカルデスクトップアプリとしてパッケージ化したスライドプレゼンテーションツールです。
 スライドの内容とテーマを JSON ファイルで定義し、ネイティブウィンドウでプレゼンテーションとして表示します。
 
