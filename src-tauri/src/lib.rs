@@ -314,7 +314,8 @@ fn get_vertex_status(app: tauri::AppHandle) -> Result<vertex_config::VertexStatu
 #[tauri::command]
 async fn gcloud_login(edit_mode: tauri::State<'_, EditMode>) -> Result<(), String> {
   require_edit_mode(&edit_mode)?;
-  let status = tokio::process::Command::new(gcloud_binary())
+  let binary = resolve_gcloud_binary()?;
+  let status = gcloud_command(&binary)
     .args(["auth", "application-default", "login"])
     .status()
     .await
@@ -332,12 +333,79 @@ async fn gcloud_login(edit_mode: tauri::State<'_, EditMode>) -> Result<(), Strin
 }
 
 /// gcloud バイナリ名（Windows は `.cmd` 実体）。
-fn gcloud_binary() -> &'static str {
-  if cfg!(windows) {
-    "gcloud.cmd"
-  } else {
-    "gcloud"
+#[cfg(windows)]
+const GCLOUD_BINARY_NAME: &str = "gcloud.cmd";
+#[cfg(not(windows))]
+const GCLOUD_BINARY_NAME: &str = "gcloud";
+
+/// `gcloud` バイナリを解決する（PATH → 代表配置）。
+/// リリースビルドの GUI アプリは Finder/Dock 起動時に login shell の PATH（Homebrew や
+/// Cloud SDK インストーラが `~/.zshrc` 等に追加したパス）を継承しないことがあるため、
+/// PATH に見つからない場合は代表的なインストール先も候補にする
+/// （`generation::claude_cli::resolve_claude_binary` と同じ対処方針）。
+fn resolve_gcloud_binary() -> Result<PathBuf, String> {
+  if let Some(path) = find_in_path(GCLOUD_BINARY_NAME) {
+    return Ok(path);
   }
+  for candidate in gcloud_candidate_paths() {
+    if candidate.is_file() {
+      return Ok(candidate);
+    }
+  }
+  Err(
+    "gcloud コマンドが見つかりませんでした。インストールと PATH を確認してください".to_string(),
+  )
+}
+
+/// 解決済みバイナリパスから起動用の `Command` を構築する。
+/// Windows の `.cmd`/`.bat` は `CreateProcess` が直接起動できず `Command::new` からの
+/// 直接起動に失敗するため `cmd /C` 経由にする
+/// （ticketvc-jira-management-app の `os::command_for_binary` と同じ対処方針）。
+fn gcloud_command(binary: &Path) -> tokio::process::Command {
+  #[cfg(windows)]
+  {
+    let is_script = binary
+      .extension()
+      .and_then(|ext| ext.to_str())
+      .map(|ext| ext.eq_ignore_ascii_case("cmd") || ext.eq_ignore_ascii_case("bat"))
+      .unwrap_or(false);
+    if is_script {
+      let mut cmd = tokio::process::Command::new("cmd");
+      cmd.arg("/C").arg(binary);
+      return cmd;
+    }
+  }
+  tokio::process::Command::new(binary)
+}
+
+/// PATH からバイナリを探す（簡易・先頭一致）。
+fn find_in_path(name: &str) -> Option<PathBuf> {
+  let path_var = std::env::var_os("PATH")?;
+  for dir in std::env::split_paths(&path_var) {
+    let candidate = dir.join(name);
+    if candidate.is_file() {
+      return Some(candidate);
+    }
+  }
+  None
+}
+
+/// gcloud の代表的なインストール先（macOS/Linux）。
+#[cfg(not(windows))]
+fn gcloud_candidate_paths() -> Vec<PathBuf> {
+  let mut paths = vec![
+    PathBuf::from("/opt/homebrew/bin/gcloud"),
+    PathBuf::from("/usr/local/bin/gcloud"),
+  ];
+  if let Some(home) = std::env::var_os("HOME") {
+    paths.push(Path::new(&home).join("google-cloud-sdk/bin/gcloud"));
+  }
+  paths
+}
+
+#[cfg(windows)]
+fn gcloud_candidate_paths() -> Vec<PathBuf> {
+  Vec::new()
 }
 
 /// 外部生成（Claude Code CLI）が利用可能か返す（事前ゲート・FR-007。秘密に触れないため常時呼べる）。
