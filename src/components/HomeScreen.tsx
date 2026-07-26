@@ -95,47 +95,29 @@ export function HomeScreen({ recentPackages, onOpenRecent, onRemoveRecent, onOpe
   const [busy, setBusy] = useState<BusyState>(null)
   const isBusy = busy !== null
 
-  const handleUrlSubmit = async (e: FormEvent) => {
+  /** busy 状態をセットして fn を実行し、完了後（成功・失敗問わず）busy を解除する。同時に複数の読み込みは走らせない */
+  const runBusy = async (state: NonNullable<BusyState>, fn: () => Promise<void>) => {
+    if (isBusy) return
+    setBusy(state)
+    try {
+      await fn()
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const handleUrlSubmit = (e: FormEvent) => {
     e.preventDefault()
     const trimmed = url.trim()
-    if (!trimmed || isBusy) return
-    setBusy({ kind: 'url' })
-    try {
-      await onOpenUrl(trimmed)
-    } finally {
-      setBusy(null)
-    }
+    if (!trimmed) return
+    void runBusy({ kind: 'url' }, () => onOpenUrl(trimmed))
   }
 
-  const handleBrowseClick = async () => {
-    if (isBusy) return
-    setBusy({ kind: 'browse' })
-    try {
-      await onBrowse()
-    } finally {
-      setBusy(null)
-    }
-  }
+  const handleBrowseClick = () => runBusy({ kind: 'browse' }, onBrowse)
 
-  const handleOpenSampleClick = async () => {
-    if (isBusy) return
-    setBusy({ kind: 'sample' })
-    try {
-      await onOpenSample()
-    } finally {
-      setBusy(null)
-    }
-  }
+  const handleOpenSampleClick = () => runBusy({ kind: 'sample' }, onOpenSample)
 
-  const handleOpenRecentClick = async (path: string) => {
-    if (isBusy) return
-    setBusy({ kind: 'recent', path })
-    try {
-      await onOpenRecent(path)
-    } finally {
-      setBusy(null)
-    }
-  }
+  const handleOpenRecentClick = (path: string) => runBusy({ kind: 'recent', path }, () => onOpenRecent(path))
 
   return (
     <div className={styles.container} data-testid="home-screen">

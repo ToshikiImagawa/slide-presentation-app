@@ -191,11 +191,7 @@
   cursor: pointer;
 }
 
-.urlSubmitButton:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
+.urlSubmitButton:disabled,
 .primaryCard:disabled,
 .secondaryButton:disabled,
 .recentItem:disabled,

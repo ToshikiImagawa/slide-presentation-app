@@ -42,6 +42,17 @@ const recentPackages: RecentSlidePackageEntry[] = [
   { path: '/Users/test/deck-b/slides.json', title: 'Deck B', openedAt: 1 },
 ]
 
+/** 各テストで共通の no-op props。テストごとに必要な prop だけ上書きする */
+const defaultProps = {
+  recentPackages: [] as RecentSlidePackageEntry[],
+  onOpenRecent: async () => {},
+  onRemoveRecent: () => {},
+  onOpenSample: async () => {},
+  onBrowse: async () => {},
+  onCreateWithAi: () => {},
+  onOpenUrl: async () => {},
+}
+
 describe('HomeScreen', () => {
   beforeEach(() => {
     localStorage.clear()
@@ -50,7 +61,7 @@ describe('HomeScreen', () => {
   it('最近開いたスライドが無い場合、空状態メッセージが表示される', () => {
     render(
       <Wrapper>
-        <HomeScreen recentPackages={[]} onOpenRecent={async () => {}} onRemoveRecent={() => {}} onOpenSample={async () => {}} onBrowse={async () => {}} onCreateWithAi={() => {}} onOpenUrl={async () => {}} />
+        <HomeScreen {...defaultProps} />
       </Wrapper>,
     )
     expect(screen.getByText("You haven't opened any slides yet")).toBeDefined()
@@ -59,7 +70,7 @@ describe('HomeScreen', () => {
   it('最近開いたスライドが一覧表示される', () => {
     render(
       <Wrapper>
-        <HomeScreen recentPackages={recentPackages} onOpenRecent={async () => {}} onRemoveRecent={() => {}} onOpenSample={async () => {}} onBrowse={async () => {}} onCreateWithAi={() => {}} onOpenUrl={async () => {}} />
+        <HomeScreen {...defaultProps} recentPackages={recentPackages} />
       </Wrapper>,
     )
     expect(screen.getByText('Deck A')).toBeDefined()
@@ -70,7 +81,7 @@ describe('HomeScreen', () => {
     const onOpenRecent = vi.fn()
     render(
       <Wrapper>
-        <HomeScreen recentPackages={recentPackages} onOpenRecent={onOpenRecent} onRemoveRecent={() => {}} onOpenSample={async () => {}} onBrowse={async () => {}} onCreateWithAi={() => {}} onOpenUrl={async () => {}} />
+        <HomeScreen {...defaultProps} recentPackages={recentPackages} onOpenRecent={onOpenRecent} />
       </Wrapper>,
     )
     fireEvent.click(screen.getByText('Deck A'))
@@ -82,7 +93,7 @@ describe('HomeScreen', () => {
     const onRemoveRecent = vi.fn()
     render(
       <Wrapper>
-        <HomeScreen recentPackages={recentPackages} onOpenRecent={onOpenRecent} onRemoveRecent={onRemoveRecent} onOpenSample={async () => {}} onBrowse={async () => {}} onCreateWithAi={() => {}} onOpenUrl={async () => {}} />
+        <HomeScreen {...defaultProps} recentPackages={recentPackages} onOpenRecent={onOpenRecent} onRemoveRecent={onRemoveRecent} />
       </Wrapper>,
     )
     fireEvent.click(screen.getByRole('button', { name: 'Remove Deck A' }))
@@ -94,7 +105,7 @@ describe('HomeScreen', () => {
     const onOpenSample = vi.fn()
     render(
       <Wrapper>
-        <HomeScreen recentPackages={[]} onOpenRecent={async () => {}} onRemoveRecent={() => {}} onOpenSample={onOpenSample} onBrowse={async () => {}} onCreateWithAi={() => {}} onOpenUrl={async () => {}} />
+        <HomeScreen {...defaultProps} onOpenSample={onOpenSample} />
       </Wrapper>,
     )
     fireEvent.click(screen.getByText('Open Sample'))
@@ -105,7 +116,7 @@ describe('HomeScreen', () => {
     const onBrowse = vi.fn()
     render(
       <Wrapper>
-        <HomeScreen recentPackages={[]} onOpenRecent={async () => {}} onRemoveRecent={() => {}} onOpenSample={async () => {}} onBrowse={onBrowse} onCreateWithAi={() => {}} onOpenUrl={async () => {}} />
+        <HomeScreen {...defaultProps} onBrowse={onBrowse} />
       </Wrapper>,
     )
     fireEvent.click(screen.getByText('Choose File'))
@@ -116,7 +127,7 @@ describe('HomeScreen', () => {
     const onCreateWithAi = vi.fn()
     render(
       <Wrapper>
-        <HomeScreen recentPackages={[]} onOpenRecent={async () => {}} onRemoveRecent={() => {}} onOpenSample={async () => {}} onBrowse={async () => {}} onCreateWithAi={onCreateWithAi} onOpenUrl={async () => {}} />
+        <HomeScreen {...defaultProps} onCreateWithAi={onCreateWithAi} />
       </Wrapper>,
     )
     fireEvent.click(screen.getByText('Create with AI'))
@@ -127,7 +138,7 @@ describe('HomeScreen', () => {
     const onOpenUrl = vi.fn().mockResolvedValue(undefined)
     render(
       <Wrapper>
-        <HomeScreen recentPackages={[]} onOpenRecent={async () => {}} onRemoveRecent={() => {}} onOpenSample={async () => {}} onBrowse={async () => {}} onCreateWithAi={() => {}} onOpenUrl={onOpenUrl} />
+        <HomeScreen {...defaultProps} onOpenUrl={onOpenUrl} />
       </Wrapper>,
     )
     expect(screen.queryByTestId('home-url-input')).toBeNull()
@@ -143,7 +154,7 @@ describe('HomeScreen', () => {
   it('URL入力欄が空の場合、開くボタンは無効化される', () => {
     render(
       <Wrapper>
-        <HomeScreen recentPackages={[]} onOpenRecent={async () => {}} onRemoveRecent={() => {}} onOpenSample={async () => {}} onBrowse={async () => {}} onCreateWithAi={() => {}} onOpenUrl={async () => {}} />
+        <HomeScreen {...defaultProps} />
       </Wrapper>,
     )
     fireEvent.click(screen.getByText('Open from URL'))
@@ -160,7 +171,7 @@ describe('HomeScreen', () => {
     )
     render(
       <Wrapper>
-        <HomeScreen recentPackages={recentPackages} onOpenRecent={async () => {}} onRemoveRecent={() => {}} onOpenSample={async () => {}} onBrowse={onBrowse} onCreateWithAi={() => {}} onOpenUrl={async () => {}} />
+        <HomeScreen {...defaultProps} recentPackages={recentPackages} onBrowse={onBrowse} />
       </Wrapper>,
     )
 
