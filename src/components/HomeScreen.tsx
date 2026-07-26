@@ -5,6 +5,7 @@ import styles from './HomeScreen.module.css'
 type HomeScreenProps = {
   recentPackages: RecentSlidePackageEntry[]
   onOpenRecent: (path: string) => void
+  onRemoveRecent: (path: string) => void
   onOpenSample: () => void
   onBrowse: () => void
 }
@@ -38,7 +39,19 @@ function DocumentIcon() {
   )
 }
 
-export function HomeScreen({ recentPackages, onOpenRecent, onOpenSample, onBrowse }: HomeScreenProps) {
+/** ゴミ箱アイコン（最近開いたスライドの個別削除） */
+function TrashIcon() {
+  return (
+    <svg className={styles.removeIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 6h18" />
+      <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6" />
+      <path d="M10 11v6" />
+      <path d="M14 11v6" />
+    </svg>
+  )
+}
+
+export function HomeScreen({ recentPackages, onOpenRecent, onRemoveRecent, onOpenSample, onBrowse }: HomeScreenProps) {
   const { t } = useTranslation()
 
   return (
@@ -73,13 +86,16 @@ export function HomeScreen({ recentPackages, onOpenRecent, onOpenSample, onBrows
           ) : (
             <ul className={styles.recentList}>
               {recentPackages.map((entry) => (
-                <li key={entry.path}>
+                <li key={entry.path} className={styles.recentRow}>
                   <button className={styles.recentItem} onClick={() => onOpenRecent(entry.path)}>
                     <DocumentIcon />
                     <span className={styles.recentItemText}>
                       <span className={styles.recentItemTitle}>{entry.title}</span>
                       <span className={styles.recentItemPath}>{entry.path}</span>
                     </span>
+                  </button>
+                  <button className={styles.removeButton} onClick={() => onRemoveRecent(entry.path)} aria-label={t('home.removeRecentAria', '{title} を削除').replace('{title}', entry.title)}>
+                    <TrashIcon />
                   </button>
                 </li>
               ))}

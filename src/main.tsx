@@ -12,7 +12,7 @@ import { getDefaultPresentationData } from './data'
 import type { PresentationData } from './data'
 import { I18nProvider, loadLocales, useI18n } from './i18n'
 import type { LocaleResource } from './i18n'
-import { getRecentSlidePackages, isAddonAllowed, openRecentSlidePackage, pickAndLoadSlidePackage } from './localSlideLoader'
+import { getRecentSlidePackages, isAddonAllowed, openRecentSlidePackage, pickAndLoadSlidePackage, removeRecentSlidePackage } from './localSlideLoader'
 import type { LoadedSlidePackage, RecentSlidePackageEntry } from './localSlideLoader'
 import { SlideEditor } from './edit/SlideEditor'
 import type { EditSource } from './edit/SlideEditor'
@@ -121,6 +121,11 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
     [applyPackageAddons, showPresentation],
   )
 
+  const handleRemoveRecent = useCallback(async (path: string) => {
+    const updated = await removeRecentSlidePackage(path)
+    setRecentPackages(updated)
+  }, [])
+
   const handleOpenSample = useCallback(async () => {
     // サンプルは組み込みアドオンのみを使うため、パッケージ由来のアドオンは破棄する
     clearPackageAddons()
@@ -158,7 +163,7 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
   }
 
   if (view === 'home') {
-    return <HomeScreen recentPackages={recentPackages} onOpenRecent={handleOpenRecent} onOpenSample={handleOpenSample} onBrowse={handleBrowse} />
+    return <HomeScreen recentPackages={recentPackages} onOpenRecent={handleOpenRecent} onRemoveRecent={handleRemoveRecent} onOpenSample={handleOpenSample} onBrowse={handleBrowse} />
   }
 
   return <App key={presentationKey} presentationData={presentationData} onGoHome={handleGoHome} onStartEdit={handleStartEdit} addonOwner={addonInfo.owner} addonScripts={addonInfo.scripts} />

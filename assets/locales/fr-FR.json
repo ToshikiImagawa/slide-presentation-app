@@ -8,6 +8,7 @@
       "tagline": "Choisissez une présentation pour commencer",
       "recentTitle": "Récemment ouverts",
       "recentEmpty": "Vous n'avez pas encore ouvert de diapositives",
+      "removeRecentAria": "Supprimer {title}",
       "sampleButton": "Ouvrir l'exemple",
       "browseButton": "Ouvrir un fichier",
       "browseHint": "Choisissez un fichier .json / .tgz"
