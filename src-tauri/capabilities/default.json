@@ -13,6 +13,7 @@
     "dialog:default",
     "fs:allow-read-text-file",
     "fs:allow-exists",
-    "store:default"
+    "store:default",
+    "updater:default"
   ]
 }
