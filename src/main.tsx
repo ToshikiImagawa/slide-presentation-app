@@ -12,8 +12,8 @@ import { getBlankPresentationData, getDefaultPresentationData } from './data'
 import type { PresentationData } from './data'
 import { I18nProvider, loadLocales, useI18n } from './i18n'
 import type { LocaleResource } from './i18n'
-import { getRecentSlidePackages, isAddonAllowed, openRecentSlidePackage, pickAndLoadSlidePackage, removeRecentSlidePackage } from './localSlideLoader'
-import type { LoadedSlidePackage, RecentSlidePackageEntry } from './localSlideLoader'
+import { getRecentSlidePackages, isAddonAllowed, loadSlidePackageFromUrl, openRecentSlidePackage, pickAndLoadSlidePackage, removeRecentSlidePackage } from './localSlideLoader'
+import type { LoadedSlidePackage, RecentSlidePackageEntry, SlidePackageLoadResult } from './localSlideLoader'
 import { SlideEditor } from './edit/SlideEditor'
 import type { EditSource } from './edit/SlideEditor'
 import { serializeSlides } from './edit/slidesSerialize'
@@ -99,26 +99,35 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
     setAddonInfo({ owner: '', scripts: [] })
   }, [])
 
-  const handleBrowse = useCallback(async () => {
-    const { data, recentPackages } = await pickAndLoadSlidePackage()
-    if (recentPackages) setRecentPackages(recentPackages)
-    if (!data) return
-    await applyPackageAddons(data)
-    // 編集は書換前の生 JSON（相対パス）を対象にする
-    setEditSource({ rawText: data.rawText, baseDir: data.baseDir, sourcePath: data.sourcePath })
-    await showPresentation(data.data)
-  }, [applyPackageAddons, showPresentation])
-
-  const handleOpenRecent = useCallback(
-    async (path: string) => {
-      const { data, recentPackages } = await openRecentSlidePackage(path)
+  /** スライドパッケージの読み込み結果を受けて、最近使ったリストの更新・アドオン適用・プレゼン表示までを行う（各読み込み口の共通後処理） */
+  const applyLoadResult = useCallback(
+    async ({ data, recentPackages }: SlidePackageLoadResult) => {
       if (recentPackages) setRecentPackages(recentPackages)
       if (!data) return
       await applyPackageAddons(data)
+      // 編集は書換前の生 JSON（相対パス）を対象にする
       setEditSource({ rawText: data.rawText, baseDir: data.baseDir, sourcePath: data.sourcePath })
       await showPresentation(data.data)
     },
     [applyPackageAddons, showPresentation],
+  )
+
+  const handleBrowse = useCallback(async () => {
+    await applyLoadResult(await pickAndLoadSlidePackage())
+  }, [applyLoadResult])
+
+  const handleOpenRecent = useCallback(
+    async (path: string) => {
+      await applyLoadResult(await openRecentSlidePackage(path))
+    },
+    [applyLoadResult],
+  )
+
+  const handleOpenUrl = useCallback(
+    async (url: string) => {
+      await applyLoadResult(await loadSlidePackageFromUrl(url))
+    },
+    [applyLoadResult],
   )
 
   const handleRemoveRecent = useCallback(async (path: string) => {
@@ -173,7 +182,9 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
   }
 
   if (view === 'home') {
-    return <HomeScreen recentPackages={recentPackages} onOpenRecent={handleOpenRecent} onRemoveRecent={handleRemoveRecent} onOpenSample={handleOpenSample} onBrowse={handleBrowse} onCreateWithAi={handleCreateWithAi} />
+    return (
+      <HomeScreen recentPackages={recentPackages} onOpenRecent={handleOpenRecent} onRemoveRecent={handleRemoveRecent} onOpenSample={handleOpenSample} onBrowse={handleBrowse} onCreateWithAi={handleCreateWithAi} onOpenUrl={handleOpenUrl} />
+    )
   }
 
   return <App key={presentationKey} presentationData={presentationData} onGoHome={handleGoHome} onStartEdit={handleStartEdit} addonOwner={addonInfo.owner} addonScripts={addonInfo.scripts} />

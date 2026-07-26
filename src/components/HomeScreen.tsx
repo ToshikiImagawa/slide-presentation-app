@@ -1,3 +1,5 @@
+import { useState } from 'react'
+import type { FormEvent } from 'react'
 import { useTranslation } from '../i18n'
 import type { RecentSlidePackageEntry } from '../localSlideLoader'
 import styles from './HomeScreen.module.css'
@@ -9,6 +11,7 @@ type HomeScreenProps = {
   onOpenSample: () => void
   onBrowse: () => void
   onCreateWithAi: () => void
+  onOpenUrl: (url: string) => Promise<void>
 }
 
 /** フォルダアイコン（ファイルを開く） */
@@ -51,6 +54,16 @@ function DocumentIcon() {
   )
 }
 
+/** リンクアイコン（URLから開く） */
+function LinkIcon() {
+  return (
+    <svg className={styles.icon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+    </svg>
+  )
+}
+
 /** ゴミ箱アイコン（最近開いたスライドの個別削除） */
 function TrashIcon() {
   return (
@@ -63,8 +76,23 @@ function TrashIcon() {
   )
 }
 
-export function HomeScreen({ recentPackages, onOpenRecent, onRemoveRecent, onOpenSample, onBrowse, onCreateWithAi }: HomeScreenProps) {
+export function HomeScreen({ recentPackages, onOpenRecent, onRemoveRecent, onOpenSample, onBrowse, onCreateWithAi, onOpenUrl }: HomeScreenProps) {
   const { t } = useTranslation()
+  const [isUrlFormOpen, setIsUrlFormOpen] = useState(false)
+  const [url, setUrl] = useState('')
+  const [isOpeningUrl, setIsOpeningUrl] = useState(false)
+
+  const handleUrlSubmit = async (e: FormEvent) => {
+    e.preventDefault()
+    const trimmed = url.trim()
+    if (!trimmed || isOpeningUrl) return
+    setIsOpeningUrl(true)
+    try {
+      await onOpenUrl(trimmed)
+    } finally {
+      setIsOpeningUrl(false)
+    }
+  }
 
   return (
     <div className={styles.container} data-testid="home-screen">
@@ -95,10 +123,34 @@ export function HomeScreen({ recentPackages, onOpenRecent, onRemoveRecent, onOpe
             </span>
           </button>
 
-          <button className={styles.secondaryButton} onClick={onOpenSample} data-testid="home-sample">
-            <SparkleIcon />
-            <span>{t('home.sampleButton')}</span>
-          </button>
+          <div className={styles.secondaryRow}>
+            <button className={styles.secondaryButton} onClick={onOpenSample} data-testid="home-sample">
+              <SparkleIcon />
+              <span>{t('home.sampleButton')}</span>
+            </button>
+            <button className={styles.secondaryButton} onClick={() => setIsUrlFormOpen((open) => !open)} data-testid="home-url-toggle" aria-expanded={isUrlFormOpen}>
+              <LinkIcon />
+              <span>{t('home.urlButton', 'URLから開く')}</span>
+            </button>
+          </div>
+
+          {isUrlFormOpen && (
+            <form className={styles.urlForm} onSubmit={handleUrlSubmit} data-testid="home-url-form">
+              <input
+                type="url"
+                className={styles.urlInput}
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                placeholder={t('home.urlPlaceholder', 'https://example.com/deck.spkg')}
+                aria-label={t('home.urlInputLabel', 'スライドパッケージのURL')}
+                disabled={isOpeningUrl}
+                data-testid="home-url-input"
+              />
+              <button type="submit" className={styles.urlSubmitButton} disabled={!url.trim() || isOpeningUrl} data-testid="home-url-submit">
+                {isOpeningUrl ? t('home.urlOpening', '開いています…') : t('home.urlSubmit', '開く')}
+              </button>
+            </form>
+          )}
         </div>
 
         <section className={styles.section}>
