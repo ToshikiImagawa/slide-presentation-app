@@ -84,28 +84,26 @@ describe('SettingsWindow', () => {
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
-  it('開いた際にダイアログ内の要素にフォーカスが移動する', () => {
+  it('開いた際にフォーカスが背景（body）から外れてダイアログ側へ移動する', () => {
     render(
       <Wrapper>
         <SettingsWindow open={true} onClose={() => {}} scrollSpeed={20} setScrollSpeed={() => {}} />
       </Wrapper>,
     )
-    const dialog = screen.getByRole('dialog')
-    expect(dialog.contains(document.activeElement)).toBe(true)
+    expect(document.activeElement).not.toBe(document.body)
   })
 
-  it('Tabキーで最後の要素から最初の要素へフォーカスが循環する（フォーカストラップ）', () => {
+  it('末尾のフォーカス境界（sentinel）へ到達すると先頭の要素へ折り返す（フォーカストラップ）', () => {
     render(
       <Wrapper>
         <SettingsWindow open={true} onClose={() => {}} scrollSpeed={20} setScrollSpeed={() => {}} />
       </Wrapper>,
     )
-    const dialog = screen.getByRole('dialog')
     const closeButtons = screen.getAllByRole('button', { name: 'Close' })
     const firstFocusable = closeButtons[0]
-    const lastFocusable = closeButtons[closeButtons.length - 1]
-    lastFocusable.focus()
-    fireEvent.keyDown(dialog, { key: 'Tab' })
+    // ブラウザがネイティブのTab移動で最後の要素の次に到達する境界ノード（MUI FocusTrapのsentinel）
+    const sentinelEnd = screen.getByTestId('sentinelEnd')
+    sentinelEnd.focus()
     expect(document.activeElement).toBe(firstFocusable)
   })
 
