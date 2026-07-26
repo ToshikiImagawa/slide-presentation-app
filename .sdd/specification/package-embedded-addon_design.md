@@ -2,11 +2,11 @@
 id: design-package-embedded-addon
 title: パッケージ同梱アドオンのランタイムロード 技術設計書
 type: design
-status: draft
+status: approved
 sdd-phase: plan
 impl-status: implemented
 created: 2026-07-22
-updated: 2026-07-23
+updated: 2026-07-26
 depends-on:
   - spec-package-embedded-addon
 tags:
@@ -248,6 +248,12 @@ export function usePresenterView(options: { slides; addonOwner?; addonScripts?; 
 ---
 
 # 10. 変更履歴
+
+## v0.2（approved・2026-07-26）
+
+**変更内容:**
+
+- 実装完了（`impl-status: implemented`）と統合テスト・実機検証（AC-1〜7）を踏まえ、PRD/spec/design の `status` を `draft` → `approved` に更新（上流 PRD も併せて承認し依存チェーンの整合を維持）。設計内容の変更はなし
 
 ## v0.1（draft）
 
