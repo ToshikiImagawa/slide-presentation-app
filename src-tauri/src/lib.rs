@@ -1259,6 +1259,88 @@ mod tests {
   }
 
   #[test]
+  fn issue35_uncheck_and_reexport_with_same_name_version_excludes_addon() {
+    // #35 再現調査: 「同梱アドオンをアンチェックして再書き出し」を、同名・同バージョンでの
+    // 上書き書き出し→再オープン（extract_slide_package はファイル名 stem 基準の展開先を再利用する）
+    // まで含めて模擬する。展開先を1回目・2回目とも同一ディレクトリで extract_tgz し、
+    // 古い（除外前の）アドオンが残存しないことを確認する。
+    let dir = std::env::temp_dir().join(format!("slide-issue35-{}", std::process::id()));
+    fs::remove_dir_all(&dir).ok();
+    let base_dir = dir.join("src");
+    let out_dir = dir.join("out"); // 1回目・2回目とも同じ出力先ディレクトリ（上書き相当）
+    fs::create_dir_all(base_dir.join("addons")).unwrap();
+    fs::write(
+      base_dir.join("addons").join("manifest.json"),
+      br#"{"addons":[{"name":"viz","bundle":"addons/viz.iife.js"},{"name":"other","bundle":"addons/other.iife.js"}]}"#,
+    )
+    .unwrap();
+    fs::write(base_dir.join("addons").join("viz.iife.js"), b"VIZ").unwrap();
+    fs::write(base_dir.join("addons").join("other.iife.js"), b"OTHER").unwrap();
+
+    let json = r#"{"meta":{"title":"t"},"slides":[]}"#;
+
+    // 1回目: viz・other とも選択して書き出す（名前・バージョンは変更しない前提を再現）
+    let tgz_path_1 = build_slide_package_gated(
+      true,
+      json,
+      out_dir.to_str().unwrap(),
+      base_dir.to_str().unwrap(),
+      "demo",
+      "1.0.0",
+      &["viz".to_string(), "other".to_string()],
+      None,
+    )
+    .expect("1回目は両方選択で書き出す");
+
+    // extract_slide_package は tgz のファイル名 stem（例: slides-demo-1.0.0）で展開先を決めるため、
+    // 名前・バージョン不変の再書き出しは同じ展開先ディレクトリを再利用する（ここではそれを模擬する）
+    let extract_dir = dir.join("extract-slide-packages").join("slides-demo-1.0.0");
+    let pkg1 = extract_tgz(&fs::read(&tgz_path_1).unwrap(), &extract_dir).expect("1回目展開できる");
+    assert!(
+      pkg1.join("addons").join("other.iife.js").is_file(),
+      "1回目は other も同梱されている"
+    );
+
+    // 2回目: other のチェックを外して再書き出し（同じ out_dir・同じ name/version = 上書き）
+    let tgz_path_2 = build_slide_package_gated(
+      true,
+      json,
+      out_dir.to_str().unwrap(),
+      base_dir.to_str().unwrap(),
+      "demo",
+      "1.0.0",
+      &["viz".to_string()],
+      None,
+    )
+    .expect("2回目は viz のみ選択で書き出す");
+    assert_eq!(
+      tgz_path_1, tgz_path_2,
+      "同名・同バージョンなら同じ出力パスを上書きする"
+    );
+
+    // 再オープン: 同じ展開先ディレクトリへ再展開（extract_tgz は毎回 remove_dir_all するため
+    // 古い other.iife.js が残存すればキャッシュ/掃除漏れのバグ）
+    let pkg2 = extract_tgz(&fs::read(&tgz_path_2).unwrap(), &extract_dir).expect("2回目展開できる");
+    assert!(
+      !pkg2.join("addons").join("other.iife.js").exists(),
+      "アンチェックした other は再書き出し後の再展開でも残存しない"
+    );
+    assert!(
+      pkg2.join("addons").join("viz.iife.js").is_file(),
+      "選択したままの viz は残る"
+    );
+
+    let manifest: serde_json::Value =
+      serde_json::from_str(&fs::read_to_string(pkg2.join("addons").join("manifest.json")).unwrap())
+        .unwrap();
+    let kept = manifest.get("addons").unwrap().as_array().unwrap();
+    assert_eq!(kept.len(), 1, "manifest にも other は残らない");
+    assert_eq!(kept[0].get("name").unwrap().as_str().unwrap(), "viz");
+
+    fs::remove_dir_all(&dir).ok();
+  }
+
+  #[test]
   fn addon_names_from_manifest_extracts_names() {
     // 層A export 候補の真実源（dist manifest）から name を取り出す
     let names = addon_names_from_manifest(

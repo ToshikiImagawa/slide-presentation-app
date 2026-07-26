@@ -161,6 +161,25 @@ describe('SlideEditor 同梱アドオン選択（②・層A∪層B・0件表示�
     expect(x.disabled).toBe(true)
   })
 
+  it('#35 再現調査: 層Bの×でチェックを外して書き出すと、includedAddons から除外される', async () => {
+    h.getPackageAddonNames.mockResolvedValue(['pkg-a', 'pkg-b'])
+    h.chooseExportDir.mockResolvedValue('/out')
+    h.exportSlidePackage.mockResolvedValue('/out/slides.tgz')
+    render(
+      <Wrapper>
+        <SlideEditor source={{ rawText: validJson, baseDir: '/pkg' }} onExit={() => {}} />
+      </Wrapper>,
+    )
+    await screen.findByLabelText('pkg-a')
+    const x = screen.getByRole('button', { name: 'pkg-a をパッケージから除外' })
+    fireEvent.click(x)
+    fireEvent.click(screen.getByRole('button', { name: '.tgz 書き出し' }))
+    await waitFor(() => expect(h.exportSlidePackage).toHaveBeenCalled())
+    const opts = h.exportSlidePackage.mock.calls[0][1] as { includedAddons: string[] }
+    expect(opts.includedAddons).not.toContain('pkg-a')
+    expect(opts.includedAddons).toContain('pkg-b')
+  })
+
   it('層Aのチェックを入れて書き出すと、選択集合に組み込みアドオンが含まれて export される', async () => {
     h.getPackageAddonNames.mockResolvedValue(['pkg-a'])
     h.listBuiltinDistAddons.mockResolvedValue(['builtin-b'])
