@@ -9,10 +9,10 @@ import { applyPresentationTheme, applyTheme, resetThemeOverrides } from './apply
 import { loadAddonScripts, loadBuiltinAddons } from './addonLoader'
 import { unregisterOwner } from './components/ComponentRegistry'
 import { getBlankPresentationData, getDefaultPresentationData } from './data'
-import type { PresentationData } from './data'
+import type { PresentationData, ThemeData } from './data'
 import { I18nProvider, loadLocales, useI18n } from './i18n'
 import type { LocaleResource } from './i18n'
-import { ToastProvider } from './toast'
+import { ToastProvider, useToast } from './toast'
 import { getRecentSlidePackages, isAddonAllowed, loadSlidePackageFromUrl, openRecentSlidePackage, pickAndLoadSlidePackage, removeRecentSlidePackage } from './localSlideLoader'
 import type { LoadedSlidePackage, RecentSlidePackageEntry, SlidePackageLoadResult } from './localSlideLoader'
 import { SlideEditor } from './edit/SlideEditor'
@@ -38,7 +38,8 @@ type View = 'home' | 'presentation' | 'edit'
 
 /** ホーム画面とプレゼンテーション画面を切り替える（I18nProvider の内側で useI18n を使うための内側コンポーネント） */
 function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentSlidePackageEntry[] }) {
-  const { locale } = useI18n()
+  const { locale, t } = useI18n()
+  const { showToast } = useToast()
   const [view, setView] = useState<View>('home')
   const [presentationData, setPresentationData] = useState<PresentationData | undefined>(undefined)
   const [presentationKey, setPresentationKey] = useState(0)
@@ -57,19 +58,26 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
     setPresentationKey((key) => key + 1)
   }, [])
 
+  // テーマを適用し、失敗した場合はトースト通知する（showPresentation・handleExitEdit の両方から使う共通処理）
+  const applyThemeAndNotify = useCallback(
+    async (themeColors?: string, theme?: ThemeData) => {
+      const themeApplied = await applyPresentationTheme(themeColors, theme)
+      if (!themeApplied) {
+        showToast(t('theme.applyFailed'))
+      }
+    },
+    [showToast, t],
+  )
+
   const showPresentation = useCallback(
     async (data: PresentationData) => {
       // スライド内容の更新を最優先で反映する（テーマ適用の失敗で更新がブロックされないようにする）
       applyPresentationData(data)
       setView('presentation')
 
-      try {
-        await applyPresentationTheme(data.meta?.themeColors, data.theme)
-      } catch (error) {
-        console.error('[main] テーマの適用に失敗しました', error)
-      }
+      await applyThemeAndNotify(data.meta?.themeColors, data.theme)
     },
-    [applyPresentationData],
+    [applyPresentationData, applyThemeAndNotify],
   )
 
   /** 現在のパッケージアドオンを破棄し、許可された場合のみ新パッケージのアドオンをロードする（再マウント前に完了させる） */
@@ -174,9 +182,9 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
   const handleExitEdit = useCallback(() => {
     void exitEditMode().catch((error) => console.error('[main] 編集モードの無効化に失敗しました', error))
     // 編集中に適用したテーマを、表示中プレゼンのテーマへ戻す
-    void applyPresentationTheme(presentationData?.meta?.themeColors, presentationData?.theme)
+    void applyThemeAndNotify(presentationData?.meta?.themeColors, presentationData?.theme)
     setView('presentation')
-  }, [presentationData])
+  }, [presentationData, applyThemeAndNotify])
 
   if (view === 'edit' && editSource) {
     return <SlideEditor source={editSource} onExit={handleExitEdit} />

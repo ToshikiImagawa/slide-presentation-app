@@ -24,6 +24,9 @@
       "hide": "Masquer la barre d'outils (T)",
       "show": "Afficher la barre d'outils (T)"
     },
+    "theme": {
+      "applyFailed": "Échec de l'application du thème"
+    },
     "settings": {
       "title": "Paramètres",
       "language": "Langue",

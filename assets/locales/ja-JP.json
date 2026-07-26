@@ -24,6 +24,9 @@
       "hide": "ツールバーを隠す (T)",
       "show": "ツールバーを表示 (T)"
     },
+    "theme": {
+      "applyFailed": "テーマの適用に失敗しました"
+    },
     "settings": {
       "title": "設定",
       "language": "言語",

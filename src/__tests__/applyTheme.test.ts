@@ -1,6 +1,86 @@
-import { describe, it, expect, beforeEach } from 'vitest'
-import { applyThemeData, applyBaseFontSize, loadFontSources, resetThemeOverrides } from '../applyTheme'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { applyTheme, applyPresentationTheme, applyThemeData, applyBaseFontSize, loadFontSources, resetThemeOverrides } from '../applyTheme'
 import type { ThemeData } from '../data'
+
+describe('applyTheme', () => {
+  beforeEach(() => {
+    document.documentElement.style.cssText = ''
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('取得に成功したテーマカラーを CSS 変数に適用し true を返す', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ primary: '#112233' }) }))
+
+    await expect(applyTheme()).resolves.toBe(true)
+    expect(document.documentElement.style.getPropertyValue('--theme-primary')).toBe('#112233')
+  })
+
+  it('パス省略時にデフォルトファイルが404でも失敗とせず true を返す（カスタムテーマ未使用の正常系）', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 404 }))
+
+    await expect(applyTheme()).resolves.toBe(true)
+  })
+
+  it('パス省略時に fetch が例外を投げても失敗とせず true を返す', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network')))
+
+    await expect(applyTheme()).resolves.toBe(true)
+  })
+
+  it('明示的なパス指定時に404の場合は false を返す', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 404 }))
+
+    await expect(applyTheme('/pkg/theme-colors.json')).resolves.toBe(false)
+  })
+
+  it('明示的なパス指定時に fetch が例外を投げた場合は false を返す', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network')))
+
+    await expect(applyTheme('/pkg/theme-colors.json')).resolves.toBe(false)
+  })
+
+  it('取得に成功してもJSONパースに失敗した場合は（パス省略時も含め）false を返す', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => {
+          throw new SyntaxError('invalid json')
+        },
+      }),
+    )
+
+    await expect(applyTheme()).resolves.toBe(false)
+  })
+})
+
+describe('applyPresentationTheme', () => {
+  beforeEach(() => {
+    document.documentElement.style.cssText = ''
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('themeColors の適用に失敗した場合、theme は適用しつつ false を返す', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 404 }))
+
+    const result = await applyPresentationTheme('/pkg/theme-colors.json', { colors: { primary: '#445566' } })
+
+    expect(result).toBe(false)
+    expect(document.documentElement.style.getPropertyValue('--theme-primary')).toBe('#445566')
+  })
+
+  it('themeColors の適用に成功した場合は true を返す', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ primary: '#112233' }) }))
+
+    await expect(applyPresentationTheme('/pkg/theme-colors.json')).resolves.toBe(true)
+  })
+})
 
 describe('applyBaseFontSize', () => {
   let root: HTMLElement
