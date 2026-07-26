@@ -1,0 +1,162 @@
+{
+  "_comment": "slides.json のレイアウト別 content 構造の単一ソース。AI生成プロンプト（src-tauri/src/generation/mod.rs の system_prompt）と生成専用の厳格チェック（src/data/slideContentSchema.ts）の両方がこのファイルを参照する。人間向けの詳細例は .claude/skills/create-slides/LAYOUT_REFERENCE.md を参照（このファイルと同期させること）。",
+  "layouts": {
+    "center": {
+      "description": "タイトル・まとめ用の中央寄せレイアウト。variant: \"section\" を指定すると SectionLayout に切り替わる",
+      "contentFields": {
+        "title": { "type": "string" },
+        "subtitle": { "type": "string", "description": "サブタイトル（改行は \\n）" },
+        "variant": { "type": "string", "enum": ["section"] },
+        "body": { "type": "string", "description": "variant=section 時の本文（改行は \\n）" },
+        "qrCode": { "type": "string", "description": "variant=section 時のQRコード対象URL" },
+        "githubRepo": { "type": "string", "description": "variant=section 時の owner/repo 表記" }
+      }
+    },
+    "content": {
+      "description": "コンテンツ表示用レイアウト。子要素のフィールドで描画が決まる（steps→Timeline / tiles→FeatureTileGrid / component→カスタム）",
+      "contentFields": {
+        "title": { "type": "string" },
+        "steps": {
+          "type": "array",
+          "description": "Timelineの各ステップ",
+          "itemFields": {
+            "number": { "type": "number" },
+            "title": { "type": "string" },
+            "description": { "type": "string" },
+            "command": { "type": "string" }
+          }
+        },
+        "tiles": {
+          "type": "array",
+          "description": "FeatureTileGridのタイル",
+          "itemFields": {
+            "icon": { "type": "string", "enum": ["Description", "PlaylistAddCheck", "Traffic", "FactCheck", "Memory", "Search"] },
+            "title": { "type": "string" },
+            "description": { "type": "string", "description": "<br/>等HTMLタグ利用可" }
+          }
+        },
+        "component": { "type": "object", "ref": "componentReference" },
+        "footer": { "type": "string" }
+      }
+    },
+    "two-column": {
+      "description": "左右2カラムレイアウト。left/rightは columnContentFields を組み合わせて構成する",
+      "contentFields": {
+        "title": { "type": "string" },
+        "left": { "type": "object", "ref": "columnContentFields" },
+        "right": { "type": "object", "ref": "columnContentFields" }
+      }
+    },
+    "bleed": {
+      "description": "2カラム全幅レイアウト。左にテキスト、右にコンポーネント",
+      "contentFields": {
+        "title": { "type": "string" },
+        "titleDescription": { "type": "string" },
+        "commands": {
+          "type": "array",
+          "itemFields": {
+            "text": { "type": "string" },
+            "color": { "type": "string", "description": "例: var(--theme-primary)" }
+          }
+        },
+        "component": { "type": "object", "ref": "componentReference" }
+      }
+    },
+    "custom": {
+      "description": "カスタムコンポーネントを直接描画",
+      "contentFields": {
+        "component": { "type": "object", "ref": "componentReference" }
+      }
+    }
+  },
+  "columnContentFields": {
+    "description": "two-columnの left/right に指定可能なフィールド（すべてオプション、組み合わせ可）。componentを指定した場合は他のフィールドは無視される",
+    "heading": { "type": "string" },
+    "headingDescription": { "type": "string" },
+    "paragraphs": { "type": "array", "description": "段落テキストの配列（HTMLタグ可）" },
+    "items": {
+      "type": "array",
+      "itemFields": {
+        "text": { "type": "string" },
+        "emphasis": { "type": "boolean" },
+        "description": { "type": "string" }
+      }
+    },
+    "codeBlock": {
+      "type": "object",
+      "fields": {
+        "header": { "type": "string" },
+        "items": { "type": "array", "description": "行文字列の配列" }
+      }
+    },
+    "titledBulletList": {
+      "type": "object",
+      "fields": {
+        "title": { "type": "string" },
+        "items": { "type": "array", "description": "項目文字列の配列" }
+      }
+    },
+    "accentText": { "type": "string" },
+    "component": { "type": "object", "ref": "componentReference" }
+  },
+  "componentReference": {
+    "description": "content.component / left.component 等で参照するカスタムコンポーネント",
+    "name": { "type": "string" },
+    "props": { "type": "object" },
+    "style": { "type": "object" }
+  },
+  "builtinComponents": ["TerminalAnimation", "Image"],
+  "builtinIcons": ["Description", "PlaylistAddCheck", "Traffic", "FactCheck", "Memory", "Search"],
+  "presentationMeta": {
+    "description": "トップレベル meta（プレゼン全体の設定）",
+    "title": { "type": "string" },
+    "description": { "type": "string" },
+    "author": { "type": "string" },
+    "logo": {
+      "type": "object",
+      "fields": {
+        "src": { "type": "string" },
+        "width": { "type": "number", "description": "デフォルト120" },
+        "height": { "type": "number", "description": "デフォルト40" }
+      }
+    },
+    "themeColors": { "type": "string" }
+  },
+  "slideMeta": {
+    "description": "各スライド共通のmeta（オプション）",
+    "transition": { "type": "string" },
+    "backgroundColor": { "type": "string" },
+    "backgroundImage": { "type": "string", "description": "例: url(/bg.png)" },
+    "notes": {
+      "type": ["string", "object"],
+      "description": "文字列、またはSlideNotesオブジェクト",
+      "fields": {
+        "speakerNotes": { "type": "string" },
+        "summary": { "type": "array", "description": "要点文字列の配列" },
+        "voice": { "type": "string", "description": "音声ファイルへの相対パス" }
+      }
+    }
+  },
+  "theme": {
+    "description": "プレゼン全体のtheme（トップレベル、オプション）",
+    "colors": { "type": "object", "description": "primary/accent/background/text等" },
+    "fonts": {
+      "type": "object",
+      "fields": {
+        "heading": { "type": "string" },
+        "body": { "type": "string" },
+        "code": { "type": "string" },
+        "baseFontSize": { "type": "number", "description": "デフォルト20px" },
+        "sources": {
+          "type": "array",
+          "itemFields": {
+            "family": { "type": "string" },
+            "src": { "type": "string", "description": "ローカルフォントファイルパス" },
+            "url": { "type": "string", "description": "外部フォントURL" }
+          }
+        }
+      }
+    },
+    "customCSS": { "type": "string" }
+  }
+}
