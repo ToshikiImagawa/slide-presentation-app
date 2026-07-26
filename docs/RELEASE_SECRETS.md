@@ -16,7 +16,7 @@
 | `WINDOWS_CERTIFICATE` | Windows Authenticode 署名用 PFX 証明書（base64 化した内容） | 未登録・Windows 署名導入時に必須 |
 | `WINDOWS_CERTIFICATE_PASSWORD` | 上記 PFX のパスワード | 未登録・Windows 署名導入時に必須 |
 | `GITHUB_TOKEN` | GitHub Releases の作成・アセットアップロード | GitHub Actions が自動的に注入する組み込み secret。手動登録不要 |
-| `TAURI_SIGNING_PRIVATE_KEY` | Tauri updater の minisign 署名用秘密鍵 | **現状不要**（下記「Tauri updater について」参照） |
+| `TAURI_SIGNING_PRIVATE_KEY` | Tauri updater の minisign 署名用秘密鍵 | **現状不要**（下記「不要と判断した secrets」参照） |
 | `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | 上記秘密鍵のパスワード | **現状不要**（同上） |
 
 ## 取得手順
@@ -70,14 +70,13 @@ npm run tauri signer generate -- -w ~/.tauri/slide-presentation-app.key
 
 ## 不要と判断した secrets
 
-以下は参照元（NexusBoard）で使用されている secrets だが、本プロジェクトには該当機能が無いため不要と判断する。
+以下は参照元（NexusBoard）で使用されている secrets、および現状未構成の機能に関する secrets だが、いずれも本プロジェクトには該当機能が無いため不要と判断する。
 
 - `GH_OAUTH_CLIENT_ID` / `GH_OAUTH_CLIENT_SECRET`: NexusBoard の GitHub OAuth アプリ機能用。本プロジェクトに GitHub OAuth を用いる機能は無いため **不要**
 - Vertex AI 認証情報 / GitHub App 認証（`CLAUDE_APP_ID` 等）: リリース準備自動化 workflow（AI による自動化）を採用する場合にのみ検討対象となる。本プロジェクトでは現時点で採用していないため **不要**。将来的にリリース準備自動化 workflow を導入する場合は、本ドキュメントに secrets を追記すること
+- `TAURI_SIGNING_PRIVATE_KEY` / `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`: `src-tauri/tauri.conf.json` の `plugins` に updater 設定（`updater` / `pubkey` / エンドポイント）が存在せず、Tauri updater は現状未構成のため **不要**。updater 導入時の対応手順は下記「Tauri updater 導入時の対応」を参照
 
-## Tauri updater について
-
-`src-tauri/tauri.conf.json` の `plugins` には updater 設定（`updater` / `pubkey` / エンドポイント）が存在せず、Tauri updater は現状未構成である。したがって `TAURI_SIGNING_PRIVATE_KEY` / `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` は現時点では不要。
+## Tauri updater 導入時の対応
 
 updater 導入を決定した時点で、以下を本ドキュメントに追加すること。
 
