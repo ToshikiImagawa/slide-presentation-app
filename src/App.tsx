@@ -235,19 +235,23 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
     }
   }, [data.theme])
 
-  // T キーでツールバーの表示・非表示をトグル（入力中は無視）
+  const handleToggleToolbar = useCallback(() => setToolbarHidden((prev) => !prev), [])
+
+  // T キーでツールバーの表示・非表示をトグル（入力中は無視）。T は Reveal.js のデフォルトキーバインド
+  // （H/L/K/J/N/P/B/V/F/A/G/C/O 等）と衝突しないキーとして選定した
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key.toLowerCase() !== 't') return
       const target = e.target as HTMLElement | null
       if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return
-      setToolbarHidden((prev) => !prev)
+      handleToggleToolbar()
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [])
+  }, [handleToggleToolbar])
 
   const logo = data.meta.logo
+  const toolbarHiddenClass = toolbarHidden ? ' toolbar-hidden' : ''
 
   return (
     <ThemeProvider theme={theme}>
@@ -261,13 +265,13 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
           <FallbackImage src={logo.src} width={logo.width ?? 120} height={logo.height ?? 40} alt="Logo" />
         </div>
       )}
-      <div className={`toolbar toolbar-left${toolbarHidden ? ' toolbar-hidden' : ''}`}>
+      <div className={`toolbar toolbar-left${toolbarHiddenClass}`}>
         <HomeButton onClick={onGoHome} />
         {onStartEdit && <EditButton onClick={onStartEdit} />}
-        <ToolbarVisibilityButton hidden={toolbarHidden} onClick={() => setToolbarHidden((prev) => !prev)} />
+        <ToolbarVisibilityButton hidden={toolbarHidden} onClick={handleToggleToolbar} />
         <SettingsButton onClick={() => setSettingsOpen(true)} />
       </div>
-      <div className={`toolbar${toolbarHidden ? ' toolbar-hidden' : ''}`}>
+      <div className={`toolbar${toolbarHiddenClass}`}>
         {currentVoicePath && <AudioPlayButton playbackState={audioPlayer.playbackState} hasError={audioPlayer.hasError} onToggle={handleAudioToggleLocal} />}
         <AudioControlBar
           autoPlay={autoPlay}

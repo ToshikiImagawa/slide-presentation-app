@@ -143,8 +143,9 @@ body {
 }
 
 .toolbar-hidden {
+  /* .toolbar:hover の opacity: 1 に打ち勝つため !important が必要 */
   opacity: 0 !important;
-  pointer-events: none !important;
+  pointer-events: none;
 }
 
 .slide-container > * {
