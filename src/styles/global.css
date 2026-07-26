@@ -142,6 +142,11 @@ body {
   right: auto;
 }
 
+.toolbar-hidden {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
 .slide-container > * {
   position: relative;
   z-index: 1;

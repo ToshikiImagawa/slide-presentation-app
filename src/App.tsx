@@ -8,6 +8,7 @@ import { PresenterViewButton } from './components/PresenterViewButton'
 import { SettingsButton } from './components/SettingsButton'
 import { SettingsWindow } from './components/SettingsWindow'
 import { SlideRenderer } from './components/SlideRenderer'
+import { ToolbarVisibilityButton } from './components/ToolbarVisibilityButton'
 import { registerDefaultComponents } from './components/registerDefaults'
 import { getDefaultPresentationData, loadPresentationData } from './data'
 import type { PresentationData } from './data'
@@ -45,6 +46,7 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
   const data = loadPresentationData(presentationData, defaultData)
   const [currentIndex, setCurrentIndex] = useState(0)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [toolbarHidden, setToolbarHidden] = useState(false)
   const [addonsDisabled, setAddonsDisabled] = useState(false)
   // 層C: 実行時信頼の個別付け外し対象（最近開いたパッケージ × 現在の信頼判断）
   const [addonTrustList, setAddonTrustList] = useState<AddonTrustEntry[]>([])
@@ -233,6 +235,18 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
     }
   }, [data.theme])
 
+  // T キーでツールバーの表示・非表示をトグル（入力中は無視）
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() !== 't') return
+      const target = e.target as HTMLElement | null
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return
+      setToolbarHidden((prev) => !prev)
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
   const logo = data.meta.logo
 
   return (
@@ -247,12 +261,13 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
           <FallbackImage src={logo.src} width={logo.width ?? 120} height={logo.height ?? 40} alt="Logo" />
         </div>
       )}
-      <div className="toolbar toolbar-left">
+      <div className={`toolbar toolbar-left${toolbarHidden ? ' toolbar-hidden' : ''}`}>
         <HomeButton onClick={onGoHome} />
         {onStartEdit && <EditButton onClick={onStartEdit} />}
+        <ToolbarVisibilityButton hidden={toolbarHidden} onClick={() => setToolbarHidden((prev) => !prev)} />
         <SettingsButton onClick={() => setSettingsOpen(true)} />
       </div>
-      <div className="toolbar">
+      <div className={`toolbar${toolbarHidden ? ' toolbar-hidden' : ''}`}>
         {currentVoicePath && <AudioPlayButton playbackState={audioPlayer.playbackState} hasError={audioPlayer.hasError} onToggle={handleAudioToggleLocal} />}
         <AudioControlBar
           autoPlay={autoPlay}

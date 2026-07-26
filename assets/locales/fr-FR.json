@@ -12,6 +12,10 @@
       "browseButton": "Ouvrir un fichier",
       "browseHint": "Choisissez un fichier .json / .tgz"
     },
+    "toolbar": {
+      "hide": "Masquer la barre d'outils (T)",
+      "show": "Afficher la barre d'outils (T)"
+    },
     "settings": {
       "title": "Paramètres",
       "language": "Langue",

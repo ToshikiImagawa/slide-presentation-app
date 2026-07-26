@@ -12,6 +12,10 @@
       "browseButton": "ファイルを開く",
       "browseHint": ".json / .tgz ファイルを選択"
     },
+    "toolbar": {
+      "hide": "ツールバーを隠す (T)",
+      "show": "ツールバーを表示 (T)"
+    },
     "settings": {
       "title": "設定",
       "language": "言語",
