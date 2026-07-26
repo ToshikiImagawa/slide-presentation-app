@@ -20,18 +20,18 @@ const ROOT = new URL('..', import.meta.url).pathname
 const hasSigningKey = Boolean(process.env.TAURI_SIGNING_PRIVATE_KEY)
 const windowsCertThumbprint = process.env.WINDOWS_CERT_THUMBPRINT
 
-const config = {}
+const config = { bundle: {} }
 if (!hasSigningKey) {
   console.log('TAURI_SIGNING_PRIVATE_KEY が未設定のため createUpdaterArtifacts を無効化します')
-  config.bundle = { ...config.bundle, createUpdaterArtifacts: false }
+  config.bundle.createUpdaterArtifacts = false
 }
 if (windowsCertThumbprint) {
   console.log('WINDOWS_CERT_THUMBPRINT が設定されているため Authenticode 署名を有効化します')
-  config.bundle = { ...config.bundle, windows: { certificateThumbprint: windowsCertThumbprint } }
+  config.bundle.windows = { certificateThumbprint: windowsCertThumbprint }
 }
 
 const args = ['tauri', 'build']
-if (Object.keys(config).length > 0) {
+if (Object.keys(config.bundle).length > 0) {
   args.push('--config', JSON.stringify(config))
 }
 
