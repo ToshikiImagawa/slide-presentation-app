@@ -57,6 +57,13 @@ jobs:
       contents: write
     runs-on: ${{ matrix.os }}
     timeout-minutes: 40
+    env:
+      # macOS ジョブでのみ参照する(他 OS では無害な未使用値)。secrets はステップの
+      # if 条件でも直接参照できるが、判定を 1 箇所に集約するため job env に持たせる(#24)
+      HAS_APPLE_CERT: ${{ secrets.APPLE_CERTIFICATE != '' }}
+      # APPLE_CERTIFICATE 自体は渡さない(渡すと Tauri bundler が Apple 公式 CN 前提の
+      # 自動検出経路に入り自己署名 CN で失敗する)。渡すのは import 済み識別名のみ
+      APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
     strategy:
       fail-fast: false
       matrix:
@@ -102,21 +109,13 @@ jobs:
           sudo DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a apt-get install -y --no-install-recommends \
             libgtk-3-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev pkg-config libsoup-3.0-dev
       - run: npm ci
-      - name: Check macOS signing secret
-        # APPLE_CERTIFICATE の有無を 1 箇所で判定し、以降の macOS 署名関連ステップは
-        # この output を参照する(if 条件に secrets.APPLE_CERTIFICATE != '' を都度書くと
-        # 4 箇所の判定が将来ズレるリスクがあるため)
-        id: macos-cert
-        if: matrix.os == 'macos-latest'
-        env:
-          HAS_CERT: ${{ secrets.APPLE_CERTIFICATE != '' }}
-        run: echo "present=$HAS_CERT" >> "$GITHUB_OUTPUT"
       - name: Set up macOS signing keychain (self-signed)
         # secret 名は APPLE_CERTIFICATE / APPLE_CERTIFICATE_PASSWORD のままだが、
         # job の env 変数名は MACOS_SIGNING_P12 / MACOS_SIGNING_P12_PASSWORD へ別名化する。
         # (env 名を APPLE_CERTIFICATE のままにすると Tauri bundler が Apple 公式 CN 前提の
-        #  自動検出経路に入り、自己署名 CN では失敗するため)
-        if: matrix.os == 'macos-latest' && steps.macos-cert.outputs.present == 'true'
+        #  自動検出経路に入り、自己署名 CN では失敗するため。上記 job env の
+        #  APPLE_SIGNING_IDENTITY コメントも参照)
+        if: matrix.os == 'macos-latest' && env.HAS_APPLE_CERT == 'true'
         env:
           MACOS_SIGNING_P12: ${{ secrets.APPLE_CERTIFICATE }}
           MACOS_SIGNING_P12_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
@@ -142,19 +141,14 @@ jobs:
 
           rm -f "$CERTIFICATE_PATH" "$CERTIFICATE_PEM_PATH"
       - name: Warn about macOS ad-hoc signing fallback
-        if: matrix.os == 'macos-latest' && steps.macos-cert.outputs.present == 'false'
+        if: matrix.os == 'macos-latest' && env.HAS_APPLE_CERT == 'false'
         run: echo "::warning::APPLE_CERTIFICATE が未設定のため macOS ビルドは ad-hoc 署名(ビルド疎通確認用)に縮退します。公開リリースには添付しません。"
       - run: npm run tauri:build
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          # APPLE_CERTIFICATE 自体は渡さない(渡すと Tauri bundler が Apple 公式 CN 前提の
-          # 自動検出経路に入り自己署名 CN で失敗する)。渡すのは import 済み識別名のみ
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
       - name: Verify macOS code signing
-        if: matrix.os == 'macos-latest' && steps.macos-cert.outputs.present == 'true'
-        env:
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+        if: matrix.os == 'macos-latest' && env.HAS_APPLE_CERT == 'true'
         run: |
           APP_PATH="$(find src-tauri/target/release/bundle/macos -maxdepth 1 -name '*.app' -print -quit)"
           codesign --verify --deep --strict --verbose=2 "$APP_PATH"
@@ -169,8 +163,11 @@ jobs:
           name: release-notes
       - name: Upload release assets
         # macOS で APPLE_CERTIFICATE 未設定(ad-hoc 署名)の場合は、無警告の ad-hoc 成果物を
-        # 公開リリースに添付しないためスキップする(公証はスコープ外、署名はビルド疎通確認用に限定)
-        if: matrix.os != 'macos-latest' || steps.macos-cert.outputs.present == 'true'
+        # 公開リリースに添付しないためスキップする(公証はスコープ外、署名はビルド疎通確認用に限定)。
+        # Windows の未署名フォールバックには同種のガードを設けていない(ad-hoc は identity ゼロで
+        # Gatekeeper に強くブロックされるのに対し、未署名 Windows バイナリは SmartScreen 警告で
+        # 起動自体は可能なため、リスクの非対称性に応じた対応)
+        if: matrix.os != 'macos-latest' || env.HAS_APPLE_CERT == 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
