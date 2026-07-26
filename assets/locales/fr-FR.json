@@ -11,7 +11,9 @@
       "removeRecentAria": "Supprimer {title}",
       "sampleButton": "Ouvrir l'exemple",
       "browseButton": "Ouvrir un fichier",
-      "browseHint": "Choisissez un fichier .json / .spkg"
+      "browseHint": "Choisissez un fichier .json / .spkg",
+      "createWithAiButton": "Créer avec l'IA",
+      "createWithAiHint": "Générer des diapositives à partir de zéro avec l'IA"
     },
     "toolbar": {
       "hide": "Masquer la barre d'outils (T)",

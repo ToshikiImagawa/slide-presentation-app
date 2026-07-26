@@ -17,6 +17,6 @@ export type {
   ValidationError,
 } from './types'
 
-export { loadPresentationData, validatePresentationData, getValidationErrors, getDefaultPresentationData } from './loader'
+export { loadPresentationData, validatePresentationData, getValidationErrors, getDefaultPresentationData, getBlankPresentationData } from './loader'
 
 export { normalizeNotes, getSpeakerNotes, getSlideSummary } from './noteHelpers'

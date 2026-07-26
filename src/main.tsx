@@ -8,7 +8,7 @@ import { HomeScreen } from './components/HomeScreen'
 import { applyPresentationTheme, applyTheme, resetThemeOverrides } from './applyTheme'
 import { loadAddonScripts, loadBuiltinAddons } from './addonLoader'
 import { unregisterOwner } from './components/ComponentRegistry'
-import { getDefaultPresentationData } from './data'
+import { getBlankPresentationData, getDefaultPresentationData } from './data'
 import type { PresentationData } from './data'
 import { I18nProvider, loadLocales, useI18n } from './i18n'
 import type { LocaleResource } from './i18n'
@@ -49,18 +49,27 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
   // 編集モードの供給元（現在表示中プレゼンの生 JSON / baseDir / 読込元パス）。編集は相対パスの生 JSON を対象にする
   const [editSource, setEditSource] = useState<EditSource | null>(null)
 
-  const showPresentation = useCallback(async (data: PresentationData) => {
-    // スライド内容の更新を最優先で反映する（テーマ適用の失敗で更新がブロックされないようにする）
+  // 表示中プレゼンデータを更新する（App を再マウントするための key 更新を含む）。
+  // showPresentation・handleCreateWithAi の両方から使う共通処理
+  const applyPresentationData = useCallback((data: PresentationData) => {
     setPresentationData(data)
     setPresentationKey((key) => key + 1)
-    setView('presentation')
-
-    try {
-      await applyPresentationTheme(data.meta?.themeColors, data.theme)
-    } catch (error) {
-      console.error('[main] テーマの適用に失敗しました', error)
-    }
   }, [])
+
+  const showPresentation = useCallback(
+    async (data: PresentationData) => {
+      // スライド内容の更新を最優先で反映する（テーマ適用の失敗で更新がブロックされないようにする）
+      applyPresentationData(data)
+      setView('presentation')
+
+      try {
+        await applyPresentationTheme(data.meta?.themeColors, data.theme)
+      } catch (error) {
+        console.error('[main] テーマの適用に失敗しました', error)
+      }
+    },
+    [applyPresentationData],
+  )
 
   /** 現在のパッケージアドオンを破棄し、許可された場合のみ新パッケージのアドオンをロードする（再マウント前に完了させる） */
   const applyPackageAddons = useCallback(async (pkg: LoadedSlidePackage) => {
@@ -142,6 +151,16 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
     setView('edit')
   }, [])
 
+  // ホーム画面の「AIで新規作成」。既存プレゼンを開かず、最小構成の空プレゼンを土台に編集モード＋AI生成パネルへ直接遷移する
+  const handleCreateWithAi = useCallback(() => {
+    // 新規作成は既存パッケージを開かないため、パッケージ由来のアドオンは破棄する
+    clearPackageAddons()
+    const data = getBlankPresentationData(locale)
+    applyPresentationData(data)
+    setEditSource({ rawText: serializeSlides(data), baseDir: '', sourcePath: undefined, aiPanelExpanded: true })
+    handleStartEdit()
+  }, [applyPresentationData, clearPackageAddons, handleStartEdit, locale])
+
   const handleExitEdit = useCallback(() => {
     void exitEditMode().catch((error) => console.error('[main] 編集モードの無効化に失敗しました', error))
     // 編集中に適用したテーマを、表示中プレゼンのテーマへ戻す
@@ -154,7 +173,7 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
   }
 
   if (view === 'home') {
-    return <HomeScreen recentPackages={recentPackages} onOpenRecent={handleOpenRecent} onRemoveRecent={handleRemoveRecent} onOpenSample={handleOpenSample} onBrowse={handleBrowse} />
+    return <HomeScreen recentPackages={recentPackages} onOpenRecent={handleOpenRecent} onRemoveRecent={handleRemoveRecent} onOpenSample={handleOpenSample} onBrowse={handleBrowse} onCreateWithAi={handleCreateWithAi} />
   }
 
   return <App key={presentationKey} presentationData={presentationData} onGoHome={handleGoHome} onStartEdit={handleStartEdit} addonOwner={addonInfo.owner} addonScripts={addonInfo.scripts} />

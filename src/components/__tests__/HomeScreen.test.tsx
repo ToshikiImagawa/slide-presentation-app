@@ -17,6 +17,7 @@ const enUS: LocaleResource = {
       removeRecentAria: 'Remove {title}',
       sampleButton: 'Open Sample',
       browseButton: 'Choose File',
+      createWithAiButton: 'Create with AI',
     },
   },
 }
@@ -44,7 +45,7 @@ describe('HomeScreen', () => {
   it('最近開いたスライドが無い場合、空状態メッセージが表示される', () => {
     render(
       <Wrapper>
-        <HomeScreen recentPackages={[]} onOpenRecent={() => {}} onRemoveRecent={() => {}} onOpenSample={() => {}} onBrowse={() => {}} />
+        <HomeScreen recentPackages={[]} onOpenRecent={() => {}} onRemoveRecent={() => {}} onOpenSample={() => {}} onBrowse={() => {}} onCreateWithAi={() => {}} />
       </Wrapper>,
     )
     expect(screen.getByText("You haven't opened any slides yet")).toBeDefined()
@@ -53,7 +54,7 @@ describe('HomeScreen', () => {
   it('最近開いたスライドが一覧表示される', () => {
     render(
       <Wrapper>
-        <HomeScreen recentPackages={recentPackages} onOpenRecent={() => {}} onRemoveRecent={() => {}} onOpenSample={() => {}} onBrowse={() => {}} />
+        <HomeScreen recentPackages={recentPackages} onOpenRecent={() => {}} onRemoveRecent={() => {}} onOpenSample={() => {}} onBrowse={() => {}} onCreateWithAi={() => {}} />
       </Wrapper>,
     )
     expect(screen.getByText('Deck A')).toBeDefined()
@@ -64,7 +65,7 @@ describe('HomeScreen', () => {
     const onOpenRecent = vi.fn()
     render(
       <Wrapper>
-        <HomeScreen recentPackages={recentPackages} onOpenRecent={onOpenRecent} onRemoveRecent={() => {}} onOpenSample={() => {}} onBrowse={() => {}} />
+        <HomeScreen recentPackages={recentPackages} onOpenRecent={onOpenRecent} onRemoveRecent={() => {}} onOpenSample={() => {}} onBrowse={() => {}} onCreateWithAi={() => {}} />
       </Wrapper>,
     )
     fireEvent.click(screen.getByText('Deck A'))
@@ -76,7 +77,7 @@ describe('HomeScreen', () => {
     const onRemoveRecent = vi.fn()
     render(
       <Wrapper>
-        <HomeScreen recentPackages={recentPackages} onOpenRecent={onOpenRecent} onRemoveRecent={onRemoveRecent} onOpenSample={() => {}} onBrowse={() => {}} />
+        <HomeScreen recentPackages={recentPackages} onOpenRecent={onOpenRecent} onRemoveRecent={onRemoveRecent} onOpenSample={() => {}} onBrowse={() => {}} onCreateWithAi={() => {}} />
       </Wrapper>,
     )
     fireEvent.click(screen.getByRole('button', { name: 'Remove Deck A' }))
@@ -88,7 +89,7 @@ describe('HomeScreen', () => {
     const onOpenSample = vi.fn()
     render(
       <Wrapper>
-        <HomeScreen recentPackages={[]} onOpenRecent={() => {}} onRemoveRecent={() => {}} onOpenSample={onOpenSample} onBrowse={() => {}} />
+        <HomeScreen recentPackages={[]} onOpenRecent={() => {}} onRemoveRecent={() => {}} onOpenSample={onOpenSample} onBrowse={() => {}} onCreateWithAi={() => {}} />
       </Wrapper>,
     )
     fireEvent.click(screen.getByText('Open Sample'))
@@ -99,10 +100,21 @@ describe('HomeScreen', () => {
     const onBrowse = vi.fn()
     render(
       <Wrapper>
-        <HomeScreen recentPackages={[]} onOpenRecent={() => {}} onRemoveRecent={() => {}} onOpenSample={() => {}} onBrowse={onBrowse} />
+        <HomeScreen recentPackages={[]} onOpenRecent={() => {}} onRemoveRecent={() => {}} onOpenSample={() => {}} onBrowse={onBrowse} onCreateWithAi={() => {}} />
       </Wrapper>,
     )
     fireEvent.click(screen.getByText('Choose File'))
     expect(onBrowse).toHaveBeenCalledTimes(1)
+  })
+
+  it('AIで新規作成ボタンをクリックすると onCreateWithAi が呼ばれる', () => {
+    const onCreateWithAi = vi.fn()
+    render(
+      <Wrapper>
+        <HomeScreen recentPackages={[]} onOpenRecent={() => {}} onRemoveRecent={() => {}} onOpenSample={() => {}} onBrowse={() => {}} onCreateWithAi={onCreateWithAi} />
+      </Wrapper>,
+    )
+    fireEvent.click(screen.getByText('Create with AI'))
+    expect(onCreateWithAi).toHaveBeenCalledTimes(1)
   })
 })

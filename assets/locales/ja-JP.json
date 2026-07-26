@@ -11,7 +11,9 @@
       "removeRecentAria": "{title} を削除",
       "sampleButton": "サンプルを開く",
       "browseButton": "ファイルを開く",
-      "browseHint": ".json / .spkg ファイルを選択"
+      "browseHint": ".json / .spkg ファイルを選択",
+      "createWithAiButton": "AIで新規作成",
+      "createWithAiHint": "ゼロからAIでスライドを生成"
     },
     "toolbar": {
       "hide": "ツールバーを隠す (T)",
