@@ -358,7 +358,6 @@ fn resolve_gcloud_binary() -> Result<PathBuf, String> {
 /// 解決済みバイナリパスから起動用の `Command` を構築する。
 /// Windows の `.cmd`/`.bat` は `CreateProcess` が直接起動できず `Command::new` からの
 /// 直接起動に失敗するため `cmd /C` 経由にする
-/// （ticketvc-jira-management-app の `os::command_for_binary` と同じ対処方針）。
 fn gcloud_command(binary: &Path) -> tokio::process::Command {
   #[cfg(windows)]
   {
