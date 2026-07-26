@@ -64,10 +64,11 @@ npx tauri signer generate -w ~/.tauri/slide-presentation-app_updater.key
 
 ## 未設定時の縮退挙動
 
-- macOS 署名系（`APPLE_CERTIFICATE` 等）が未設定の場合、codesign をスキップし ad-hoc / 未署名ビルドとして生成する
+- macOS 署名系（`APPLE_CERTIFICATE` 等）が未設定の場合、codesign をスキップし ad-hoc 署名（ビルド疎通確認用）として生成する。ただし公開タグ（`v*` push）のリリースでは、この ad-hoc 成果物を GitHub Release の配布アセットに添付しない（`release.yml` の `Upload release assets` ステップの `if` で保護。macOS ジョブは `::warning::` を出力する）
 - Windows 署名系（`WINDOWS_CERTIFICATE` 等）が未設定の場合、Authenticode 署名をスキップし未署名ビルドとして生成する
 - `TAURI_SIGNING_PRIVATE_KEY` が未設定の場合、`scripts/tauri-build.mjs`（`npm run tauri:build` 経由）が `createUpdaterArtifacts` を無効化してビルドする（理由は同ファイルのコメント参照）
 - いずれの場合もビルド自体は失敗させず、署名ステップのみ縮退させる方針とする
+- macOS codesign は公証（notarization）を行わない（スコープ外）。自己署名証明書は `release.yml` 内で一時 keychain に import し、Tauri bundler へは `APPLE_SIGNING_IDENTITY` のみを渡す（`APPLE_CERTIFICATE` を直接渡すと Apple 公式 CN 前提の自動検出経路に入り自己署名 CN で失敗するため、job 内の env 変数名は `MACOS_SIGNING_P12` / `MACOS_SIGNING_P12_PASSWORD` に別名化している。secret 名自体は変更しない）
 
 ## 不要と判断した secrets
 
