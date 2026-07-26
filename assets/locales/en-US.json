@@ -8,6 +8,7 @@
       "tagline": "Choose a slide deck to get started",
       "recentTitle": "Recently Opened",
       "recentEmpty": "You haven't opened any slides yet",
+      "removeRecentAria": "Remove {title}",
       "sampleButton": "Open Sample",
       "browseButton": "Open a File",
       "browseHint": "Choose a .json / .tgz file"

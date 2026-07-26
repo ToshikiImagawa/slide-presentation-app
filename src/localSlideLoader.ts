@@ -254,8 +254,8 @@ export async function getRecentSlidePackages(): Promise<RecentSlidePackageEntry[
   return (await slidePackageStore.get<RecentSlidePackageEntry[]>(RECENT_PACKAGES_KEY)) ?? []
 }
 
-/** 最近使ったリストから指定 path のエントリを取り除いて保存し、更新後のリストを返す（ファイルが移動・削除された場合など） */
-async function removeRecentSlidePackage(path: string): Promise<RecentSlidePackageEntry[]> {
+/** 最近使ったリストから指定 path のエントリを取り除いて保存し、更新後のリストを返す（読み込み失敗時の自動除去・ホーム画面の個別削除UI両方から使う） */
+export async function removeRecentSlidePackage(path: string): Promise<RecentSlidePackageEntry[]> {
   const list = await getRecentSlidePackages()
   const updated = removeRecentEntry(list, path)
   await slidePackageStore.set(RECENT_PACKAGES_KEY, updated)

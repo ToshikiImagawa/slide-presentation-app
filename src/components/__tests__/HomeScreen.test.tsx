@@ -14,6 +14,7 @@ const enUS: LocaleResource = {
       goHome: 'Home',
       recentTitle: 'Recently Opened',
       recentEmpty: "You haven't opened any slides yet",
+      removeRecentAria: 'Remove {title}',
       sampleButton: 'Open Sample',
       browseButton: 'Choose File',
     },
@@ -43,7 +44,7 @@ describe('HomeScreen', () => {
   it('最近開いたスライドが無い場合、空状態メッセージが表示される', () => {
     render(
       <Wrapper>
-        <HomeScreen recentPackages={[]} onOpenRecent={() => {}} onOpenSample={() => {}} onBrowse={() => {}} />
+        <HomeScreen recentPackages={[]} onOpenRecent={() => {}} onRemoveRecent={() => {}} onOpenSample={() => {}} onBrowse={() => {}} />
       </Wrapper>,
     )
     expect(screen.getByText("You haven't opened any slides yet")).toBeDefined()
@@ -52,7 +53,7 @@ describe('HomeScreen', () => {
   it('最近開いたスライドが一覧表示される', () => {
     render(
       <Wrapper>
-        <HomeScreen recentPackages={recentPackages} onOpenRecent={() => {}} onOpenSample={() => {}} onBrowse={() => {}} />
+        <HomeScreen recentPackages={recentPackages} onOpenRecent={() => {}} onRemoveRecent={() => {}} onOpenSample={() => {}} onBrowse={() => {}} />
       </Wrapper>,
     )
     expect(screen.getByText('Deck A')).toBeDefined()
@@ -63,18 +64,31 @@ describe('HomeScreen', () => {
     const onOpenRecent = vi.fn()
     render(
       <Wrapper>
-        <HomeScreen recentPackages={recentPackages} onOpenRecent={onOpenRecent} onOpenSample={() => {}} onBrowse={() => {}} />
+        <HomeScreen recentPackages={recentPackages} onOpenRecent={onOpenRecent} onRemoveRecent={() => {}} onOpenSample={() => {}} onBrowse={() => {}} />
       </Wrapper>,
     )
     fireEvent.click(screen.getByText('Deck A'))
     expect(onOpenRecent).toHaveBeenCalledWith('/Users/test/deck-a/slides.json')
   })
 
+  it('削除ボタンをクリックすると onRemoveRecent が該当 path で呼ばれ、onOpenRecent は呼ばれない', () => {
+    const onOpenRecent = vi.fn()
+    const onRemoveRecent = vi.fn()
+    render(
+      <Wrapper>
+        <HomeScreen recentPackages={recentPackages} onOpenRecent={onOpenRecent} onRemoveRecent={onRemoveRecent} onOpenSample={() => {}} onBrowse={() => {}} />
+      </Wrapper>,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Deck A' }))
+    expect(onRemoveRecent).toHaveBeenCalledWith('/Users/test/deck-a/slides.json')
+    expect(onOpenRecent).not.toHaveBeenCalled()
+  })
+
   it('サンプルボタンをクリックすると onOpenSample が呼ばれる', () => {
     const onOpenSample = vi.fn()
     render(
       <Wrapper>
-        <HomeScreen recentPackages={[]} onOpenRecent={() => {}} onOpenSample={onOpenSample} onBrowse={() => {}} />
+        <HomeScreen recentPackages={[]} onOpenRecent={() => {}} onRemoveRecent={() => {}} onOpenSample={onOpenSample} onBrowse={() => {}} />
       </Wrapper>,
     )
     fireEvent.click(screen.getByText('Open Sample'))
@@ -85,7 +99,7 @@ describe('HomeScreen', () => {
     const onBrowse = vi.fn()
     render(
       <Wrapper>
-        <HomeScreen recentPackages={[]} onOpenRecent={() => {}} onOpenSample={() => {}} onBrowse={onBrowse} />
+        <HomeScreen recentPackages={[]} onOpenRecent={() => {}} onRemoveRecent={() => {}} onOpenSample={() => {}} onBrowse={onBrowse} />
       </Wrapper>,
     )
     fireEvent.click(screen.getByText('Choose File'))
