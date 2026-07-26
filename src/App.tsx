@@ -150,6 +150,8 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
     slides: data.slides,
     addonOwner,
     addonScripts,
+    themeColors: data.meta?.themeColors,
+    theme: data.theme,
     onNavigate: handleNavigate,
     onAudioToggle: handleAudioToggle,
     onAutoPlayToggle: handleAutoPlayToggle,
