@@ -243,6 +243,74 @@ describe('SlideEditor 組み込みアドオン削除の確認（× 誤クリッ�
   })
 })
 
+describe('SlideEditor 未保存変更の終了確認（編集モード終了時のデータ損失防止・#44）', () => {
+  beforeEach(() => {
+    h.saveSlidesJson.mockReset()
+    h.exportSlidePackage.mockReset()
+    h.chooseSlidesSavePath.mockReset().mockResolvedValue('/tmp/slides.json')
+    h.chooseExportDir.mockReset()
+    h.listBuiltinAddons.mockReset().mockResolvedValue([])
+    h.listBuiltinDistAddons.mockReset().mockResolvedValue([])
+    h.getPackageAddonNames.mockReset().mockResolvedValue([])
+  })
+
+  it('変更がなければ確認なしで即 onExit が呼ばれる', async () => {
+    const onExit = vi.fn()
+    render(
+      <Wrapper>
+        <SlideEditor source={{ rawText: validJson, baseDir: '' }} onExit={onExit} />
+      </Wrapper>,
+    )
+    await waitFor(() => expect(screen.getByText('同梱できるアドオンがありません')).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: '編集を終了' }))
+    expect(onExit).toHaveBeenCalledTimes(1)
+    expect(screen.queryByText('未保存の変更を破棄しますか？')).toBeNull()
+  })
+
+  it('未保存の変更があると確認ダイアログを開き、onExit は呼ばれない', async () => {
+    const onExit = vi.fn()
+    render(
+      <Wrapper>
+        <SlideEditor source={{ rawText: validJson, baseDir: '' }} onExit={onExit} />
+      </Wrapper>,
+    )
+    await waitFor(() => expect(screen.getByText('同梱できるアドオンがありません')).toBeTruthy())
+    fireEvent.change(document.querySelector('textarea')!, { target: { value: validJson + '\n' } })
+    fireEvent.click(screen.getByRole('button', { name: '編集を終了' }))
+    expect(await screen.findByText('未保存の変更を破棄しますか？')).toBeTruthy()
+    expect(onExit).not.toHaveBeenCalled()
+  })
+
+  it('確認ダイアログで [破棄して終了] を選ぶと onExit が呼ばれる', async () => {
+    const onExit = vi.fn()
+    render(
+      <Wrapper>
+        <SlideEditor source={{ rawText: validJson, baseDir: '' }} onExit={onExit} />
+      </Wrapper>,
+    )
+    await waitFor(() => expect(screen.getByText('同梱できるアドオンがありません')).toBeTruthy())
+    fireEvent.change(document.querySelector('textarea')!, { target: { value: validJson + '\n' } })
+    fireEvent.click(screen.getByRole('button', { name: '編集を終了' }))
+    fireEvent.click(await screen.findByRole('button', { name: '破棄して終了' }))
+    expect(onExit).toHaveBeenCalledTimes(1)
+  })
+
+  it('確認ダイアログで [キャンセル] を選ぶと編集画面に留まり onExit は呼ばれない', async () => {
+    const onExit = vi.fn()
+    render(
+      <Wrapper>
+        <SlideEditor source={{ rawText: validJson, baseDir: '' }} onExit={onExit} />
+      </Wrapper>,
+    )
+    await waitFor(() => expect(screen.getByText('同梱できるアドオンがありません')).toBeTruthy())
+    fireEvent.change(document.querySelector('textarea')!, { target: { value: validJson + '\n' } })
+    fireEvent.click(screen.getByRole('button', { name: '編集を終了' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'キャンセル' }))
+    expect(onExit).not.toHaveBeenCalled()
+    await waitFor(() => expect(screen.queryByText('未保存の変更を破棄しますか？')).toBeNull())
+  })
+})
+
 describe('SlideEditor 組み込みアドオンのアプリ内ビルド（ターミナル不要）', () => {
   beforeEach(() => {
     h.saveSlidesJson.mockReset()

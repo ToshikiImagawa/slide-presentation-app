@@ -72,6 +72,8 @@ export function SlideEditor({ source, onExit }: { source: EditSource; onExit: ()
   const [pendingDeleteBuiltin, setPendingDeleteBuiltin] = useState<string | null>(null)
   // 組み込みアドオンのビルド中フラグ（ボタン二重押し防止）
   const [buildingAddons, setBuildingAddons] = useState(false)
+  // 編集終了確認待ち（未保存の変更があるときのみ表示。破棄によるデータ損失を防ぐ・#44）
+  const [pendingExit, setPendingExit] = useState(false)
 
   const { data, errors } = useMemo(() => parseSlides(text), [text])
   const hasSyntaxError = errors.some((e) => e.message.includes(JSON_SYNTAX_ERROR_MARK))
@@ -170,6 +172,26 @@ export function SlideEditor({ source, onExit }: { source: EditSource; onExit: ()
   const canWrite = errors.length === 0
   // プレビューはデータが妥当なときだけ表示する（JSON/スキーマエラー時は不要）
   const showPreview = errors.length === 0
+  // 未保存の変更があるか（保存済みの元テキストとの比較。#44: データ損失防止）
+  const isDirty = text !== source.rawText
+
+  // 未保存の変更があれば確認ダイアログを挟み、無ければ即終了する
+  const handleExitClick = () => {
+    if (isDirty) {
+      setPendingExit(true)
+      return
+    }
+    onExit()
+  }
+
+  const confirmExit = () => {
+    setPendingExit(false)
+    onExit()
+  }
+
+  const cancelExit = () => {
+    setPendingExit(false)
+  }
 
   const handleSave = async () => {
     if (!canWrite) {
@@ -226,7 +248,7 @@ export function SlideEditor({ source, onExit }: { source: EditSource; onExit: ()
       <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', backgroundColor: 'var(--theme-background)', color: 'var(--theme-text-body)' }}>
         {/* ツールバー */}
         <Stack direction="row" spacing={1} alignItems="center" sx={{ p: 1, borderBottom: '1px solid var(--theme-border)', flexWrap: 'wrap' }}>
-          <Button variant="outlined" size="small" onClick={onExit}>
+          <Button variant="outlined" size="small" onClick={handleExitClick}>
             {t('edit.exit', '編集を終了')}
           </Button>
           <Box sx={{ flex: 1 }} />
@@ -248,6 +270,17 @@ export function SlideEditor({ source, onExit }: { source: EditSource; onExit: ()
 
         {/* 生成結果の適用前 差分確認ダイアログ（①・案3）。承認で整形して全体置換、キャンセルで破棄 */}
         <GeneratedDiffDialog open={pendingGenerated !== null} beforeText={text} afterText={pendingGenerated ?? ''} onApply={confirmApplyGenerated} onCancel={cancelApplyGenerated} />
+
+        {/* 未保存の変更を破棄して編集を終了する前の確認（#44: データ損失防止） */}
+        <ConfirmDialog
+          open={pendingExit}
+          title={t('edit.exitConfirmTitle', '未保存の変更を破棄しますか？')}
+          message={t('edit.exitConfirmMessage', '編集内容は保存されていません。破棄して編集を終了しますか？')}
+          confirmLabel={t('edit.exitConfirmDiscard', '破棄して終了')}
+          cancelLabel={t('edit.cancel', 'キャンセル')}
+          onConfirm={confirmExit}
+          onCancel={cancelExit}
+        />
 
         {/* 組み込みアドオン削除の確認（× は確認経由。addons/src を完全削除し git 管理外＝復元不可のため誤クリック防止） */}
         <ConfirmDialog
