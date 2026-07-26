@@ -11,13 +11,11 @@ concurrency:
 jobs:
   ci:
     uses: ./.github/workflows/ci.yml
-    secrets: inherit
 
   prepare:
     name: Prepare release metadata
     runs-on: ubuntu-latest
     outputs:
-      version: ${{ steps.version.outputs.version }}
       prerelease: ${{ steps.version.outputs.prerelease }}
     steps:
       - uses: actions/checkout@v4
@@ -38,7 +36,7 @@ jobs:
           awk -v ver="$VERSION" '
             /^## \[/ {
               if (found) exit
-              if ($0 ~ "\\[" ver "\\]") { found=1 }
+              if (index($0, "[" ver "]") > 0) { found=1 }
               next
             }
             found { print }
@@ -64,17 +62,21 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
+            # .sig は updater 署名(#22 で有効化)。現状は未生成のためこの glob は空振りする
             assets: |
               src-tauri/target/release/bundle/deb/*.deb
               src-tauri/target/release/bundle/rpm/*.rpm
               src-tauri/target/release/bundle/appimage/*.AppImage
               src-tauri/target/release/bundle/appimage/*.AppImage.sig
           - os: macos-latest
+            # updater 本体(#22 で有効化)。現状は未生成のためこの glob は空振りする
+            # (softprops/action-gh-release の fail_on_unmatched_files は既定 false で無害)
             assets: |
               src-tauri/target/release/bundle/dmg/*.dmg
               src-tauri/target/release/bundle/macos/*.app.tar.gz
               src-tauri/target/release/bundle/macos/*.app.tar.gz.sig
           - os: windows-latest
+            # .sig は updater 署名(#22/#25 で有効化)。現状は未生成のためこの glob は空振りする
             assets: |
               src-tauri/target/release/bundle/nsis/*-setup.exe
               src-tauri/target/release/bundle/nsis/*-setup.exe.sig
@@ -115,7 +117,7 @@ jobs:
     needs: [ci, prepare]
     permissions:
       contents: write
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
