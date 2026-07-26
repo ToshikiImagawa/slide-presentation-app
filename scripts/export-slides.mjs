@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { readFileSync, writeFileSync, mkdirSync, cpSync, existsSync, rmSync } from 'fs'
+import { readFileSync, writeFileSync, mkdirSync, cpSync, existsSync, rmSync, renameSync } from 'fs'
 import { resolve, dirname } from 'path'
 import { execSync } from 'child_process'
 import { fileURLToPath, pathToFileURL } from 'url'
@@ -224,8 +224,7 @@ function main() {
   //  拡張子判定により使えなくなるため、利用はローカルパス指定の VITE_SLIDE_PACKAGE を案内する）
   const spkgName = tgzName.replace(/\.tgz$/, '.spkg')
   const spkgDest = resolve(projectRoot, 'dist-slides', spkgName)
-  cpSync(tgzSource, spkgDest)
-  rmSync(tgzSource)
+  renameSync(tgzSource, spkgDest)
 
   console.log(`\nExport complete!`)
   console.log(`Package: dist-slides/${spkgName}`)

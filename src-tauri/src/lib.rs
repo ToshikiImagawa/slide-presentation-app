@@ -8,6 +8,10 @@ use tauri_plugin_fs::FsExt;
 mod generation;
 mod vertex_config;
 
+/// スライドパッケージの書き出し拡張子（issue #41: 独自拡張子への変更）。展開側は拡張子に依存しないため
+/// この定数は書き出し（build_slide_package_gated）とそのテストでのみ参照する。
+const SLIDE_PACKAGE_EXTENSION: &str = "spkg";
+
 /// ユーザーがダイアログで選んだディレクトリを asset プロトコル・fs プラグイン双方の
 /// 読み取り許可スコープに追加する（fs プラグインの scope は asset プロトコルの scope とは別物で、
 /// readTextFile 等はこちらが許可されていないと forbidden path エラーになる）
@@ -568,10 +572,13 @@ fn build_slide_package_gated(
 
   let out = Path::new(out_dir);
   fs::create_dir_all(out).map_err(|e| e.to_string())?;
-  let tgz_path = out.join(format!("slides-{}-{}.spkg", name, version));
-  fs::write(&tgz_path, &gz_bytes).map_err(|e| e.to_string())?;
+  let pkg_path = out.join(format!(
+    "slides-{}-{}.{}",
+    name, version, SLIDE_PACKAGE_EXTENSION
+  ));
+  fs::write(&pkg_path, &gz_bytes).map_err(|e| e.to_string())?;
 
-  tgz_path
+  pkg_path
     .to_str()
     .map(|s| s.to_string())
     .ok_or_else(|| "出力パスの文字列化に失敗しました".to_string())
@@ -1003,7 +1010,7 @@ mod tests {
     // component props に含まれるアセット参照も無損失で残ることを含めて検証
     let json = r#"{"meta":{"title":"t"},"slides":[{"id":"s1","layout":"custom","content":{"component":{"name":"Image","props":{"src":"image/logo.png"}}}}]}"#;
 
-    let tgz_path = build_slide_package_gated(
+    let pkg_path = build_slide_package_gated(
       true,
       json,
       out_dir.to_str().unwrap(),
@@ -1016,12 +1023,13 @@ mod tests {
     .expect("編集モード有効時は書き出す");
 
     assert!(
-      tgz_path.ends_with(".spkg"),
-      "出力拡張子は .spkg（issue #41: 独自拡張子への変更）"
+      pkg_path.ends_with(&format!(".{}", SLIDE_PACKAGE_EXTENSION)),
+      "出力拡張子は .{}（issue #41: 独自拡張子への変更）",
+      SLIDE_PACKAGE_EXTENSION
     );
 
     // 生成した .spkg を extract_tgz で展開し往復一致を検証（FR-007/DC-003）
-    let bytes = fs::read(&tgz_path).unwrap();
+    let bytes = fs::read(&pkg_path).unwrap();
     let extract_dir = dir.join("extract");
     let pkg = extract_tgz(&bytes, &extract_dir).expect("展開できる");
 
@@ -1126,7 +1134,7 @@ mod tests {
     write_viz_other_addon_fixture(&base_dir);
 
     let json = r#"{"meta":{"title":"t"},"slides":[]}"#;
-    let tgz_path = build_slide_package_gated(
+    let pkg_path = build_slide_package_gated(
       true,
       json,
       out_dir.to_str().unwrap(),
@@ -1138,7 +1146,7 @@ mod tests {
     )
     .expect("編集モード有効時は書き出す");
 
-    let bytes = fs::read(&tgz_path).unwrap();
+    let bytes = fs::read(&pkg_path).unwrap();
     let extract_dir = dir.join("extract");
     let pkg = extract_tgz(&bytes, &extract_dir).expect("展開できる");
 
@@ -1179,7 +1187,7 @@ mod tests {
     fs::write(dist_dir.join("addons.iife.js"), b"BUILTIN_BUNDLE").unwrap();
 
     let json = r#"{"meta":{"title":"t"},"slides":[]}"#;
-    let tgz_path = build_slide_package_gated(
+    let pkg_path = build_slide_package_gated(
       true,
       json,
       out_dir.to_str().unwrap(),
@@ -1191,7 +1199,7 @@ mod tests {
     )
     .expect("編集モード有効時は書き出す");
 
-    let bytes = fs::read(&tgz_path).unwrap();
+    let bytes = fs::read(&pkg_path).unwrap();
     let extract_dir = dir.join("extract");
     let pkg = extract_tgz(&bytes, &extract_dir).expect("展開できる");
 
@@ -1237,7 +1245,7 @@ mod tests {
     fs::write(dist_dir.join("addons.iife.js"), b"BUILTIN").unwrap();
 
     let json = r#"{"meta":{"title":"t"},"slides":[]}"#;
-    let tgz_path = build_slide_package_gated(
+    let pkg_path = build_slide_package_gated(
       true,
       json,
       out_dir.to_str().unwrap(),
@@ -1249,7 +1257,7 @@ mod tests {
     )
     .expect("書き出す");
 
-    let bytes = fs::read(&tgz_path).unwrap();
+    let bytes = fs::read(&pkg_path).unwrap();
     let extract_dir = dir.join("extract");
     let pkg = extract_tgz(&bytes, &extract_dir).expect("展開できる");
 
@@ -1284,7 +1292,7 @@ mod tests {
     let json = r#"{"meta":{"title":"t"},"slides":[]}"#;
 
     // 1回目: viz・other とも選択して書き出す（名前・バージョンは変更しない前提を再現）
-    let tgz_path_1 = build_slide_package_gated(
+    let pkg_path_1 = build_slide_package_gated(
       true,
       json,
       out_dir.to_str().unwrap(),
@@ -1299,20 +1307,20 @@ mod tests {
     // extract_slide_package は tgz のファイル名 stem（例: slides-demo-1.0.0）で展開先を決めるため、
     // 名前・バージョン不変の再書き出しは同じ展開先ディレクトリを再利用する。
     // ここでは実コマンドと同じ file_stem 由来の名前で展開先を作り、その再利用を模擬する
-    let stem = Path::new(&tgz_path_1)
+    let stem = Path::new(&pkg_path_1)
       .file_stem()
       .and_then(|s| s.to_str())
       .unwrap()
       .to_string();
     let extract_dir = dir.join("slide-packages").join(&stem);
-    let pkg1 = extract_tgz(&fs::read(&tgz_path_1).unwrap(), &extract_dir).expect("1回目展開できる");
+    let pkg1 = extract_tgz(&fs::read(&pkg_path_1).unwrap(), &extract_dir).expect("1回目展開できる");
     assert!(
       pkg1.join("addons").join("other.iife.js").is_file(),
       "1回目は other も同梱されている"
     );
 
     // 2回目: other のチェックを外して再書き出し（同じ out_dir・同じ name/version = 上書き）
-    let tgz_path_2 = build_slide_package_gated(
+    let pkg_path_2 = build_slide_package_gated(
       true,
       json,
       out_dir.to_str().unwrap(),
@@ -1324,13 +1332,13 @@ mod tests {
     )
     .expect("2回目は viz のみ選択で書き出す");
     assert_eq!(
-      tgz_path_1, tgz_path_2,
+      pkg_path_1, pkg_path_2,
       "同名・同バージョンなら同じ出力パスを上書きする"
     );
 
     // 再オープン: 同じ展開先ディレクトリへ再展開（extract_tgz は毎回 remove_dir_all するため
     // 古い other.iife.js が残存すればキャッシュ/掃除漏れのバグ）
-    let pkg2 = extract_tgz(&fs::read(&tgz_path_2).unwrap(), &extract_dir).expect("2回目展開できる");
+    let pkg2 = extract_tgz(&fs::read(&pkg_path_2).unwrap(), &extract_dir).expect("2回目展開できる");
     assert!(
       !pkg2.join("addons").join("other.iife.js").exists(),
       "アンチェックした other は再書き出し後の再展開でも残存しない"

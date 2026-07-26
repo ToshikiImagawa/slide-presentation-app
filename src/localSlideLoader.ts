@@ -5,6 +5,7 @@ import { dirname } from '@tauri-apps/api/path'
 import { LazyStore } from '@tauri-apps/plugin-store'
 import { validatePresentationData } from './data'
 import type { PresentationData } from './data'
+import { SLIDE_PACKAGE_ARCHIVE_EXTENSIONS, isSlidePackageArchivePath } from './slidePackageArchive'
 
 const ASSET_PATH_PREFIXES = ['image/', 'voice/', 'theme/', 'font/']
 const RECENT_PACKAGES_KEY = 'recentSlidePackages'
@@ -209,14 +210,7 @@ export function resolveLocalAssetPaths<T>(value: T, baseDir: string): T {
   return value
 }
 
-/** スライドパッケージのアーカイブ拡張子（.spkg が既定。旧 .tgz も後方互換で開ける） */
-const PACKAGE_ARCHIVE_EXTENSIONS = ['.spkg', '.tgz']
-
-/** path がスライドパッケージのアーカイブ（.spkg または旧 .tgz）かどうかを判定する（純粋関数） */
-export function isSlidePackageArchivePath(path: string): boolean {
-  const lower = path.toLowerCase()
-  return PACKAGE_ARCHIVE_EXTENSIONS.some((ext) => lower.endsWith(ext))
-}
+export { isSlidePackageArchivePath }
 
 /** 選択されたパスから slides.json の実パスとその基準ディレクトリを求める（.spkg/.tgz は Rust 側で展開） */
 async function resolvePackageEntry(selectedPath: string): Promise<{ slidesJsonPath: string; baseDir: string }> {
@@ -288,13 +282,13 @@ async function reportLoadError(error: unknown): Promise<void> {
   await message(`スライドの読み込みに失敗しました。\n\n${detail}`, { title: 'スライドを開く', kind: 'error' })
 }
 
-/** ダイアログでローカルの slides.json または .tgz パッケージを選択して読み込む。成功時は最近使ったリストに記録し、失敗時はエラーダイアログを表示する */
+/** ダイアログでローカルの slides.json または .spkg パッケージ（旧 .tgz も対応）を選択して読み込む。成功時は最近使ったリストに記録し、失敗時はエラーダイアログを表示する */
 export async function pickAndLoadSlidePackage(): Promise<SlidePackageLoadResult> {
   const selected = await open({
     title: 'スライドを開く',
     filters: [
       { name: 'slides.json', extensions: ['json'] },
-      { name: 'スライドパッケージ (.spkg / .tgz)', extensions: ['spkg', 'tgz'] },
+      { name: 'スライドパッケージ (.spkg / .tgz)', extensions: SLIDE_PACKAGE_ARCHIVE_EXTENSIONS.map((ext) => ext.replace(/^\./, '')) },
     ],
     multiple: false,
     directory: false,

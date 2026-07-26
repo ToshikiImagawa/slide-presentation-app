@@ -5,6 +5,7 @@ import { resolve, extname, dirname } from 'path'
 import { cpSync, existsSync, createReadStream, statSync, readFileSync, readdirSync, mkdirSync, rmSync } from 'fs'
 import { execSync } from 'child_process'
 import { createRequire } from 'module'
+import { isSlidePackageArchivePath } from './src/slidePackageArchive'
 
 /** addons dist to dist/addons copy plugin */
 function copyAddonsPlugin(): Plugin {
@@ -53,7 +54,7 @@ function slideContentPlugin(): Plugin {
     if (!existsSync(absPath)) return null
 
     // .spkg（旧 .tgz）の場合は展開して使用。いずれも tar+gzip 形式で拡張子に依存しない
-    if (absPath.endsWith('.spkg') || absPath.endsWith('.tgz')) {
+    if (isSlidePackageArchivePath(absPath)) {
       const extractDir = resolve(__dirname, 'node_modules/.slide-content-cache')
       if (existsSync(extractDir)) rmSync(extractDir, { recursive: true })
       mkdirSync(extractDir, { recursive: true })
