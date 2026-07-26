@@ -5,8 +5,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 const h = vi.hoisted(() => ({ invoke: vi.fn() }))
 vi.mock('@tauri-apps/api/core', () => ({ invoke: h.invoke }))
 
-import { generateSlides, cancelGenerate, setVertexConfig, clearVertexConfig, getVertexConfig, getVertexStatus, gcloudLogin, setGenerationEnabled, checkExternalAvailable, MAX_GENERATE_ATTEMPTS } from '../aiGenerate'
-import type { GenerateProgress } from '../aiGenerate'
+import { generateSlides, cancelGenerate, setVertexConfig, clearVertexConfig, getVertexConfig, getVertexStatus, gcloudLogin, setGenerationEnabled, checkExternalAvailable, toGeneratedCandidate, MAX_GENERATE_ATTEMPTS } from '../aiGenerate'
+import type { GenerateProgress, GenerateResult } from '../aiGenerate'
 
 // getValidationErrors を満たす妥当な slides.json
 const VALID = JSON.stringify({ meta: { title: 'T' }, slides: [{ id: 's1', layout: 'center', content: {} }] })
@@ -99,6 +99,24 @@ describe('aiGenerate オーケストレータ（generateSlides）', () => {
     expect(phases[0]).toBe('generating')
     expect(phases).toContain('validating')
     expect(phases).toContain('repairing')
+  })
+})
+
+describe('toGeneratedCandidate（GenerateResult → 適用可能候補の抽出・#47）', () => {
+  it('succeeded/exhausted かつ slidesJson 非 null なら候補を返す', () => {
+    const succeeded: GenerateResult = { outcome: 'succeeded', slidesJson: VALID, validationErrors: [], attempts: 1 }
+    expect(toGeneratedCandidate(succeeded)).toEqual({ slidesJson: VALID, validationErrors: [] })
+
+    const errors = [{ path: 'slides[0]', message: 'x', expected: 'y', actual: 'z' }]
+    const exhausted: GenerateResult = { outcome: 'exhausted', slidesJson: LESS_INVALID, validationErrors: errors, attempts: 3 }
+    expect(toGeneratedCandidate(exhausted)).toEqual({ slidesJson: LESS_INVALID, validationErrors: errors })
+  })
+
+  it('cancelled/failed または slidesJson が null なら null を返す', () => {
+    expect(toGeneratedCandidate({ outcome: 'cancelled', slidesJson: null, validationErrors: [], attempts: 0 })).toBeNull()
+    expect(toGeneratedCandidate({ outcome: 'failed', slidesJson: null, validationErrors: [], attempts: 1 })).toBeNull()
+    // outcome は succeeded だが slidesJson が null（本来生じない組み合わせだが契約上のガードを確認）
+    expect(toGeneratedCandidate({ outcome: 'succeeded', slidesJson: null, validationErrors: [], attempts: 1 })).toBeNull()
   })
 })
 

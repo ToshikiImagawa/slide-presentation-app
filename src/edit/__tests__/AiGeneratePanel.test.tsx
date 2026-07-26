@@ -24,6 +24,12 @@ vi.mock('../../aiGenerate', () => ({
   setVertexConfig: h.setVertexConfig,
   clearVertexConfig: h.clearVertexConfig,
   gcloudLogin: h.gcloudLogin,
+  // 実装と同一ロジック（invoke 依存を避けるため実モジュールは import しない・aiGenerate.ts の toGeneratedCandidate と同期させること）
+  toGeneratedCandidate: (result: { outcome: string; slidesJson: string | null; validationErrors: unknown[] }) => {
+    if (result.outcome !== 'succeeded' && result.outcome !== 'exhausted') return null
+    if (result.slidesJson === null) return null
+    return { slidesJson: result.slidesJson, validationErrors: result.validationErrors }
+  },
 }))
 
 // SlideEditor 注入テスト用に Tauri 依存モジュールをモック
