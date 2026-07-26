@@ -42,6 +42,17 @@ const recentPackages: RecentSlidePackageEntry[] = [
   { path: '/Users/test/deck-b/slides.json', title: 'Deck B', openedAt: 1 },
 ]
 
+/** 各テストで共通の no-op props。テストごとに必要な prop だけ上書きする */
+const defaultProps = {
+  recentPackages: [] as RecentSlidePackageEntry[],
+  onOpenRecent: async () => {},
+  onRemoveRecent: () => {},
+  onOpenSample: async () => {},
+  onBrowse: async () => {},
+  onCreateWithAi: () => {},
+  onOpenUrl: async () => {},
+}
+
 describe('HomeScreen', () => {
   beforeEach(() => {
     localStorage.clear()
@@ -50,7 +61,7 @@ describe('HomeScreen', () => {
   it('最近開いたスライドが無い場合、空状態メッセージが表示される', () => {
     render(
       <Wrapper>
-        <HomeScreen recentPackages={[]} onOpenRecent={() => {}} onRemoveRecent={() => {}} onOpenSample={() => {}} onBrowse={() => {}} onCreateWithAi={() => {}} onOpenUrl={async () => {}} />
+        <HomeScreen {...defaultProps} />
       </Wrapper>,
     )
     expect(screen.getByText("You haven't opened any slides yet")).toBeDefined()
@@ -59,22 +70,22 @@ describe('HomeScreen', () => {
   it('最近開いたスライドが一覧表示される', () => {
     render(
       <Wrapper>
-        <HomeScreen recentPackages={recentPackages} onOpenRecent={() => {}} onRemoveRecent={() => {}} onOpenSample={() => {}} onBrowse={() => {}} onCreateWithAi={() => {}} onOpenUrl={async () => {}} />
+        <HomeScreen {...defaultProps} recentPackages={recentPackages} />
       </Wrapper>,
     )
     expect(screen.getByText('Deck A')).toBeDefined()
     expect(screen.getByText('Deck B')).toBeDefined()
   })
 
-  it('最近開いたスライドをクリックすると onOpenRecent が該当 path で呼ばれる', () => {
+  it('最近開いたスライドをクリックすると onOpenRecent が該当 path で呼ばれる', async () => {
     const onOpenRecent = vi.fn()
     render(
       <Wrapper>
-        <HomeScreen recentPackages={recentPackages} onOpenRecent={onOpenRecent} onRemoveRecent={() => {}} onOpenSample={() => {}} onBrowse={() => {}} onCreateWithAi={() => {}} onOpenUrl={async () => {}} />
+        <HomeScreen {...defaultProps} recentPackages={recentPackages} onOpenRecent={onOpenRecent} />
       </Wrapper>,
     )
     fireEvent.click(screen.getByText('Deck A'))
-    expect(onOpenRecent).toHaveBeenCalledWith('/Users/test/deck-a/slides.json')
+    await waitFor(() => expect(onOpenRecent).toHaveBeenCalledWith('/Users/test/deck-a/slides.json'))
   })
 
   it('削除ボタンをクリックすると onRemoveRecent が該当 path で呼ばれ、onOpenRecent は呼ばれない', () => {
@@ -82,7 +93,7 @@ describe('HomeScreen', () => {
     const onRemoveRecent = vi.fn()
     render(
       <Wrapper>
-        <HomeScreen recentPackages={recentPackages} onOpenRecent={onOpenRecent} onRemoveRecent={onRemoveRecent} onOpenSample={() => {}} onBrowse={() => {}} onCreateWithAi={() => {}} onOpenUrl={async () => {}} />
+        <HomeScreen {...defaultProps} recentPackages={recentPackages} onOpenRecent={onOpenRecent} onRemoveRecent={onRemoveRecent} />
       </Wrapper>,
     )
     fireEvent.click(screen.getByRole('button', { name: 'Remove Deck A' }))
@@ -90,33 +101,33 @@ describe('HomeScreen', () => {
     expect(onOpenRecent).not.toHaveBeenCalled()
   })
 
-  it('サンプルボタンをクリックすると onOpenSample が呼ばれる', () => {
+  it('サンプルボタンをクリックすると onOpenSample が呼ばれる', async () => {
     const onOpenSample = vi.fn()
     render(
       <Wrapper>
-        <HomeScreen recentPackages={[]} onOpenRecent={() => {}} onRemoveRecent={() => {}} onOpenSample={onOpenSample} onBrowse={() => {}} onCreateWithAi={() => {}} onOpenUrl={async () => {}} />
+        <HomeScreen {...defaultProps} onOpenSample={onOpenSample} />
       </Wrapper>,
     )
     fireEvent.click(screen.getByText('Open Sample'))
-    expect(onOpenSample).toHaveBeenCalledTimes(1)
+    await waitFor(() => expect(onOpenSample).toHaveBeenCalledTimes(1))
   })
 
-  it('ファイルを開くボタンをクリックすると onBrowse が呼ばれる', () => {
+  it('ファイルを開くボタンをクリックすると onBrowse が呼ばれる', async () => {
     const onBrowse = vi.fn()
     render(
       <Wrapper>
-        <HomeScreen recentPackages={[]} onOpenRecent={() => {}} onRemoveRecent={() => {}} onOpenSample={() => {}} onBrowse={onBrowse} onCreateWithAi={() => {}} onOpenUrl={async () => {}} />
+        <HomeScreen {...defaultProps} onBrowse={onBrowse} />
       </Wrapper>,
     )
     fireEvent.click(screen.getByText('Choose File'))
-    expect(onBrowse).toHaveBeenCalledTimes(1)
+    await waitFor(() => expect(onBrowse).toHaveBeenCalledTimes(1))
   })
 
   it('AIで新規作成ボタンをクリックすると onCreateWithAi が呼ばれる', () => {
     const onCreateWithAi = vi.fn()
     render(
       <Wrapper>
-        <HomeScreen recentPackages={[]} onOpenRecent={() => {}} onRemoveRecent={() => {}} onOpenSample={() => {}} onBrowse={() => {}} onCreateWithAi={onCreateWithAi} onOpenUrl={async () => {}} />
+        <HomeScreen {...defaultProps} onCreateWithAi={onCreateWithAi} />
       </Wrapper>,
     )
     fireEvent.click(screen.getByText('Create with AI'))
@@ -127,7 +138,7 @@ describe('HomeScreen', () => {
     const onOpenUrl = vi.fn().mockResolvedValue(undefined)
     render(
       <Wrapper>
-        <HomeScreen recentPackages={[]} onOpenRecent={() => {}} onRemoveRecent={() => {}} onOpenSample={() => {}} onBrowse={() => {}} onCreateWithAi={() => {}} onOpenUrl={onOpenUrl} />
+        <HomeScreen {...defaultProps} onOpenUrl={onOpenUrl} />
       </Wrapper>,
     )
     expect(screen.queryByTestId('home-url-input')).toBeNull()
@@ -143,10 +154,35 @@ describe('HomeScreen', () => {
   it('URL入力欄が空の場合、開くボタンは無効化される', () => {
     render(
       <Wrapper>
-        <HomeScreen recentPackages={[]} onOpenRecent={() => {}} onRemoveRecent={() => {}} onOpenSample={() => {}} onBrowse={() => {}} onCreateWithAi={() => {}} onOpenUrl={async () => {}} />
+        <HomeScreen {...defaultProps} />
       </Wrapper>,
     )
     fireEvent.click(screen.getByText('Open from URL'))
     expect((screen.getByTestId('home-url-submit') as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  it('ファイルを開く処理中は読み込み中の表示になり、他の操作ボタンが無効化される', async () => {
+    let resolveBrowse: () => void = () => {}
+    const onBrowse = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveBrowse = resolve
+        }),
+    )
+    render(
+      <Wrapper>
+        <HomeScreen {...defaultProps} recentPackages={recentPackages} onBrowse={onBrowse} />
+      </Wrapper>,
+    )
+
+    fireEvent.click(screen.getByTestId('home-browse'))
+    await waitFor(() => expect(screen.getByRole('status')).toBeDefined())
+    expect((screen.getByTestId('home-browse') as HTMLButtonElement).disabled).toBe(true)
+    expect((screen.getByTestId('home-sample') as HTMLButtonElement).disabled).toBe(true)
+    expect((screen.getByTestId('home-create-ai') as HTMLButtonElement).disabled).toBe(true)
+
+    resolveBrowse()
+    await waitFor(() => expect(screen.queryByRole('status')).toBeNull())
+    expect((screen.getByTestId('home-browse') as HTMLButtonElement).disabled).toBe(false)
   })
 })

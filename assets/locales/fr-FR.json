@@ -18,7 +18,8 @@
       "urlPlaceholder": "https://example.com/deck.spkg",
       "urlInputLabel": "URL du paquet de diapositives",
       "urlSubmit": "Ouvrir",
-      "urlOpening": "Ouverture…"
+      "urlOpening": "Ouverture…",
+      "loading": "Chargement…"
     },
     "toolbar": {
       "hide": "Masquer la barre d'outils (T)",

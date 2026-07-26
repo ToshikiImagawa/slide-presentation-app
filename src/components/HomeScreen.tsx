@@ -6,13 +6,16 @@ import styles from './HomeScreen.module.css'
 
 type HomeScreenProps = {
   recentPackages: RecentSlidePackageEntry[]
-  onOpenRecent: (path: string) => void
+  onOpenRecent: (path: string) => Promise<void>
   onRemoveRecent: (path: string) => void
-  onOpenSample: () => void
-  onBrowse: () => void
+  onOpenSample: () => Promise<void>
+  onBrowse: () => Promise<void>
   onCreateWithAi: () => void
   onOpenUrl: (url: string) => Promise<void>
 }
+
+/** 読み込み中の操作。同時に複数の読み込みが走らないよう単一の状態で管理する */
+type BusyState = { kind: 'browse' | 'sample' | 'url' } | { kind: 'recent'; path: string } | null
 
 /** フォルダアイコン（ファイルを開く） */
 function FolderIcon() {
@@ -76,23 +79,45 @@ function TrashIcon() {
   )
 }
 
+/** 読み込み中スピナー（読み込み系ボタンのアイコンを読み込み中は置き換える） */
+function Spinner({ className }: { className: string }) {
+  return (
+    <svg className={`${className} ${styles.spinner}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+      <path d="M12 3a9 9 0 1 0 9 9" />
+    </svg>
+  )
+}
+
 export function HomeScreen({ recentPackages, onOpenRecent, onRemoveRecent, onOpenSample, onBrowse, onCreateWithAi, onOpenUrl }: HomeScreenProps) {
   const { t } = useTranslation()
   const [isUrlFormOpen, setIsUrlFormOpen] = useState(false)
   const [url, setUrl] = useState('')
-  const [isOpeningUrl, setIsOpeningUrl] = useState(false)
+  const [busy, setBusy] = useState<BusyState>(null)
+  const isBusy = busy !== null
 
-  const handleUrlSubmit = async (e: FormEvent) => {
-    e.preventDefault()
-    const trimmed = url.trim()
-    if (!trimmed || isOpeningUrl) return
-    setIsOpeningUrl(true)
+  /** busy 状態をセットして fn を実行し、完了後（成功・失敗問わず）busy を解除する。同時に複数の読み込みは走らせない */
+  const runBusy = async (state: NonNullable<BusyState>, fn: () => Promise<void>) => {
+    if (isBusy) return
+    setBusy(state)
     try {
-      await onOpenUrl(trimmed)
+      await fn()
     } finally {
-      setIsOpeningUrl(false)
+      setBusy(null)
     }
   }
+
+  const handleUrlSubmit = (e: FormEvent) => {
+    e.preventDefault()
+    const trimmed = url.trim()
+    if (!trimmed) return
+    void runBusy({ kind: 'url' }, () => onOpenUrl(trimmed))
+  }
+
+  const handleBrowseClick = () => runBusy({ kind: 'browse' }, onBrowse)
+
+  const handleOpenSampleClick = () => runBusy({ kind: 'sample' }, onOpenSample)
+
+  const handleOpenRecentClick = (path: string) => runBusy({ kind: 'recent', path }, () => onOpenRecent(path))
 
   return (
     <div className={styles.container} data-testid="home-screen">
@@ -103,7 +128,7 @@ export function HomeScreen({ recentPackages, onOpenRecent, onRemoveRecent, onOpe
         </header>
 
         <div className={styles.actions}>
-          <button className={styles.primaryCard} onClick={onCreateWithAi} data-testid="home-create-ai">
+          <button className={styles.primaryCard} onClick={onCreateWithAi} disabled={isBusy} data-testid="home-create-ai">
             <span className={styles.primaryIcon}>
               <WandIcon />
             </span>
@@ -113,10 +138,8 @@ export function HomeScreen({ recentPackages, onOpenRecent, onRemoveRecent, onOpe
             </span>
           </button>
 
-          <button className={styles.primaryCard} onClick={onBrowse} data-testid="home-browse">
-            <span className={styles.primaryIcon}>
-              <FolderIcon />
-            </span>
+          <button className={styles.primaryCard} onClick={handleBrowseClick} disabled={isBusy} data-testid="home-browse">
+            <span className={styles.primaryIcon}>{busy?.kind === 'browse' ? <Spinner className={styles.icon} /> : <FolderIcon />}</span>
             <span className={styles.primaryText}>
               <span className={styles.primaryLabel}>{t('home.browseButton')}</span>
               <span className={styles.primaryHint}>{t('home.browseHint', '.json / .spkg')}</span>
@@ -124,11 +147,11 @@ export function HomeScreen({ recentPackages, onOpenRecent, onRemoveRecent, onOpe
           </button>
 
           <div className={styles.secondaryRow}>
-            <button className={styles.secondaryButton} onClick={onOpenSample} data-testid="home-sample">
-              <SparkleIcon />
+            <button className={styles.secondaryButton} onClick={handleOpenSampleClick} disabled={isBusy} data-testid="home-sample">
+              {busy?.kind === 'sample' ? <Spinner className={styles.icon} /> : <SparkleIcon />}
               <span>{t('home.sampleButton')}</span>
             </button>
-            <button className={styles.secondaryButton} onClick={() => setIsUrlFormOpen((open) => !open)} data-testid="home-url-toggle" aria-expanded={isUrlFormOpen}>
+            <button className={styles.secondaryButton} onClick={() => setIsUrlFormOpen((open) => !open)} disabled={isBusy} data-testid="home-url-toggle" aria-expanded={isUrlFormOpen}>
               <LinkIcon />
               <span>{t('home.urlButton', 'URLから開く')}</span>
             </button>
@@ -143,13 +166,19 @@ export function HomeScreen({ recentPackages, onOpenRecent, onRemoveRecent, onOpe
                 onChange={(e) => setUrl(e.target.value)}
                 placeholder={t('home.urlPlaceholder', 'https://example.com/deck.spkg')}
                 aria-label={t('home.urlInputLabel', 'スライドパッケージのURL')}
-                disabled={isOpeningUrl}
+                disabled={isBusy}
                 data-testid="home-url-input"
               />
-              <button type="submit" className={styles.urlSubmitButton} disabled={!url.trim() || isOpeningUrl} data-testid="home-url-submit">
-                {isOpeningUrl ? t('home.urlOpening', '開いています…') : t('home.urlSubmit', '開く')}
+              <button type="submit" className={styles.urlSubmitButton} disabled={!url.trim() || isBusy} data-testid="home-url-submit">
+                {busy?.kind === 'url' ? t('home.urlOpening', '開いています…') : t('home.urlSubmit', '開く')}
               </button>
             </form>
+          )}
+
+          {isBusy && (
+            <p className={styles.loadingStatus} role="status">
+              {t('home.loading', '読み込んでいます…')}
+            </p>
           )}
         </div>
 
@@ -161,15 +190,15 @@ export function HomeScreen({ recentPackages, onOpenRecent, onRemoveRecent, onOpe
             <ul className={styles.recentList}>
               {recentPackages.map((entry) => (
                 <li key={entry.path} className={styles.recentRow}>
-                  <button className={styles.recentItem} onClick={() => onOpenRecent(entry.path)}>
-                    <DocumentIcon />
+                  <button className={styles.recentItem} onClick={() => handleOpenRecentClick(entry.path)} disabled={isBusy}>
+                    {busy?.kind === 'recent' && busy.path === entry.path ? <Spinner className={styles.recentIcon} /> : <DocumentIcon />}
                     <span className={styles.recentItemText}>
                       <span className={styles.recentItemTitle}>{entry.title}</span>
                       <span className={styles.recentItemPath}>{entry.path}</span>
                     </span>
                   </button>
                   {/* 履歴からの除外のみで実ファイルは削除されないため、ConfirmDialog は使わず即時実行する */}
-                  <button className={styles.removeButton} onClick={() => onRemoveRecent(entry.path)} aria-label={t('home.removeRecentAria', '{title} を削除').replace('{title}', entry.title)}>
+                  <button className={styles.removeButton} onClick={() => onRemoveRecent(entry.path)} disabled={isBusy} aria-label={t('home.removeRecentAria', '{title} を削除').replace('{title}', entry.title)}>
                     <TrashIcon />
                   </button>
                 </li>
