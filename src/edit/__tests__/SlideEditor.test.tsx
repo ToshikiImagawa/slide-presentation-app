@@ -101,10 +101,10 @@ describe('SlideEditor 保存前バリデーション（FR-005）', () => {
     await waitFor(() => expect(saveButton().disabled).toBe(true))
   })
 
-  it('initialAiPanelExpanded=true のとき AI 生成パネルが展開済みで表示される（#42 AIで新規作成）', async () => {
+  it('source.aiPanelExpanded=true のとき AI 生成パネルが展開済みで表示される（#42 AIで新規作成）', async () => {
     render(
       <Wrapper>
-        <SlideEditor source={{ rawText: validJson, baseDir: '' }} onExit={() => {}} initialAiPanelExpanded />
+        <SlideEditor source={{ rawText: validJson, baseDir: '', aiPanelExpanded: true }} onExit={() => {}} />
       </Wrapper>,
     )
 

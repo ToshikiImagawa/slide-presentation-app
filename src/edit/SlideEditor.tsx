@@ -30,6 +30,8 @@ export interface EditSource {
   baseDir: string
   /** 保存ダイアログの初期パス（読込元）。サンプル/新規は undefined */
   sourcePath?: string
+  /** AI 生成パネルを開いた状態で編集を開始するか（ホーム画面の「AIで新規作成」導線から遷移した場合のみ true） */
+  aiPanelExpanded?: boolean
 }
 
 type StatusState = { kind: 'idle' | 'ok' | 'error'; message: string }
@@ -51,16 +53,7 @@ const JSON_SYNTAX_ERROR_MARK = 'JSON 構文エラー'
  * 保存 / .spkg 書き出しを行う。編集対象は相対パスの生 JSON（source.rawText）で、プレビュー表示のみ
  * baseDir 基準でアセット解決する（保存・書き出しは相対パスのまま＝可搬・無損失）。
  */
-export function SlideEditor({
-  source,
-  onExit,
-  initialAiPanelExpanded = false,
-}: {
-  source: EditSource
-  onExit: () => void
-  /** AI 生成パネルを開いた状態で開始するか（ホーム画面の「AIで新規作成」導線から遷移した場合に使用） */
-  initialAiPanelExpanded?: boolean
-}) {
+export function SlideEditor({ source, onExit }: { source: EditSource; onExit: () => void }) {
   const { t } = useTranslation()
   const [text, setText] = useState(source.rawText)
   const [selectedIndex, setSelectedIndex] = useState(0)
@@ -393,7 +386,7 @@ export function SlideEditor({
                 AI 生成パネル（#14）はフォームの上（＝プレビューの左）に配置する（#33）。
                 生成結果は applyGeneratedSlides で差分確認ダイアログへ渡す（①） */}
             <Box sx={{ minWidth: 0, minHeight: 0, overflow: 'auto' }}>
-              <AiGeneratePanel currentText={text} onApply={applyGeneratedSlides} defaultExpanded={initialAiPanelExpanded} />
+              <AiGeneratePanel currentText={text} onApply={applyGeneratedSlides} defaultExpanded={source.aiPanelExpanded} />
               {hasSyntaxError ? (
                 <Typography variant="body2" sx={{ p: 1, color: 'var(--theme-primary)' }}>
                   {t('edit.formDisabled', 'JSON に構文エラーがあるためフォーム編集は無効です')}
