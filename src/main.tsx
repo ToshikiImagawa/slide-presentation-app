@@ -183,15 +183,7 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
 
   if (view === 'home') {
     return (
-      <HomeScreen
-        recentPackages={recentPackages}
-        onOpenRecent={handleOpenRecent}
-        onRemoveRecent={handleRemoveRecent}
-        onOpenSample={handleOpenSample}
-        onBrowse={handleBrowse}
-        onCreateWithAi={handleCreateWithAi}
-        onOpenUrl={handleOpenUrl}
-      />
+      <HomeScreen recentPackages={recentPackages} onOpenRecent={handleOpenRecent} onRemoveRecent={handleRemoveRecent} onOpenSample={handleOpenSample} onBrowse={handleBrowse} onCreateWithAi={handleCreateWithAi} onOpenUrl={handleOpenUrl} />
     )
   }
 
