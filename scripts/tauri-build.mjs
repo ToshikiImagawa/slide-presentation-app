@@ -11,6 +11,8 @@
  */
 import { execFileSync } from 'node:child_process'
 
+const ROOT = new URL('..', import.meta.url).pathname
+
 const hasSigningKey = Boolean(process.env.TAURI_SIGNING_PRIVATE_KEY)
 
 const args = ['tauri', 'build']
@@ -19,4 +21,4 @@ if (!hasSigningKey) {
   args.push('--config', JSON.stringify({ bundle: { createUpdaterArtifacts: false } }))
 }
 
-execFileSync('npx', args, { stdio: 'inherit' })
+execFileSync('npx', args, { cwd: ROOT, stdio: 'inherit' })

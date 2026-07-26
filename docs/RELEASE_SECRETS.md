@@ -66,7 +66,7 @@ npx tauri signer generate -w ~/.tauri/slide-presentation-app_updater.key
 
 - macOS 署名系（`APPLE_CERTIFICATE` 等）が未設定の場合、codesign をスキップし ad-hoc / 未署名ビルドとして生成する
 - Windows 署名系（`WINDOWS_CERTIFICATE` 等）が未設定の場合、Authenticode 署名をスキップし未署名ビルドとして生成する
-- `TAURI_SIGNING_PRIVATE_KEY` が未設定の場合、`scripts/tauri-build.mjs`（`npm run tauri:build` 経由）が `createUpdaterArtifacts` を無効化してビルドする。Tauri v2 は pubkey 設定済みかつ署名鍵未設定だとビルド自体が失敗するため、ローカル開発ビルドはこの縮退で成立させる
+- `TAURI_SIGNING_PRIVATE_KEY` が未設定の場合、`scripts/tauri-build.mjs`（`npm run tauri:build` 経由）が `createUpdaterArtifacts` を無効化してビルドする（理由は同ファイルのコメント参照）
 - いずれの場合もビルド自体は失敗させず、署名ステップのみ縮退させる方針とする
 
 ## 不要と判断した secrets
