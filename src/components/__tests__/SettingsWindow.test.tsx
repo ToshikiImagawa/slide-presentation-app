@@ -62,6 +62,51 @@ describe('SettingsWindow', () => {
     expect(screen.getByText('Settings')).toBeDefined()
   })
 
+  it('role="dialog" と aria-modal="true" を持つ', () => {
+    render(
+      <Wrapper>
+        <SettingsWindow open={true} onClose={() => {}} scrollSpeed={20} setScrollSpeed={() => {}} />
+      </Wrapper>,
+    )
+    const dialog = screen.getByRole('dialog')
+    expect(dialog.getAttribute('aria-modal')).toBe('true')
+    expect(dialog.getAttribute('aria-labelledby')).toBeTruthy()
+  })
+
+  it('Escapeキーで onClose が呼ばれる', () => {
+    const onClose = vi.fn()
+    render(
+      <Wrapper>
+        <SettingsWindow open={true} onClose={onClose} scrollSpeed={20} setScrollSpeed={() => {}} />
+      </Wrapper>,
+    )
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('開いた際にフォーカスが背景（body）から外れてダイアログ側へ移動する', () => {
+    render(
+      <Wrapper>
+        <SettingsWindow open={true} onClose={() => {}} scrollSpeed={20} setScrollSpeed={() => {}} />
+      </Wrapper>,
+    )
+    expect(document.activeElement).not.toBe(document.body)
+  })
+
+  it('末尾のフォーカス境界（sentinel）へ到達すると先頭の要素へ折り返す（フォーカストラップ）', () => {
+    render(
+      <Wrapper>
+        <SettingsWindow open={true} onClose={() => {}} scrollSpeed={20} setScrollSpeed={() => {}} />
+      </Wrapper>,
+    )
+    const closeButtons = screen.getAllByRole('button', { name: 'Close' })
+    const firstFocusable = closeButtons[0]
+    // ブラウザがネイティブのTab移動で最後の要素の次に到達する境界ノード（MUI FocusTrapのsentinel）
+    const sentinelEnd = screen.getByTestId('sentinelEnd')
+    sentinelEnd.focus()
+    expect(document.activeElement).toBe(firstFocusable)
+  })
+
   it('言語選択肢が表示される', () => {
     render(
       <Wrapper>
