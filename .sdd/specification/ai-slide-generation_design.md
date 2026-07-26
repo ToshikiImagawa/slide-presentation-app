@@ -33,7 +33,7 @@ category: authoring
 
 # 1. 実装ステータス
 
-**ステータス:** ✅ 実装済み（Issue #14・ブランチ `feature/ai-slide-generation-impl`）。器（#13 [slide-edit-mode_design.md](./slide-edit-mode_design.md)）の上に生成・ネットワーク・GCP 認証の各層を新設した。内蔵生成は **Vertex AI（GCP ADC）** 直（参照実装は姉妹アプリ ticketvc-jira-management-app(NexusBoard) の `ai_tool` feature の Vertex 経路）。全ゲート green（`cargo test`/`clippy -D warnings`/`fmt` ・ `npm run typecheck`/`test`/`format:check`/`build`）。実機 macOS の手動検証（GCP ログイン→project/region/model 設定→Vertex 生成疎通・トークン非露出・ゲート）は完了条件に残る（tasks 4.5）。
+**ステータス:** ✅ 実装済み（Issue #14・ブランチ `feature/ai-slide-generation-impl`）。器（#13 [slide-edit-mode_design.md](./slide-edit-mode_design.md)）の上に生成・ネットワーク・GCP 認証の各層を新設した。内蔵生成は **Vertex AI（GCP ADC）** 直。全ゲート green（`cargo test`/`clippy -D warnings`/`fmt` ・ `npm run typecheck`/`test`/`format:check`/`build`）。実機 macOS の手動検証（GCP ログイン→project/region/model 設定→Vertex 生成疎通・トークン非露出・ゲート）は完了条件に残る（tasks 4.5）。
 
 ## 1.1. 実装進捗
 
@@ -65,7 +65,7 @@ category: authoring
 
 # 3. 技術スタック
 
-**なぜその技術を選んだのか**の判断根拠を残す。参照実装として姉妹 Tauri アプリ ticketvc-jira-management-app(NexusBoard) の稼働実装を随所で下敷きにする。
+**なぜその技術を選んだのか**の判断根拠を残す。
 
 | 領域 | 採用技術 | 選定理由 |
 |------|------|------|
@@ -378,4 +378,4 @@ HTTP エラー分類は原因に対応させ、UI の案内が誤誘導になら
 
 **変更内容:**
 
-- 初版（設計フェーズ）。器（#13）の上に生成器抽象・内蔵（Anthropic 直・reqwest）・外部（Claude Code CLI）・keyring 保管・EditMode＋生成有効ゲート・取り込み検証/自動修正ループ・生成パネル UI を設計。参照実装 ticketvc-jira-management-app の Rust 側パターンを流用（フロントの重量級構成は非移植）。
+- 初版（設計フェーズ）。器（#13）の上に生成器抽象・内蔵（Anthropic 直・reqwest）・外部（Claude Code CLI）・keyring 保管・EditMode＋生成有効ゲート・取り込み検証/自動修正ループ・生成パネル UI を設計。
