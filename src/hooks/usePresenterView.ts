@@ -59,6 +59,14 @@ export function usePresenterView({ slides, addonOwner = '', addonScripts = [], t
     onScrollSpeedChangeRef.current = onScrollSpeedChange
   }, [onScrollSpeedChange])
 
+  // 現在のテーマ・アドオンを発表者ビューへ伝搬する（マウント時・presenterViewReady 受信時の両方で使う）
+  const emitThemeAndAddons = () => {
+    const themeMessage: PresenterViewMessage = { type: 'themeChanged', payload: { themeColors, theme } }
+    void emit(EVENT_NAME, themeMessage)
+    const addonMessage: PresenterViewMessage = { type: 'addonsChanged', payload: { owner: addonOwner, scripts: addonScripts } }
+    void emit(EVENT_NAME, addonMessage)
+  }
+
   useEffect(() => {
     let unlisten: UnlistenFn | undefined
 
@@ -67,10 +75,7 @@ export function usePresenterView({ slides, addonOwner = '', addonScripts = [], t
       if (msg.type === 'presenterViewReady') {
         setIsOpen(true)
         // テーマ・アドオンを slides より先に伝搬し、発表者ビューが描画前に適用・ロードできるようにする
-        const themeMessage: PresenterViewMessage = { type: 'themeChanged', payload: { themeColors, theme } }
-        void emit(EVENT_NAME, themeMessage)
-        const addonMessage: PresenterViewMessage = { type: 'addonsChanged', payload: { owner: addonOwner, scripts: addonScripts } }
-        void emit(EVENT_NAME, addonMessage)
+        emitThemeAndAddons()
         const message: PresenterViewMessage = { type: 'slideChanged', payload: { currentIndex: 0, slides } }
         void emit(EVENT_NAME, message)
         // 初期制御状態を送信
@@ -103,10 +108,7 @@ export function usePresenterView({ slides, addonOwner = '', addonScripts = [], t
   // パッケージ切替（この hook の再マウント）時に、既に開いている発表者ビューへ最新テーマ・アドオンを伝搬する。
   // 発表者ビューが未オープンならこの emit は無視され、後続の presenterViewReady 受信時に改めて伝搬される。
   useEffect(() => {
-    const themeMessage: PresenterViewMessage = { type: 'themeChanged', payload: { themeColors, theme } }
-    void emit(EVENT_NAME, themeMessage)
-    const addonMessage: PresenterViewMessage = { type: 'addonsChanged', payload: { owner: addonOwner, scripts: addonScripts } }
-    void emit(EVENT_NAME, addonMessage)
+    emitThemeAndAddons()
     // マウント時に一度だけ実行する（themeColors/theme/addonOwner/addonScripts はマウント単位で固定）
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])

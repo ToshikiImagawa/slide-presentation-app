@@ -173,3 +173,15 @@ export function resetThemeOverrides(): void {
   document.querySelectorAll('style[id^="sdd-font-face-"]').forEach((el) => el.remove())
   document.querySelectorAll('link[data-sdd-dynamic-font="true"]').forEach((el) => el.remove())
 }
+
+/**
+ * プレゼンテーションのテーマを一括適用する（本編・発表者ビューの両エントリで共通の手順）。
+ * 前のテーマの上書きが残らないよう、必ずリセットしてから themeColors → theme の順に適用する。
+ */
+export async function applyPresentationTheme(themeColors?: string, theme?: ThemeData): Promise<void> {
+  resetThemeOverrides()
+  await applyTheme(themeColors)
+  if (theme) {
+    applyThemeData(theme)
+  }
+}

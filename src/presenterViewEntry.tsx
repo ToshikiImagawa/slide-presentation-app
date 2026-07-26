@@ -6,7 +6,7 @@ import type { UnlistenFn } from '@tauri-apps/api/event'
 import 'reveal.js/dist/reveal.css'
 import './styles/global.css'
 import './addon-bridge'
-import { applyTheme, applyThemeData, resetThemeOverrides } from './applyTheme'
+import { applyPresentationTheme, applyTheme } from './applyTheme'
 import { loadAddonScripts, loadBuiltinAddons } from './addonLoader'
 import { registerDefaultComponents } from './components/registerDefaults'
 import { unregisterOwner } from './components/ComponentRegistry'
@@ -37,12 +37,8 @@ function PresenterViewApp() {
     listen<PresenterViewMessage>(EVENT_NAME, async (event) => {
       if (event.payload.type === 'themeChanged') {
         const { themeColors, theme: themeData } = event.payload.payload
-        // 本編とテーマの上書きが食い違わないよう、必ずリセットしてから本編と同じ手順で再適用する
-        resetThemeOverrides()
-        await applyTheme(themeColors)
-        if (themeData) {
-          applyThemeData(themeData)
-        }
+        // 本編とテーマの上書きが食い違わないよう、本編と同じ手順（reset→適用）で再適用する
+        await applyPresentationTheme(themeColors, themeData)
       } else if (event.payload.type === 'addonsChanged') {
         const { owner, scripts } = event.payload.payload
         // 旧 owner を破棄してから新アドオンをロードする（slideChanged 側がこの完了を待つ）
