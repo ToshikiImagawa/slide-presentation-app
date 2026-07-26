@@ -19,7 +19,7 @@ import { ConfirmDialog } from './ConfirmDialog'
 import { SlideJsonEditor } from './SlideJsonEditor'
 import { SlideMetaForm } from './SlideMetaForm'
 import { SlidePreview } from './SlidePreview'
-import { addBuiltinAddon, chooseExportDir, chooseSlidesSavePath, exportSlidePackage, listBuiltinAddons, listBuiltinDistAddons, removeBuiltinAddon, saveSlidesJson } from '../editModeSave'
+import { addBuiltinAddon, buildBuiltinAddons, chooseExportDir, chooseSlidesSavePath, exportSlidePackage, listBuiltinAddons, listBuiltinDistAddons, removeBuiltinAddon, saveSlidesJson } from '../editModeSave'
 
 /** 編集対象データの供給元。相対パスの生 JSON を土台にし、プレビューだけ baseDir 基準でアセット解決する */
 export interface EditSource {
@@ -70,6 +70,8 @@ export function SlideEditor({ source, onExit }: { source: EditSource; onExit: ()
   const [newBuiltinName, setNewBuiltinName] = useState('')
   // 削除確認待ちの組み込みアドオン名（× は確認ダイアログ経由。誤クリックでの完全削除を防ぐ）
   const [pendingDeleteBuiltin, setPendingDeleteBuiltin] = useState<string | null>(null)
+  // 組み込みアドオンのビルド中フラグ（ボタン二重押し防止）
+  const [buildingAddons, setBuildingAddons] = useState(false)
 
   const { data, errors } = useMemo(() => parseSlides(text), [text])
   const hasSyntaxError = errors.some((e) => e.message.includes(JSON_SYNTAX_ERROR_MARK))
@@ -138,6 +140,23 @@ export function SlideEditor({ source, onExit }: { source: EditSource; onExit: ()
       setStatus({ kind: 'ok', message: t('edit.builtinRemoved', '組み込みアドオンを削除しました（要再ビルド）') })
     } catch (e) {
       setStatus({ kind: 'error', message: `${t('edit.builtinRemoveFailed', '削除に失敗しました')}: ${e instanceof Error ? e.message : String(e)}` })
+    }
+  }
+
+  // アプリから組み込みアドオンを再ビルドし、同梱候補（dist）を即更新する（ターミナル不要）
+  const handleBuildBuiltins = async () => {
+    setBuildingAddons(true)
+    setStatus({ kind: 'ok', message: t('edit.builtinBuilding', '組み込みアドオンをビルド中…') })
+    try {
+      await buildBuiltinAddons()
+      refreshBuiltins()
+      const dist = await listBuiltinDistAddons().catch(() => [])
+      setBuiltinDistAddons(dist)
+      setStatus({ kind: 'ok', message: t('edit.builtinBuilt', '組み込みアドオンをビルドしました（同梱候補を更新）') })
+    } catch (e) {
+      setStatus({ kind: 'error', message: `${t('edit.builtinBuildFailed', 'ビルドに失敗しました')}: ${e instanceof Error ? e.message : String(e)}` })
+    } finally {
+      setBuildingAddons(false)
     }
   }
 
@@ -286,8 +305,11 @@ export function SlideEditor({ source, onExit }: { source: EditSource; onExit: ()
             <Button size="small" variant="outlined" onClick={() => void handleAddBuiltin()} disabled={!newBuiltinName.trim()}>
               {t('edit.builtinAdd', '追加')}
             </Button>
+            <Button size="small" variant="contained" onClick={() => void handleBuildBuiltins()} disabled={buildingAddons}>
+              {buildingAddons ? t('edit.builtinBuildingShort', 'ビルド中…') : t('edit.builtinBuild', 'ビルド')}
+            </Button>
             <Typography variant="caption" sx={{ color: 'var(--theme-text-muted)' }}>
-              {t('edit.builtinRebuildNote', '変更後は npm run build:addons が必要')}
+              {t('edit.builtinRebuildNote', '追加/削除後は「ビルド」で同梱候補に反映されます')}
             </Typography>
           </Stack>
         )}

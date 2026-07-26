@@ -60,7 +60,7 @@
       "builtinAdd": "Ajouter",
       "builtinRemove": "supprimer",
       "builtinRemoveAria": "Supprimer {name}",
-      "builtinRebuildNote": "Exécutez npm run build:addons après modification",
+      "builtinRebuildNote": "Après ajout/suppression, cliquez sur Compiler pour mettre à jour les candidats",
       "builtinAdded": "Module intégré ajouté (exécutez npm run build:addons pour reconstruire)",
       "builtinAddFailed": "Échec de l'ajout",
       "builtinRemoved": "Module intégré supprimé (reconstruction requise)",
@@ -69,7 +69,12 @@
       "builtinRemoveConfirmTitle": "Supprimer cet addon intégré ?",
       "builtinRemoveConfirmMessage": "Cela supprime définitivement la source de {name} (addons/src). Action irréversible (hors git, non récupérable).",
       "builtinRemoveConfirm": "Supprimer",
-      "cancel": "Annuler"
+      "cancel": "Annuler",
+      "builtinBuild": "Compiler",
+      "builtinBuildingShort": "Compilation…",
+      "builtinBuilding": "Compilation des addons intégrés…",
+      "builtinBuilt": "Addons intégrés compilés (candidats de bundle mis à jour)",
+      "builtinBuildFailed": "Échec de la compilation"
     },
     "presenterView": {
       "open": "Vue présentateur",

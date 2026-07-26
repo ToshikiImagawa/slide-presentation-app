@@ -87,6 +87,14 @@ export async function listBuiltinDistAddons(): Promise<string[]> {
   return invoke<string[]>('list_builtin_dist_addons')
 }
 
+/**
+ * 組み込みアドオンをアプリから再ビルドする（`npm run build:addons` を Rust が spawn）。dev 限定＋編集モード。
+ * 実行後 `addons/dist` が更新され、`listBuiltinDistAddons` に反映される（ターミナル不要）。
+ */
+export async function buildBuiltinAddons(): Promise<void> {
+  await invoke('build_builtin_addons')
+}
+
 /** 組み込みアドオンを新規作成する（層A・dev 限定＋編集モード）。反映には npm run build:addons の再ビルドが必要。 */
 export async function addBuiltinAddon(name: string): Promise<void> {
   await invoke('add_builtin_addon', { name })

@@ -761,6 +761,46 @@ fn remove_builtin_addon(name: String, state: tauri::State<EditMode>) -> Result<(
   remove_builtin_addon_at(&builtin_addons_dir(), &name)
 }
 
+/// npm パッケージスクリプト実行用のバイナリ名（Windows は `.cmd` 実体）。
+fn npm_binary() -> &'static str {
+  if cfg!(windows) {
+    "npm.cmd"
+  } else {
+    "npm"
+  }
+}
+
+/// プロジェクトルート（`src-tauri` の親）。組み込みアドオンのビルドはここを cwd に実行する。
+fn project_root_dir() -> PathBuf {
+  Path::new(env!("CARGO_MANIFEST_DIR"))
+    .parent()
+    .map(|p| p.to_path_buf())
+    .unwrap_or_else(|| PathBuf::from("."))
+}
+
+/// 組み込みアドオンをアプリから再ビルドする（`npm run build:addons` を spawn。層A・dev 限定＋編集モード）。
+/// 実行後 `addons/dist/manifest.json` が更新され、`list_builtin_dist_addons` に反映される。
+#[tauri::command]
+async fn build_builtin_addons(edit_mode: tauri::State<'_, EditMode>) -> Result<(), String> {
+  if !cfg!(debug_assertions) {
+    return Err("この操作は開発環境でのみ利用できます".to_string());
+  }
+  require_edit_mode(&edit_mode)?;
+  let status = tokio::process::Command::new(npm_binary())
+    .args(["run", "build:addons"])
+    .current_dir(project_root_dir())
+    .status()
+    .await
+    .map_err(|e| {
+      format!("npm の起動に失敗しました（インストールと PATH を確認してください）: {e}")
+    })?;
+  if status.success() {
+    Ok(())
+  } else {
+    Err("アドオンのビルドに失敗しました（addons/src の内容を確認してください）".to_string())
+  }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
@@ -780,6 +820,7 @@ pub fn run() {
       list_builtin_dist_addons,
       add_builtin_addon,
       remove_builtin_addon,
+      build_builtin_addons,
       set_generation_enabled,
       generate_slides,
       cancel_generation,

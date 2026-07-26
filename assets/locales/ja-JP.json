@@ -60,7 +60,7 @@
       "builtinAdd": "追加",
       "builtinRemove": "を削除",
       "builtinRemoveAria": "{name} を削除",
-      "builtinRebuildNote": "変更後は npm run build:addons が必要",
+      "builtinRebuildNote": "追加/削除後は「ビルド」で同梱候補に反映されます",
       "builtinAdded": "組み込みアドオンを追加しました（npm run build:addons で再ビルドしてください）",
       "builtinAddFailed": "追加に失敗しました",
       "builtinRemoved": "組み込みアドオンを削除しました（要再ビルド）",
@@ -69,7 +69,12 @@
       "builtinRemoveConfirmTitle": "組み込みアドオンを削除しますか？",
       "builtinRemoveConfirmMessage": "{name} のソース（addons/src）を完全に削除します。取り消せません（git 管理外のため復元できません）。",
       "builtinRemoveConfirm": "削除する",
-      "cancel": "キャンセル"
+      "cancel": "キャンセル",
+      "builtinBuild": "ビルド",
+      "builtinBuildingShort": "ビルド中…",
+      "builtinBuilding": "組み込みアドオンをビルド中…",
+      "builtinBuilt": "組み込みアドオンをビルドしました（同梱候補を更新）",
+      "builtinBuildFailed": "ビルドに失敗しました"
     },
     "presenterView": {
       "open": "発表者ビュー",

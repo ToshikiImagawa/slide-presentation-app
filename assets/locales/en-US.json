@@ -60,7 +60,7 @@
       "builtinAdd": "Add",
       "builtinRemove": "remove",
       "builtinRemoveAria": "Remove {name}",
-      "builtinRebuildNote": "Run npm run build:addons after changes",
+      "builtinRebuildNote": "After adding/removing, click Build to reflect in the bundle candidates",
       "builtinAdded": "Built-in add-on added (run npm run build:addons to rebuild)",
       "builtinAddFailed": "Failed to add",
       "builtinRemoved": "Built-in add-on removed (rebuild required)",
@@ -69,7 +69,12 @@
       "builtinRemoveConfirmTitle": "Delete this built-in add-on?",
       "builtinRemoveConfirmMessage": "This permanently deletes the source of {name} (addons/src). This cannot be undone (it is outside git and cannot be recovered).",
       "builtinRemoveConfirm": "Delete",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "builtinBuild": "Build",
+      "builtinBuildingShort": "Building…",
+      "builtinBuilding": "Building built-in add-ons…",
+      "builtinBuilt": "Built the built-in add-ons (bundle candidates updated)",
+      "builtinBuildFailed": "Build failed"
     },
     "presenterView": {
       "open": "Presenter View",

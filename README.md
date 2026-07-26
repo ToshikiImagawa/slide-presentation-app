@@ -118,7 +118,7 @@ Package-bundled addons contain executable code, so addon control is separated in
 |-------------------------|-----------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | **Runtime trust**       | Confirmation prompt on open + **Settings → Per-package add-on trust**                    | Allow / deny loading a package's bundled addons, per package (default: denied). The global **Always disable embedded add-ons** toggle takes precedence.      |
 | **Export selection**    | Edit mode **Bundled add-ons** checkboxes (and `npm run export:slides --addons a,b`)      | Choose which addons to include when exporting a `.tgz`. The choices union package add-ons with dev built-in add-ons; the list stays visible (with an empty-state note) even when none are available. |
-| **Built-in add/remove** | Edit mode **Built-in add-ons (dev)** panel (development builds only)                     | Scaffold or remove `addons/src/<name>/entry.ts`. Run `npm run build:addons` afterwards to rebuild.                                                            |
+| **Built-in add/remove** | Edit mode **Built-in add-ons (dev)** panel (development builds only)                     | Scaffold or remove `addons/src/<name>/entry.ts` (delete asks for confirmation — it is permanent and outside git), then click **Build** in the panel to rebuild from the app (runs `npm run build:addons`) so the addon appears in the bundle candidates. |
 
 ### AI Generation
 

@@ -12,6 +12,7 @@ const h = vi.hoisted(() => ({
   listBuiltinDistAddons: vi.fn(),
   getPackageAddonNames: vi.fn(),
   removeBuiltinAddon: vi.fn(),
+  buildBuiltinAddons: vi.fn(),
 }))
 vi.mock('../../editModeSave', () => ({
   saveSlidesJson: h.saveSlidesJson,
@@ -24,6 +25,7 @@ vi.mock('../../editModeSave', () => ({
   listBuiltinDistAddons: h.listBuiltinDistAddons,
   addBuiltinAddon: vi.fn(),
   removeBuiltinAddon: h.removeBuiltinAddon,
+  buildBuiltinAddons: h.buildBuiltinAddons,
 }))
 vi.mock('../../applyTheme', () => ({ applyTheme: vi.fn().mockResolvedValue(undefined), applyThemeData: vi.fn(), resetThemeOverrides: vi.fn() }))
 vi.mock('../../localSlideLoader', () => ({ resolveLocalAssetPaths: (v: unknown) => v, getPackageAddonNames: h.getPackageAddonNames }))
@@ -172,6 +174,7 @@ describe('SlideEditor 組み込みアドオン削除の確認（× 誤クリッ�
     h.listBuiltinDistAddons.mockReset().mockResolvedValue([])
     h.getPackageAddonNames.mockReset().mockResolvedValue([])
     h.removeBuiltinAddon.mockReset().mockResolvedValue(undefined)
+    h.buildBuiltinAddons.mockReset().mockResolvedValue(undefined)
   })
 
   it('× で即削除せず確認ダイアログを開き、[削除する] で removeBuiltinAddon を呼ぶ', async () => {
@@ -198,5 +201,35 @@ describe('SlideEditor 組み込みアドオン削除の確認（× 誤クリッ�
     fireEvent.click(await screen.findByRole('button', { name: 'ai-sdd-visuals を削除' }))
     fireEvent.click(await screen.findByRole('button', { name: 'キャンセル' }))
     expect(h.removeBuiltinAddon).not.toHaveBeenCalled()
+  })
+})
+
+describe('SlideEditor 組み込みアドオンのアプリ内ビルド（ターミナル不要）', () => {
+  beforeEach(() => {
+    h.saveSlidesJson.mockReset()
+    h.exportSlidePackage.mockReset()
+    h.chooseSlidesSavePath.mockReset().mockResolvedValue('/tmp/slides.json')
+    h.chooseExportDir.mockReset()
+    h.getPackageAddonNames.mockReset().mockResolvedValue([])
+    h.removeBuiltinAddon.mockReset().mockResolvedValue(undefined)
+    h.buildBuiltinAddons.mockReset().mockResolvedValue(undefined)
+  })
+
+  it('「ビルド」で buildBuiltinAddons を呼び、同梱候補（dist）を更新して即反映する', async () => {
+    h.listBuiltinAddons.mockReset().mockResolvedValue(['newaddon']) // src にあり dev パネルに表示
+    // 初回（マウント時）は未ビルドで候補なし → ビルド後は newaddon が候補に出る
+    h.listBuiltinDistAddons.mockReset().mockResolvedValueOnce([]).mockResolvedValue(['newaddon'])
+    render(
+      <Wrapper>
+        <SlideEditor source={{ rawText: validJson, baseDir: '' }} onExit={() => {}} />
+      </Wrapper>,
+    )
+    // 初期は同梱候補なし
+    await waitFor(() => expect(screen.getByText('同梱できるアドオンがありません')).toBeTruthy())
+    // ビルド実行
+    fireEvent.click(await screen.findByRole('button', { name: 'ビルド' }))
+    await waitFor(() => expect(h.buildBuiltinAddons).toHaveBeenCalled())
+    // ビルド後、同梱候補に newaddon が現れる
+    await waitFor(() => expect(screen.getByLabelText('newaddon')).toBeTruthy())
   })
 })
