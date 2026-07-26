@@ -352,9 +352,7 @@ fn resolve_gcloud_binary() -> Result<PathBuf, String> {
       return Ok(candidate);
     }
   }
-  Err(
-    "gcloud コマンドが見つかりませんでした。インストールと PATH を確認してください".to_string(),
-  )
+  Err("gcloud コマンドが見つかりませんでした。インストールと PATH を確認してください".to_string())
 }
 
 /// 解決済みバイナリパスから起動用の `Command` を構築する。
