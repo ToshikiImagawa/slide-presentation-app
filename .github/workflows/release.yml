@@ -102,13 +102,21 @@ jobs:
           sudo DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a apt-get install -y --no-install-recommends \
             libgtk-3-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev pkg-config libsoup-3.0-dev
       - run: npm ci
+      - name: Check macOS signing secret
+        # APPLE_CERTIFICATE の有無を 1 箇所で判定し、以降の macOS 署名関連ステップは
+        # この output を参照する(if 条件に secrets.APPLE_CERTIFICATE != '' を都度書くと
+        # 4 箇所の判定が将来ズレるリスクがあるため)
+        id: macos-cert
+        if: matrix.os == 'macos-latest'
+        env:
+          HAS_CERT: ${{ secrets.APPLE_CERTIFICATE != '' }}
+        run: echo "present=$HAS_CERT" >> "$GITHUB_OUTPUT"
       - name: Set up macOS signing keychain (self-signed)
-        # 自己署名証明書のみを扱い、公証(notarization)は行わない(スコープ外)。
         # secret 名は APPLE_CERTIFICATE / APPLE_CERTIFICATE_PASSWORD のままだが、
         # job の env 変数名は MACOS_SIGNING_P12 / MACOS_SIGNING_P12_PASSWORD へ別名化する。
         # (env 名を APPLE_CERTIFICATE のままにすると Tauri bundler が Apple 公式 CN 前提の
         #  自動検出経路に入り、自己署名 CN では失敗するため)
-        if: matrix.os == 'macos-latest' && secrets.APPLE_CERTIFICATE != ''
+        if: matrix.os == 'macos-latest' && steps.macos-cert.outputs.present == 'true'
         env:
           MACOS_SIGNING_P12: ${{ secrets.APPLE_CERTIFICATE }}
           MACOS_SIGNING_P12_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
@@ -134,7 +142,7 @@ jobs:
 
           rm -f "$CERTIFICATE_PATH" "$CERTIFICATE_PEM_PATH"
       - name: Warn about macOS ad-hoc signing fallback
-        if: matrix.os == 'macos-latest' && secrets.APPLE_CERTIFICATE == ''
+        if: matrix.os == 'macos-latest' && steps.macos-cert.outputs.present == 'false'
         run: echo "::warning::APPLE_CERTIFICATE が未設定のため macOS ビルドは ad-hoc 署名(ビルド疎通確認用)に縮退します。公開リリースには添付しません。"
       - run: npm run tauri:build
         env:
@@ -144,23 +152,25 @@ jobs:
           # 自動検出経路に入り自己署名 CN で失敗する)。渡すのは import 済み識別名のみ
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
       - name: Verify macOS code signing
-        if: matrix.os == 'macos-latest' && secrets.APPLE_CERTIFICATE != ''
+        if: matrix.os == 'macos-latest' && steps.macos-cert.outputs.present == 'true'
+        env:
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
         run: |
           APP_PATH="$(find src-tauri/target/release/bundle/macos -maxdepth 1 -name '*.app' -print -quit)"
           codesign --verify --deep --strict --verbose=2 "$APP_PATH"
           AUTHORITY="$(codesign -dvv "$APP_PATH" 2>&1 | grep '^Authority=' | head -1)"
           echo "$AUTHORITY"
-          case "$AUTHORITY" in
-            *"${{ secrets.APPLE_SIGNING_IDENTITY }}"*) ;;
-            *) echo "::error::codesign の Authority が APPLE_SIGNING_IDENTITY と一致しません: $AUTHORITY"; exit 1 ;;
-          esac
+          grep -qF "$APPLE_SIGNING_IDENTITY" <<< "$AUTHORITY" || {
+            echo "::error::codesign の Authority が APPLE_SIGNING_IDENTITY と一致しません: $AUTHORITY"
+            exit 1
+          }
       - uses: actions/download-artifact@v4
         with:
           name: release-notes
       - name: Upload release assets
         # macOS で APPLE_CERTIFICATE 未設定(ad-hoc 署名)の場合は、無警告の ad-hoc 成果物を
         # 公開リリースに添付しないためスキップする(公証はスコープ外、署名はビルド疎通確認用に限定)
-        if: matrix.os != 'macos-latest' || secrets.APPLE_CERTIFICATE != ''
+        if: matrix.os != 'macos-latest' || steps.macos-cert.outputs.present == 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
