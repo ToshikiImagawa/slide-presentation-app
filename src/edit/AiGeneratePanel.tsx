@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Checkbox from '@mui/material/Checkbox'
+import ExpandLessIcon from '@mui/icons-material/ExpandLess'
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import LinearProgress from '@mui/material/LinearProgress'
 import Stack from '@mui/material/Stack'
@@ -157,7 +159,7 @@ export function AiGeneratePanel({ currentText, onApply }: { currentText: string;
   return (
     <Box sx={{ borderBottom: '1px solid var(--theme-border)' }}>
       <Stack direction="row" spacing={1} alignItems="center" sx={{ px: 1, py: 0.5 }}>
-        <Button size="small" variant={expanded ? 'contained' : 'outlined'} onClick={() => setExpanded((v) => !v)}>
+        <Button size="small" variant={expanded ? 'contained' : 'outlined'} endIcon={expanded ? <ExpandLessIcon /> : <ExpandMoreIcon />} aria-expanded={expanded} onClick={() => setExpanded((v) => !v)}>
           {t('aiGenerate.title', 'AI 生成')}
         </Button>
         {!expanded && status.kind !== 'idle' && (
