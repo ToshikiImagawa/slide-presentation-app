@@ -28,3 +28,8 @@ docs/*.pdf
 playwright-report/
 test-results/
 .playwright/
+
+# parallel-worktree
+.claude/worktrees/
+.claude/parallel-worktree.json
+scripts/worktree-init.sh
