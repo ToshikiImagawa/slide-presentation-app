@@ -29,13 +29,14 @@ const keyToCssVar: Record<string, string> = {
  * @returns 適用に成功したか（path 未指定でファイルが存在しない場合も true）
  */
 export async function applyTheme(path?: string): Promise<boolean> {
+  const isDefaultPath = path === undefined
   let res: Response
   try {
     res = await fetch(path ?? '/theme-colors.json')
   } catch {
-    return path === undefined
+    return isDefaultPath
   }
-  if (!res.ok) return path === undefined
+  if (!res.ok) return isDefaultPath
 
   let theme: Record<string, string>
   try {
