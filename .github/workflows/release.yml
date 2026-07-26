@@ -64,6 +64,8 @@ jobs:
       # APPLE_CERTIFICATE 自体は渡さない(渡すと Tauri bundler が Apple 公式 CN 前提の
       # 自動検出経路に入り自己署名 CN で失敗する)。渡すのは import 済み識別名のみ
       APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+      # Windows ジョブでのみ参照する(他 OS では無害な未使用値)。理由は HAS_APPLE_CERT と同じ(#25)
+      HAS_WINDOWS_CERT: ${{ secrets.WINDOWS_CERTIFICATE != '' }}
     strategy:
       fail-fast: false
       matrix:
@@ -143,6 +145,26 @@ jobs:
       - name: Warn about macOS ad-hoc signing fallback
         if: matrix.os == 'macos-latest' && env.HAS_APPLE_CERT == 'false'
         run: echo "::warning::APPLE_CERTIFICATE が未設定のため macOS ビルドは ad-hoc 署名(ビルド疎通確認用)に縮退します。公開リリースには添付しません。"
+      - name: Import Windows code signing certificate
+        if: matrix.os == 'windows-latest' && env.HAS_WINDOWS_CERT == 'true'
+        shell: pwsh
+        env:
+          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        run: |
+          $pfxPath = Join-Path $env:RUNNER_TEMP 'windows-certificate.pfx'
+          [IO.File]::WriteAllBytes($pfxPath, [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE))
+
+          $securePassword = ConvertTo-SecureString -String $env:WINDOWS_CERTIFICATE_PASSWORD -AsPlainText -Force
+          $cert = Import-PfxCertificate -FilePath $pfxPath -CertStoreLocation Cert:\CurrentUser\My -Password $securePassword
+
+          Remove-Item $pfxPath -Force
+
+          echo "WINDOWS_CERT_THUMBPRINT=$($cert.Thumbprint)" >> $env:GITHUB_ENV
+      - name: Warn about Windows unsigned build fallback
+        if: matrix.os == 'windows-latest' && env.HAS_WINDOWS_CERT == 'false'
+        shell: pwsh
+        run: echo "::warning::WINDOWS_CERTIFICATE が未設定のため Windows ビルドは未署名(SmartScreen 警告あり)に縮退します。"
       - run: npm run tauri:build
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
