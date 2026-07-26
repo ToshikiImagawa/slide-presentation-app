@@ -55,6 +55,8 @@
       "themeText": "Couleur du texte",
       "themeCustomCss": "CSS personnalisé",
       "includeAddons": "Modules intégrés au paquet",
+      "packageAddonRemoveAria": "Exclure {name} du paquet",
+      "packageAddonRemoveNote": "Utilisez × ou décochez pour exclure du paquet (recochez pour restaurer). Réexportez le .tgz pour appliquer le changement",
       "builtinAddons": "Modules intégrés (dev)",
       "builtinNamePlaceholder": "Nom du nouveau module",
       "builtinAdd": "Ajouter",

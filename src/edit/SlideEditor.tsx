@@ -267,7 +267,9 @@ export function SlideEditor({ source, onExit }: { source: EditSource; onExit: ()
           onCancel={() => setPendingDeleteBuiltin(null)}
         />
 
-        {/* 同梱アドオンの個別選択（層B∪層A）。候補が無くても非表示にせず状態を明示する（②） */}
+        {/* 同梱アドオンの個別選択（層B∪層A）。候補が無くても非表示にせず状態を明示する（②）。
+            ×ボタンを層A（builtinAddons）と同じ見た目で用意し削除導線を統一する（#36）。
+            チェック解除と同じ効果の可逆操作（再チェックで復帰可）のため確認ダイアログは設けない。 */}
         <Stack direction="row" spacing={1} alignItems="center" sx={{ px: 1, py: 0.5, borderBottom: '1px solid var(--theme-border)', flexWrap: 'wrap' }}>
           <Typography variant="body2" sx={{ color: 'var(--theme-text-muted)' }}>
             {t('edit.includeAddons', '同梱アドオン')}:
@@ -277,13 +279,32 @@ export function SlideEditor({ source, onExit }: { source: EditSource; onExit: ()
               {t('edit.noAddons', '同梱できるアドオンがありません')}
             </Typography>
           ) : (
-            availableAddons.map((addon) => (
-              <FormControlLabel
-                key={addon}
-                control={<Checkbox size="small" checked={selectedAddons.includes(addon)} onChange={(e) => setSelectedAddons((prev) => (e.target.checked ? [...prev, addon] : prev.filter((a) => a !== addon)))} />}
-                label={addon}
-              />
-            ))
+            <>
+              {availableAddons.map((addon) => {
+                const included = selectedAddons.includes(addon)
+                return (
+                  <Stack key={addon} direction="row" spacing={0.5} alignItems="center" sx={{ border: '1px solid var(--theme-border)', borderRadius: 1, pl: 1, opacity: included ? 1 : 0.6 }}>
+                    <FormControlLabel
+                      sx={{ mr: 0 }}
+                      control={<Checkbox size="small" checked={included} onChange={(e) => setSelectedAddons((prev) => (e.target.checked ? [...prev, addon] : prev.filter((a) => a !== addon)))} />}
+                      label={addon}
+                    />
+                    <Button
+                      size="small"
+                      color="inherit"
+                      onClick={() => setSelectedAddons((prev) => prev.filter((a) => a !== addon))}
+                      disabled={!included}
+                      aria-label={t('edit.packageAddonRemoveAria', '{name} をパッケージから除外').replace('{name}', addon)}
+                    >
+                      ×
+                    </Button>
+                  </Stack>
+                )
+              })}
+              <Typography variant="caption" sx={{ color: 'var(--theme-text-muted)' }}>
+                {t('edit.packageAddonRemoveNote', '×またはチェック解除でパッケージから除外されます（再チェックで復帰可）。反映には「.tgz 書き出し」が必要です')}
+              </Typography>
+            </>
           )}
         </Stack>
 

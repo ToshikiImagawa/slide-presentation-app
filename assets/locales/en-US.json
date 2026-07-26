@@ -55,6 +55,8 @@
       "themeText": "Text color",
       "themeCustomCss": "Custom CSS",
       "includeAddons": "Bundled add-ons",
+      "packageAddonRemoveAria": "Exclude {name} from the package",
+      "packageAddonRemoveNote": "Use × or uncheck to exclude from the package (re-check to restore). Re-export the .tgz to apply the change",
       "builtinAddons": "Built-in add-ons (dev)",
       "builtinNamePlaceholder": "New add-on name",
       "builtinAdd": "Add",

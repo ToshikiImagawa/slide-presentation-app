@@ -145,6 +145,22 @@ describe('SlideEditor 同梱アドオン選択（②・層A∪層B・0件表示�
     expect(screen.queryByText('同梱できるアドオンがありません')).toBeNull()
   })
 
+  it('層Bの×ボタンでチェックを外し、パッケージから除外できる（層Aと統一した削除導線・#36）', async () => {
+    h.getPackageAddonNames.mockResolvedValue(['pkg-a'])
+    render(
+      <Wrapper>
+        <SlideEditor source={{ rawText: validJson, baseDir: '/pkg' }} onExit={() => {}} />
+      </Wrapper>,
+    )
+    const pkg = (await screen.findByLabelText('pkg-a')) as HTMLInputElement
+    expect(pkg.checked).toBe(true)
+    const x = screen.getByRole('button', { name: 'pkg-a をパッケージから除外' }) as HTMLButtonElement
+    fireEvent.click(x)
+    expect(pkg.checked).toBe(false)
+    // 除外済みの×は再度押しても効果がないよう無効化される
+    expect(x.disabled).toBe(true)
+  })
+
   it('層Aのチェックを入れて書き出すと、選択集合に組み込みアドオンが含まれて export される', async () => {
     h.getPackageAddonNames.mockResolvedValue(['pkg-a'])
     h.listBuiltinDistAddons.mockResolvedValue(['builtin-b'])

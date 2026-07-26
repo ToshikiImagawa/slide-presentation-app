@@ -55,6 +55,8 @@
       "themeText": "文字色",
       "themeCustomCss": "カスタム CSS",
       "includeAddons": "同梱アドオン",
+      "packageAddonRemoveAria": "{name} をパッケージから除外",
+      "packageAddonRemoveNote": "×またはチェック解除でパッケージから除外されます（再チェックで復帰可）。反映には「.tgz 書き出し」が必要です",
       "builtinAddons": "組み込みアドオン (dev)",
       "builtinNamePlaceholder": "新規アドオン名",
       "builtinAdd": "追加",
