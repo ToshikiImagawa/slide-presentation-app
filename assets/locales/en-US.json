@@ -11,7 +11,14 @@
       "removeRecentAria": "Remove {title}",
       "sampleButton": "Open Sample",
       "browseButton": "Open a File",
-      "browseHint": "Choose a .json / .spkg file"
+      "browseHint": "Choose a .json / .spkg file",
+      "createWithAiButton": "Create with AI",
+      "createWithAiHint": "Generate slides from scratch with AI",
+      "urlButton": "Open from URL",
+      "urlPlaceholder": "https://example.com/deck.spkg",
+      "urlInputLabel": "Slide package URL",
+      "urlSubmit": "Open",
+      "urlOpening": "Opening…"
     },
     "toolbar": {
       "hide": "Hide toolbar (T)",

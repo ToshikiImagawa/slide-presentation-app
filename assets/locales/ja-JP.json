@@ -11,7 +11,14 @@
       "removeRecentAria": "{title} を削除",
       "sampleButton": "サンプルを開く",
       "browseButton": "ファイルを開く",
-      "browseHint": ".json / .spkg ファイルを選択"
+      "browseHint": ".json / .spkg ファイルを選択",
+      "createWithAiButton": "AIで新規作成",
+      "createWithAiHint": "ゼロからAIでスライドを生成",
+      "urlButton": "URLから開く",
+      "urlPlaceholder": "https://example.com/deck.spkg",
+      "urlInputLabel": "スライドパッケージのURL",
+      "urlSubmit": "開く",
+      "urlOpening": "開いています…"
     },
     "toolbar": {
       "hide": "ツールバーを隠す (T)",

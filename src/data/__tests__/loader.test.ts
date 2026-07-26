@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { getValidationErrors, loadPresentationData, validatePresentationData } from '../loader'
+import { getBlankPresentationData, getValidationErrors, loadPresentationData, validatePresentationData } from '../loader'
 import type { PresentationData } from '../types'
 
 const validData: PresentationData = {
@@ -144,5 +144,18 @@ describe('loadPresentationData', () => {
 
     consoleSpy.mockRestore()
     warnSpy.mockRestore()
+  })
+})
+
+describe('getBlankPresentationData', () => {
+  it('ロケールに応じたタイトルの最小構成データを返す（バリデーションに合格する）', () => {
+    const ja = getBlankPresentationData('ja-JP')
+    expect(ja.meta.title).toBe('新しいプレゼンテーション')
+    expect(ja.slides).toHaveLength(1)
+    expect(validatePresentationData(ja)).toBe(true)
+
+    const en = getBlankPresentationData('en-US')
+    expect(en.meta.title).toBe('New Presentation')
+    expect(validatePresentationData(en)).toBe(true)
   })
 })

@@ -11,7 +11,14 @@
       "removeRecentAria": "Supprimer {title}",
       "sampleButton": "Ouvrir l'exemple",
       "browseButton": "Ouvrir un fichier",
-      "browseHint": "Choisissez un fichier .json / .spkg"
+      "browseHint": "Choisissez un fichier .json / .spkg",
+      "createWithAiButton": "Créer avec l'IA",
+      "createWithAiHint": "Générer des diapositives à partir de zéro avec l'IA",
+      "urlButton": "Ouvrir depuis une URL",
+      "urlPlaceholder": "https://example.com/deck.spkg",
+      "urlInputLabel": "URL du paquet de diapositives",
+      "urlSubmit": "Ouvrir",
+      "urlOpening": "Ouverture…"
     },
     "toolbar": {
       "hide": "Masquer la barre d'outils (T)",
