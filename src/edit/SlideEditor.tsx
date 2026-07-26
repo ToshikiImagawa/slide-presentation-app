@@ -15,6 +15,7 @@ import type { PresentationData, SlideData } from '../data'
 import { parseSlides, serializeSlides, prettyPrintJson } from './slidesSerialize'
 import { AiGeneratePanel } from './AiGeneratePanel'
 import { GeneratedDiffDialog } from './GeneratedDiffDialog'
+import { ConfirmDialog } from './ConfirmDialog'
 import { SlideJsonEditor } from './SlideJsonEditor'
 import { SlideMetaForm } from './SlideMetaForm'
 import { SlidePreview } from './SlidePreview'
@@ -67,6 +68,8 @@ export function SlideEditor({ source, onExit }: { source: EditSource; onExit: ()
   const [builtinAddons, setBuiltinAddons] = useState<string[]>([])
   const [builtinDistAddons, setBuiltinDistAddons] = useState<string[]>([])
   const [newBuiltinName, setNewBuiltinName] = useState('')
+  // 削除確認待ちの組み込みアドオン名（× は確認ダイアログ経由。誤クリックでの完全削除を防ぐ）
+  const [pendingDeleteBuiltin, setPendingDeleteBuiltin] = useState<string | null>(null)
 
   const { data, errors } = useMemo(() => parseSlides(text), [text])
   const hasSyntaxError = errors.some((e) => e.message.includes(JSON_SYNTAX_ERROR_MARK))
@@ -230,6 +233,21 @@ export function SlideEditor({ source, onExit }: { source: EditSource; onExit: ()
         {/* 生成結果の適用前 差分確認ダイアログ（①・案3）。承認で整形して全体置換、キャンセルで破棄 */}
         <GeneratedDiffDialog open={pendingGenerated !== null} beforeText={text} afterText={pendingGenerated ?? ''} onApply={confirmApplyGenerated} onCancel={cancelApplyGenerated} />
 
+        {/* 組み込みアドオン削除の確認（× は確認経由。addons/src を完全削除し git 管理外＝復元不可のため誤クリック防止） */}
+        <ConfirmDialog
+          open={pendingDeleteBuiltin !== null}
+          title={t('edit.builtinRemoveConfirmTitle', '組み込みアドオンを削除しますか？')}
+          message={t('edit.builtinRemoveConfirmMessage', '{name} のソース（addons/src）を完全に削除します。取り消せません（git 管理外のため復元できません）。').replace('{name}', pendingDeleteBuiltin ?? '')}
+          confirmLabel={t('edit.builtinRemoveConfirm', '削除する')}
+          cancelLabel={t('edit.cancel', 'キャンセル')}
+          onConfirm={() => {
+            const target = pendingDeleteBuiltin
+            setPendingDeleteBuiltin(null)
+            if (target !== null) void handleRemoveBuiltin(target)
+          }}
+          onCancel={() => setPendingDeleteBuiltin(null)}
+        />
+
         {/* 同梱アドオンの個別選択（層B∪層A）。候補が無くても非表示にせず状態を明示する（②） */}
         <Stack direction="row" spacing={1} alignItems="center" sx={{ px: 1, py: 0.5, borderBottom: '1px solid var(--theme-border)', flexWrap: 'wrap' }}>
           <Typography variant="body2" sx={{ color: 'var(--theme-text-muted)' }}>
@@ -259,7 +277,7 @@ export function SlideEditor({ source, onExit }: { source: EditSource; onExit: ()
             {builtinAddons.map((addon) => (
               <Stack key={addon} direction="row" spacing={0.5} alignItems="center" sx={{ border: '1px solid var(--theme-border)', borderRadius: 1, pl: 1 }}>
                 <Typography variant="body2">{addon}</Typography>
-                <Button size="small" color="inherit" onClick={() => void handleRemoveBuiltin(addon)} aria-label={t('edit.builtinRemoveAria', '{name} を削除').replace('{name}', addon)}>
+                <Button size="small" color="inherit" onClick={() => setPendingDeleteBuiltin(addon)} aria-label={t('edit.builtinRemoveAria', '{name} を削除').replace('{name}', addon)}>
                   ×
                 </Button>
               </Stack>

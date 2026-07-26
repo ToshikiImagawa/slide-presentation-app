@@ -65,7 +65,11 @@
       "builtinAddFailed": "追加に失敗しました",
       "builtinRemoved": "組み込みアドオンを削除しました（要再ビルド）",
       "builtinRemoveFailed": "削除に失敗しました",
-      "noAddons": "同梱できるアドオンがありません"
+      "noAddons": "同梱できるアドオンがありません",
+      "builtinRemoveConfirmTitle": "組み込みアドオンを削除しますか？",
+      "builtinRemoveConfirmMessage": "{name} のソース（addons/src）を完全に削除します。取り消せません（git 管理外のため復元できません）。",
+      "builtinRemoveConfirm": "削除する",
+      "cancel": "キャンセル"
     },
     "presenterView": {
       "open": "発表者ビュー",

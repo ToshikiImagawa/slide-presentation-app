@@ -302,6 +302,7 @@ fn export_slide_package(
 
 - 層B export 同梱選択を拡張: 同梱候補を**層B（パッケージ `addons/manifest.json`）∪層A（組み込み `addons/dist`）**の和集合にし、層Bは既定選択・層Aはオプトイン。候補 0 件でもチェックボックス UI を消さず「同梱できるアドオンがありません」を明示（従来は UI ごと非表示でユーザーが状態を把握できなかった）。
 - Rust `build_slide_package_gated` に `builtin_dist_dir: Option<&Path>` を追加。選択集合のうち層Bに無い名前を `addons/dist/manifest.json` から補完同梱（bundle は `addons/<basename>` 正規化を層Bと共有＝パストラバーサル防御一貫）。bundle の dest 衝突は層B優先で層Aをスキップ（別々の単一バンドルは統合しない）。release では `None`＝層Bのみ（挙動不変）。
+- 層A（組み込み）の × 削除に**確認ダイアログ**を追加（新規 `src/edit/ConfirmDialog.tsx`）。`remove_builtin_addon` は `addons/src/<名前>` を `remove_dir_all` で完全削除し、`addons/src` は git 管理外のため復元不可。従来は確認なしで即削除だったため、誤クリックによるデータ喪失を防ぐ安全対策として確認を挟む。
 
 ## v0.2（implement・2026-07-24）
 

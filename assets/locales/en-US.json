@@ -65,7 +65,11 @@
       "builtinAddFailed": "Failed to add",
       "builtinRemoved": "Built-in add-on removed (rebuild required)",
       "builtinRemoveFailed": "Failed to remove",
-      "noAddons": "No addons available to include"
+      "noAddons": "No addons available to include",
+      "builtinRemoveConfirmTitle": "Delete this built-in add-on?",
+      "builtinRemoveConfirmMessage": "This permanently deletes the source of {name} (addons/src). This cannot be undone (it is outside git and cannot be recovered).",
+      "builtinRemoveConfirm": "Delete",
+      "cancel": "Cancel"
     },
     "presenterView": {
       "open": "Presenter View",

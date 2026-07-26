@@ -65,7 +65,11 @@
       "builtinAddFailed": "Échec de l'ajout",
       "builtinRemoved": "Module intégré supprimé (reconstruction requise)",
       "builtinRemoveFailed": "Échec de la suppression",
-      "noAddons": "Aucun addon disponible à inclure"
+      "noAddons": "Aucun addon disponible à inclure",
+      "builtinRemoveConfirmTitle": "Supprimer cet addon intégré ?",
+      "builtinRemoveConfirmMessage": "Cela supprime définitivement la source de {name} (addons/src). Action irréversible (hors git, non récupérable).",
+      "builtinRemoveConfirm": "Supprimer",
+      "cancel": "Annuler"
     },
     "presenterView": {
       "open": "Vue présentateur",

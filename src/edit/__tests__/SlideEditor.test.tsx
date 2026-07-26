@@ -11,6 +11,7 @@ const h = vi.hoisted(() => ({
   listBuiltinAddons: vi.fn(),
   listBuiltinDistAddons: vi.fn(),
   getPackageAddonNames: vi.fn(),
+  removeBuiltinAddon: vi.fn(),
 }))
 vi.mock('../../editModeSave', () => ({
   saveSlidesJson: h.saveSlidesJson,
@@ -22,7 +23,7 @@ vi.mock('../../editModeSave', () => ({
   listBuiltinAddons: h.listBuiltinAddons,
   listBuiltinDistAddons: h.listBuiltinDistAddons,
   addBuiltinAddon: vi.fn(),
-  removeBuiltinAddon: vi.fn(),
+  removeBuiltinAddon: h.removeBuiltinAddon,
 }))
 vi.mock('../../applyTheme', () => ({ applyTheme: vi.fn().mockResolvedValue(undefined), applyThemeData: vi.fn(), resetThemeOverrides: vi.fn() }))
 vi.mock('../../localSlideLoader', () => ({ resolveLocalAssetPaths: (v: unknown) => v, getPackageAddonNames: h.getPackageAddonNames }))
@@ -158,5 +159,44 @@ describe('SlideEditor 同梱アドオン選択（②・層A∪層B・0件表示�
     await waitFor(() => expect(h.exportSlidePackage).toHaveBeenCalled())
     const opts = h.exportSlidePackage.mock.calls[0][1] as { includedAddons: string[] }
     expect(opts.includedAddons).toEqual(expect.arrayContaining(['pkg-a', 'builtin-b']))
+  })
+})
+
+describe('SlideEditor 組み込みアドオン削除の確認（× 誤クリックでの完全削除を防ぐ）', () => {
+  beforeEach(() => {
+    h.saveSlidesJson.mockReset()
+    h.exportSlidePackage.mockReset()
+    h.chooseSlidesSavePath.mockReset().mockResolvedValue('/tmp/slides.json')
+    h.chooseExportDir.mockReset()
+    h.listBuiltinAddons.mockReset().mockResolvedValue(['ai-sdd-visuals']) // dev パネルに 1 件表示
+    h.listBuiltinDistAddons.mockReset().mockResolvedValue([])
+    h.getPackageAddonNames.mockReset().mockResolvedValue([])
+    h.removeBuiltinAddon.mockReset().mockResolvedValue(undefined)
+  })
+
+  it('× で即削除せず確認ダイアログを開き、[削除する] で removeBuiltinAddon を呼ぶ', async () => {
+    render(
+      <Wrapper>
+        <SlideEditor source={{ rawText: validJson, baseDir: '' }} onExit={() => {}} />
+      </Wrapper>,
+    )
+    const x = await screen.findByRole('button', { name: 'ai-sdd-visuals を削除' })
+    fireEvent.click(x)
+    // 即削除されない（確認を挟む）
+    expect(h.removeBuiltinAddon).not.toHaveBeenCalled()
+    // 確認ダイアログの [削除する] で初めて削除される
+    fireEvent.click(await screen.findByRole('button', { name: '削除する' }))
+    await waitFor(() => expect(h.removeBuiltinAddon).toHaveBeenCalledWith('ai-sdd-visuals'))
+  })
+
+  it('確認ダイアログで [キャンセル] なら削除しない', async () => {
+    render(
+      <Wrapper>
+        <SlideEditor source={{ rawText: validJson, baseDir: '' }} onExit={() => {}} />
+      </Wrapper>,
+    )
+    fireEvent.click(await screen.findByRole('button', { name: 'ai-sdd-visuals を削除' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'キャンセル' }))
+    expect(h.removeBuiltinAddon).not.toHaveBeenCalled()
   })
 })
