@@ -129,13 +129,15 @@ export function AiGeneratePanel({ currentText, onApply }: { currentText: string;
       const result = await generateSlides({ prompt: prompt.trim(), kind, baseSlides: useBase ? currentText : undefined }, (p) => setProgress(p))
       switch (result.outcome) {
         case 'succeeded':
+          // 即時反映せず差分確認ダイアログへ候補を渡す（①）。実際の反映は SlideEditor 側の [適用する] で行う
           if (result.slidesJson) onApply(result.slidesJson)
-          setStatus({ kind: 'ok', message: t('aiGenerate.succeeded', '生成が完了しました') })
+          setStatus({ kind: 'ok', message: t('aiGenerate.succeeded', '生成が完了しました。差分を確認して適用してください') })
           break
         case 'exhausted':
-          // 検証エラーが残る最良候補を反映する。器の保存ゲートが無効データの保存を防ぐため手動修正へ誘導（FR-005）
+          // 検証エラーが残る最良候補も差分確認ダイアログへ渡す（適用するかはユーザーが判断）。
+          // 器の保存ゲートが無効データの保存を防ぐため手動修正へ誘導（FR-005/FR-008）
           if (result.slidesJson) onApply(result.slidesJson)
-          setStatus({ kind: 'warn', message: t('aiGenerate.exhausted', '自動修正の上限に達しました。検証エラーが残る候補を反映しました（手動で修正してください）') })
+          setStatus({ kind: 'warn', message: t('aiGenerate.exhausted', '自動修正の上限に達しました。検証エラーが残る候補です。差分を確認してください（手動修正が必要な場合があります）') })
           break
         case 'cancelled':
           // 器には触れず現状を保持する（安全退避・FR-008）

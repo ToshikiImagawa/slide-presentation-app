@@ -60,11 +60,21 @@
       "builtinAdd": "追加",
       "builtinRemove": "を削除",
       "builtinRemoveAria": "{name} を削除",
-      "builtinRebuildNote": "変更後は npm run build:addons が必要",
+      "builtinRebuildNote": "追加/削除後は「ビルド」で同梱候補に反映されます",
       "builtinAdded": "組み込みアドオンを追加しました（npm run build:addons で再ビルドしてください）",
       "builtinAddFailed": "追加に失敗しました",
       "builtinRemoved": "組み込みアドオンを削除しました（要再ビルド）",
-      "builtinRemoveFailed": "削除に失敗しました"
+      "builtinRemoveFailed": "削除に失敗しました",
+      "noAddons": "同梱できるアドオンがありません",
+      "builtinRemoveConfirmTitle": "組み込みアドオンを削除しますか？",
+      "builtinRemoveConfirmMessage": "{name} のソース（addons/src）を完全に削除します。取り消せません（git 管理外のため復元できません）。",
+      "builtinRemoveConfirm": "削除する",
+      "cancel": "キャンセル",
+      "builtinBuild": "ビルド",
+      "builtinBuildingShort": "ビルド中…",
+      "builtinBuilding": "組み込みアドオンをビルド中…",
+      "builtinBuilt": "組み込みアドオンをビルドしました（同梱候補を更新）",
+      "builtinBuildFailed": "ビルドに失敗しました"
     },
     "presenterView": {
       "open": "発表者ビュー",
@@ -126,10 +136,27 @@
       "phaseRepairing": "自動修正中",
       "attempt": "試行 {current}/{max}",
       "applied": "生成結果を反映しました",
-      "succeeded": "生成が完了しました",
-      "exhausted": "自動修正の上限に達しました。検証エラーが残る候補を反映しました（手動で修正してください）",
+      "succeeded": "生成が完了しました。差分を確認して適用してください",
+      "exhausted": "自動修正の上限に達しました。検証エラーが残る候補です。差分を確認してください（手動修正が必要な場合があります）",
       "cancelled": "生成を中断しました",
       "failed": "生成に失敗しました。手動編集を続けてください"
+    },
+    "diff": {
+      "title": "生成結果を適用しますか？",
+      "subtitle": "AI が生成したスライドを現在の内容と比較します",
+      "apply": "適用する",
+      "cancel": "キャンセル",
+      "added": "追加",
+      "changed": "変更",
+      "removed": "削除",
+      "meta": "メタ変更",
+      "slides": "スライド",
+      "noChanges": "変更はありません",
+      "metaSection": "メタ情報",
+      "slidesSection": "スライド",
+      "before": "変更前",
+      "after": "変更後",
+      "unparseable": "構造を解析できないため、全体を置換します。以下が適用後の内容です。"
     }
   }
 }

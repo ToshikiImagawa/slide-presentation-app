@@ -16,12 +16,13 @@ All notable changes to this project will be documented in this file.
     - Filesystem writes happen only in edit mode, performed at the Rust boundary (least privilege)
 - **Addon Detachment (3 layers)** — Control over bundled executable addons
     - Runtime trust per package (confirmation prompt on open + Settings, default denied; global disable takes precedence)
-    - Export bundling selection (in-app **Bundled add-ons** checkboxes and `npm run export:slides --addons a,b`)
-    - Dev-only built-in add/remove of `addons/src/<name>/entry.ts`
-- **AI Slide Generation** — Generate `slides.json` from a prompt via the **AI Generate** panel in edit mode, applied to the editor as a whole replacement
+    - Export bundling selection (in-app **Bundled add-ons** checkboxes and `npm run export:slides --addons a,b`); the choices union package add-ons with dev built-in add-ons, and the list stays visible with an empty-state note even when none are available
+    - Dev-only built-in add/remove of `addons/src/<name>/entry.ts` (delete now asks for confirmation first — it permanently removes the source and is outside git, so it cannot be undone), plus an in-app **Build** button that runs `npm run build:addons` so a newly added/removed addon is reflected in the bundle candidates without a terminal
+- **AI Slide Generation** — Generate `slides.json` from a prompt via the **AI Generate** panel in edit mode, applied to the editor via a diff-confirmation dialog
     - Switch between built-in (Vertex AI via GCP ADC; project / region / model configured) and external (local `claude` CLI) under a single contract
     - Auth uses GCP ADC (`gcloud auth application-default login`); the access token is obtained at the Rust boundary (cached ~55 min) and never exposed to the web layer (least privilege)
     - Import-time validation with an auto-repair loop (up to 3 attempts; best candidate retained at the limit), progress display, cancellation, and safe fallback to manual editing on failure
+    - Before applying, a diff-confirmation dialog previews the structural changes (added / changed / removed slides and meta changes) for **Apply** / **Cancel** (Cancel leaves the editor untouched); on apply the JSON is normalized to 2-space indentation
     - Generation, GCP settings/login, and networking are enabled only in edit mode with generation active (pre-gate disables when the Vertex settings are incomplete or the CLI is not found)
 
 ## [1.0.0] - 2026-02-02

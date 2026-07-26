@@ -117,14 +117,14 @@ Package-bundled addons contain executable code, so addon control is separated in
 | Layer                   | Where                                                                                   | What it controls                                                                                                                                            |
 |-------------------------|-----------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | **Runtime trust**       | Confirmation prompt on open + **Settings → Per-package add-on trust**                    | Allow / deny loading a package's bundled addons, per package (default: denied). The global **Always disable embedded add-ons** toggle takes precedence.      |
-| **Export selection**    | Edit mode **Bundled add-ons** checkboxes (and `npm run export:slides --addons a,b`)      | Choose which addons to include when exporting a `.tgz`.                                                                                                      |
-| **Built-in add/remove** | Edit mode **Built-in add-ons (dev)** panel (development builds only)                     | Scaffold or remove `addons/src/<name>/entry.ts`. Run `npm run build:addons` afterwards to rebuild.                                                            |
+| **Export selection**    | Edit mode **Bundled add-ons** checkboxes (and `npm run export:slides --addons a,b`)      | Choose which addons to include when exporting a `.tgz`. The choices union package add-ons with dev built-in add-ons; the list stays visible (with an empty-state note) even when none are available. |
+| **Built-in add/remove** | Edit mode **Built-in add-ons (dev)** panel (development builds only)                     | Scaffold or remove `addons/src/<name>/entry.ts` (delete asks for confirmation — it is permanent and outside git), then click **Build** in the panel to rebuild from the app (runs `npm run build:addons`) so the addon appears in the bundle candidates. |
 
 ### AI Generation
 
-The **AI Generate** panel in edit mode creates slides (`slides.json`) from a prompt. The result is applied to the
-editor's single source of truth as a **whole replacement**, flowing straight into preview, manual editing, saving, and
-exporting. Two generation methods are available:
+The **AI Generate** panel in edit mode creates slides (`slides.json`) from a prompt. Generated slides flow into the
+editor's single source of truth — and from there into preview, manual editing, saving, and exporting — only after you
+confirm them in a diff dialog. Two generation methods are available:
 
 | Method                         | Prerequisite                                                           | Billing / online dependency                                                        |
 |--------------------------------|------------------------------------------------------------------------|------------------------------------------------------------------------------------|
@@ -140,6 +140,9 @@ exporting. Two generation methods are available:
 - **Auto-repair loop** — Each candidate is validated on import; if invalid, it is regenerated up to 3 times with the
   validation errors attached. On reaching the limit, the candidate with the fewest validation errors is applied so you
   can fix it manually.
+- **Diff confirmation & formatting** — Generated slides are not applied immediately: a dialog previews the structural
+  changes (added / changed / removed slides and meta changes) so you **Apply** or **Cancel** — Cancel leaves the editor
+  untouched. On apply the JSON is normalized to 2-space indentation for readability.
 - **Progress and cancellation** — Progress is shown during generation, and **Cancel** stops an in-flight run. On failure,
   cancellation, or offline, the editor content is preserved and you can safely fall back to manual editing.
 

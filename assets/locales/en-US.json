@@ -60,11 +60,21 @@
       "builtinAdd": "Add",
       "builtinRemove": "remove",
       "builtinRemoveAria": "Remove {name}",
-      "builtinRebuildNote": "Run npm run build:addons after changes",
+      "builtinRebuildNote": "After adding/removing, click Build to reflect in the bundle candidates",
       "builtinAdded": "Built-in add-on added (run npm run build:addons to rebuild)",
       "builtinAddFailed": "Failed to add",
       "builtinRemoved": "Built-in add-on removed (rebuild required)",
-      "builtinRemoveFailed": "Failed to remove"
+      "builtinRemoveFailed": "Failed to remove",
+      "noAddons": "No addons available to include",
+      "builtinRemoveConfirmTitle": "Delete this built-in add-on?",
+      "builtinRemoveConfirmMessage": "This permanently deletes the source of {name} (addons/src). This cannot be undone (it is outside git and cannot be recovered).",
+      "builtinRemoveConfirm": "Delete",
+      "cancel": "Cancel",
+      "builtinBuild": "Build",
+      "builtinBuildingShort": "Building…",
+      "builtinBuilding": "Building built-in add-ons…",
+      "builtinBuilt": "Built the built-in add-ons (bundle candidates updated)",
+      "builtinBuildFailed": "Build failed"
     },
     "presenterView": {
       "open": "Presenter View",
@@ -126,10 +136,27 @@
       "phaseRepairing": "Auto-fixing",
       "attempt": "Attempt {current}/{max}",
       "applied": "Applied the generated result",
-      "succeeded": "Generation completed",
-      "exhausted": "Reached the auto-fix limit. Applied the best candidate with remaining validation errors (please fix manually).",
+      "succeeded": "Generation complete. Review the diff and apply.",
+      "exhausted": "Reached the auto-repair limit. The candidate still has validation errors — review the diff (manual fixes may be needed).",
       "cancelled": "Generation cancelled",
       "failed": "Generation failed. Please continue editing manually."
+    },
+    "diff": {
+      "title": "Apply the generated result?",
+      "subtitle": "Compare the AI-generated slides with the current content",
+      "apply": "Apply",
+      "cancel": "Cancel",
+      "added": "Added",
+      "changed": "Changed",
+      "removed": "Removed",
+      "meta": "Meta changes",
+      "slides": "Slides",
+      "noChanges": "No changes",
+      "metaSection": "Meta",
+      "slidesSection": "Slides",
+      "before": "Before",
+      "after": "After",
+      "unparseable": "The structure could not be parsed, so the entire content will be replaced. The result to be applied is shown below."
     }
   }
 }

@@ -60,11 +60,21 @@
       "builtinAdd": "Ajouter",
       "builtinRemove": "supprimer",
       "builtinRemoveAria": "Supprimer {name}",
-      "builtinRebuildNote": "Exécutez npm run build:addons après modification",
+      "builtinRebuildNote": "Après ajout/suppression, cliquez sur Compiler pour mettre à jour les candidats",
       "builtinAdded": "Module intégré ajouté (exécutez npm run build:addons pour reconstruire)",
       "builtinAddFailed": "Échec de l'ajout",
       "builtinRemoved": "Module intégré supprimé (reconstruction requise)",
-      "builtinRemoveFailed": "Échec de la suppression"
+      "builtinRemoveFailed": "Échec de la suppression",
+      "noAddons": "Aucun addon disponible à inclure",
+      "builtinRemoveConfirmTitle": "Supprimer cet addon intégré ?",
+      "builtinRemoveConfirmMessage": "Cela supprime définitivement la source de {name} (addons/src). Action irréversible (hors git, non récupérable).",
+      "builtinRemoveConfirm": "Supprimer",
+      "cancel": "Annuler",
+      "builtinBuild": "Compiler",
+      "builtinBuildingShort": "Compilation…",
+      "builtinBuilding": "Compilation des addons intégrés…",
+      "builtinBuilt": "Addons intégrés compilés (candidats de bundle mis à jour)",
+      "builtinBuildFailed": "Échec de la compilation"
     },
     "presenterView": {
       "open": "Vue présentateur",
@@ -126,10 +136,27 @@
       "phaseRepairing": "Correction auto",
       "attempt": "Tentative {current}/{max}",
       "applied": "Résultat généré appliqué",
-      "succeeded": "Génération terminée",
-      "exhausted": "Limite de correction automatique atteinte. Meilleur candidat appliqué avec des erreurs de validation restantes (corrigez manuellement).",
+      "succeeded": "Génération terminée. Vérifiez le diff et appliquez.",
+      "exhausted": "Limite de réparation automatique atteinte. Le candidat comporte encore des erreurs de validation — vérifiez le diff (des corrections manuelles peuvent être nécessaires).",
       "cancelled": "Génération annulée",
       "failed": "Échec de la génération. Continuez l'édition manuellement."
+    },
+    "diff": {
+      "title": "Appliquer le résultat généré ?",
+      "subtitle": "Comparer les diapositives générées par l'IA avec le contenu actuel",
+      "apply": "Appliquer",
+      "cancel": "Annuler",
+      "added": "Ajouté",
+      "changed": "Modifié",
+      "removed": "Supprimé",
+      "meta": "Modifs méta",
+      "slides": "Diapositives",
+      "noChanges": "Aucune modification",
+      "metaSection": "Méta",
+      "slidesSection": "Diapositives",
+      "before": "Avant",
+      "after": "Après",
+      "unparseable": "La structure n'a pas pu être analysée ; tout le contenu sera remplacé. Le résultat à appliquer est affiché ci-dessous."
     }
   }
 }

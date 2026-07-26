@@ -35,6 +35,7 @@ vi.mock('../../editModeSave', () => ({
   enterEditMode: vi.fn(),
   exitEditMode: vi.fn(),
   listBuiltinAddons: () => Promise.resolve([]),
+  listBuiltinDistAddons: () => Promise.resolve([]),
   addBuiltinAddon: vi.fn(),
   removeBuiltinAddon: vi.fn(),
 }))
@@ -214,7 +215,31 @@ describe('SlideEditor への生成結果の全体置換注入（FR-004/DC-005）
     await waitFor(() => expect(generateButton().disabled).toBe(false))
     fireEvent.click(generateButton())
 
-    // 全体置換で meta.title がフォームへ反映される
+    // 差分確認ダイアログが開く → [適用する] で整形して全体置換され、meta.title がフォームへ反映される（①）
+    await waitFor(() => expect(screen.getByRole('button', { name: '適用する' })).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: '適用する' }))
     await waitFor(() => expect(screen.getByDisplayValue('GENERATED')).toBeTruthy())
+  })
+
+  it('生成成功でも差分確認で [キャンセル] なら器は変更されない（①・FR-008）', async () => {
+    const generated = JSON.stringify({ meta: { title: 'GENERATED' }, slides: [{ id: 's1', layout: 'center', content: {} }] })
+    h.generateSlides.mockResolvedValue({ outcome: 'succeeded', slidesJson: generated, validationErrors: [], attempts: 1 })
+
+    render(
+      <Wrapper>
+        <SlideEditor source={{ rawText: VALID, baseDir: '' }} onExit={() => {}} />
+      </Wrapper>,
+    )
+
+    expandPanel()
+    fireEvent.change(screen.getByLabelText('プロンプト'), { target: { value: 'p' } })
+    await waitFor(() => expect(generateButton().disabled).toBe(false))
+    fireEvent.click(generateButton())
+
+    // ダイアログの [キャンセル] で候補を破棄。器の title は元の 'T' のまま（GENERATED は反映されない）
+    await waitFor(() => expect(screen.getByRole('button', { name: 'キャンセル' })).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: 'キャンセル' }))
+    await waitFor(() => expect(screen.queryByDisplayValue('GENERATED')).toBeNull())
+    expect(screen.getByDisplayValue('T')).toBeTruthy()
   })
 })
