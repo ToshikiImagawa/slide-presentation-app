@@ -1,0 +1,89 @@
+name: macOS Signing Test
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/release.yml'
+      - '.github/workflows/macos-signing-test.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: macos-signing-test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify-signing:
+    name: Verify macOS code signing
+    runs-on: macos-latest
+    timeout-minutes: 40
+    env:
+      APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - run: npm ci
+      - name: Set up macOS signing keychain (self-signed)
+        # release.yml の同名ステップと完全同一の手順にすること。
+        # release.yml 側を変更した場合は必ずこちらも追随させ、同期を保つこと(#27)。
+        # このワークフローは署名回帰の検出が目的のため、release.yml の
+        # HAS_APPLE_CERT による ad-hoc 縮退分岐は持たず、secrets 未設定時は
+        # そのままハード失敗させる
+        env:
+          MACOS_SIGNING_P12: ${{ secrets.APPLE_CERTIFICATE }}
+          MACOS_SIGNING_P12_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          KEYCHAIN_PATH="$RUNNER_TEMP/macos-signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(uuidgen)"
+          CERTIFICATE_PATH="$RUNNER_TEMP/apple-certificate.p12"
+          CERTIFICATE_PEM_PATH="$RUNNER_TEMP/apple-certificate.pem"
+
+          echo "$MACOS_SIGNING_P12" | base64 --decode -o "$CERTIFICATE_PATH"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          security import "$CERTIFICATE_PATH" -k "$KEYCHAIN_PATH" -P "$MACOS_SIGNING_P12_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security list-keychains -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | sed 's/"//g')
+
+          # 自己署名ルート証明書を System keychain の信頼設定に追加する(CSSMERR_TP_NOT_TRUSTED 対策)
+          openssl pkcs12 -in "$CERTIFICATE_PATH" -clcerts -nokeys -passin "pass:$MACOS_SIGNING_P12_PASSWORD" -out "$CERTIFICATE_PEM_PATH"
+          sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain "$CERTIFICATE_PEM_PATH"
+
+          rm -f "$CERTIFICATE_PATH" "$CERTIFICATE_PEM_PATH"
+      - name: Smoke test codesign identity resolution
+        run: |
+          SMOKE_BIN="$RUNNER_TEMP/codesign-smoke-test"
+          cp /bin/ls "$SMOKE_BIN"
+          codesign --sign "$APPLE_SIGNING_IDENTITY" --force "$SMOKE_BIN"
+          codesign --verify "$SMOKE_BIN"
+          AUTHORITY="$(codesign -dvv "$SMOKE_BIN" 2>&1 | grep '^Authority=' | head -1)"
+          echo "$AUTHORITY"
+          grep -qF "$APPLE_SIGNING_IDENTITY" <<< "$AUTHORITY" || {
+            echo "::error::smoke test の codesign Authority が APPLE_SIGNING_IDENTITY と一致しません: $AUTHORITY"
+            exit 1
+          }
+      - name: Build app bundle (release.yml と同一 env)
+        run: npm run tauri:build
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+      - name: Verify built app code signing
+        run: |
+          APP_PATH="$(find src-tauri/target/release/bundle/macos -maxdepth 1 -name '*.app' -print -quit)"
+          codesign --verify --deep --strict --verbose=2 "$APP_PATH"
+          AUTHORITY="$(codesign -dvv "$APP_PATH" 2>&1 | grep '^Authority=' | head -1)"
+          echo "$AUTHORITY"
+          grep -qF "$APPLE_SIGNING_IDENTITY" <<< "$AUTHORITY" || {
+            echo "::error::codesign の Authority が APPLE_SIGNING_IDENTITY と一致しません(ad-hoc 署名への縮退の可能性): $AUTHORITY"
+            exit 1
+          }
