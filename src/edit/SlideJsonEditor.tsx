@@ -1,8 +1,8 @@
 import Box from '@mui/material/Box'
 import TextField from '@mui/material/TextField'
-import Typography from '@mui/material/Typography'
 import type { ValidationError } from '../data/types'
 import { useTranslation } from '../i18n'
+import { ValidationErrorList } from './ValidationErrorList'
 
 interface SlideJsonEditorProps {
   /** 現在の JSON テキスト（無損失往復の土台） */
@@ -45,19 +45,7 @@ export function SlideJsonEditor({ value, onChange, errors }: SlideJsonEditorProp
           '& .MuiInputBase-input': { height: '100% !important', overflow: 'auto !important', resize: 'none' },
         }}
       />
-      {errors.length > 0 && (
-        <Box role="alert" sx={{ p: 1, borderRadius: 1, backgroundColor: 'var(--theme-background-alt)', border: '1px solid var(--theme-border)', maxHeight: 160, overflow: 'auto', flexShrink: 0 }}>
-          <Typography variant="subtitle2" sx={{ color: 'var(--theme-primary)', fontWeight: 600 }}>
-            {t('edit.validationErrors', '検証エラー')} ({errors.length})
-          </Typography>
-          {errors.map((err, i) => (
-            <Typography key={`${err.path}-${i}`} variant="body2" sx={{ color: 'var(--theme-text-body)', fontFamily: 'var(--theme-font-code), monospace', fontSize: 12 }}>
-              {err.path ? `${err.path}: ` : ''}
-              {err.message}
-            </Typography>
-          ))}
-        </Box>
-      )}
+      <ValidationErrorList errors={errors} sx={{ flexShrink: 0 }} />
     </Box>
   )
 }

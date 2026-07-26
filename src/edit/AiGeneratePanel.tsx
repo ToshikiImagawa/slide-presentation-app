@@ -12,8 +12,8 @@ import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Typography from '@mui/material/Typography'
 import { useTranslation } from '../i18n'
-import type { GenerateProgress, GeneratorKind } from '../aiGenerate'
-import { cancelGenerate, checkExternalAvailable, clearVertexConfig, gcloudLogin, generateSlides, getVertexConfig, getVertexStatus, setGenerationEnabled, setVertexConfig } from '../aiGenerate'
+import type { GenerateProgress, GeneratedCandidate, GeneratorKind } from '../aiGenerate'
+import { cancelGenerate, checkExternalAvailable, clearVertexConfig, gcloudLogin, generateSlides, getVertexConfig, getVertexStatus, setGenerationEnabled, setVertexConfig, toGeneratedCandidate } from '../aiGenerate'
 
 type PanelStatus = { kind: 'idle' | 'ok' | 'warn' | 'error'; message: string }
 
@@ -28,7 +28,7 @@ type PanelStatus = { kind: 'idle' | 'ok' | 'warn' | 'error'; message: string }
  * マウント時に生成を有効化し、アンマウントで無効化する（capability ゲート・DC-003）。
  * 色は editorUiTheme と `--theme-*` 経由（親 SlideEditor の ThemeProvider を継承・A-002/DC-006）。
  */
-export function AiGeneratePanel({ currentText, onApply }: { currentText: string; onApply: (json: string) => void }) {
+export function AiGeneratePanel({ currentText, onApply }: { currentText: string; onApply: (candidate: GeneratedCandidate) => void }) {
   const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
   const [prompt, setPrompt] = useState('')
@@ -129,16 +129,17 @@ export function AiGeneratePanel({ currentText, onApply }: { currentText: string;
     setStatus({ kind: 'idle', message: '' })
     try {
       const result = await generateSlides({ prompt: prompt.trim(), kind, baseSlides: useBase ? currentText : undefined }, (p) => setProgress(p))
+      // 適用可能な候補（succeeded/exhausted かつ slidesJson 非 null）を差分確認ダイアログへ渡す（①）。
+      // 実際の反映は SlideEditor 側の [適用する] で行う。exhausted で残る validationErrors も併せて渡し、
+      // 何が問題かを確認できるようにする（#47）
+      const candidate = toGeneratedCandidate(result)
+      if (candidate) onApply(candidate)
       switch (result.outcome) {
         case 'succeeded':
-          // 即時反映せず差分確認ダイアログへ候補を渡す（①）。実際の反映は SlideEditor 側の [適用する] で行う
-          if (result.slidesJson) onApply(result.slidesJson)
           setStatus({ kind: 'ok', message: t('aiGenerate.succeeded', '生成が完了しました。差分を確認して適用してください') })
           break
         case 'exhausted':
-          // 検証エラーが残る最良候補も差分確認ダイアログへ渡す（適用するかはユーザーが判断）。
           // 器の保存ゲートが無効データの保存を防ぐため手動修正へ誘導（FR-005/FR-008）
-          if (result.slidesJson) onApply(result.slidesJson)
           setStatus({ kind: 'warn', message: t('aiGenerate.exhausted', '自動修正の上限に達しました。検証エラーが残る候補です。差分を確認してください（手動修正が必要な場合があります）') })
           break
         case 'cancelled':

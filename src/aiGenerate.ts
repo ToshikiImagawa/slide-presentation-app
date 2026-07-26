@@ -49,6 +49,23 @@ export interface GenerateResult {
   attempts: number
 }
 
+/** `GenerateResult` から取り出す「器へ適用可能な候補」（slidesJson が非 null な succeeded/exhausted のみ）。 */
+export interface GeneratedCandidate {
+  slidesJson: string
+  /** 適用候補に残る検証エラー（exhausted で非空になりうる） */
+  validationErrors: ValidationError[]
+}
+
+/**
+ * `GenerateResult` から適用可能な候補を取り出す。succeeded/exhausted かつ slidesJson 非 null のときのみ返す
+ * （cancelled/failed は常に null。invariant を `GenerateResult` の定義箇所に単一集約する）。
+ */
+export function toGeneratedCandidate(result: GenerateResult): GeneratedCandidate | null {
+  if (result.outcome !== 'succeeded' && result.outcome !== 'exhausted') return null
+  if (result.slidesJson === null) return null
+  return { slidesJson: result.slidesJson, validationErrors: result.validationErrors }
+}
+
 /** 生成進捗（FR-010）。JS オーケストレータが試行/フェーズ単位で通知する。 */
 export interface GenerateProgress {
   /** 現在の試行回数（1 起点） */
