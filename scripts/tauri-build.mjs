@@ -8,17 +8,31 @@
  * （"A public key has been found, but no private key"）。
  * TAURI_SIGNING_PRIVATE_KEY が無いローカル開発ビルドでは createUpdaterArtifacts を無効化し、
  * 署名鍵を注入できる CI/リリースビルドでのみ updater アーティファクトを生成する。
+ *
+ * Windows Authenticode 署名も同様に環境変数駆動。release.yml が証明書を import した
+ * 場合のみ WINDOWS_CERT_THUMBPRINT を設定し、ここで bundle.windows.certificateThumbprint
+ * として --config に反映する（#25）。
  */
 import { execFileSync } from 'node:child_process'
 
 const ROOT = new URL('..', import.meta.url).pathname
 
 const hasSigningKey = Boolean(process.env.TAURI_SIGNING_PRIVATE_KEY)
+const windowsCertThumbprint = process.env.WINDOWS_CERT_THUMBPRINT
 
-const args = ['tauri', 'build']
+const config = { bundle: {} }
 if (!hasSigningKey) {
   console.log('TAURI_SIGNING_PRIVATE_KEY が未設定のため createUpdaterArtifacts を無効化します')
-  args.push('--config', JSON.stringify({ bundle: { createUpdaterArtifacts: false } }))
+  config.bundle.createUpdaterArtifacts = false
+}
+if (windowsCertThumbprint) {
+  console.log('WINDOWS_CERT_THUMBPRINT が設定されているため Authenticode 署名を有効化します')
+  config.bundle.windows = { certificateThumbprint: windowsCertThumbprint }
+}
+
+const args = ['tauri', 'build']
+if (Object.keys(config.bundle).length > 0) {
+  args.push('--config', JSON.stringify(config))
 }
 
 execFileSync('npx', args, { cwd: ROOT, stdio: 'inherit' })
