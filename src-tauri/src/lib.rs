@@ -5,6 +5,7 @@ use std::sync::Mutex;
 use tauri::Manager;
 use tauri_plugin_fs::FsExt;
 
+mod bin_resolve;
 mod generation;
 mod vertex_config;
 
@@ -314,7 +315,8 @@ fn get_vertex_status(app: tauri::AppHandle) -> Result<vertex_config::VertexStatu
 #[tauri::command]
 async fn gcloud_login(edit_mode: tauri::State<'_, EditMode>) -> Result<(), String> {
   require_edit_mode(&edit_mode)?;
-  let status = tokio::process::Command::new(gcloud_binary())
+  let binary = resolve_gcloud_binary()?;
+  let status = bin_resolve::command_for_binary(&binary)
     .args(["auth", "application-default", "login"])
     .status()
     .await
@@ -332,12 +334,38 @@ async fn gcloud_login(edit_mode: tauri::State<'_, EditMode>) -> Result<(), Strin
 }
 
 /// gcloud バイナリ名（Windows は `.cmd` 実体）。
-fn gcloud_binary() -> &'static str {
-  if cfg!(windows) {
-    "gcloud.cmd"
-  } else {
-    "gcloud"
+#[cfg(windows)]
+const GCLOUD_BINARY_NAME: &str = "gcloud.cmd";
+#[cfg(not(windows))]
+const GCLOUD_BINARY_NAME: &str = "gcloud";
+
+/// `gcloud` バイナリを解決する（PATH → 代表配置）。
+/// リリースビルドの GUI アプリは Finder/Dock 起動時に login shell の PATH（Homebrew や
+/// Cloud SDK インストーラが `~/.zshrc` 等に追加したパス）を継承しないことがあるため、
+/// PATH に見つからない場合は代表的なインストール先も候補にする
+/// （`generation::claude_cli::resolve_claude_binary` と同じ対処方針。共通ロジックは `bin_resolve`）。
+fn resolve_gcloud_binary() -> Result<PathBuf, String> {
+  bin_resolve::resolve_binary(GCLOUD_BINARY_NAME, &gcloud_candidate_paths()).ok_or_else(|| {
+    "gcloud コマンドが見つかりませんでした。インストールと PATH を確認してください".to_string()
+  })
+}
+
+/// gcloud の代表的なインストール先（macOS/Linux）。
+#[cfg(not(windows))]
+fn gcloud_candidate_paths() -> Vec<PathBuf> {
+  let mut paths = vec![
+    PathBuf::from("/opt/homebrew/bin/gcloud"),
+    PathBuf::from("/usr/local/bin/gcloud"),
+  ];
+  if let Some(home) = std::env::var_os("HOME") {
+    paths.push(Path::new(&home).join("google-cloud-sdk/bin/gcloud"));
   }
+  paths
+}
+
+#[cfg(windows)]
+fn gcloud_candidate_paths() -> Vec<PathBuf> {
+  Vec::new()
 }
 
 /// 外部生成（Claude Code CLI）が利用可能か返す（事前ゲート・FR-007。秘密に触れないため常時呼べる）。

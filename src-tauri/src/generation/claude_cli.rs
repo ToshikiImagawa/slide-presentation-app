@@ -157,7 +157,8 @@ pub async fn is_available() -> bool {
 }
 
 /// `claude` バイナリを解決する（env override → PATH → 代表配置）。
-/// GUI アプリは login shell の PATH を継承しないことがあるため代表配置も候補に持つ。
+/// GUI アプリは login shell の PATH を継承しないことがあるため代表配置も候補に持つ
+/// （PATH → 代表配置の共通ロジックは `crate::bin_resolve`）。
 fn resolve_claude_binary() -> Result<PathBuf, GenerateError> {
   if let Some(explicit) = std::env::var_os(CLAUDE_BIN_ENV) {
     let path = PathBuf::from(explicit);
@@ -165,30 +166,12 @@ fn resolve_claude_binary() -> Result<PathBuf, GenerateError> {
       return Ok(path);
     }
   }
-  if let Some(path) = find_in_path(CLAUDE_BINARY_NAME) {
-    return Ok(path);
-  }
-  for candidate in candidate_paths() {
-    if candidate.is_file() {
-      return Ok(candidate);
-    }
-  }
-  Err(GenerateError::Cli(
-    "Claude Code（claude コマンド）が見つかりませんでした。インストールと PATH を確認してください"
-      .to_string(),
-  ))
-}
-
-/// PATH からバイナリを探す（簡易・先頭一致）。
-fn find_in_path(name: &str) -> Option<PathBuf> {
-  let path_var = std::env::var_os("PATH")?;
-  for dir in std::env::split_paths(&path_var) {
-    let candidate = dir.join(name);
-    if candidate.is_file() {
-      return Some(candidate);
-    }
-  }
-  None
+  crate::bin_resolve::resolve_binary(CLAUDE_BINARY_NAME, &candidate_paths()).ok_or_else(|| {
+    GenerateError::Cli(
+      "Claude Code（claude コマンド）が見つかりませんでした。インストールと PATH を確認してください"
+        .to_string(),
+    )
+  })
 }
 
 /// 代表的なインストール先（macOS/Linux）。
