@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { emit, listen } from '@tauri-apps/api/event'
 import type { UnlistenFn } from '@tauri-apps/api/event'
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
-import type { SlideData, PresenterViewMessage, PresenterControlState } from '../data'
+import type { SlideData, PresenterViewMessage, PresenterControlState, ThemeData } from '../data'
 
 const EVENT_NAME = 'presenter-view'
 const PRESENTER_WINDOW_LABEL = 'presenterView'
@@ -13,6 +13,10 @@ export interface UsePresenterViewOptions {
   addonOwner?: string
   /** 現在のパッケージ同梱アドオンの asset URL 群（発表者ビューへ伝搬してロードさせる） */
   addonScripts?: string[]
+  /** 本編に適用中のテーマカラー定義への参照（発表者ビューへ伝搬して同じ配色を適用させる） */
+  themeColors?: string
+  /** 本編に適用中のテーマデータ（発表者ビューへ伝搬して同じ配色を適用させる） */
+  theme?: ThemeData
   onNavigate?: (direction: 'prev' | 'next') => void
   onAudioToggle?: () => void
   onAutoPlayToggle?: () => void
@@ -28,7 +32,7 @@ export interface UsePresenterViewReturn {
   sendProgressState: (progress: number, visible: boolean, animationDuration?: number) => void
 }
 
-export function usePresenterView({ slides, addonOwner = '', addonScripts = [], onNavigate, onAudioToggle, onAutoPlayToggle, onAutoSlideshowToggle, onScrollSpeedChange }: UsePresenterViewOptions): UsePresenterViewReturn {
+export function usePresenterView({ slides, addonOwner = '', addonScripts = [], themeColors, theme, onNavigate, onAudioToggle, onAutoPlayToggle, onAutoSlideshowToggle, onScrollSpeedChange }: UsePresenterViewOptions): UsePresenterViewReturn {
   const [isOpen, setIsOpen] = useState(false)
 
   // コールバックを useRef で保持（stale closure 回避）
@@ -55,6 +59,14 @@ export function usePresenterView({ slides, addonOwner = '', addonScripts = [], o
     onScrollSpeedChangeRef.current = onScrollSpeedChange
   }, [onScrollSpeedChange])
 
+  // 現在のテーマ・アドオンを発表者ビューへ伝搬する（マウント時・presenterViewReady 受信時の両方で使う）
+  const emitThemeAndAddons = () => {
+    const themeMessage: PresenterViewMessage = { type: 'themeChanged', payload: { themeColors, theme } }
+    void emit(EVENT_NAME, themeMessage)
+    const addonMessage: PresenterViewMessage = { type: 'addonsChanged', payload: { owner: addonOwner, scripts: addonScripts } }
+    void emit(EVENT_NAME, addonMessage)
+  }
+
   useEffect(() => {
     let unlisten: UnlistenFn | undefined
 
@@ -62,9 +74,8 @@ export function usePresenterView({ slides, addonOwner = '', addonScripts = [], o
       const msg = event.payload
       if (msg.type === 'presenterViewReady') {
         setIsOpen(true)
-        // アドオンを slides より先に伝搬し、発表者ビューが描画前にロード・登録できるようにする
-        const addonMessage: PresenterViewMessage = { type: 'addonsChanged', payload: { owner: addonOwner, scripts: addonScripts } }
-        void emit(EVENT_NAME, addonMessage)
+        // テーマ・アドオンを slides より先に伝搬し、発表者ビューが描画前に適用・ロードできるようにする
+        emitThemeAndAddons()
         const message: PresenterViewMessage = { type: 'slideChanged', payload: { currentIndex: 0, slides } }
         void emit(EVENT_NAME, message)
         // 初期制御状態を送信
@@ -94,12 +105,11 @@ export function usePresenterView({ slides, addonOwner = '', addonScripts = [], o
     }
   }, [])
 
-  // パッケージ切替（この hook の再マウント）時に、既に開いている発表者ビューへ最新アドオンを伝搬する。
+  // パッケージ切替（この hook の再マウント）時に、既に開いている発表者ビューへ最新テーマ・アドオンを伝搬する。
   // 発表者ビューが未オープンならこの emit は無視され、後続の presenterViewReady 受信時に改めて伝搬される。
   useEffect(() => {
-    const message: PresenterViewMessage = { type: 'addonsChanged', payload: { owner: addonOwner, scripts: addonScripts } }
-    void emit(EVENT_NAME, message)
-    // マウント時に一度だけ実行する（addonOwner/addonScripts はマウント単位で固定）
+    emitThemeAndAddons()
+    // マウント時に一度だけ実行する（themeColors/theme/addonOwner/addonScripts はマウント単位で固定）
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

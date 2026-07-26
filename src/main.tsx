@@ -5,7 +5,7 @@ import './styles/global.css'
 import './addon-bridge'
 import { App } from './App'
 import { HomeScreen } from './components/HomeScreen'
-import { applyTheme, applyThemeData, resetThemeOverrides } from './applyTheme'
+import { applyPresentationTheme, applyTheme, resetThemeOverrides } from './applyTheme'
 import { loadAddonScripts, loadBuiltinAddons } from './addonLoader'
 import { unregisterOwner } from './components/ComponentRegistry'
 import { getDefaultPresentationData } from './data'
@@ -33,15 +33,6 @@ async function loadSamplePresentationData(locale: string): Promise<PresentationD
   return getDefaultPresentationData(locale)
 }
 
-async function applyPresentationTheme(data: PresentationData | undefined): Promise<void> {
-  // 前のプレゼンテーションのテーマ上書きが残らないよう、まずリセットしてから適用する
-  resetThemeOverrides()
-  await applyTheme(data?.meta?.themeColors)
-  if (data?.theme) {
-    applyThemeData(data.theme)
-  }
-}
-
 type View = 'home' | 'presentation' | 'edit'
 
 /** ホーム画面とプレゼンテーション画面を切り替える（I18nProvider の内側で useI18n を使うための内側コンポーネント） */
@@ -65,7 +56,7 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
     setView('presentation')
 
     try {
-      await applyPresentationTheme(data)
+      await applyPresentationTheme(data.meta?.themeColors, data.theme)
     } catch (error) {
       console.error('[main] テーマの適用に失敗しました', error)
     }
@@ -149,7 +140,7 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
   const handleExitEdit = useCallback(() => {
     void exitEditMode().catch((error) => console.error('[main] 編集モードの無効化に失敗しました', error))
     // 編集中に適用したテーマを、表示中プレゼンのテーマへ戻す
-    void applyPresentationTheme(presentationData)
+    void applyPresentationTheme(presentationData?.meta?.themeColors, presentationData?.theme)
     setView('presentation')
   }, [presentationData])
 

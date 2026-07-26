@@ -6,14 +6,14 @@ import type { UnlistenFn } from '@tauri-apps/api/event'
 import 'reveal.js/dist/reveal.css'
 import './styles/global.css'
 import './addon-bridge'
-import { applyTheme, applyThemeData } from './applyTheme'
+import { applyPresentationTheme, applyTheme } from './applyTheme'
 import { loadAddonScripts, loadBuiltinAddons } from './addonLoader'
 import { registerDefaultComponents } from './components/registerDefaults'
 import { unregisterOwner } from './components/ComponentRegistry'
 import { PresenterViewWindow } from './components/PresenterViewWindow'
 import { I18nProvider, loadLocales, useTranslation } from './i18n'
 import { theme } from './theme'
-import type { SlideData, PresentationData, PresenterViewMessage, PresenterControlState } from './data'
+import type { SlideData, PresenterViewMessage, PresenterControlState } from './data'
 
 const EVENT_NAME = 'presenter-view'
 
@@ -35,7 +35,11 @@ function PresenterViewApp() {
     let unlisten: UnlistenFn | undefined
 
     listen<PresenterViewMessage>(EVENT_NAME, async (event) => {
-      if (event.payload.type === 'addonsChanged') {
+      if (event.payload.type === 'themeChanged') {
+        const { themeColors, theme: themeData } = event.payload.payload
+        // 本編とテーマの上書きが食い違わないよう、本編と同じ手順（reset→適用）で再適用する
+        await applyPresentationTheme(themeColors, themeData)
+      } else if (event.payload.type === 'addonsChanged') {
         const { owner, scripts } = event.payload.payload
         // 旧 owner を破棄してから新アドオンをロードする（slideChanged 側がこの完了を待つ）
         // ロード失敗時も slides 描画をブロックしないよう握りつぶす（未解決コンポーネントは fallback 表示）
@@ -78,24 +82,6 @@ function PresenterViewApp() {
       window.removeEventListener('beforeunload', handleBeforeUnload)
       unlisten?.()
     }
-  }, [])
-
-  // テーマの適用
-  useEffect(() => {
-    fetch(import.meta.env.VITE_SLIDES_PATH || '/slides.json')
-      .then((res) => {
-        if (!res.ok) throw new Error(`${res.status}`)
-        return res.json() as Promise<PresentationData>
-      })
-      .then(async (data) => {
-        await applyTheme(data.meta?.themeColors)
-        if (data.theme) {
-          applyThemeData(data.theme)
-        }
-      })
-      .catch(async () => {
-        await applyTheme()
-      })
   }, [])
 
   const sendMessage = useCallback((message: PresenterViewMessage) => {
@@ -156,8 +142,8 @@ function WaitingMessage() {
 
 const root = createRoot(document.getElementById('root')!)
 
-// 組み込みアドオン・言語リソースをロードしてからレンダリングする
-Promise.all([loadBuiltinAddons(), loadLocales()]).then(([, locales]) => {
+// 組み込みアドオン・言語リソース・既定テーマをロードしてからレンダリングする（実際のテーマは themeChanged で本編から伝搬される）
+Promise.all([loadBuiltinAddons(), loadLocales(), applyTheme()]).then(([, locales]) => {
   root.render(
     <I18nProvider locales={locales}>
       <PresenterViewApp />

@@ -66,3 +66,44 @@ describe('usePresenterView アドオン伝搬', () => {
     expect(addonsIdx).toBeLessThan(slideIdx)
   })
 })
+
+/** emit 呼び出しのうち themeChanged のものを抽出 */
+function themeChangedCalls() {
+  return h.emit.mock.calls.filter((c) => (c[1] as { type?: string })?.type === 'themeChanged')
+}
+
+describe('usePresenterView テーマ伝搬', () => {
+  beforeEach(() => {
+    h.emit.mockClear()
+    h.listeners.length = 0
+  })
+
+  it('マウント時に themeChanged を emit する（既に開いている発表者ビュー向け）', () => {
+    renderHook(() => usePresenterView({ slides, themeColors: 'theme/colors.json', theme: { colors: { primary: '#000000' } } }))
+    const calls = themeChangedCalls()
+    expect(calls.length).toBeGreaterThanOrEqual(1)
+    expect(calls[0][0]).toBe(EVENT_NAME)
+    expect(calls[0][1]).toEqual({ type: 'themeChanged', payload: { themeColors: 'theme/colors.json', theme: { colors: { primary: '#000000' } } } })
+  })
+
+  it('presenterViewReady 受信時に themeChanged を slideChanged より先に emit する', async () => {
+    renderHook(() => usePresenterView({ slides, themeColors: 'theme/colors.json' }))
+
+    // listen 登録を待つ
+    await waitFor(() => expect(h.listeners.length).toBe(1))
+    h.emit.mockClear()
+
+    // 発表者ビューからの ready を模擬
+    act(() => {
+      h.listeners[0]({ payload: { type: 'presenterViewReady' } })
+    })
+
+    const types = h.emit.mock.calls.map((c) => (c[1] as { type?: string })?.type)
+    const themeIdx = types.indexOf('themeChanged')
+    const slideIdx = types.indexOf('slideChanged')
+    expect(themeIdx).toBeGreaterThanOrEqual(0)
+    expect(slideIdx).toBeGreaterThanOrEqual(0)
+    // テーマを先に伝搬する（描画前適用のため）
+    expect(themeIdx).toBeLessThan(slideIdx)
+  })
+})
