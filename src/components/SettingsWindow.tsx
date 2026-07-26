@@ -1,6 +1,14 @@
+import { useEffect, useRef } from 'react'
 import { useI18n, useTranslation } from '../i18n'
 import type { AddonTrustDecision } from '../localSlideLoader'
 import styles from './SettingsWindow.module.css'
+
+const FOCUSABLE_SELECTOR = 'button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])'
+
+function getFocusableElements(container: HTMLElement): HTMLElement[] {
+  // querySelectorAll はセレクタリストの記述順でグルーピングされる場合があるため、ドキュメント順に明示的に並べ替える
+  return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).sort((a, b) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1))
+}
 
 /** 層C: 実行時信頼の個別付け外し対象（パッケージ単位） */
 export type AddonTrustEntry = { path: string; title: string; decision: AddonTrustDecision | undefined }
@@ -25,14 +33,47 @@ type SettingsWindowProps = {
 export function SettingsWindow({ open, onClose, scrollSpeed, setScrollSpeed, embeddedAddonsDisabled, onToggleEmbeddedAddons, onResetAddonTrust, addonTrust, onSetAddonTrust }: SettingsWindowProps) {
   const { locale, locales, setLocale } = useI18n()
   const { t } = useTranslation()
+  const windowRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const previousFocus = document.activeElement as HTMLElement | null
+    const windowEl = windowRef.current
+    if (windowEl) getFocusableElements(windowEl)[0]?.focus()
+    return () => previousFocus?.focus()
+  }, [open])
 
   if (!open) return null
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    e.stopPropagation()
+    if (e.key === 'Escape') {
+      onClose()
+      return
+    }
+    if (e.key !== 'Tab') return
+    const windowEl = windowRef.current
+    if (!windowEl) return
+    const focusables = getFocusableElements(windowEl)
+    if (focusables.length === 0) return
+    const first = focusables[0]
+    const last = focusables[focusables.length - 1]
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault()
+      last.focus()
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault()
+      first.focus()
+    }
+  }
+
   return (
-    <div className={styles.overlay} onClick={onClose} onKeyDown={(e) => e.stopPropagation()}>
-      <div className={styles.window} onClick={(e) => e.stopPropagation()} data-testid="settings-dialog">
+    <div className={styles.overlay} onClick={onClose} onKeyDown={handleKeyDown}>
+      <div ref={windowRef} className={styles.window} role="dialog" aria-modal="true" aria-labelledby="settings-window-title" onClick={(e) => e.stopPropagation()} data-testid="settings-dialog">
         <div className={styles.header}>
-          <h2 className={styles.title}>{t('settings.title')}</h2>
+          <h2 className={styles.title} id="settings-window-title">
+            {t('settings.title')}
+          </h2>
           <button className={styles.closeButton} onClick={onClose} aria-label={t('settings.close')}>
             <svg className={styles.closeIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="18" y1="6" x2="6" y2="18" />

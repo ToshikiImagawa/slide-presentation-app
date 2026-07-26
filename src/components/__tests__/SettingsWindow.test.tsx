@@ -62,6 +62,53 @@ describe('SettingsWindow', () => {
     expect(screen.getByText('Settings')).toBeDefined()
   })
 
+  it('role="dialog" と aria-modal="true" を持つ', () => {
+    render(
+      <Wrapper>
+        <SettingsWindow open={true} onClose={() => {}} scrollSpeed={20} setScrollSpeed={() => {}} />
+      </Wrapper>,
+    )
+    const dialog = screen.getByRole('dialog')
+    expect(dialog.getAttribute('aria-modal')).toBe('true')
+    expect(dialog.getAttribute('aria-labelledby')).toBeTruthy()
+  })
+
+  it('Escapeキーで onClose が呼ばれる', () => {
+    const onClose = vi.fn()
+    render(
+      <Wrapper>
+        <SettingsWindow open={true} onClose={onClose} scrollSpeed={20} setScrollSpeed={() => {}} />
+      </Wrapper>,
+    )
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('開いた際にダイアログ内の要素にフォーカスが移動する', () => {
+    render(
+      <Wrapper>
+        <SettingsWindow open={true} onClose={() => {}} scrollSpeed={20} setScrollSpeed={() => {}} />
+      </Wrapper>,
+    )
+    const dialog = screen.getByRole('dialog')
+    expect(dialog.contains(document.activeElement)).toBe(true)
+  })
+
+  it('Tabキーで最後の要素から最初の要素へフォーカスが循環する（フォーカストラップ）', () => {
+    render(
+      <Wrapper>
+        <SettingsWindow open={true} onClose={() => {}} scrollSpeed={20} setScrollSpeed={() => {}} />
+      </Wrapper>,
+    )
+    const dialog = screen.getByRole('dialog')
+    const closeButtons = screen.getAllByRole('button', { name: 'Close' })
+    const firstFocusable = closeButtons[0]
+    const lastFocusable = closeButtons[closeButtons.length - 1]
+    lastFocusable.focus()
+    fireEvent.keyDown(dialog, { key: 'Tab' })
+    expect(document.activeElement).toBe(firstFocusable)
+  })
+
   it('言語選択肢が表示される', () => {
     render(
       <Wrapper>
