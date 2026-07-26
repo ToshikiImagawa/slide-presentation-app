@@ -26,7 +26,7 @@ const AFTER = JSON.stringify({
 
 describe('GeneratedDiffDialog（①構造サマリ差分）', () => {
   it('構造サマリ（追加/変更/削除/メタ）を表示する', () => {
-    render(wrap(<GeneratedDiffDialog open beforeText={BEFORE} afterText={AFTER} onApply={() => {}} onCancel={() => {}} />))
+    render(wrap(<GeneratedDiffDialog open beforeText={BEFORE} afterText={AFTER} validationErrors={[]} onApply={() => {}} onCancel={() => {}} />))
     // 集計チップ（単一文字列ラベル）
     expect(screen.getByText('追加 1')).toBeTruthy()
     expect(screen.getByText('変更 1')).toBeTruthy()
@@ -40,7 +40,7 @@ describe('GeneratedDiffDialog（①構造サマリ差分）', () => {
   it('[適用する]/[キャンセル] で各コールバックを呼ぶ', () => {
     const onApply = vi.fn()
     const onCancel = vi.fn()
-    render(wrap(<GeneratedDiffDialog open beforeText={BEFORE} afterText={AFTER} onApply={onApply} onCancel={onCancel} />))
+    render(wrap(<GeneratedDiffDialog open beforeText={BEFORE} afterText={AFTER} validationErrors={[]} onApply={onApply} onCancel={onCancel} />))
     fireEvent.click(screen.getByRole('button', { name: '適用する' }))
     expect(onApply).toHaveBeenCalledTimes(1)
     fireEvent.click(screen.getByRole('button', { name: 'キャンセル' }))
@@ -49,14 +49,27 @@ describe('GeneratedDiffDialog（①構造サマリ差分）', () => {
 
   it('構造解析不能ならフォールバック（全体置換）表示になり、[適用する] は使える', () => {
     const onApply = vi.fn()
-    render(wrap(<GeneratedDiffDialog open beforeText={BEFORE} afterText={'{ broken json'} onApply={onApply} onCancel={() => {}} />))
+    render(wrap(<GeneratedDiffDialog open beforeText={BEFORE} afterText={'{ broken json'} validationErrors={[]} onApply={onApply} onCancel={() => {}} />))
     expect(screen.getByText(/構造を解析できない/)).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: '適用する' }))
     expect(onApply).toHaveBeenCalledTimes(1)
   })
 
   it('open=false のときは中身をレンダリングしない', () => {
-    render(wrap(<GeneratedDiffDialog open={false} beforeText={BEFORE} afterText={AFTER} onApply={() => {}} onCancel={() => {}} />))
+    render(wrap(<GeneratedDiffDialog open={false} beforeText={BEFORE} afterText={AFTER} validationErrors={[]} onApply={() => {}} onCancel={() => {}} />))
     expect(screen.queryByRole('button', { name: '適用する' })).toBeNull()
+  })
+
+  it('validationErrors があれば検証エラーの内容を表示する（自動修正の上限到達＝exhausted・#47）', () => {
+    const errors = [{ path: 'slides[0].content.title', message: '必須項目です', expected: 'string', actual: 'undefined' }]
+    render(wrap(<GeneratedDiffDialog open beforeText={BEFORE} afterText={AFTER} validationErrors={errors} onApply={() => {}} onCancel={() => {}} />))
+    expect(screen.getByText('検証エラー (1)')).toBeTruthy()
+    expect(screen.getByText(/slides\[0\]\.content\.title/)).toBeTruthy()
+    expect(screen.getByText(/必須項目です/)).toBeTruthy()
+  })
+
+  it('validationErrors が空なら検証エラーのセクションを表示しない', () => {
+    render(wrap(<GeneratedDiffDialog open beforeText={BEFORE} afterText={AFTER} validationErrors={[]} onApply={() => {}} onCancel={() => {}} />))
+    expect(screen.queryByText(/検証エラー/)).toBeNull()
   })
 })

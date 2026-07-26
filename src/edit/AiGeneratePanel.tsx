@@ -12,6 +12,7 @@ import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Typography from '@mui/material/Typography'
 import { useTranslation } from '../i18n'
+import type { ValidationError } from '../data/types'
 import type { GenerateProgress, GeneratorKind } from '../aiGenerate'
 import { cancelGenerate, checkExternalAvailable, clearVertexConfig, gcloudLogin, generateSlides, getVertexConfig, getVertexStatus, setGenerationEnabled, setVertexConfig } from '../aiGenerate'
 
@@ -28,7 +29,7 @@ type PanelStatus = { kind: 'idle' | 'ok' | 'warn' | 'error'; message: string }
  * マウント時に生成を有効化し、アンマウントで無効化する（capability ゲート・DC-003）。
  * 色は editorUiTheme と `--theme-*` 経由（親 SlideEditor の ThemeProvider を継承・A-002/DC-006）。
  */
-export function AiGeneratePanel({ currentText, onApply }: { currentText: string; onApply: (json: string) => void }) {
+export function AiGeneratePanel({ currentText, onApply }: { currentText: string; onApply: (json: string, validationErrors: ValidationError[]) => void }) {
   const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
   const [prompt, setPrompt] = useState('')
@@ -132,13 +133,14 @@ export function AiGeneratePanel({ currentText, onApply }: { currentText: string;
       switch (result.outcome) {
         case 'succeeded':
           // 即時反映せず差分確認ダイアログへ候補を渡す（①）。実際の反映は SlideEditor 側の [適用する] で行う
-          if (result.slidesJson) onApply(result.slidesJson)
+          if (result.slidesJson) onApply(result.slidesJson, result.validationErrors)
           setStatus({ kind: 'ok', message: t('aiGenerate.succeeded', '生成が完了しました。差分を確認して適用してください') })
           break
         case 'exhausted':
           // 検証エラーが残る最良候補も差分確認ダイアログへ渡す（適用するかはユーザーが判断）。
-          // 器の保存ゲートが無効データの保存を防ぐため手動修正へ誘導（FR-005/FR-008）
-          if (result.slidesJson) onApply(result.slidesJson)
+          // 器の保存ゲートが無効データの保存を防ぐため手動修正へ誘導（FR-005/FR-008）。
+          // 残存する validationErrors もダイアログへ渡し、何が問題かを確認できるようにする（#47）
+          if (result.slidesJson) onApply(result.slidesJson, result.validationErrors)
           setStatus({ kind: 'warn', message: t('aiGenerate.exhausted', '自動修正の上限に達しました。検証エラーが残る候補です。差分を確認してください（手動修正が必要な場合があります）') })
           break
         case 'cancelled':

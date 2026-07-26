@@ -9,6 +9,7 @@ import Chip from '@mui/material/Chip'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import { useTranslation } from '../i18n'
+import type { ValidationError } from '../data/types'
 import { computeSlidesDiff, hasChanges, type FieldChange, type SlideChange } from './slidesDiff'
 import { prettyPrintJson } from './slidesSerialize'
 
@@ -26,6 +27,8 @@ export interface GeneratedDiffDialogProps {
   beforeText: string
   /** 適用候補の生成テキスト（変更後） */
   afterText: string
+  /** 適用候補に残る検証エラー（自動修正の上限到達＝exhausted で非空になりうる・#47） */
+  validationErrors: ValidationError[]
   onApply: () => void
   onCancel: () => void
 }
@@ -41,7 +44,7 @@ function jsonBlock(value: unknown): string {
   return JSON.stringify(value, null, 2)
 }
 
-export function GeneratedDiffDialog({ open, beforeText, afterText, onApply, onCancel }: GeneratedDiffDialogProps) {
+export function GeneratedDiffDialog({ open, beforeText, afterText, validationErrors, onApply, onCancel }: GeneratedDiffDialogProps) {
   const { t } = useTranslation()
   // 閉じているときは差分計算をスキップ（開いたときだけ算出）
   const diff = useMemo(() => (open ? computeSlidesDiff(beforeText, afterText) : null), [open, beforeText, afterText])
@@ -90,6 +93,19 @@ export function GeneratedDiffDialog({ open, beforeText, afterText, onApply, onCa
         </Typography>
       </DialogTitle>
       <DialogContent dividers>
+        {validationErrors.length > 0 && (
+          <Box role="alert" sx={{ p: 1, mb: 1.5, borderRadius: 1, backgroundColor: 'var(--theme-background-alt)', border: '1px solid var(--theme-border)', maxHeight: 160, overflow: 'auto' }}>
+            <Typography variant="subtitle2" sx={{ color: 'var(--theme-primary)', fontWeight: 600 }}>
+              {t('edit.validationErrors', '検証エラー')} ({validationErrors.length})
+            </Typography>
+            {validationErrors.map((err, i) => (
+              <Typography key={`${err.path}-${i}`} variant="body2" sx={{ color: 'var(--theme-text-body)', fontFamily: 'var(--theme-font-code, monospace)', fontSize: 12 }}>
+                {err.path ? `${err.path}: ` : ''}
+                {err.message}
+              </Typography>
+            ))}
+          </Box>
+        )}
         {diff && diff.parseable ? (
           <Stack spacing={1.5}>
             {/* 集計サマリ */}

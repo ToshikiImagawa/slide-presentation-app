@@ -135,7 +135,24 @@ describe('AiGeneratePanel 事前ゲート・退避（Vertex・FR-007/FR-008）',
     fireEvent.change(promptField(), { target: { value: 'AI の歴史' } })
     await waitFor(() => expect(generateButton().disabled).toBe(false))
     fireEvent.click(generateButton())
-    await waitFor(() => expect(onApply).toHaveBeenCalledWith(VALID))
+    await waitFor(() => expect(onApply).toHaveBeenCalledWith(VALID, []))
+  })
+
+  it('exhausted でも onApply に候補と残存 validationErrors を渡す（#47）', async () => {
+    h.getVertexStatus.mockResolvedValue({ configured: true })
+    const validationErrors = [{ path: 'slides[0].content.title', message: '必須項目です', expected: 'string', actual: 'undefined' }]
+    h.generateSlides.mockResolvedValue({ outcome: 'exhausted', slidesJson: VALID, validationErrors, attempts: 3 })
+    const onApply = vi.fn()
+    render(
+      <Wrapper>
+        <AiGeneratePanel currentText={VALID} onApply={onApply} />
+      </Wrapper>,
+    )
+    expandPanel()
+    fireEvent.change(promptField(), { target: { value: 'AI の歴史' } })
+    await waitFor(() => expect(generateButton().disabled).toBe(false))
+    fireEvent.click(generateButton())
+    await waitFor(() => expect(onApply).toHaveBeenCalledWith(VALID, validationErrors))
   })
 
   it('failed では onApply を呼ばない（器に触れず退避・FR-008）', async () => {
@@ -257,5 +274,26 @@ describe('SlideEditor への生成結果の全体置換注入（FR-004/DC-005）
     fireEvent.click(screen.getByRole('button', { name: 'キャンセル' }))
     await waitFor(() => expect(screen.queryByDisplayValue('GENERATED')).toBeNull())
     expect(screen.getByDisplayValue('T')).toBeTruthy()
+  })
+
+  it('exhausted で残る validationErrors が差分確認ダイアログに表示される（#47）', async () => {
+    const generated = JSON.stringify({ meta: { title: 'GENERATED' }, slides: [{ id: 's1', layout: 'center', content: {} }] })
+    const validationErrors = [{ path: 'slides[0].content.title', message: '必須項目です', expected: 'string', actual: 'undefined' }]
+    h.generateSlides.mockResolvedValue({ outcome: 'exhausted', slidesJson: generated, validationErrors, attempts: 3 })
+
+    render(
+      <Wrapper>
+        <SlideEditor source={{ rawText: VALID, baseDir: '' }} onExit={() => {}} />
+      </Wrapper>,
+    )
+
+    expandPanel()
+    fireEvent.change(screen.getByLabelText('プロンプト'), { target: { value: 'AI の歴史' } })
+    await waitFor(() => expect(generateButton().disabled).toBe(false))
+    fireEvent.click(generateButton())
+
+    await waitFor(() => expect(screen.getByRole('button', { name: '適用する' })).toBeTruthy())
+    expect(screen.getByText('検証エラー (1)')).toBeTruthy()
+    expect(screen.getByText(/slides\[0\]\.content\.title/)).toBeTruthy()
   })
 })
