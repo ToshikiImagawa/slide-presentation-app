@@ -2,7 +2,7 @@ use std::fs;
 use std::io::{Cursor, Write};
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
-use tauri::Manager;
+use tauri::{Emitter, Manager};
 use tauri_plugin_fs::FsExt;
 
 mod bin_resolve;
@@ -72,6 +72,56 @@ fn extract_slide_package(app: tauri::AppHandle, package_path: String) -> Result<
     .to_str()
     .map(|s| s.to_string())
     .ok_or_else(|| "抽出先パスの文字列化に失敗しました".to_string())
+}
+
+/// WebView 初期化前に届いた OS のオープン要求を保持する（Finder/エクスプローラからの起動は
+/// listen 登録より先に発火し得るため、take されるまで Rust 側で預かる・#104）
+struct PendingOpenPaths(Mutex<Vec<String>>);
+
+/// OS から渡されたパスがアプリで開ける対象（.spkg・旧 .tgz・slides.json）かを判定する（純粋ロジック・テスト対象）。
+/// src/slidePackageArchive.ts の isSlidePackageArchivePath と同一規則（小文字化して拡張子一致・`DECK.SPKG` も通す）を
+/// ファイル選択ダイアログの受付拡張子（.json を含む）まで広げて移植する（DC-003）
+fn is_slide_package_path(path: &str) -> bool {
+  const EXTENSIONS: [&str; 3] = [".spkg", ".tgz", ".json"];
+  let lower = path.to_lowercase();
+  EXTENSIONS.iter().any(|ext| lower.ends_with(ext))
+}
+
+/// 起動引数から開くべきパスを抽出する（純粋ロジック・テスト対象）。argv[0] は実行ファイル自身なので
+/// スキップし、対象外の引数（オプションフラグ等）は捨てる
+fn resolve_open_paths_from_argv(argv: &[String]) -> Vec<String> {
+  argv
+    .iter()
+    .skip(1)
+    .filter(|arg| is_slide_package_path(arg))
+    .cloned()
+    .collect()
+}
+
+/// 預かっているオープン要求を取り出してクリアする（take セマンティクス。取得と同時に消すことで
+/// 「起動時の取得」と「イベント受信後の取得」が同じパスを二重に開くのを構造的に防ぐ）
+#[tauri::command]
+fn take_pending_open_paths(state: tauri::State<PendingOpenPaths>) -> Result<Vec<String>, String> {
+  let mut pending = state.0.lock().map_err(|e| e.to_string())?;
+  Ok(std::mem::take(&mut *pending))
+}
+
+/// OS から受け取ったオープン要求をフロントへ引き渡す。pending へ積んでから通知する順序が重要で
+/// （イベントは payload なしのシグナル）、逆順だと受信側の take が空振りし得る
+fn dispatch_open_paths(app: &tauri::AppHandle, paths: Vec<String>) {
+  if paths.is_empty() {
+    return;
+  }
+  match app.state::<PendingOpenPaths>().0.lock() {
+    Ok(mut pending) => pending.extend(paths),
+    Err(e) => {
+      log::error!("オープン要求の保持に失敗しました: {e}");
+      return;
+    }
+  }
+  if let Err(e) = app.emit("open-slide-package", ()) {
+    log::error!("オープン要求の通知に失敗しました: {e}");
+  }
 }
 
 /// ダウンロード元 URL を検証する（純粋ロジック・テスト対象）。https 以外のスキームは拒否する
@@ -947,13 +997,26 @@ async fn build_builtin_addons(edit_mode: tauri::State<'_, EditMode>) -> Result<(
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-  tauri::Builder::default()
+  let builder = tauri::Builder::default();
+
+  // single-instance は他のすべてのプラグイン・builder メソッドより先に登録する（公式推奨）。
+  // OS の関連付けから2重起動されたときは argv を既存インスタンスへ転送し、同じウィンドウで開き直す（#104）
+  #[cfg(desktop)]
+  let builder = builder.plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
+    if let Some(window) = app.get_webview_window("main") {
+      let _ = window.set_focus();
+    }
+    dispatch_open_paths(app, resolve_open_paths_from_argv(&argv));
+  }));
+
+  let app = builder
     .plugin(tauri_plugin_fs::init())
     .plugin(tauri_plugin_dialog::init())
     .plugin(tauri_plugin_store::Builder::default().build())
     .manage(EditMode(Mutex::new(false)))
     .manage(GenerationEnabled(Mutex::new(false)))
     .manage(ActiveGeneration(Mutex::new(None)))
+    .manage(PendingOpenPaths(Mutex::new(Vec::new())))
     .invoke_handler(tauri::generate_handler![
       allow_asset_dir,
       extract_slide_package,
@@ -974,7 +1037,8 @@ pub fn run() {
       get_vertex_config,
       get_vertex_status,
       gcloud_login,
-      check_claude_cli
+      check_claude_cli,
+      take_pending_open_paths
     ])
     .setup(|app| {
       if cfg!(debug_assertions) {
@@ -989,10 +1053,32 @@ pub fn run() {
       app
         .handle()
         .plugin(tauri_plugin_updater::Builder::new().build())?;
+      // Windows / Linux のファイルマネージャからの初回起動はパスが argv で渡る。
+      // macOS は argv ではなく後述の RunEvent::Opened で届くため対象外にする（#104）
+      #[cfg(not(target_os = "macos"))]
+      dispatch_open_paths(
+        app.handle(),
+        resolve_open_paths_from_argv(&std::env::args().collect::<Vec<String>>()),
+      );
       Ok(())
     })
-    .run(tauri::generate_context!())
-    .expect("error while running tauri application");
+    .build(tauri::generate_context!())
+    .expect("error while building tauri application");
+
+  app.run(|_app_handle, _event| {
+    // Finder の「このアプリケーションで開く」は argv ではなくこのイベントで届く。
+    // RunEvent::Opened は macOS/iOS/Android 限定バリアントなので cfg で囲まないと他 OS でコンパイルできない
+    #[cfg(target_os = "macos")]
+    if let tauri::RunEvent::Opened { urls } = &_event {
+      let paths: Vec<String> = urls
+        .iter()
+        .filter_map(|url| url.to_file_path().ok())
+        .filter_map(|path| path.to_str().map(str::to_string))
+        .filter(|path| is_slide_package_path(path))
+        .collect();
+      dispatch_open_paths(_app_handle, paths);
+    }
+  });
 }
 
 #[cfg(test)]
@@ -1162,6 +1248,55 @@ mod tests {
     assert!(
       validate_package_name("slides.json").is_err(),
       "ドットは不可（#88）"
+    );
+  }
+
+  #[test]
+  fn is_slide_package_path_accepts_spkg_tgz_and_json() {
+    assert!(is_slide_package_path("/Users/me/deck.spkg"));
+    assert!(is_slide_package_path("/Users/me/deck.tgz"));
+    assert!(is_slide_package_path("/Users/me/slides.json"));
+  }
+
+  #[test]
+  fn is_slide_package_path_is_case_insensitive() {
+    assert!(is_slide_package_path("/Users/me/DECK.SPKG"));
+    assert!(is_slide_package_path("/Users/me/Slides.Json"));
+  }
+
+  #[test]
+  fn is_slide_package_path_rejects_other_extensions() {
+    assert!(!is_slide_package_path("/Users/me/deck.zip"));
+    assert!(!is_slide_package_path("/Users/me/deck"));
+    assert!(!is_slide_package_path("--flag"));
+  }
+
+  #[test]
+  fn resolve_open_paths_from_argv_skips_executable_and_filters() {
+    let argv = vec![
+      "/Applications/Slide Presentation App.app/Contents/MacOS/app.spkg".to_string(),
+      "--flag".to_string(),
+      "/Users/me/deck.spkg".to_string(),
+      "/Users/me/notes.txt".to_string(),
+      "/Users/me/slides.json".to_string(),
+    ];
+
+    assert_eq!(
+      resolve_open_paths_from_argv(&argv),
+      vec![
+        "/Users/me/deck.spkg".to_string(),
+        "/Users/me/slides.json".to_string()
+      ],
+      "argv[0] は拡張子が一致しても実行ファイル自身なのでスキップする"
+    );
+  }
+
+  #[test]
+  fn resolve_open_paths_from_argv_returns_empty_without_candidates() {
+    assert!(resolve_open_paths_from_argv(&[]).is_empty());
+    assert!(resolve_open_paths_from_argv(&["/path/to/app".to_string()]).is_empty());
+    assert!(
+      resolve_open_paths_from_argv(&["/path/to/app".to_string(), "--flag".to_string()]).is_empty()
     );
   }
 

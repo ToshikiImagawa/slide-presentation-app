@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Linux の shared-mime-info 定義（#104）。Tauri は fileAssociations から .desktop の MimeType= を生成するが
+  application/x-slide-package 自体の型定義（拡張子 → MIME の解決規則）は生成しないため、ここで宣言して
+  bundle.linux.deb.files 経由で /usr/share/mime/packages/ に同梱する。
+-->
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="application/x-slide-package">
+    <comment>Slide Presentation Package</comment>
+    <glob pattern="*.spkg"/>
+  </mime-type>
+</mime-info>

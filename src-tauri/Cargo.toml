@@ -29,6 +29,8 @@ tauri-plugin-fs = "2.5.1"
 tauri-plugin-dialog = "2.7.1"
 tauri-plugin-store = "2.4.3"
 tauri-plugin-updater = "2.10.1"
+# .spkg 関連付け（#104）: OS から2重起動されたときも既存ウィンドウで開き直すため、argv を単一インスタンスへ転送する
+tauri-plugin-single-instance = "2.4.3"
 flate2 = "1.1.9"
 tar = "0.4.46"
 # AI スライド生成（#14）:
