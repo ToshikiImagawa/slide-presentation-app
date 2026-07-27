@@ -114,6 +114,36 @@ describe('SlideJsonEditor', () => {
     expect(onChange).toHaveBeenCalledWith('{"a":"bar","b":"foo"}')
   })
 
+  it('エディタ本体を白背景にするライブラリ既定テーマが注入されない', () => {
+    const { container } = render(
+      <Wrapper>
+        <SlideJsonEditor value="{}" onChange={() => {}} errors={[]} />
+      </Wrapper>,
+    )
+    const editor = container.querySelector('.cm-editor')!
+
+    // jsdom が解釈できないセレクタ（MUI の ::-moz-focus-inner 等）は matches が throw するため無視する
+    function appliesToEditor(rule: CSSRule): rule is CSSStyleRule {
+      try {
+        return editor.matches((rule as CSSStyleRule).selectorText)
+      } catch {
+        return false
+      }
+    }
+
+    // CodeMirror の base theme は light/dark 両方の variant を常に注入するため、CSS 全体ではなく
+    // 実際にエディタ要素へ適用されるルールだけを対象にする（style-mod は insertRule で書き込むので cssRules を走査する）
+    const backgrounds = Array.from(document.styleSheets)
+      .flatMap((sheet) => Array.from(sheet.cssRules))
+      .filter(appliesToEditor)
+      .map((rule) => rule.style.backgroundColor)
+
+    // 走査が CodeMirror の注入分を実際に捕捉できている証明（これが無いと空振りで pass してしまう）
+    expect(backgrounds).toContain('var(--fixed-background)')
+    // CSSOM は色指定を rgb() 形式へ正規化するため、ライブラリが white / #fff どちらで書いてもこの 1 値で検知できる
+    expect(backgrounds).not.toContain('rgb(255, 255, 255)')
+  })
+
   it('すべて置換できる', () => {
     const onChange = vi.fn()
     render(
