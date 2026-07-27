@@ -5,7 +5,7 @@ type: spec
 status: approved
 sdd-phase: specify
 created: 2026-07-27
-updated: 2026-07-27
+updated: 2026-07-28
 depends-on:
   - prd-slide-package-open
 tags:
@@ -21,7 +21,7 @@ category: slide-package
 
 **ドキュメント種別:** 抽象仕様書 (Spec)
 **SDDフェーズ:** Specify (仕様化)
-**最終更新日:** 2026-07-27
+**最終更新日:** 2026-07-28
 **関連 Design Doc:** [slide-package-open_design.md](./slide-package-open_design.md)
 **関連 PRD:** [slide-package-open.md](../requirement/slide-package-open.md)
 
@@ -170,9 +170,10 @@ interface RecentSlidePackageEntry {
 /// 保留領域（新規）。OS から届いたパスをフロントエンドが取り出すまで保持する
 struct PendingOpenPaths(Mutex<Vec<String>>);
 
-/// FR_005 の唯一の取り出し口（新規）。取得とクリアが不可分
+/// FR_005 の唯一の取り出し口（新規）。取得とクリアが不可分。
+/// JS 境界では Ok が resolve・Err が reject（Result にした理由は design の 4.3 が持つ）
 #[tauri::command]
-fn take_pending_open_paths(state: State<PendingOpenPaths>) -> Vec<String>;
+fn take_pending_open_paths(state: State<PendingOpenPaths>) -> Result<Vec<String>, String>;
 ```
 
 ---
@@ -199,7 +200,8 @@ import { invoke } from '@tauri-apps/api/core'
 // 空配列なら「OS 経由の開く要求なし」＝通常のホーム画面表示。
 const pending = await invoke<string[]>('take_pending_open_paths')
 if (pending.length > 0) {
-  await openFromExternalRequest(pending[0])
+  // 複数件（macOS の一括オープン）は最後の1件を採用する（単一ウィンドウアプリ）
+  await openFromExternalRequest(pending[pending.length - 1])
 }
 ```
 
@@ -213,7 +215,7 @@ import { invoke } from '@tauri-apps/api/core'
 const unlisten = await listen('open-slide-package', async () => {
   const paths = await invoke<string[]>('take_pending_open_paths')
   if (paths.length > 0) {
-    await openFromExternalRequest(paths[0])
+    await openFromExternalRequest(paths[paths.length - 1])
   }
 })
 ```
