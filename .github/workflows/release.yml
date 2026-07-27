@@ -1,0 +1,332 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  prepare:
+    name: Prepare release metadata
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve version and prerelease flag
+        id: version
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          if [[ "$VERSION" =~ -(alpha|beta|rc) ]]; then
+            PRERELEASE=true
+          else
+            PRERELEASE=false
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
+      - name: Extract changelog section
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          awk -v ver="$VERSION" '
+            /^## \[/ {
+              if (found) exit
+              if (index($0, "[" ver "]") > 0) { found=1 }
+              next
+            }
+            found { print }
+          ' CHANGELOG.md > release-notes.md
+          if [ ! -s release-notes.md ]; then
+            echo "No changelog entry found for v$VERSION. See the [commit history](https://github.com/${{ github.repository }}/commits/${{ github.ref_name }})." > release-notes.md
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-notes
+          path: release-notes.md
+          retention-days: 1
+
+  release:
+    name: Release (${{ matrix.os }})
+    needs: [ci, prepare]
+    permissions:
+      contents: write
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    env:
+      # macOS ジョブでのみ参照する(他 OS では無害な未使用値)。secrets はステップの
+      # if 条件でも直接参照できるが、判定を 1 箇所に集約するため job env に持たせる(#24)
+      HAS_APPLE_CERT: ${{ secrets.APPLE_CERTIFICATE != '' }}
+      # APPLE_CERTIFICATE 自体は渡さない(渡すと Tauri bundler が Apple 公式 CN 前提の
+      # 自動検出経路に入り自己署名 CN で失敗する)。渡すのは import 済み識別名のみ
+      APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+      # Windows ジョブでのみ参照する(他 OS では無害な未使用値)。理由は HAS_APPLE_CERT と同じ(#25)
+      HAS_WINDOWS_CERT: ${{ secrets.WINDOWS_CERTIFICATE != '' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            # .sig は TAURI_SIGNING_PRIVATE_KEY 設定時のみ updater 署名として生成される(#22)
+            assets: |
+              src-tauri/target/release/bundle/deb/*.deb
+              src-tauri/target/release/bundle/rpm/*.rpm
+              src-tauri/target/release/bundle/appimage/*.AppImage
+              src-tauri/target/release/bundle/appimage/*.AppImage.sig
+          - os: macos-latest
+            # .app.tar.gz は updater 本体、.sig は TAURI_SIGNING_PRIVATE_KEY 設定時のみ生成される(#22)
+            # (softprops/action-gh-release の fail_on_unmatched_files は既定 false で無害)
+            # 自己署名 codesign のみを行い、公証(notarization)はスコープ外(#24)。
+            # APPLE_CERTIFICATE 未設定時は ad-hoc 署名にビルド疎通確認用として縮退し、
+            # 公開リリースには添付しない(下記 Upload release assets の if で保護)
+            assets: |
+              src-tauri/target/release/bundle/dmg/*.dmg
+              src-tauri/target/release/bundle/macos/*.app.tar.gz
+              src-tauri/target/release/bundle/macos/*.app.tar.gz.sig
+          - os: windows-latest
+            # .sig は TAURI_SIGNING_PRIVATE_KEY 設定時のみ updater 署名として生成される(#22/#25)
+            assets: |
+              src-tauri/target/release/bundle/nsis/*-setup.exe
+              src-tauri/target/release/bundle/nsis/*-setup.exe.sig
+              src-tauri/target/release/bundle/msi/*.msi
+              src-tauri/target/release/bundle/msi/*.msi.sig
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - name: Install system dependencies (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a apt-get install -y --no-install-recommends \
+            libgtk-3-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev pkg-config libsoup-3.0-dev
+      - run: npm ci
+      - name: Set up macOS signing keychain (self-signed)
+        # secret 名は APPLE_CERTIFICATE / APPLE_CERTIFICATE_PASSWORD のままだが、
+        # job の env 変数名は MACOS_SIGNING_P12 / MACOS_SIGNING_P12_PASSWORD へ別名化する。
+        # (env 名を APPLE_CERTIFICATE のままにすると Tauri bundler が Apple 公式 CN 前提の
+        #  自動検出経路に入り、自己署名 CN では失敗するため。上記 job env の
+        #  APPLE_SIGNING_IDENTITY コメントも参照)
+        if: matrix.os == 'macos-latest' && env.HAS_APPLE_CERT == 'true'
+        env:
+          MACOS_SIGNING_P12: ${{ secrets.APPLE_CERTIFICATE }}
+          MACOS_SIGNING_P12_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          KEYCHAIN_PATH="$RUNNER_TEMP/macos-signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(uuidgen)"
+          CERTIFICATE_PATH="$RUNNER_TEMP/apple-certificate.p12"
+          CERTIFICATE_PEM_PATH="$RUNNER_TEMP/apple-certificate.pem"
+
+          echo "$MACOS_SIGNING_P12" | base64 --decode -o "$CERTIFICATE_PATH"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          security import "$CERTIFICATE_PATH" -k "$KEYCHAIN_PATH" -P "$MACOS_SIGNING_P12_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security list-keychains -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | sed 's/"//g')
+
+          # 自己署名ルート証明書を System keychain の信頼設定に追加する(CSSMERR_TP_NOT_TRUSTED 対策)。
+          # /usr/bin/openssl で明示的にパスを指定すること。PATH 解決に任せると
+          # macOS runner では Homebrew 製の OpenSSL 3.x が先に見つかり、macOS が p12 書き出しに
+          # 使う legacy 暗号方式(RC2-40-CBC 等)をエラーも出さずに復号できず空の PEM を生成する。
+          # macOS 標準の /usr/bin/openssl(LibreSSL)は legacy 形式をそのまま扱えるため確実
+          /usr/bin/openssl pkcs12 -in "$CERTIFICATE_PATH" -clcerts -nokeys -passin "pass:$MACOS_SIGNING_P12_PASSWORD" -out "$CERTIFICATE_PEM_PATH"
+          sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain "$CERTIFICATE_PEM_PATH"
+
+          rm -f "$CERTIFICATE_PATH" "$CERTIFICATE_PEM_PATH"
+      - name: Warn about macOS ad-hoc signing fallback
+        if: matrix.os == 'macos-latest' && env.HAS_APPLE_CERT == 'false'
+        run: echo "::warning::APPLE_CERTIFICATE が未設定のため macOS ビルドは ad-hoc 署名(ビルド疎通確認用)に縮退します。公開リリースには添付しません。"
+      - name: Import Windows code signing certificate
+        if: matrix.os == 'windows-latest' && env.HAS_WINDOWS_CERT == 'true'
+        shell: pwsh
+        env:
+          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        run: |
+          $pfxPath = Join-Path $env:RUNNER_TEMP 'windows-certificate.pfx'
+          [IO.File]::WriteAllBytes($pfxPath, [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE))
+
+          $securePassword = ConvertTo-SecureString -String $env:WINDOWS_CERTIFICATE_PASSWORD -AsPlainText -Force
+          $cert = Import-PfxCertificate -FilePath $pfxPath -CertStoreLocation Cert:\CurrentUser\My -Password $securePassword
+
+          Remove-Item $pfxPath -Force
+
+          echo "WINDOWS_CERT_THUMBPRINT=$($cert.Thumbprint)" >> $env:GITHUB_ENV
+      - name: Warn about Windows unsigned build fallback
+        if: matrix.os == 'windows-latest' && env.HAS_WINDOWS_CERT == 'false'
+        shell: pwsh
+        run: echo "::warning::WINDOWS_CERTIFICATE が未設定のため Windows ビルドは未署名(SmartScreen 警告あり)に縮退します。"
+      - run: npm run tauri:build
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+      - name: Verify macOS code signing
+        if: matrix.os == 'macos-latest' && env.HAS_APPLE_CERT == 'true'
+        run: |
+          APP_PATH="$(find src-tauri/target/release/bundle/macos -maxdepth 1 -name '*.app' -print -quit)"
+          codesign --verify --deep --strict --verbose=2 "$APP_PATH"
+          AUTHORITY="$(codesign -dvv "$APP_PATH" 2>&1 | grep '^Authority=' | head -1)"
+          echo "$AUTHORITY"
+          grep -qF "$APPLE_SIGNING_IDENTITY" <<< "$AUTHORITY" || {
+            echo "::error::codesign の Authority が APPLE_SIGNING_IDENTITY と一致しません: $AUTHORITY"
+            exit 1
+          }
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-notes
+      - name: Upload release assets
+        # macOS で APPLE_CERTIFICATE 未設定(ad-hoc 署名)の場合は、無警告の ad-hoc 成果物を
+        # 公開リリースに添付しないためスキップする(公証はスコープ外、署名はビルド疎通確認用に限定)。
+        # Windows の未署名フォールバックには同種のガードを設けていない(ad-hoc は identity ゼロで
+        # Gatekeeper に強くブロックされるのに対し、未署名 Windows バイナリは SmartScreen 警告で
+        # 起動自体は可能なため、リスクの非対称性に応じた対応)
+        if: matrix.os != 'macos-latest' || env.HAS_APPLE_CERT == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          draft: true
+          prerelease: ${{ needs.prepare.outputs.prerelease }}
+          body_path: release-notes.md
+          files: ${{ matrix.assets }}
+
+  generate-pdf:
+    name: Generate documentation PDFs
+    needs: [ci, prepare]
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run generate-docs
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-notes
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          draft: true
+          prerelease: ${{ needs.prepare.outputs.prerelease }}
+          body_path: release-notes.md
+          files: docs/*.pdf
+
+  updater-manifest:
+    name: Generate updater manifest (latest.json)
+    needs: [release, prepare]
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      TAG: ${{ github.ref_name }}
+      REPO: ${{ github.repository }}
+    steps:
+      - name: Locate draft release for this tag
+        # draft release は /repos/{owner}/{repo}/releases/tags/{tag} に出ないため、
+        # 一覧 API を tag_name でフィルタして特定する
+        run: |
+          set -euo pipefail
+          gh api "repos/$REPO/releases?per_page=100" --paginate \
+            --jq ".[] | select(.tag_name == \"$TAG\")" > release.json
+
+          MATCH_COUNT=$(jq -s 'length' release.json)
+          if [ "$MATCH_COUNT" -ne 1 ]; then
+            echo "::error::タグ $TAG に一致する release が $MATCH_COUNT 件見つかりました(1件である必要があります)"
+            exit 1
+          fi
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-notes
+
+      - name: Build latest.json
+        # 本体 asset は public repo の静的ダウンロード URL(browser_download_url)を使う。
+        # .sig は draft 状態でも読めるよう asset の API URL 経由(Accept: application/octet-stream)で取得する。
+        # url_pattern は release ジョブの matrix.assets(このファイル内)のファイル拡張子と
+        # 対応させる必要がある
+        run: |
+          set -euo pipefail
+          VERSION="${{ needs.prepare.outputs.version }}"
+          PUB_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          NOTES="$(cat release-notes.md)"
+
+          resolve_platform() {
+            local platform="$1" url_pattern="$2"
+            local sig_pattern="${url_pattern%\$}\\.sig\$"
+            local url sig_id sig
+
+            url=$(jq -r --arg p "$url_pattern" '.assets[] | select(.name | test($p)) | .browser_download_url' release.json)
+            sig_id=$(jq -r --arg p "$sig_pattern" '.assets[] | select(.name | test($p)) | .id' release.json)
+
+            if [ -z "$url" ] || [ -z "$sig_id" ]; then
+              echo "::error::$platform 用のアセットまたは署名ファイルが見つかりません" >&2
+              exit 1
+            fi
+
+            sig=$(gh api "repos/$REPO/releases/assets/$sig_id" -H "Accept: application/octet-stream")
+
+            jq -n --arg url "$url" --arg signature "$sig" '{url: $url, signature: $signature}'
+          }
+
+          DARWIN=$(resolve_platform "darwin-aarch64" '\.app\.tar\.gz$')
+          WINDOWS=$(resolve_platform "windows-x86_64" '-setup\.exe$')
+          LINUX=$(resolve_platform "linux-x86_64" '\.AppImage$')
+
+          jq -n \
+            --arg version "$VERSION" \
+            --arg notes "$NOTES" \
+            --arg pub_date "$PUB_DATE" \
+            --argjson darwin "$DARWIN" \
+            --argjson windows "$WINDOWS" \
+            --argjson linux "$LINUX" \
+            '{
+              version: $version,
+              notes: $notes,
+              pub_date: $pub_date,
+              platforms: {
+                "darwin-aarch64": $darwin,
+                "windows-x86_64": $windows,
+                "linux-x86_64": $linux
+              }
+            }' > latest.json
+
+          cat latest.json
+
+      - name: Upload latest.json to draft release
+        run: gh release upload "$TAG" latest.json --repo "$REPO" --clobber
+
+  publish:
+    name: Publish release
+    needs: [updater-manifest]
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Un-draft release
+        # --prerelease を渡さないことで作成時の prerelease 判定(prepare ジョブ)を維持する
+        run: gh release edit "${{ github.ref_name }}" --draft=false --repo "${{ github.repository }}"

@@ -1,8 +1,27 @@
+---
+id: spec-auto-scroll-timer
+title: タイマーベース自動スクロール（Auto Scroll Timer）抽象仕様書
+type: spec
+status: draft
+sdd-phase: specify
+created: 2026-02-02
+updated: 2026-07-24
+depends-on:
+  - prd-auto-scroll-timer
+tags:
+  - auto-slideshow
+  - timer
+  - scroll-speed
+  - presentation
+  - settings
+category: presentation-playback
+---
+
 # タイマーベース自動スクロール（Auto Scroll Timer）
 
 **ドキュメント種別:** 抽象仕様書 (Spec)
 **SDDフェーズ:** Specify (仕様化)
-**最終更新日:** 2026-02-01
+**最終更新日:** 2026-07-24
 **関連 Design Doc:** [auto-scroll-timer_design.md](./auto-scroll-timer_design.md)
 **関連 PRD:** [auto-scroll-timer.md](../requirement/auto-scroll-timer.md)
 
@@ -22,8 +41,8 @@
 
 1. **音声優先** — 音声ファイルが定義されているスライドでは既存の音声再生終了トリガー（FR_SNA_005）が使用され、タイマーは動作しない
 2. **既存機能の拡張** — 新規のON/OFFトグルは追加せず、既存の自動スライドショーON/OFF（FR_SNA_006）を共有する
-3. **フォールバックファースト** — スクロールスピード設定の読み込みに失敗した場合はデフォルト値（20秒）を使用する（A-005準拠）
-4. **データ駆動** — スクロールスピードの設定値はアプリケーション状態として管理し、ハードコードしない（A-003準拠）
+3. **フォールバックファースト** — スクロールスピード設定の読み込みに失敗した場合、または保存値が無効（数値でない、または 1 未満）な場合はデフォルト値（20秒）を使用する（A-005準拠）
+4. **設定値の状態管理とバリデーション** — スクロールスピードの設定値はコードにハードコードせず、アプリケーション状態（`localStorage` 永続化付き）として管理する。外部から読み込む値は使用前に検証する（D-002準拠）
 
 # 3. 要求定義
 
@@ -32,11 +51,19 @@
 | ID     | 要件                                                             | 優先度    | PRD参照      |
 |--------|----------------------------------------------------------------|--------|------------|
 | FR-001 | 自動スライドショーONかつ notes.voice が未定義のスライド表示時、設定秒数後に次スライドへ自動遷移する      | Must   | FR_AST_001 |
-| FR-002 | 設定ウィンドウからスクロールスピード（秒数）を変更できる                                   | Must   | FR_AST_002 |
+| FR-002 | 設定ウィンドウからスクロールスピード（秒数、1〜300 の範囲）を変更できる                          | Must   | FR_AST_002 |
 | FR-003 | スクロールスピードのデフォルト値は20秒                                           | Could  | FR_AST_003 |
 | FR-004 | タイマーカウント中に手動でスライドを移動した場合、タイマーがリセットされ新しいスライドで再カウントが開始される        | Should | FR_AST_004 |
 | FR-005 | 最終スライドではタイマーによる自動遷移を行わない                                       | Should | FR_AST_005 |
 | FR-006 | notes.voice が定義されたスライドではタイマーは動作せず、音声再生終了トリガー（FR_SNA_005）が優先される | Must   | FR_AST_006 |
+
+## 3.2. 非機能要件 (Non-Functional Requirements)
+
+| ID      | カテゴリ    | 要件               | 目標値                                                      | PRD参照       |
+|---------|---------|------------------|----------------------------------------------------------|-------------|
+| NFR-001 | 性能      | 自動遷移のタイミング精度     | 秒単位（許容誤差 ±1 秒以内）で十分。ミリ秒精度は不要                             | NFR_AST_001 |
+| NFR-002 | 信頼性     | タイマーリーク防止        | スライド遷移・アンマウント時に必ずクリアし、同時にアクティブなタイマーは最大 1 個（メモリリークなし）      | NFR_AST_002 |
+| NFR-003 | ユーザビリティ | 設定変更の即時反映        | scrollSpeed 変更後、追加のユーザー操作なしに次のカウントへ即座に反映                  | NFR_AST_003 |
 
 # 4. API
 
@@ -45,8 +72,8 @@
 | ディレクトリ          | ファイル名               | エクスポート                         | 概要                                   |
 |-----------------|---------------------|--------------------------------|--------------------------------------|
 | src/hooks/      | useAutoSlideshow.ts | `useAutoSlideshow()` (拡張)      | 既存フックにタイマーベース自動スクロール機能を追加            |
-| src/hooks/      | useAutoSlideshow.ts | `UseAutoSlideshowOptions` (拡張) | options に scrollSpeed を追加            |
-| src/hooks/      | useAutoSlideshow.ts | `UseAutoSlideshowReturn` (拡張)  | 戻り値に scrollSpeed, setScrollSpeed を追加 |
+| src/hooks/      | useAutoSlideshow.ts | `UseAutoSlideshowOptions` (拡張) | options に initialScrollSpeed を追加     |
+| src/hooks/      | useAutoSlideshow.ts | `UseAutoSlideshowReturn` (拡張)  | 戻り値に scrollSpeed, setScrollSpeed, timerDuration を追加 |
 | src/components/ | SettingsWindow.tsx  | `SettingsWindow` (拡張)          | 言語設定機能の設定ウィンドウにスクロールスピード設定フィールドを追加   |
 
 ## 4.2. 型定義
@@ -58,7 +85,7 @@ interface UseAutoSlideshowOptions {
   currentIndex: number
   audioPlayer: UseAudioPlayerReturn
   goToNext: () => void
-  scrollSpeed?: number  // 追加: スクロールスピード（秒）。未指定時はデフォルト値
+  initialScrollSpeed?: number  // 追加: 初期スクロールスピード（秒）。未指定時は localStorage 保存値、それも無ければデフォルト値
 }
 
 /** UseAutoSlideshowReturn の拡張 */
@@ -68,9 +95,13 @@ interface UseAutoSlideshowReturn {
   autoSlideshow: boolean
   setAutoSlideshow: (enabled: boolean) => void
   scrollSpeed: number                       // 追加: 現在のスクロールスピード（秒）
-  setScrollSpeed: (speed: number) => void   // 追加: スクロールスピードの変更
+  setScrollSpeed: (speed: number) => void   // 追加: スクロールスピードの変更（localStorage へ永続化）
+  timerDuration: number | null              // 追加: タイマー稼働中の総秒数。非稼働時は null（プログレス表示用）
 }
 ```
+
+- `initialScrollSpeed` 未指定時は、`localStorage`（キー `slide-app-scroll-speed`）の保存値（有効な数値かつ 1 以上）を初期値とし、それも無ければデフォルト値 20 秒を用いる。`setScrollSpeed` は変更値を同キーへ永続化する。
+- `timerDuration` は、タイマーが稼働中のとき総秒数（= 現在の `scrollSpeed`）を、非稼働時は `null` を返す。プログレス表示（別機能 [auto-scroll-progress-bar.md](../requirement/auto-scroll-progress-bar.md)）が残り時間を算出するために使用する。
 
 # 5. 用語集
 
@@ -90,18 +121,21 @@ const autoSlideshow = useAutoSlideshow({
   currentIndex,
   audioPlayer,
   goToNext: () => revealRef.current?.next(),
-  scrollSpeed: 20,  // デフォルト20秒
+  initialScrollSpeed: 20,  // 初期値20秒（未指定なら localStorage 保存値／デフォルト20秒）
 })
 
-// SettingsWindow 内でのスクロールスピード設定
-function ScrollSpeedSetting() {
-  const { scrollSpeed, setScrollSpeed } = useAutoSlideshow(/* ... */)
+// SettingsWindow は scrollSpeed / setScrollSpeed を props で受け取る
+function ScrollSpeedSetting({ scrollSpeed, setScrollSpeed }: { scrollSpeed: number; setScrollSpeed: (speed: number) => void }) {
   return (
     <input
       type="number"
       value={scrollSpeed}
-      onChange={(e) => setScrollSpeed(Number(e.target.value))}
+      onChange={(e) => {
+        const v = Number(e.target.value)
+        if (v >= 1 && v <= 300) setScrollSpeed(v)
+      }}
       min={1}
+      max={300}
     />
   )
 }
@@ -175,7 +209,8 @@ flowchart TD
 
 # 8. 制約事項
 
-- スクロールスピードの設定値はデータ駆動で管理し、ハードコードを禁止する（A-003 準拠）
+- スクロールスピードの設定値はコードにハードコードせず、アプリケーション状態として管理する。外部（localStorage）から読み込む値は使用前に検証し、無効時はデフォルト値へフォールバックする（D-002 / A-005 準拠）
+- スクロールスピードの設定可能範囲は 1〜300 秒とし、設定 UI（SettingsWindow の数値入力）で下限 1・上限 300 を強制する
 - タイマーのライフサイクルは useEffect で管理し、クリーンアップ時にリソースを解放する（T-003 準拠）
 - TypeScript strict モードで型安全性を確保する（T-001 準拠）
 - Reveal.js の DOM 構造との互換性を維持する（T-002 準拠）
@@ -188,4 +223,4 @@ flowchart TD
 
 - 対応PRD: [auto-scroll-timer.md](../requirement/auto-scroll-timer.md)
 - カバーする要求: UR_AST_001, FR_AST_001, FR_AST_002, FR_AST_003, FR_AST_004, FR_AST_005, FR_AST_006, DC_AST_001,
-  DC_AST_002
+  DC_AST_002, NFR_AST_001, NFR_AST_002, NFR_AST_003

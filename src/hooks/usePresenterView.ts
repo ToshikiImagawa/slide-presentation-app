@@ -1,10 +1,24 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { SlideData, PresenterViewMessage, PresenterControlState } from '../data'
+import { emit, listen } from '@tauri-apps/api/event'
+import type { UnlistenFn } from '@tauri-apps/api/event'
+import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
+import type { SlideData, PresenterViewMessage, PresenterControlState, ThemeData } from '../data'
+import { useTranslation } from '../i18n'
+import { useToast } from '../toast'
 
-const CHANNEL_NAME = 'presenter-view'
+const EVENT_NAME = 'presenter-view'
+const PRESENTER_WINDOW_LABEL = 'presenterView'
 
 export interface UsePresenterViewOptions {
   slides: SlideData[]
+  /** 現在のパッケージ同梱アドオンの owner（組み込みのみの場合は空文字） */
+  addonOwner?: string
+  /** 現在のパッケージ同梱アドオンの asset URL 群（発表者ビューへ伝搬してロードさせる） */
+  addonScripts?: string[]
+  /** 本編に適用中のテーマカラー定義への参照（発表者ビューへ伝搬して同じ配色を適用させる） */
+  themeColors?: string
+  /** 本編に適用中のテーマデータ（発表者ビューへ伝搬して同じ配色を適用させる） */
+  theme?: ThemeData
   onNavigate?: (direction: 'prev' | 'next') => void
   onAudioToggle?: () => void
   onAutoPlayToggle?: () => void
@@ -20,10 +34,10 @@ export interface UsePresenterViewReturn {
   sendProgressState: (progress: number, visible: boolean, animationDuration?: number) => void
 }
 
-export function usePresenterView({ slides, onNavigate, onAudioToggle, onAutoPlayToggle, onAutoSlideshowToggle, onScrollSpeedChange }: UsePresenterViewOptions): UsePresenterViewReturn {
+export function usePresenterView({ slides, addonOwner = '', addonScripts = [], themeColors, theme, onNavigate, onAudioToggle, onAutoPlayToggle, onAutoSlideshowToggle, onScrollSpeedChange }: UsePresenterViewOptions): UsePresenterViewReturn {
   const [isOpen, setIsOpen] = useState(false)
-  const channelRef = useRef<BroadcastChannel | null>(null)
-  const windowRef = useRef<Window | null>(null)
+  const { t } = useTranslation()
+  const { showToast } = useToast()
 
   // コールバックを useRef で保持（stale closure 回避）
   const onNavigateRef = useRef(onNavigate)
@@ -49,24 +63,32 @@ export function usePresenterView({ slides, onNavigate, onAudioToggle, onAutoPlay
     onScrollSpeedChangeRef.current = onScrollSpeedChange
   }, [onScrollSpeedChange])
 
-  useEffect(() => {
-    const channel = new BroadcastChannel(CHANNEL_NAME)
-    channelRef.current = channel
+  // 現在のテーマ・アドオンを発表者ビューへ伝搬する（マウント時・presenterViewReady 受信時の両方で使う）
+  const emitThemeAndAddons = () => {
+    const themeMessage: PresenterViewMessage = { type: 'themeChanged', payload: { themeColors, theme } }
+    void emit(EVENT_NAME, themeMessage)
+    const addonMessage: PresenterViewMessage = { type: 'addonsChanged', payload: { owner: addonOwner, scripts: addonScripts } }
+    void emit(EVENT_NAME, addonMessage)
+  }
 
-    channel.onmessage = (event: MessageEvent<PresenterViewMessage>) => {
-      const msg = event.data
+  useEffect(() => {
+    let unlisten: UnlistenFn | undefined
+
+    listen<PresenterViewMessage>(EVENT_NAME, (event) => {
+      const msg = event.payload
       if (msg.type === 'presenterViewReady') {
         setIsOpen(true)
+        // テーマ・アドオンを slides より先に伝搬し、発表者ビューが描画前に適用・ロードできるようにする
+        emitThemeAndAddons()
         const message: PresenterViewMessage = { type: 'slideChanged', payload: { currentIndex: 0, slides } }
-        channel.postMessage(message)
+        void emit(EVENT_NAME, message)
         // 初期制御状態を送信
         if (latestControlStateRef.current) {
           const controlMessage: PresenterViewMessage = { type: 'controlStateChanged', payload: latestControlStateRef.current }
-          channel.postMessage(controlMessage)
+          void emit(EVENT_NAME, controlMessage)
         }
       } else if (msg.type === 'presenterViewClosed') {
         setIsOpen(false)
-        windowRef.current = null
       } else if (msg.type === 'navigate') {
         onNavigateRef.current?.(msg.payload.direction)
       } else if (msg.type === 'audioToggle') {
@@ -78,19 +100,28 @@ export function usePresenterView({ slides, onNavigate, onAudioToggle, onAutoPlay
       } else if (msg.type === 'scrollSpeedChange') {
         onScrollSpeedChangeRef.current?.(msg.payload.speed)
       }
-    }
+    }).then((fn) => {
+      unlisten = fn
+    })
 
     return () => {
-      channel.close()
-      channelRef.current = null
+      unlisten?.()
     }
+  }, [])
+
+  // パッケージ切替（この hook の再マウント）時に、既に開いている発表者ビューへ最新テーマ・アドオンを伝搬する。
+  // 発表者ビューが未オープンならこの emit は無視され、後続の presenterViewReady 受信時に改めて伝搬される。
+  useEffect(() => {
+    emitThemeAndAddons()
+    // マウント時に一度だけ実行する（themeColors/theme/addonOwner/addonScripts はマウント単位で固定）
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const sendSlideState = useCallback(
     (currentIndex: number) => {
-      if (channelRef.current && isOpen) {
+      if (isOpen) {
         const message: PresenterViewMessage = { type: 'slideChanged', payload: { currentIndex, slides } }
-        channelRef.current.postMessage(message)
+        void emit(EVENT_NAME, message)
       }
     },
     [isOpen, slides],
@@ -99,9 +130,9 @@ export function usePresenterView({ slides, onNavigate, onAudioToggle, onAutoPlay
   const sendControlState = useCallback(
     (state: PresenterControlState) => {
       latestControlStateRef.current = state
-      if (channelRef.current && isOpen) {
+      if (isOpen) {
         const message: PresenterViewMessage = { type: 'controlStateChanged', payload: state }
-        channelRef.current.postMessage(message)
+        void emit(EVENT_NAME, message)
       }
     },
     [isOpen],
@@ -109,27 +140,34 @@ export function usePresenterView({ slides, onNavigate, onAudioToggle, onAutoPlay
 
   const sendProgressState = useCallback(
     (progress: number, visible: boolean, animationDuration?: number) => {
-      if (channelRef.current && isOpen) {
+      if (isOpen) {
         const message: PresenterViewMessage = { type: 'progressChanged', payload: { progress, visible, animationDuration } }
-        channelRef.current.postMessage(message)
+        void emit(EVENT_NAME, message)
       }
     },
     [isOpen],
   )
 
   const openPresenterView = useCallback(() => {
-    if (isOpen && windowRef.current && !windowRef.current.closed) {
-      windowRef.current.focus()
-      return
-    }
+    // isOpen（React state）はイベント経由の非同期状態なので、実際のウィンドウ有無は都度 Tauri に問い合わせる
+    WebviewWindow.getByLabel(PRESENTER_WINDOW_LABEL).then((existing) => {
+      if (existing) {
+        void existing.setFocus()
+        return
+      }
 
-    const newWindow = window.open('/presenter-view.html', 'presenterView')
-    if (newWindow) {
-      windowRef.current = newWindow
-    } else {
-      console.warn('[presenter-view] ポップアップがブロックされました。ブラウザの設定でポップアップを許可してください。')
-    }
-  }, [isOpen])
+      const win = new WebviewWindow(PRESENTER_WINDOW_LABEL, {
+        url: 'presenter-view.html',
+        title: '発表者ビュー',
+        width: 1000,
+        height: 700,
+      })
+      win.once('tauri://error', (e) => {
+        console.error('[presenter-view] ウィンドウの作成に失敗しました', e)
+        showToast(t('presenterView.openFailed'))
+      })
+    })
+  }, [showToast, t])
 
   return { openPresenterView, isOpen, sendSlideState, sendControlState, sendProgressState }
 }

@@ -1,8 +1,26 @@
+---
+id: spec-language-settings
+title: 言語設定機能 抽象仕様書
+type: spec
+status: draft
+sdd-phase: specify
+created: 2026-02-02
+updated: 2026-07-24
+depends-on:
+  - prd-language-settings
+tags:
+  - i18n
+  - localization
+  - settings
+  - ui
+category: internationalization
+---
+
 # 言語設定機能（Language Settings）
 
 **ドキュメント種別:** 抽象仕様書 (Spec)
 **SDDフェーズ:** Specify (仕様化)
-**最終更新日:** 2026-02-01
+**最終更新日:** 2026-07-24
 **関連 Design Doc:** [language-settings_design.md](./language-settings_design.md)
 **関連 PRD:** [language-settings.md](../requirement/language-settings.md)
 
@@ -38,9 +56,9 @@
 | FR-005 | 初回訪問時（保存済み設定なし）にブラウザの言語設定を検出し、対応するサポート言語があればデフォルトとする                              | Should | FR-LANG-005 |
 | FR-006 | ブラウザ言語が非対応の場合、または言語リソースのキーが欠落している場合、英語（en-US）をフォールバックとして使用する                      | Must   | FR-LANG-006 |
 | FR-007 | ユーザーが選択した言語設定（言語コード）をブラウザに永続化し、再訪問時に自動復元する                                        | Must   | FR-LANG-007 |
-| FR-008 | 言語リソースをassets配下のJSONファイルとして管理し、ファイル配置のみで自動的に読み込む。JSONの構造を検証し、欠落キーはフォールバック言語から補完する | Must   | FR-LANG-008 |
-| FR-009 | 日本語（ja-JP）と英語（en-US）を最低限サポートする                                                    | Must   | FR-LANG-009 |
-| FR-010 | 設定ウィンドウは将来的に言語以外の設定項目を追加できる構造とする                                                  | Could  | FR-LANG-010 |
+| FR-008 | 言語リソースをassets配下のJSONファイルとして管理し、ファイル配置のみで自動的に読み込む。JSONの必須構造を検証し、欠落した個々のUIキーは `t()` 参照時にフォールバック言語（en-US）から補完する | Must   | FR-LANG-008 |
+| FR-009 | 日本語（ja-JP）と英語（en-US）を最低限サポートする（現行実装ではフランス語（fr-FR）も同梱）                            | Must   | FR-LANG-009 |
+| FR-010 | 設定ウィンドウは言語以外の設定項目を追加できる構造とする（現行実装ではスクロール速度・同梱アドオンの一律無効化/許可履歴リセットを追加済み）              | Could  | FR-LANG-010 |
 
 ## 3.2. 非機能要件 (Non-Functional Requirements)
 
@@ -58,8 +76,9 @@
 | src/i18n/       | i18nProvider.tsx   | `useI18n`        | 現在の言語リソース・言語切り替え関数を返すフック        |
 | src/i18n/       | i18nProvider.tsx   | `useTranslation` | 翻訳関数 `t(key)` を返すフック            |
 | src/i18n/       | loader.ts          | `loadLocales`    | assets配下の言語リソースJSONを読み込み・検証する関数 |
+| src/i18n/       | loader.ts          | `validateLocaleResource` | 言語リソースの必須構造（languageCode/languageName/ui）を検証する関数 |
 | src/components/ | SettingsButton.tsx | `SettingsButton` | スライド左上に表示する設定ボタンコンポーネント         |
-| src/components/ | SettingsWindow.tsx | `SettingsWindow` | 設定ウィンドウのオーバーレイコンポーネント           |
+| src/components/ | SettingsWindow.tsx | `SettingsWindow` | 設定ウィンドウのオーバーレイコンポーネント（言語・スクロール速度・同梱アドオン設定を提供） |
 
 ## 4.2. 型定義
 
@@ -72,11 +91,29 @@ interface LocaleResource {
 }
 
 /** i18nコンテキストの公開インターフェース */
-interface I18nContext {
+interface I18nContextValue {
   locale: string                            // 現在の言語コード
   locales: LocaleResource[]                 // 利用可能な言語リソース一覧
   setLocale: (code: string) => void         // 言語を切り替える
   t: (key: string, fallback?: string) => string  // 翻訳関数（ドット記法でキーを指定）
+}
+
+/** 言語リソース検証結果（マージ・補完はせず、検証対象リソースをそのまま返す） */
+interface LocaleValidationResult {
+  valid: boolean
+  errors: Array<{ path: string; message: string; expected: string; actual: string }>
+  resource: LocaleResource
+}
+
+/** 設定ウィンドウの props（FR-010: 言語以外の設定項目を追加できる拡張構造） */
+interface SettingsWindowProps {
+  open: boolean
+  onClose: () => void
+  scrollSpeed: number                       // 自動スライドショーのスクロール速度（秒）
+  setScrollSpeed: (speed: number) => void
+  embeddedAddonsDisabled?: boolean          // 同梱アドオンの一律無効化フラグ（未指定時はアドオン設定を非表示）
+  onToggleEmbeddedAddons?: (disabled: boolean) => void
+  onResetAddonTrust?: () => void            // アドオン許可履歴のリセット
 }
 ```
 

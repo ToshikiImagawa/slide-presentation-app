@@ -1,8 +1,27 @@
+---
+id: spec-presenter-view
+title: 発表者ビュー（Presenter View）抽象仕様書
+type: spec
+status: draft
+sdd-phase: specify
+created: 2026-02-02
+updated: 2026-07-24
+depends-on:
+  - prd-presenter-view
+tags:
+  - presenter-view
+  - tauri
+  - window-sync
+  - audio-control
+  - reveal-js
+category: presenter-view
+---
+
 # 発表者ビュー（Presenter View）
 
 **ドキュメント種別:** 抽象仕様書 (Spec)
 **SDDフェーズ:** Specify (仕様化)
-**最終更新日:** 2026-02-01
+**最終更新日:** 2026-07-24
 **関連 Design Doc:** [presenter-view_design.md](./presenter-view_design.md)
 **関連 PRD:** [presenter-view.md](../requirement/presenter-view.md)
 
@@ -47,7 +66,7 @@
 | FR-005 | 現在のスライドの要点サマリーが箇条書きで表示される | Should | FR-PV-005 |
 | FR-006 | slides.json の各スライドに notes フィールドを定義できる | Must | FR-PV-006 |
 | FR-007 | ノートが未定義のスライドでは空欄またはデフォルトメッセージを表示する | Must | DC-PV-002 |
-| FR-008 | 発表者ビューウィンドウを閉じてもメインプレゼンテーションに影響しない | Must | - |
+| FR-008 | 発表者ビューウィンドウを閉じてもメインプレゼンテーションに影響しない | Must | FR-PV-001 |
 | FR-009 | 最終スライドでは次スライドプレビューに「最後のスライドです」と表示する | Should | FR-PV-004 |
 | FR-010 | 前のスライドのプレビューが発表者ビューに表示される。最初のスライドでは「最初のスライドです」と表示する | Should | FR-PV-007 |
 | FR-011 | 発表者ビューからスライドの前後移動をアイコンボタンおよびキーボード操作（矢印キー、Spaceキー等）で行え、操作結果がメインウィンドウに同期される | Must | FR-PV-008 |
@@ -75,6 +94,8 @@ interface SlideNotes {
   speakerNotes?: string
   /** 要点サマリー（箇条書き用の配列） */
   summary?: string[]
+  /** 音声ファイルへの相対パス */
+  voice?: string
 }
 
 /** 発表者ビューに同期されるスライド状態 */
@@ -101,6 +122,10 @@ interface PresenterControlState {
   autoSlideshow: boolean
   /** 現在のスライドに音声があるか */
   hasVoice: boolean
+  /** 音声読み込みに失敗した場合 true */
+  hasError: boolean
+  /** 自動スライドショーのスクロール速度 */
+  scrollSpeed: number
 }
 
 /** usePresenterView フックの戻り値 */
@@ -113,18 +138,26 @@ interface UsePresenterViewReturn {
   sendSlideState: (currentIndex: number) => void
   /** 音声・制御状態を発表者ビューに送信する */
   sendControlState: (state: PresenterControlState) => void
+  /** 自動スライドショーの進捗（FillProgress 表示用）を発表者ビューに送信する */
+  sendProgressState: (progress: number, visible: boolean, animationDuration?: number) => void
 }
 
-/** BroadcastChannel で送受信するメッセージ */
+/** Tauri イベント（チャネル名 'presenter-view'）で送受信するメッセージ */
 type PresenterViewMessage =
+  // メインウィンドウ → 発表者ビュー
   | { type: 'slideChanged'; payload: { currentIndex: number; slides: SlideData[] } }
   | { type: 'controlStateChanged'; payload: PresenterControlState }
-  | { type: 'presenterViewReady' }
-  | { type: 'presenterViewClosed' }
+  | { type: 'progressChanged'; payload: { progress: number; visible: boolean; animationDuration?: number } }
+  | { type: 'addonsChanged'; payload: { owner: string; scripts: string[] } }
+  // 発表者ビュー → メインウィンドウ
   | { type: 'navigate'; payload: { direction: 'prev' | 'next' } }
   | { type: 'audioToggle' }
   | { type: 'autoPlayToggle' }
   | { type: 'autoSlideshowToggle' }
+  | { type: 'scrollSpeedChange'; payload: { speed: number } }
+  // 双方向
+  | { type: 'presenterViewReady' }
+  | { type: 'presenterViewClosed' }
 ```
 
 # 5. 用語集
@@ -176,8 +209,11 @@ import { useReveal } from '../hooks/useReveal'
 import { PresenterViewButton } from '../components/PresenterViewButton'
 
 function Presentation({ slides }) {
-  const { openPresenterView, isOpen, sendSlideState, sendControlState } = usePresenterView({
+  const { openPresenterView, isOpen, sendSlideState, sendControlState, sendProgressState } = usePresenterView({
     slides,
+    // パッケージ同梱アドオンを発表者ビューへ伝搬する（組み込みのみの場合は空）
+    addonOwner,
+    addonScripts,
     onNavigate: (direction) => {
       // 発表者ビューからのスライド移動コマンドを受信
       if (direction === 'next') deck.next()
@@ -186,6 +222,7 @@ function Presentation({ slides }) {
     onAudioToggle: () => { /* 音声再生/停止を切り替え */ },
     onAutoPlayToggle: () => { /* 自動音声再生を切り替え */ },
     onAutoSlideshowToggle: () => { /* 自動スライドショーを切り替え */ },
+    onScrollSpeedChange: (speed) => { /* 自動スライドショーのスクロール速度を変更 */ },
   })
 
   const handleSlideChanged = useCallback(
@@ -211,39 +248,40 @@ function Presentation({ slides }) {
 sequenceDiagram
     participant Presenter as 発表者
     participant Main as メインウィンドウ
-    participant Channel as BroadcastChannel
+    participant Event as Tauri Event<br/>(presenter-view)
     participant PView as 発表者ビューウィンドウ
 
     Presenter->>Main: 発表者ビューを開くボタンをクリック
-    Main->>PView: window.open() で別ウィンドウを開く
-    Main->>Channel: 通信チャネルを確立
+    Main->>PView: WebviewWindow（ラベル presenterView）で別ウィンドウを開く
+    PView->>Event: presenterViewReady を emit
+    Event->>Main: 準備完了を受信
 
-    Note over Main,PView: メイン → 発表者ビュー（スライド状態同期）
+    Note over Main,PView: メイン → 発表者ビュー（初期同期）
+    Main->>Event: addonsChanged / slideChanged / controlStateChanged を emit
+    Event->>PView: アドオン・スライド・制御状態を受信
+    PView->>PView: アドオンをロードしノート・プレビュー・サマリーを描画
+
+    Note over Main,PView: メイン → 発表者ビュー（スライド・進捗同期）
     Presenter->>Main: スライドを進める
     Main->>Main: Reveal.js slidechanged イベント発火
-    Main->>Channel: slideChanged メッセージ送信
-    Channel->>PView: スライド状態を受信
-    PView->>PView: ノート・プレビュー・サマリーを更新
-
-    Note over Main,PView: メイン → 発表者ビュー（制御状態同期）
-    Main->>Channel: controlStateChanged メッセージ送信
-    Channel->>PView: 音声・制御状態を受信
-    PView->>PView: 制御ボタンの状態を更新
+    Main->>Event: slideChanged / progressChanged を emit
+    Event->>PView: スライド状態・進捗を受信
+    PView->>PView: ノート・プレビュー・サマリー・FillProgress を更新
 
     Note over Main,PView: 発表者ビュー → メイン（操作コマンド）
     Presenter->>PView: 次スライドボタンをクリック
-    PView->>Channel: navigate { direction: 'next' } 送信
-    Channel->>Main: コマンドを受信
+    PView->>Event: navigate { direction: 'next' } を emit
+    Event->>Main: コマンドを受信
     Main->>Main: Reveal.js で次スライドに遷移
 
     Presenter->>PView: 音声再生ボタンをクリック
-    PView->>Channel: audioToggle 送信
-    Channel->>Main: コマンドを受信
+    PView->>Event: audioToggle を emit
+    Event->>Main: コマンドを受信
     Main->>Main: 音声再生/停止を切り替え
 
     Presenter->>PView: 発表者ビューを閉じる
-    PView->>Channel: presenterViewClosed 送信
-    Channel->>Main: 通信チャネルをクリーンアップ
+    PView->>Event: presenterViewClosed を emit（beforeunload）
+    Event->>Main: クローズを受信し isOpen を false に更新
 ```
 
 ## 7.2. フォールバック動作
@@ -269,8 +307,8 @@ flowchart TD
 - データ駆動型アーキテクチャ（A-003）に準拠し、ノートデータは slides.json で管理する
 - フォールバックファースト設計（A-005）に準拠し、ノート未定義時もエラーなく表示する
 - 既存の `SlideMeta.notes` フィールド（現在 `string` 型）との後方互換性を維持する
-- 発表者ビューウィンドウのクローズ時に通信リソースを確実に解放する
-- 発表者ビューからの操作コマンドは BroadcastChannel を通じてメインウィンドウに送信し、メインウィンドウが実際の操作を実行する（発表者ビューが直接 Reveal.js や音声プレイヤーを操作しない）
+- 発表者ビューウィンドウのクローズ時に通信リソース（イベントリスナー）を確実に解放する
+- 発表者ビューからの操作コマンドはウィンドウ間通信を通じてメインウィンドウに送信し、メインウィンドウが実際の操作を実行する（発表者ビューが直接 Reveal.js や音声プレイヤーを操作しない）
 - 発表者ビューの音声制御ボタンの状態は、メインウィンドウから同期された制御状態に基づいて表示する
 
 ---
@@ -278,4 +316,23 @@ flowchart TD
 ## PRD参照
 
 - 対応PRD: [presenter-view.md](../requirement/presenter-view.md)
-- カバーする要求: UR-PV-001, FR-PV-001, FR-PV-002, FR-PV-003, FR-PV-004, FR-PV-005, FR-PV-006, FR-PV-007, FR-PV-008, FR-PV-009, FR-PV-010, FR-PV-011, DC-PV-001, DC-PV-002, DC-PV-003
+
+### トレーサビリティ・マッピング
+
+| PRD要求 | 種別 | カバーする仕様FR |
+|---|---|---|
+| UR-PV-001 | 全体要求 | FR-001〜FR-014（発表者ビュー全体） |
+| FR-PV-001 | 機能要求 | FR-001, FR-008 |
+| FR-PV-002 | 機能要求 | FR-002 |
+| FR-PV-003 | 機能要求 | FR-003 |
+| FR-PV-004 | 機能要求 | FR-004, FR-009 |
+| FR-PV-005 | 機能要求 | FR-005 |
+| FR-PV-006 | 機能要求 | FR-006 |
+| FR-PV-007 | 機能要求 | FR-010 |
+| FR-PV-008 | 機能要求 | FR-011 |
+| FR-PV-009 | 機能要求 | FR-012 |
+| FR-PV-010 | 機能要求 | FR-013 |
+| FR-PV-011 | 機能要求 | FR-014 |
+| DC-PV-001 | 設計制約 | FR-006（データ駆動ノート）＋ §8 制約事項 |
+| DC-PV-002 | 設計制約 | FR-007（ノート未定義時フォールバック） |
+| DC-PV-003 | 設計制約 | FR-002, FR-011〜FR-014（双方向同期） |

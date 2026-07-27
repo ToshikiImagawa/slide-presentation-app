@@ -1,8 +1,28 @@
+---
+id: spec-presentation-foundation
+title: Reveal.js プレゼンテーション基盤 抽象仕様書
+type: spec
+status: draft
+sdd-phase: specify
+created: 2026-02-02
+updated: 2026-07-24
+depends-on:
+  - prd-presentation-foundation
+tags:
+  - presentation
+  - reveal-js
+  - navigation
+  - scaling
+  - branding
+  - lifecycle
+category: presentation-foundation
+---
+
 # Reveal.js プレゼンテーション基盤
 
 **ドキュメント種別:** 抽象仕様書 (Spec)
 **SDDフェーズ:** Specify (仕様化)
-**最終更新日:** 2026-01-30
+**最終更新日:** 2026-07-24
 **関連 Design Doc:** [presentation-foundation_design.md](./presentation-foundation_design.md)
 **関連 PRD:** [presentation-foundation.md](../requirement/presentation-foundation.md)
 
@@ -26,6 +46,15 @@
 
 技術的な実装詳細（具体的な設定値、CSS実装、モジュール構成）は Design Doc を参照。
 
+## 2.1. 主要ユースケース
+
+| アクター | ユースケース | 概要 | 関連要求 |
+|------|------|------|------|
+| 発表者 | スライドをナビゲーションする | キーボード・タッチ・矢印ボタンでスライド間を移動し、スライド番号・プログレスバー・URLハッシュで現在位置を把握・共有する | FR_600〜FR_606 |
+| 発表者 | プレゼンテーションを表示する | ホーム画面からスライド（サンプルまたはローカルパッケージ）を選び、Reveal.js でレンダリングして発表を開始する | FR_700, FR_701 |
+| 聴衆 | スライドを閲覧する | 基準解像度を維持したまま、任意のウインドウサイズで崩れなく表示されたスライドを閲覧する | FR_800, NFR_200, NFR_203 |
+| 発表者 | ブランディングを表示する | 画面左下にロゴを常時固定表示し、`meta.logo` でロゴをカスタマイズする（未指定時は非表示） | FR_900〜FR_902 |
+
 ---
 
 # 3. 要求定義
@@ -47,6 +76,7 @@
 | FR_703 | スライドごとにトランジションの種類を個別に指定できること | 推奨 | FR_700 |
 | FR_704 | スライド表示時に entrance アニメーションを適用できること | 任意 | FR_700 |
 | FR_705 | スライドの背景にグリッドパターンを表示できること | 任意 | FR_700 |
+| FR_706 | スライド上部にプライマリカラーのアクセントバーを表示できること | 任意 | FR_700 |
 | FR_800 | 基準解像度（1280×720）を維持しつつ、ウインドウサイズに応じて自動スケーリングできること | 必須 | UR_200 |
 | FR_900 | プレゼンテーション画面の固定位置（左下）にロゴを常時表示でき、表示するロゴをカスタマイズできること | 任意 | UR_200 |
 | FR_901 | ロゴ画像のパス・幅・高さを `meta.logo` フィールドで設定できること | 任意 | FR_900 |
@@ -57,7 +87,7 @@
 
 | ID | カテゴリ | 要件 | 目標値 |
 |------|------|------|------|
-| NFR_200 | パフォーマンス | スケーリング処理がリアルタイムに行われ、リサイズ時に視覚的な遅延が発生しないこと | 遅延なし |
+| NFR_200 | パフォーマンス | スケーリング処理がリアルタイムに行われ、リサイズ時に視覚的な遅延が発生しないこと | リサイズ反映を 1 フレーム（約 16ms／60fps 相当）以内 |
 | NFR_201 | 設計制約 | Reveal.js の要求するDOM構造（`.reveal > .slides > section`）を厳密に維持すること | 構造一致 |
 | NFR_202 | 設計制約 | Reveal.js のライフサイクル管理が React のコンポーネントライフサイクルと競合しないこと | メモリリーク・イベントリスナー残留なし |
 | NFR_203 | 設計制約 | 基準解像度を 1280×720 とし、スケーリング範囲を 0.2〜2.0 倍、マージンを 0 とすること | 指定値厳守 |
@@ -70,8 +100,8 @@
 
 | ディレクトリ | ファイル名 | エクスポート | 概要 |
 |------|------|------|------|
-| `src/hooks/` | `useReveal.ts` | `useReveal()` | Reveal.js の初期化・破棄を管理する React フック。`.reveal` コンテナの ref を返す |
-| `src/` | `App.tsx` | `App` | ルートコンポーネント。Reveal.js コンテナ、スライドレンダラー、ロゴを統合 |
+| `src/hooks/` | `useReveal.ts` | `useReveal()` | Reveal.js の初期化・破棄・ナビゲーションを管理する React フック。`deckRef`／`getCurrentSlide`／`goToNext`／`goToPrev` を返す |
+| `src/` | `App.tsx` | `App` | プレゼンテーション画面のルートコンポーネント。Reveal.js コンテナ、スライドレンダラー、ロゴ、ツールバーを統合 |
 | `src/layouts/` | `TitleLayout.tsx` | `TitleLayout` | タイトルスライド用レイアウト。中央揃えの `<section>` を返す |
 | `src/layouts/` | `ContentLayout.tsx` | `ContentLayout` | 見出し＋本文コンテンツ用レイアウト。スライドタイトルとコンテンツエリアを持つ `<section>` を返す |
 | `src/layouts/` | `SectionLayout.tsx` | `SectionLayout` | セクション区切り用レイアウト。全高中央揃えの `<section>` を返す |
@@ -81,12 +111,28 @@
 ## 4.2. 型定義
 
 ```typescript
+/** useReveal フックのオプション */
+interface UseRevealOptions {
+  onSlideChanged?: (event: { indexh: number; indexv: number }) => void;
+}
+
 /** useReveal フックの戻り値 */
-type UseRevealReturn = React.RefObject<HTMLDivElement>;
+interface UseRevealReturn {
+  deckRef: React.RefObject<HTMLDivElement | null>;
+  getCurrentSlide: () => { indexh: number; indexv: number } | null;
+  goToNext: () => void;
+  goToPrev: () => void;
+}
 
 /** App コンポーネントの Props */
 interface AppProps {
   presentationData?: PresentationData;
+  /** ホーム画面へ戻るコールバック（必須） */
+  onGoHome: () => void;
+  /** 現在のパッケージ同梱アドオンの owner（発表者ビューへの伝搬用） */
+  addonOwner?: string;
+  /** 現在のパッケージ同梱アドオンの asset URL 群（発表者ビューへの伝搬用） */
+  addonScripts?: string[];
 }
 
 /** ロゴ設定 */
@@ -98,7 +144,7 @@ interface LogoConfig {
 
 /** レイアウトコンポーネント共通 Props */
 interface LayoutProps {
-  id?: string;
+  id: string;
   children: React.ReactNode;
   meta?: SlideMeta;
 }
@@ -110,10 +156,12 @@ interface ContentLayoutProps extends LayoutProps {
 
 /** BleedLayout 固有の Props */
 interface BleedLayoutProps {
-  id?: string;
+  id: string;
   left: React.ReactNode;
   right: React.ReactNode;
   meta?: SlideMeta;
+  /** 発表者ビューのスケーリング計測用に <section> へ渡す ref */
+  sectionRef?: React.Ref<HTMLElement>;
 }
 
 /** FallbackImage の Props */
@@ -121,13 +169,14 @@ interface FallbackImageProps {
   src: string;
   width: number;
   height: number;
-  alt: string;
+  alt?: string;
+  className?: string;
 }
 
 /** スライドメタデータ（Reveal.js data 属性にマッピング） */
 interface SlideMeta {
   transition?: string;
-  notes?: string;
+  notes?: string | SlideNotes;
   backgroundImage?: string;
   backgroundColor?: string;
 }
@@ -155,14 +204,15 @@ interface SlideMeta {
 import { App } from './App';
 import type { PresentationData } from './data/types';
 
-// デフォルトプレゼンテーション（内部データを使用）
-function DefaultPresentation() {
-  return <App />;
+// デフォルトプレゼンテーション（presentationData 省略時は locale に応じた内部データを使用）
+// onGoHome は必須。ホーム画面へ戻る処理を渡す
+function DefaultPresentation({ goHome }: { goHome: () => void }) {
+  return <App onGoHome={goHome} />;
 }
 
 // カスタムプレゼンテーション（外部JSONデータを使用）
-function CustomPresentation({ data }: { data: PresentationData }) {
-  return <App presentationData={data} />;
+function CustomPresentation({ data, goHome }: { data: PresentationData; goHome: () => void }) {
+  return <App presentationData={data} onGoHome={goHome} />;
 }
 ```
 
@@ -171,7 +221,9 @@ import { useReveal } from './hooks/useReveal';
 
 // Reveal.js コンテナの宣言的な構築
 function PresentationContainer() {
-  const deckRef = useReveal();
+  const { deckRef, goToNext, goToPrev } = useReveal({
+    onSlideChanged: ({ indexh }) => console.log('current slide:', indexh),
+  });
 
   return (
     <div className="reveal" ref={deckRef}>
@@ -190,27 +242,39 @@ function PresentationContainer() {
 
 ## 7.1. 初期化シーケンス
 
+起動時はまず並行初期化を完了させてホーム画面を表示し、ユーザーがスライド（サンプルまたはローカルパッケージ）を選択した時点で App をマウントして Reveal.js を初期化する。
+
 ```mermaid
 sequenceDiagram
     participant Main as main.tsx
+    participant Addons as loadBuiltinAddons
+    participant I18n as loadLocales
+    participant Recent as getRecentSlidePackages
     participant Theme as applyTheme
-    participant Addons as loadAddons
+    participant Home as HomeScreen
     participant App as App Component
     participant Hook as useReveal
     participant Reveal as Reveal.js
 
-    Main->>Theme: applyTheme()
-    Theme-->>Main: CSS変数適用完了
-    Main->>Addons: loadAddons()
-    Addons-->>Main: アドオンロード完了
-    Main->>Main: fetch /slides.json
-    Main->>App: render(<App presentationData={data} />)
+    par Promise.all で並行ロード
+        Main->>Addons: loadBuiltinAddons()
+    and
+        Main->>I18n: loadLocales()
+    and
+        Main->>Recent: getRecentSlidePackages()
+    and
+        Main->>Theme: applyTheme()
+    end
+    Main->>Home: render(<HomeScreen />)
+    Home->>Home: ユーザーがスライド／サンプルを選択
+    Note over Home: パッケージ選択時は loadAddonScripts(scripts, owner) を実行
+    Home->>App: render(<App presentationData={data} onGoHome={...} />)
     App->>App: registerDefaultComponents()
     App->>App: loadPresentationData()
-    App->>Hook: useReveal()
+    App->>Hook: useReveal({ onSlideChanged })
     Hook->>Reveal: new Reveal(deckRef, config)
     Hook->>Reveal: deck.initialize()
-    Reveal-->>Hook: 初期化完了
+    Reveal-->>Hook: 初期化完了・slidechanged 購読
 ```
 
 ## 7.2. ナビゲーションフロー
@@ -257,5 +321,5 @@ sequenceDiagram
 
 ## PRD参照
 
-- 対応PRD: `.sdd/requirement/presentation-foundation.md`
-- カバーする要求: UR_200, FR_600, FR_601, FR_602, FR_603, FR_604, FR_605, FR_606, FR_700, FR_701, FR_702, FR_703, FR_704, FR_705, FR_800, FR_900, FR_901, FR_902, FR_1000, NFR_200, NFR_201, NFR_202, NFR_203
+- 対応 PRD: [presentation-foundation.md](../requirement/presentation-foundation.md)
+- カバーする要求: UR_200, FR_600, FR_601, FR_602, FR_603, FR_604, FR_605, FR_606, FR_700, FR_701, FR_702, FR_703, FR_704, FR_705, FR_706, FR_800, FR_900, FR_901, FR_902, FR_1000, NFR_200, NFR_201, NFR_202, NFR_203

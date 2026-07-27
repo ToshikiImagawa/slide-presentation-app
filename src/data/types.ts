@@ -108,6 +108,10 @@ export type PresenterViewMessage =
   | { type: 'autoPlayToggle' }
   | { type: 'autoSlideshowToggle' }
   | { type: 'scrollSpeedChange'; payload: { speed: number } }
+  // メインウィンドウ → 発表者ビュー（パッケージ切替に伴う同梱アドオンの変更を伝搬する）
+  | { type: 'addonsChanged'; payload: { owner: string; scripts: string[] } }
+  // メインウィンドウ → 発表者ビュー（本編に適用中のテーマを伝搬する）
+  | { type: 'themeChanged'; payload: { themeColors?: string; theme?: ThemeData } }
   // 双方向
   | { type: 'presenterViewReady' }
   | { type: 'presenterViewClosed' }

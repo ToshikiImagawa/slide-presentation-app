@@ -1,8 +1,26 @@
+---
+id: spec-speaker-note-audio
+title: スピーカーノート音声再生（Speaker Note Audio）抽象仕様書
+type: spec
+status: draft
+sdd-phase: specify
+created: 2026-02-02
+updated: 2026-07-24
+depends-on:
+  - prd-speaker-note-audio
+tags:
+  - audio
+  - speaker-note
+  - auto-slideshow
+  - presentation
+category: presentation
+---
+
 # スピーカーノート音声再生（Speaker Note Audio）
 
 **ドキュメント種別:** 抽象仕様書 (Spec)
 **SDDフェーズ:** Specify (仕様化)
-**最終更新日:** 2026-02-01
+**最終更新日:** 2026-07-24
 **関連 Design Doc:** [speaker-note-audio_design.md](./speaker-note-audio_design.md)
 **関連 PRD:** [speaker-note-audio.md](../requirement/speaker-note-audio.md)
 
@@ -61,7 +79,7 @@ interface SlideNotes {
   voice?: string  // 音声ファイルへの相対パス
 }
 
-/** 音声再生の状態 */
+/** 音声再生の状態（'paused' は型として予約されているが、現行実装では未使用・到達不能） */
 type AudioPlaybackState = 'idle' | 'playing' | 'paused'
 
 /** useAudioPlayer の戻り値 */
@@ -70,6 +88,10 @@ interface UseAudioPlayerReturn {
   play: (src: string) => void
   stop: () => void
   isPlaying: boolean
+  hasError: boolean // 音声読み込みに失敗した場合 true
+  onEndedRef: React.MutableRefObject<(() => void) | null> // 音声終了時に呼び出すコールバックを保持する ref
+  currentTime: number // 現在の再生位置（秒）
+  duration: number // 音声の総時間（秒）
 }
 
 /** useAutoSlideshow の戻り値 */
@@ -78,14 +100,16 @@ interface UseAutoSlideshowReturn {
   setAutoPlay: (enabled: boolean) => void
   autoSlideshow: boolean
   setAutoSlideshow: (enabled: boolean) => void
+  scrollSpeed: number // タイマーフォールバック時のスライド送り間隔（秒）
+  setScrollSpeed: (speed: number) => void // scrollSpeed を更新し localStorage に永続化する
+  timerDuration: number | null // タイマーがアクティブな場合の総時間（秒）。非アクティブ時は null
 }
 
 /** AudioPlayButton のプロパティ */
 interface AudioPlayButtonProps {
-  voicePath: string
   playbackState: AudioPlaybackState
-  onPlay: () => void
-  onStop: () => void
+  hasError?: boolean // 音声読み込み失敗時はボタンを無効化しエラー表示にする
+  onToggle: () => void // クリック時に再生/停止をトグルする
 }
 
 /** AudioControlBar のプロパティ */
@@ -94,6 +118,10 @@ interface AudioControlBarProps {
   onAutoPlayChange: (enabled: boolean) => void
   autoSlideshow: boolean
   onAutoSlideshowChange: (enabled: boolean) => void
+  progress?: number // 進行率（0.0〜1.0）
+  progressVisible?: boolean // プログレスリングの表示/非表示
+  animationDuration?: number // CSS アニメーションで 0→100% を補間する duration（秒）
+  progressResetKey?: string | number // 変更するとプログレスアニメーションをリセットする key
 }
 ```
 
@@ -105,7 +133,7 @@ interface AudioControlBarProps {
 | スピーカーアイコン | 音声再生可能なスライドに表示されるボタンUI。再生/停止のトグル操作を行う |
 | 自動再生 | スライド表示時に自動で notes.voice の音声を再生開始する機能 |
 | 自動スライドショー | 音声再生終了時に自動で次のスライドへ遷移する機能 |
-| AudioPlaybackState | 音声の再生状態を表す型（idle / playing / paused） |
+| AudioPlaybackState | 音声の再生状態を表す型（idle / playing / paused）。'paused' は将来用に予約され、現行実装では未使用・到達不能 |
 
 # 6. 使用例
 
@@ -149,16 +177,17 @@ import { AudioPlayButton } from './components/AudioPlayButton'
 import { useAudioPlayer } from './hooks/useAudioPlayer'
 
 function SlideAudioControl({ voicePath }: { voicePath: string }) {
-  const { playbackState, play, stop } = useAudioPlayer()
+  const { playbackState, hasError, isPlaying, play, stop } = useAudioPlayer()
 
-  return (
-    <AudioPlayButton
-      voicePath={voicePath}
-      playbackState={playbackState}
-      onPlay={() => play(voicePath)}
-      onStop={stop}
-    />
-  )
+  const handleToggle = () => {
+    if (isPlaying) {
+      stop()
+    } else {
+      play(voicePath)
+    }
+  }
+
+  return <AudioPlayButton playbackState={playbackState} hasError={hasError} onToggle={handleToggle} />
 }
 ```
 
@@ -235,6 +264,7 @@ flowchart TD
 - 音声オブジェクトのライフサイクルは useEffect で管理し、クリーンアップ時にリソースを解放する（T-003 準拠）
 - slides.json の voice フィールドはバリデーションを実施する（D-002 準拠）
 - スタイリングは3層モデルに従い、テーマカラーは CSS変数経由で参照する（A-002 準拠）
+- 音声再生UI（スピーカーアイコン・自動再生コントロールバー・進捗リング）はプレゼンテーションの視覚的品質と伝達力を損なわない、控えめなデザイン・配置とする（B-001 準拠）
 
 ---
 

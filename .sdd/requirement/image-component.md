@@ -1,3 +1,21 @@
+---
+id: prd-image-component
+title: 画像表示コンポーネント 要求仕様書
+type: prd
+status: draft
+priority: medium
+risk: medium
+created: 2026-02-02
+updated: 2026-07-24
+tags:
+  - image
+  - component-registry
+  - fallback-image
+  - slide-rendering
+  - theme
+category: ui-components
+---
+
 # 画像表示コンポーネント 要求仕様書
 
 ## 概要
@@ -82,21 +100,21 @@ graph TB
 ```mermaid
 requirementDiagram
     requirement ImageComponentReq {
-        id: UR_400
+        id: UR_IMG_001
         text: "スライドJSONのcomponentフィールドから画像を表示できるコンポーネントを提供すること"
         risk: medium
         verifymethod: demonstration
     }
 
     functionalRequirement ImageDisplay {
-        id: FR_1900
+        id: FR_IMG_001
         text: "FallbackImageをラップし、ComponentRegistryに登録された画像表示コンポーネントを提供すること"
         risk: medium
         verifymethod: test
     }
 
     functionalRequirement DefaultSlideExample {
-        id: FR_2000
+        id: FR_IMG_005
         text: "デフォルトスライドに画像表示コンポーネントの使用例を含むスライドを追加すること"
         risk: low
         verifymethod: demonstration
@@ -111,28 +129,28 @@ requirementDiagram
 ```mermaid
 requirementDiagram
     functionalRequirement ImageDisplay {
-        id: FR_1900
+        id: FR_IMG_001
         text: "画像表示コンポーネントを提供すること"
         risk: medium
         verifymethod: test
     }
 
     functionalRequirement ImageProps {
-        id: FR_1901
+        id: FR_IMG_002
         text: "src, alt, width, height をpropsとして受け取り、FallbackImageに渡して画像を表示すること"
         risk: medium
         verifymethod: test
     }
 
     functionalRequirement ImageRegistration {
-        id: FR_1902
+        id: FR_IMG_003
         text: "ComponentRegistryにデフォルトコンポーネントとしてImageという名前で登録されること"
         risk: medium
         verifymethod: test
     }
 
     functionalRequirement ImageFallback {
-        id: FR_1903
+        id: FR_IMG_004
         text: "画像読み込み失敗時にFallbackImageのエラーUIを表示すること"
         risk: low
         verifymethod: demonstration
@@ -148,14 +166,14 @@ requirementDiagram
 ```mermaid
 requirementDiagram
     designConstraint ThemeIntegration {
-        id: NFR_400
+        id: NFR_IMG_001
         text: "画像コンポーネントのフォールバック表示がテーマシステムのCSS変数と連動すること"
         risk: low
         verifymethod: demonstration
     }
 
     designConstraint ExistingPatterns {
-        id: NFR_401
+        id: NFR_IMG_002
         text: "既存のregisterDefaults.tsxのパターンに従いコンポーネントを登録すること"
         risk: low
         verifymethod: inspection
@@ -168,7 +186,7 @@ requirementDiagram
 
 ## 4.1. ユーザ要求
 
-### UR_400: 画像表示コンポーネント
+### UR_IMG_001: 画像表示コンポーネント
 
 スライドJSON の `component` フィールドから画像を表示できるコンポーネントを提供し、デフォルトスライドに使用例を含めること。
 
@@ -178,7 +196,7 @@ requirementDiagram
 
 ## 4.2. 機能要求
 
-### FR_1900: 画像表示コンポーネント
+### FR_IMG_001: 画像表示コンポーネント
 
 `FallbackImage` をラップし、`ComponentRegistry` に登録された画像表示コンポーネントを提供する。
 
@@ -188,13 +206,13 @@ requirementDiagram
 
 | サブ要求    | 優先度    | 説明                                        |
 |:--------|:-------|:------------------------------------------|
-| FR_1901 | Must   | src, alt, width, height を props として受け取り表示 |
-| FR_1902 | Must   | ComponentRegistry に `Image` として登録         |
-| FR_1903 | Should | 画像読み込み失敗時の FallbackImage エラーUI 表示         |
+| FR_IMG_002 | Must   | src, alt, width, height を props として受け取り表示 |
+| FR_IMG_003 | Must   | ComponentRegistry に `Image` として登録         |
+| FR_IMG_004 | Should | 画像読み込み失敗時の FallbackImage エラーUI 表示         |
 
-### FR_2000: デフォルトスライドへの使用例追加
+### FR_IMG_005: デフォルトスライドへの使用例追加
 
-デフォルトスライド（`src/data/default-slides.json`）に画像表示コンポーネントの使用例を含むスライドを追加する。
+デフォルトスライド（ロケール別に `src/data/default-slides-ja.json` / `src/data/default-slides-en.json`）に画像表示コンポーネントの使用例を含むスライドを追加する。
 
 **優先度:** Should
 

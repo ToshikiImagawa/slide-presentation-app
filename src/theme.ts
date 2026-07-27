@@ -85,3 +85,38 @@ export const theme = createTheme({
     },
   },
 })
+
+/**
+ * 編集画面の chrome（ツールバー・フォーム・JSON エディタ）専用の MUI テーマ。
+ * 本番用 `theme` は typography を var(--theme-font-size-*)（＝スライド用の大きなサイズ）に
+ * 束ねているため、同一 document で編集 UI に流用すると入力欄やラベルが巨大化する。
+ * エディタ chrome は固定・コンパクトな UI サイズを使い、プレゼンのテーマはプレビューにだけ適用する
+ * （設計 §9.1 のテーマ波及リスクへの対処）。パレット（ダーク・primary）は本番と揃える。
+ */
+export const editorUiTheme = createTheme({
+  palette: {
+    mode: 'dark',
+    primary: { main: '#e07a5f' },
+    background: {
+      default: '#1c1917',
+      paper: '#292524',
+    },
+    text: {
+      primary: '#faf8f5',
+      secondary: '#a8a29e',
+    },
+  },
+  typography: {
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+    fontSize: 13,
+  },
+  components: {
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          backgroundImage: 'none',
+        },
+      },
+    },
+  },
+})

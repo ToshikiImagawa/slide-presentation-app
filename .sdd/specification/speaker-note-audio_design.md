@@ -1,8 +1,27 @@
+---
+id: design-speaker-note-audio
+title: スピーカーノート音声再生（Speaker Note Audio）技術設計書
+type: design
+status: draft
+sdd-phase: plan
+impl-status: implemented
+created: 2026-02-02
+updated: 2026-07-24
+depends-on:
+  - spec-speaker-note-audio
+tags:
+  - audio
+  - speaker-note
+  - auto-slideshow
+  - presentation
+category: presentation
+---
+
 # スピーカーノート音声再生（Speaker Note Audio）
 
 **ドキュメント種別:** 技術設計書 (Design Doc)
 **SDDフェーズ:** Plan (計画/設計)
-**最終更新日:** 2026-02-01
+**最終更新日:** 2026-07-24
 **関連 Spec:** [speaker-note-audio_spec.md](./speaker-note-audio_spec.md)
 **関連 PRD:** [speaker-note-audio.md](../requirement/speaker-note-audio.md)
 
@@ -48,8 +67,8 @@
 | 音声再生    | HTML5 Audio API                  | ブラウザ標準API。外部ライブラリ不要でシンプル。再生・停止・ended イベントが利用可能 |
 | 状態管理    | React useState / useRef          | 既存パターンに従う。音声再生状態はローカルステートで管理可能                 |
 | ライフサイクル | React useEffect                  | T-003 準拠。Audio オブジェクトの生成・破棄を管理                 |
-| アイコン    | MUI Icons（VolumeUp, VolumeOff 等） | 既存プロジェクトで MUI を使用済み。ComponentRegistry 経由で登録    |
-| スタイリング  | CSS 変数 + MUI sx prop             | A-002 準拠。簡易なボタンスタイルは sx prop で十分               |
+| アイコン    | インライン SVG アイコン                    | 外部アイコン依存を避け、再生/停止/エラー/自動再生/自動スライドショーの各状態を SVG パスで直接描画する |
+| スタイリング  | CSS 変数 + CSS Modules             | A-002 準拠。ボタンスタイルは CSS Modules（AudioPlayButton.module.css / AudioControlBar.module.css）で定義し、テーマカラーは CSS 変数経由で参照。トグルは素の button 要素 + aria-pressed でアクセシビリティを確保 |
 | スライド遷移  | Reveal.js API（`Reveal.next()`）   | 既存の useReveal フック経由。T-002 準拠                   |
 
 ---
@@ -86,8 +105,11 @@ graph TD
 | バリデーション拡張          | voice フィールドの型検証                    | `loader.ts`                     | `src/data/loader.ts`                 |
 | `useAudioPlayer`   | Audio オブジェクトの生成・再生・停止・状態管理・クリーンアップ | HTML5 Audio API                 | `src/hooks/useAudioPlayer.ts`        |
 | `useAutoSlideshow` | 自動再生・自動スライドショーの状態管理とイベント連携         | `useAudioPlayer`, Reveal.js API | `src/hooks/useAutoSlideshow.ts`      |
-| `AudioPlayButton`  | スピーカーアイコンUI（再生/停止トグル）              | MUI Icons                       | `src/components/AudioPlayButton.tsx` |
-| `AudioControlBar`  | 自動再生・自動スライドショーのトグルUI               | MUI Switch/IconButton           | `src/components/AudioControlBar.tsx` |
+| `AudioPlayButton`  | スピーカーアイコンUI（再生/停止/エラー表示のトグル）        | インライン SVG + CSS Modules             | `src/components/AudioPlayButton.tsx` |
+| `AudioControlBar`  | 自動再生・自動スライドショーのトグルUI＋自動進行プログレスリング表示 | 素の button + aria-pressed + `CircularProgress` | `src/components/AudioControlBar.tsx` |
+| `CircularProgress` | メインウィンドウの自動進行プログレス（SVG リング）         | CSS Modules                     | `src/components/CircularProgress.tsx` |
+
+> 補足: 発表者ビュー側の自動進行プログレスは下から塗りつぶすオーバーレイ `FillProgress`（`src/components/FillProgress.tsx`）で表示する。こちらは presenter-view 機能側で扱う。
 
 ---
 
@@ -116,7 +138,10 @@ function useAudioPlayer(): {
     play: (src: string) => void
     stop: () => void
     isPlaying: boolean
-    onEnded: (callback: () => void) => void
+    hasError: boolean // 音声読み込みに失敗した場合 true
+    onEndedRef: React.MutableRefObject<(() => void) | null> // 音声終了時に呼び出すコールバックを保持する ref
+    currentTime: number // 現在の再生位置（秒）
+    duration: number // 音声の総時間（秒）
   } {
 }
 
@@ -125,12 +150,16 @@ function useAutoSlideshow(options: {
   slides: SlideData[]
   currentIndex: number
   audioPlayer: UseAudioPlayerReturn
-  revealNext: () => void
+  goToNext: () => void
+  initialScrollSpeed?: number
 }): {
   autoPlay: boolean
   setAutoPlay: (enabled: boolean) => void
   autoSlideshow: boolean
   setAutoSlideshow: (enabled: boolean) => void
+  scrollSpeed: number // タイマーフォールバック時のスライド送り間隔（秒）
+  setScrollSpeed: (speed: number) => void // scrollSpeed を更新し localStorage に永続化する
+  timerDuration: number | null // タイマーがアクティブな場合の総時間（秒）。非アクティブ時は null
 } {
 }
 
@@ -145,11 +174,13 @@ function getVoicePath(slide: SlideData): string | undefined {
 
 | 要件         | 実現方針                                                                                                                                                                            |
 |------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| 音声再生のレスポンス | Audio オブジェクトの preload は行わない（オンデマンドロード）。再生開始までの遅延はブラウザ依存                                                                                                                         |
-| リソース管理     | useEffect のクリーンアップで audio.pause() と audio.src = '' を実行し、リソースを解放                                                                                                                 |
-| フォールバック    | audio.onerror ハンドラで再生失敗時に `hasError = true` を設定。useAutoSlideshow が `audioPlayer.hasError` を監視し、voice 定義済みかつエラー時はタイマーフォールバック（FR_AST_001）に切り替わる。これにより自動スライドショーの進行が停止しない。プレゼン表示は継続 |
-| 後方互換性      | voice フィールドはオプショナル。既存の notes データ（string 型含む）はそのまま動作                                                                                                                             |
-| ブラウザ互換性    | HTML5 Audio API はモダンブラウザで標準サポート。追加ポリフィル不要                                                                                                                                       |
+| 音声再生のレスポンス       | Audio オブジェクトの preload は行わない（オンデマンドロード）。ローカル配置・キャッシュ済みの音声ではユーザー操作から再生開始まで 300ms 以内を目標とする。ネットワーク経由・未キャッシュ時の遅延は回線・ブラウザ依存とし目標対象外          |
+| データ駆動管理（DC_SNA_001） | 音声ファイルパスは slides.json の notes.voice のみで管理し、コードにハードコードしない（A-003 準拠）                                                                                              |
+| リソース管理（DC_SNA_003）   | useEffect のクリーンアップで audio.pause() と audio.src = '' を実行し、スライド遷移時・アンマウント時に確実にリソースを解放する（T-003 準拠）                                                             |
+| フォールバック（DC_SNA_002）  | audio の error イベントハンドラで再生失敗時に `hasError = true` を設定。useAutoSlideshow が `audioPlayer.hasError` を監視し、voice 定義済みかつエラー時はタイマーフォールバック（FR_AST_001）に切り替わる。これにより自動スライドショーの進行が停止しない。プレゼン表示は継続 |
+| 自動スクロール速度の永続化    | scrollSpeed は localStorage キー `slide-app-scroll-speed` に保存し、次回起動時に復元する。未保存時は既定値 20 秒（`DEFAULT_SCROLL_SPEED`）                                                     |
+| 後方互換性            | voice フィールドはオプショナル。既存の notes データ（string 型含む）はそのまま動作                                                                                                                    |
+| ブラウザ互換性          | HTML5 Audio API はモダンブラウザで標準サポート。追加ポリフィル不要                                                                                                                              |
 
 ---
 
@@ -158,7 +189,7 @@ function getVoicePath(slide: SlideData): string | undefined {
 | テストレベル     | 対象                                      | カバレッジ目標                                                       |
 |------------|-----------------------------------------|---------------------------------------------------------------|
 | ユニットテスト    | `getVoicePath()`, `normalizeNotes()` 拡張 | voice あり/なし/string型 notes のすべてのパターン                           |
-| ユニットテスト    | `useAudioPlayer` フック                    | play/stop/ended/error の状態遷移。error 時に onEndedRef コールバックが呼ばれること |
+| ユニットテスト    | `useAudioPlayer` フック                    | play/stop/ended/error の状態遷移。ended 時に onEndedRef コールバックが呼ばれること、error 時に hasError が true になること |
 | ユニットテスト    | `useAutoSlideshow` フック                  | autoPlay ON/OFF × autoSlideshow ON/OFF の組み合わせ                 |
 | ユニットテスト    | バリデーション拡張                               | voice フィールドの型検証（string/undefined/不正値）                         |
 | コンポーネントテスト | `AudioPlayButton`                       | voice あり/なし時の表示・クリック動作                                        |

@@ -1,3 +1,21 @@
+---
+id: prd-presenter-view
+title: 発表者ビュー（Presenter View）要求仕様書
+type: prd
+status: draft
+priority: high
+risk: high
+created: 2026-02-02
+updated: 2026-07-24
+tags:
+  - presenter-view
+  - tauri
+  - window-sync
+  - audio-control
+  - reveal-js
+category: presenter-view
+---
+
 # 発表者ビュー（Presenter View）要求仕様書
 
 ## 概要
@@ -205,7 +223,7 @@ requirementDiagram
 
     designConstraint BidirectionalSync {
         id: DC_PV_003
-        text: "発表者ビューからの操作はBroadcastChannel等のウィンドウ間通信を通じてメインウィンドウに伝達し、双方向の同期を実現すること"
+        text: "発表者ビューからの操作はウィンドウ間通信を通じてメインウィンドウに伝達し、双方向の同期を実現すること"
         risk: medium
         verifymethod: test
     }
@@ -342,7 +360,7 @@ requirementDiagram
 
 ### DC-PV-003: 双方向ウィンドウ間同期
 
-発表者ビューからのスライド移動操作および音声再生制御は、ウィンドウ間通信（BroadcastChannel等）を通じてメインウィンドウに伝達する。メインウィンドウは受信したコマンドに基づいて対応する操作を実行し、その結果を発表者ビューに同期する。
+発表者ビューからのスライド移動操作および音声再生制御は、ウィンドウ間通信を通じてメインウィンドウに伝達する。メインウィンドウは受信したコマンドに基づいて対応する操作を実行し、その結果を発表者ビューに同期する。通信手段の具体は設計書（Design Doc）で定義する。
 
 ---
 
@@ -356,8 +374,8 @@ requirementDiagram
 - ウィンドウ間通信のライフサイクルは useEffect で管理し、クリーンアップ時にリスナーを解除すること（T-003 準拠）
 - 発表者ビューのスタイリングは3層モデルに従い、テーマカラーは CSS変数（`--theme-*`）経由で参照すること（A-002 準拠）
 - slides.json の notes フィールドはバリデーションを実施し、型安全性を保証すること（D-002 準拠）
-- 発表者ビューのUIコンポーネントは ComponentRegistry で管理し、拡張性を確保すること（A-004 準拠）
-- 発表者ビューからメインウィンドウへのコマンド送信とメインウィンドウからの状態同期は、既存のBroadcastChannelを拡張して双方向通信を実現すること
+- 発表者ビュー内のスライドプレビュー描画は ComponentRegistry 経由でコンポーネントを解決し、拡張性を確保すること（A-004 準拠）。発表者ビューのクローム UI（操作ボタン・情報パネル）は A-004 の対象外とし、専用コンポーネントとして直接配置する
+- 発表者ビューからメインウィンドウへのコマンド送信とメインウィンドウからの状態同期は、同一のウィンドウ間通信チャネルで双方向通信を実現すること
 
 ## 5.2. ビジネス的制約
 
@@ -369,7 +387,7 @@ requirementDiagram
 # 6. 前提条件
 
 - メインウィンドウでプレゼンテーションが正常に動作していること
-- ブラウザが window.open() によるポップアップウィンドウを許可していること
+- デスクトップアプリ（Tauri）上で動作し、別ウィンドウ（ネイティブ WebView ウィンドウ）を生成できること
 - slides.json にスライドデータが定義されていること
 - メインウィンドウで音声再生機能（AudioPlayButton, AudioControlBar）が正常に動作していること
 

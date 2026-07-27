@@ -1,0 +1,71 @@
+.previewScaler {
+  width: 1280px;
+  height: 720px;
+  transform-origin: top left;
+  pointer-events: none;
+}
+
+/*
+ * Reveal.js の印刷用 CSS が !important で section に
+ * position: static, width: auto, padding: 60px 20px 等を強制するため、
+ * プレビュー用にオーバーライドする。
+ * CSS Modules のスコープ内なのでメイン画面に影響しない。
+ * （発表者ビューの PresenterViewWindow.module.css と同一。将来は共通化を検討＝task-cleanup 候補）
+ */
+.previewReveal {
+  position: relative !important;
+  width: 1280px !important;
+  height: 720px !important;
+  overflow: hidden !important;
+  background-color: var(--theme-background) !important;
+  font-family: var(--theme-font-body), serif;
+}
+
+.previewReveal .slides {
+  position: absolute !important;
+  width: 100% !important;
+  height: 100% !important;
+  top: 0 !important;
+  left: 0 !important;
+  margin: 0 !important;
+  pointer-events: none;
+  text-align: center;
+}
+
+.previewReveal .slides section {
+  position: absolute !important;
+  width: 100% !important;
+  height: 100% !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  top: 0 !important;
+  left: 0 !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  transform: none !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+  text-align: left;
+}
+
+/*
+ * Reveal.js の印刷用 CSS が h1〜h4 に font-size を !important で強制するため、
+ * MUI Typography の CSS 変数によるサイズ指定を復元する。
+ */
+.previewReveal h1 {
+  font-size: var(--theme-font-size-h1) !important;
+}
+
+.previewReveal h2 {
+  font-size: var(--theme-font-size-h2) !important;
+}
+
+.previewReveal h3 {
+  font-size: var(--theme-font-size-h3) !important;
+}
+
+.previewReveal h4 {
+  font-size: var(--theme-font-size-h4) !important;
+  font-variant: normal !important;
+}

@@ -1,9 +1,28 @@
+---
+id: prd-visual-addon
+title: ビジュアルコンポーネントのアドオン化 要求仕様書
+type: prd
+status: approved
+priority: medium
+risk: medium
+created: 2026-02-02
+updated: 2026-07-26
+tags:
+  - addon
+  - visual-component
+  - component-registry
+  - iife-bundle
+category: addon-system
+---
+
 # ビジュアルコンポーネントのアドオン化 要求仕様書
 
 ## 概要
 
 `src/visuals/` 配下のビジュアルコンポーネント（VibeCodingDemo, HierarchyFlowVisual,
 PersistenceVisual）を「アドオン」として本体コードから分離し、独立したモジュールとして管理可能にする。これにより、プレゼンテーション本体の変更なしにビジュアル要素の追加・削除が可能となり、拡張性と保守性を向上させる。
+
+なお、本 PRD が対象とする組み込みアドオン（層A）は**開発補助として dev 環境限定**で用い、release ビルドではロードも同梱もしない。エンドユーザーへのアドオン配布は層B（`.spkg` 同梱）へ委譲する（[slide-edit-mode.md](./slide-edit-mode.md) / [package-embedded-addon.md](./package-embedded-addon.md)）。
 
 ## 背景・目的
 
@@ -135,12 +154,20 @@ requirementDiagram
         verifymethod: demonstration
     }
 
+    designConstraint BuiltinDevOnly {
+        id: DC_003
+        text: "組み込みアドオン層Aは dev 限定とし release ではロードも同梱もしないこと"
+        risk: medium
+        verifymethod: inspection
+    }
+
     AddonSystem - contains -> AddonBundle
     AddonSystem - contains -> AddonRegistration
     AddonSystem - contains -> AddonToggle
     AddonSystem - contains -> VisualMigration
     AddonSystem - contains -> ExistingRegistryCompat
     AddonSystem - contains -> NoBehaviorChange
+    AddonSystem - contains -> BuiltinDevOnly
     AddonRegistration - derives -> AddonBundle
     VisualMigration - derives -> AddonBundle
 ```
@@ -204,7 +231,10 @@ requirementDiagram
 
 **優先度**: Should
 
-アドオン化によるプロダクションビルドサイズの増加は最小限（ファイル分割による overhead 程度）に抑えること。
+アドオン化によるプロダクションビルドサイズの増加は最小限に抑えること。
+
+- **目標値**: 本体バンドル（`dist/assets/*.js`）のサイズを増加させない（ビジュアルはアドオン IIFE として分離配信されるため、本体バンドルはむしろ減少する）。アドオン化に伴い新たに配布されるのはアドオン IIFE（`addons.iife.js`）と `manifest.json` のみとする
+- アドオンは React を external 指定とし、React をバンドルに重複させない（重複増分 0）
 
 **検証方法:** テスト（ビルド前後のサイズ比較）による検証
 
@@ -220,8 +250,8 @@ requirementDiagram
 
 ### DC-001: ComponentRegistry 互換性
 
-既存の ComponentRegistry の仕組み（default/custom の二層構造、resolveComponent の優先順位）は変更しない。アドオンは
-custom側の登録 API を利用する。
+既存の ComponentRegistry の解決の仕組み（custom → default → fallback の3層優先解決、A-004: 多層コンポーネントレジストリ）は変更しない。アドオンは
+custom側の登録 API（`registerComponent`）を利用する。`registerComponent` にはアドオンのライフサイクル管理のためオプション引数 `owner` が後方互換な拡張として追加されているが、既存の呼び出しと解決順序には影響しない。
 
 **検証方法:** コードレビューによる検証
 
@@ -231,13 +261,19 @@ custom側の登録 API を利用する。
 
 **検証方法:** デモンストレーション（目視確認）による検証
 
+### DC-003: 組み込みアドオンの dev 限定
+
+組み込みアドオン（層A）は開発補助であり、**dev 環境限定**とする。release ビルドでは起動時に `loadBuiltinAddons()` を呼ばず、`copyAddonsPlugin` も `addons/dist` を配信ディレクトリへコピーしない。したがって release ではビジュアルアドオンをロードも同梱もしない。開発者ローカルの層A（gitignore された `addons/src/`）が release ビルドへ焼き込まれる問題（#35）を根治するための制約であり、エンドユーザーへの配布は層B（`.spkg` 同梱）へ委譲する。
+
+**検証方法:** インスペクション（コードレビュー）による検証
+
 ---
 
 # 5. 制約事項
 
 ## 5.1. 技術的制約
 
-- 既存の ComponentRegistry のインターフェースを維持する（A-001: コンポーネント分離）
+- 既存の ComponentRegistry の解決の仕組みを維持する（A-001: コンポーネント分離、A-004: 多層コンポーネントレジストリ）。`registerComponent` のオプション引数 `owner` は後方互換な拡張として追加
 - TypeScript strict mode での型安全性を確保する（T-001）
 - Reveal.js との互換性を維持する（T-002）
 
@@ -263,6 +299,7 @@ custom側の登録 API を利用する。
 - MUI アイコンのアドオン化
 - アドオンのバージョン管理・依存関係解決
 - アドオンのホットリロード（開発中はビルド後にリロードが必要）
+- 組み込みアドオン（層A）の release 配布（release への配布は層B＝`.spkg` 同梱へ委譲。[slide-edit-mode.md](./slide-edit-mode.md) / [package-embedded-addon.md](./package-embedded-addon.md)）
 
 ---
 

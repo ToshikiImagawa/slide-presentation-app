@@ -7,9 +7,29 @@ dist/
 .env.local
 .env.*.local
 
+# contents
 public/
 addons/src/
 addons/dist/
 addons/.entry-generated.ts
-
 dist-slides/
+
+# sdd
+.sdd/.cache/
+/.cache/
+
+# screenshots（compare.mjs の手動比較用の一時出力）
+scripts/screenshot/__compare__/
+
+# docs（generate-docs で生成する PDF）
+docs/*.pdf
+
+# Playwright E2E の出力
+playwright-report/
+test-results/
+.playwright/
+
+# parallel-worktree
+.claude/worktrees/
+.claude/parallel-worktree.json
+scripts/worktree-init.sh

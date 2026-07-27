@@ -1,0 +1,155 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+
+// @tauri-apps/api/core の invoke をモックし、Rust の generate_slides / cancel_generation を差し替える。
+// parseSlides / getValidationErrors は実物を用い、検証の単一真実源（JS）を実挙動で通す。
+const h = vi.hoisted(() => ({ invoke: vi.fn() }))
+vi.mock('@tauri-apps/api/core', () => ({ invoke: h.invoke }))
+
+import { generateSlides, cancelGenerate, setVertexConfig, clearVertexConfig, getVertexConfig, getVertexStatus, gcloudLogin, setGenerationEnabled, checkExternalAvailable, toGeneratedCandidate, MAX_GENERATE_ATTEMPTS } from '../aiGenerate'
+import type { GenerateProgress, GenerateResult } from '../aiGenerate'
+
+// getValidationErrors を満たす妥当な slides.json
+const VALID = JSON.stringify({ meta: { title: 'T' }, slides: [{ id: 's1', layout: 'center', content: {} }] })
+// meta.title 空・slides 空でスキーマ検証に失敗する候補
+const INVALID = JSON.stringify({ meta: { title: '' }, slides: [] })
+// slides が1件だけ妥当性を欠く（INVALID より検証エラーが少ない＝より良い候補）
+const LESS_INVALID = JSON.stringify({ meta: { title: 'T' }, slides: [{ id: '', layout: 'center', content: {} }] })
+
+const REQ = { prompt: 'AI の歴史', kind: 'builtin-vertex' as const }
+
+describe('aiGenerate オーケストレータ（generateSlides）', () => {
+  beforeEach(() => {
+    h.invoke.mockReset()
+  })
+
+  it('妥当な候補を返すと succeeded で全体を返す（1 試行）', async () => {
+    h.invoke.mockResolvedValue(VALID)
+    const result = await generateSlides(REQ)
+    expect(result.outcome).toBe('succeeded')
+    expect(result.slidesJson).toBe(VALID)
+    expect(result.validationErrors).toEqual([])
+    expect(result.attempts).toBe(1)
+    // generate_slides に request が渡る
+    expect(h.invoke).toHaveBeenCalledWith('generate_slides', { request: { ...REQ, repairFeedback: undefined } })
+  })
+
+  it('検証エラーが続くと上限 N まで試行し exhausted で最良候補を退避する', async () => {
+    // 1回目 INVALID(2件) → 2回目 LESS_INVALID(1件) → 3回目 INVALID(2件)。最良は LESS_INVALID
+    h.invoke.mockResolvedValueOnce(INVALID).mockResolvedValueOnce(LESS_INVALID).mockResolvedValueOnce(INVALID)
+    const result = await generateSlides(REQ)
+    expect(result.outcome).toBe('exhausted')
+    expect(result.attempts).toBe(MAX_GENERATE_ATTEMPTS)
+    expect(result.slidesJson).toBe(LESS_INVALID)
+    expect(result.validationErrors.length).toBeGreaterThan(0)
+    expect(h.invoke).toHaveBeenCalledTimes(MAX_GENERATE_ATTEMPTS)
+  })
+
+  it('再試行では検証エラー要約を repairFeedback に載せて再投入する（FR-005）', async () => {
+    h.invoke.mockResolvedValueOnce(INVALID).mockResolvedValueOnce(VALID)
+    const result = await generateSlides(REQ)
+    expect(result.outcome).toBe('succeeded')
+    expect(result.attempts).toBe(2)
+    // 2回目の呼び出しは repairFeedback（非空）付き
+    const secondCall = h.invoke.mock.calls[1]
+    expect(secondCall[0]).toBe('generate_slides')
+    expect(typeof secondCall[1].request.repairFeedback).toBe('string')
+    expect(secondCall[1].request.repairFeedback.length).toBeGreaterThan(0)
+  })
+
+  it('invoke が reject すると failed で候補を返さない（手動編集へ退避・FR-008）', async () => {
+    h.invoke.mockRejectedValue(new Error('生成が有効化されていません'))
+    const result = await generateSlides(REQ)
+    expect(result.outcome).toBe('failed')
+    expect(result.slidesJson).toBeNull()
+    expect(result.validationErrors).toEqual([])
+  })
+
+  it('in-flight 完了後に中断されていれば cancelled で候補を適用しない（レビュー修正・FR-008）', async () => {
+    // generate_slides が候補を返す直前に中断要求が入ったケースを模す
+    h.invoke.mockImplementation(async (cmd: string) => {
+      if (cmd === 'generate_slides') {
+        await cancelGenerate() // cancelRequested=true（cancel_generation も同じモックへ）
+        return VALID // 候補は返るが、解決後の再検査で適用されないはず
+      }
+      return undefined
+    })
+    const result = await generateSlides(REQ)
+    expect(result.outcome).toBe('cancelled')
+    expect(result.slidesJson).toBeNull()
+    expect(result.validationErrors).toEqual([])
+  })
+
+  it('invoke が中断で reject した場合は cancelled に分類する', async () => {
+    h.invoke.mockImplementation(async (cmd: string) => {
+      if (cmd === 'generate_slides') {
+        await cancelGenerate()
+        throw new Error('aborted')
+      }
+      return undefined
+    })
+    const result = await generateSlides(REQ)
+    expect(result.outcome).toBe('cancelled')
+    expect(result.slidesJson).toBeNull()
+  })
+
+  it('onProgress に generating→validating（→repairing）のフェーズを通知する', async () => {
+    h.invoke.mockResolvedValueOnce(INVALID).mockResolvedValueOnce(VALID)
+    const phases: GenerateProgress['phase'][] = []
+    await generateSlides(REQ, (p) => phases.push(p.phase))
+    expect(phases[0]).toBe('generating')
+    expect(phases).toContain('validating')
+    expect(phases).toContain('repairing')
+  })
+})
+
+describe('toGeneratedCandidate（GenerateResult → 適用可能候補の抽出・#47）', () => {
+  it('succeeded/exhausted かつ slidesJson 非 null なら候補を返す', () => {
+    const succeeded: GenerateResult = { outcome: 'succeeded', slidesJson: VALID, validationErrors: [], attempts: 1 }
+    expect(toGeneratedCandidate(succeeded)).toEqual({ slidesJson: VALID, validationErrors: [] })
+
+    const errors = [{ path: 'slides[0]', message: 'x', expected: 'y', actual: 'z' }]
+    const exhausted: GenerateResult = { outcome: 'exhausted', slidesJson: LESS_INVALID, validationErrors: errors, attempts: 3 }
+    expect(toGeneratedCandidate(exhausted)).toEqual({ slidesJson: LESS_INVALID, validationErrors: errors })
+  })
+
+  it('cancelled/failed または slidesJson が null なら null を返す', () => {
+    expect(toGeneratedCandidate({ outcome: 'cancelled', slidesJson: null, validationErrors: [], attempts: 0 })).toBeNull()
+    expect(toGeneratedCandidate({ outcome: 'failed', slidesJson: null, validationErrors: [], attempts: 1 })).toBeNull()
+    // outcome は succeeded だが slidesJson が null（本来生じない組み合わせだが契約上のガードを確認）
+    expect(toGeneratedCandidate({ outcome: 'succeeded', slidesJson: null, validationErrors: [], attempts: 1 })).toBeNull()
+  })
+})
+
+describe('aiGenerate invoke ラッパ', () => {
+  beforeEach(() => {
+    h.invoke.mockReset()
+    h.invoke.mockResolvedValue(undefined)
+  })
+
+  it('設定・認証・可用性のラッパが対応コマンドを呼ぶ（Vertex）', async () => {
+    await setGenerationEnabled(true)
+    expect(h.invoke).toHaveBeenCalledWith('set_generation_enabled', { enabled: true })
+
+    const config = { projectId: 'proj', region: 'us-east5', model: 'claude-sonnet-4-5@20250929' }
+    await setVertexConfig(config)
+    expect(h.invoke).toHaveBeenCalledWith('set_vertex_config', { config })
+
+    await clearVertexConfig()
+    expect(h.invoke).toHaveBeenCalledWith('clear_vertex_config')
+
+    h.invoke.mockResolvedValueOnce(config)
+    await expect(getVertexConfig()).resolves.toEqual(config)
+    expect(h.invoke).toHaveBeenCalledWith('get_vertex_config')
+
+    h.invoke.mockResolvedValueOnce({ configured: true })
+    await expect(getVertexStatus()).resolves.toEqual({ configured: true })
+    expect(h.invoke).toHaveBeenCalledWith('get_vertex_status')
+
+    await gcloudLogin()
+    expect(h.invoke).toHaveBeenCalledWith('gcloud_login')
+
+    h.invoke.mockResolvedValueOnce(true)
+    await expect(checkExternalAvailable()).resolves.toBe(true)
+    expect(h.invoke).toHaveBeenCalledWith('check_claude_cli')
+  })
+})

@@ -22,15 +22,30 @@ const keyToCssVar: Record<string, string> = {
   success: '--theme-success',
 }
 
-export async function applyTheme(path?: string) {
+/**
+ * テーマカラー定義（JSON）を取得して CSS 変数へ適用する。
+ * path 省略時はデフォルトの `/theme-colors.json` を読む。存在しないのはカスタムテーマ未使用の正常系なので false は返さない
+ * （開発サーバー等の SPA フォールバックで 200 + HTML が返り JSON パースに失敗するケースも同様に扱う）。
+ * path 指定時は取得・パースに失敗すると false を返す（呼び出し元でユーザーへの通知に使う）。
+ * @returns 適用に成功したか（path 未指定でファイルが存在しない場合も true）
+ */
+export async function applyTheme(path?: string): Promise<boolean> {
+  const isDefaultPath = path === undefined
+  let res: Response
+  try {
+    res = await fetch(path ?? '/theme-colors.json')
+  } catch {
+    return isDefaultPath
+  }
+  if (!res.ok) return isDefaultPath
+
   let theme: Record<string, string>
   try {
-    const res = await fetch(path ?? '/theme-colors.json')
-    if (!res.ok) return
     theme = await res.json()
   } catch {
-    return
+    return isDefaultPath
   }
+
   const root = document.documentElement
   for (const [key, value] of Object.entries(theme)) {
     const cssVar = keyToCssVar[key]
@@ -39,6 +54,7 @@ export async function applyTheme(path?: string) {
       root.style.setProperty(`${cssVar}-rgb`, hexToRgb(value))
     }
   }
+  return true
 }
 
 /** フォントサイズ比率（body1 = 1.0 基準） */
@@ -86,6 +102,7 @@ function loadExternalFont(url: string): void {
   const link = document.createElement('link')
   link.rel = 'stylesheet'
   link.href = url
+  link.dataset.sddDynamicFont = 'true'
   document.head.appendChild(link)
 }
 
@@ -147,4 +164,42 @@ export function applyThemeData(themeData: ThemeData): void {
     }
     styleEl.textContent = themeData.customCSS
   }
+}
+
+/** applyTheme/applyThemeData が設定する CSS 変数の一覧（リセット対象） */
+const RESETTABLE_CSS_VARS: string[] = [
+  ...Object.values(keyToCssVar).flatMap((cssVar) => [cssVar, `${cssVar}-rgb`]),
+  ...Object.values(themeColorToCssVar).flatMap((cssVar) => [cssVar, `${cssVar}-rgb`]),
+  ...Object.values(themeFontToCssVar),
+  '--theme-font-size-base',
+  ...Object.keys(fontSizeRatios),
+]
+
+/**
+ * 前のプレゼンテーションで適用したテーマの上書きをすべて解除する。
+ * applyTheme/applyThemeData は「指定されたプロパティだけを上書きする」実装のため、
+ * 新しいプレゼンテーションに切り替える前に必ず呼ぶ（呼ばないと前のテーマが残ってしまう）。
+ */
+export function resetThemeOverrides(): void {
+  const root = document.documentElement
+  for (const cssVar of RESETTABLE_CSS_VARS) {
+    root.style.removeProperty(cssVar)
+  }
+  document.getElementById('sdd-custom-theme-css')?.remove()
+  document.querySelectorAll('style[id^="sdd-font-face-"]').forEach((el) => el.remove())
+  document.querySelectorAll('link[data-sdd-dynamic-font="true"]').forEach((el) => el.remove())
+}
+
+/**
+ * プレゼンテーションのテーマを一括適用する（本編・発表者ビューの両エントリで共通の手順）。
+ * 前のテーマの上書きが残らないよう、必ずリセットしてから themeColors → theme の順に適用する。
+ * @returns テーマカラーの適用に成功したか（呼び出し元でユーザーへの通知に使う）
+ */
+export async function applyPresentationTheme(themeColors?: string, theme?: ThemeData): Promise<boolean> {
+  resetThemeOverrides()
+  const ok = await applyTheme(themeColors)
+  if (theme) {
+    applyThemeData(theme)
+  }
+  return ok
 }

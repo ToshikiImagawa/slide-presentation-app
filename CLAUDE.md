@@ -4,20 +4,45 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## プロジェクト概要
 
-React + Reveal.js ベースのスライドプレゼンテーション作成ツール。JSON ファイルでスライド内容やテーマを定義し、ブラウザ上でプレゼンテーションとして表示する。
+React + Reveal.js ベースのスライドプレゼンテーション作成ツール。JSON ファイルでスライド内容やテーマを定義し、Tauri（Rust）製のローカルデスクトップアプリとして表示する。
 
 ## コマンド
 
 ```bash
-npm run dev          # 開発サーバー起動（アドオンビルド + Vite HMR）
-npm run build        # プロダクションビルド（アドオンビルド + dist/ に出力）
+npm run tauri:dev    # デスクトップアプリ起動（Tauri + アドオンビルド + Vite HMR）
+npm run tauri:build  # デスクトップアプリのバンドルをビルド
+npm run dev          # フロントエンドのみ開発サーバー起動（アドオンビルド + Vite HMR）
+npm run build        # フロントエンドのみプロダクションビルド（アドオンビルド + dist/ に出力）
 npm run build:addons # アドオンのみビルド
 npm run preview      # ビルド済みファイルのプレビュー
 npm run format       # Prettier でコード整形（src/**/*.{ts,tsx,css}）
+npm run format:check # Prettier の整形チェック（CI 用・書き換えなし）
 npm run typecheck    # TypeScript 型チェック
-npm run test         # テスト実行（Vitest）
+npm run test         # テスト実行（Vitest 単体テスト）
 npm run test:watch   # テスト監視モード
+npm run test:e2e     # Playwright E2E（アサーション付き・en/ja 2ロケール・Linux 可）
+npm run generate-icons       # resources/icon.svg から src-tauri/icons/ を再生成（macOS 専用: sips + tauri icon）
+npm run generate-screenshots # README 用スクリーンショット撮影（Playwright WebKit・macOS 専用・e2e スモーク兼用）
+npm run screenshots:compare  # 実アプリ画像とモック画像の手動比較（pixelmatch）
+npm run generate-docs        # README.md / CHANGELOG.md を PDF 化（docs/ に出力・puppeteer）
 ```
+
+### スナップショット / e2e（スクリーンショット機構）
+
+ブラウザ自動化は同じ基盤（`vite --mode screenshot` + IPC モック + ロケール別 fixture）を 2 用途で使う:
+
+- **`npm run test:e2e`** — Playwright **Test** によるアサーション付き E2E（`playwright.config.ts` + `e2e/*.spec.ts`）。`en` / `ja` の 2 プロジェクトで実行し、期待値は `assets/locales/*.json` と fixture から読み込む（ハードコードしない）。テキスト内容ベースなので **Linux CI 可**（`.github/workflows/ci.yml` の `E2E (Playwright)` ジョブ）。
+- **`npm run generate-screenshots`** — README 用スクリーンショット撮影。**e2e スモークも兼ねる**（各シナリオの待受が失敗すると非ゼロ終了）。
+
+スクリーンショット撮影の仕組み:
+
+- `vite --mode screenshot` を起動し、Tauri IPC を `src/__screenshot__/`（`tauri-store` / `tauri-event` / `tauri-webview`）へ **Vite alias で差し替え**て素のブラウザで boot させる（本番ビルドには非混入。`@tauri-apps/api/core` は実物の plugin-fs/dialog が依存するため alias しない）。
+- スライド内容はロケール別 fixture `scripts/screenshot/fixtures/slides.{ja,en}.json` を `/slides.json` として配信する（`Accept-Language` で出し分け）。
+- Playwright **WebKit** で撮影し、`scripts/screenshot/chrome.mjs` が macOS ウィンドウ枠を合成。**en / ja の 2 ロケール**で撮影し、`resources/screenshots/en/`・`resources/screenshots/ja/` に出力する（Playwright の context `locale` で UI 言語と fixture を切り替え）。
+- シナリオは `scripts/screenshot/scenarios.mjs`（`home` / `presentation` / `toolbar` / `settings` / `presenter-view` / `layout-*` / `logo`）。回帰検知は **git 差分ベース**（閾値自動判定はしない）。
+- **日本語フォント・WebKit 描画差のため macOS で実行する**（CI は `.github/workflows/screenshots.yml` の macOS ランナー・手動 dispatch）。
+- E2E は `e2e/` にある: Playwright（`*.spec.ts`・配線済み・上記）と、実機 Tauri WebView 用の WebdriverIO 雛形（`*.e2e.ts.sample`・未配線）。詳細は `e2e/README.md`。
+- ドキュメントは英日 2 言語: `README.md` / `CHANGELOG.md`（英語）と `README.ja.md` / `CHANGELOG.ja.md`（日本語）。英語版は `en/`、日本語版は `ja/` のスクリーンショットを参照する。`npm run generate-docs` は全 4 ファイルを PDF 化する。
 
 ## アーキテクチャ
 
@@ -29,16 +54,19 @@ npm run test:watch   # テスト監視モード
 
 ```
 main.tsx
-├── applyTheme()           # public/theme-colors.json から色を適用
-├── loadAddons()           # addons/manifest.json → script 挿入 → ComponentRegistry に登録
-├── fetch('/slides.json')  # カスタムスライドデータのロード
-└── <App presentationData={data} />
-    ├── registerDefaultComponents()
-    ├── loadPresentationData()   # バリデーション + フォールバック
-    ├── applyThemeData()         # slides.json 内の theme フィールド適用
-    ├── useReveal()              # Reveal.js 初期化
-    └── <SlideRenderer />        # layout に基づきスライド描画
+├── loadAddons()                    # addons/manifest.json → script 挿入 → ComponentRegistry に登録
+├── loadLastSlidePackage()          # 前回ローカルで開いたスライドを復元（plugin-store）
+│   └── なければ fetch('/slides.json')  # バンドル済みデフォルトのロード
+├── applyTheme() / applyThemeData() # テーマ適用
+└── <Root>                          # presentationData / presentationKey を state で保持
+    └── <App key={presentationKey} presentationData={data} onOpenSlidePackage={...} />
+        ├── registerDefaultComponents()
+        ├── loadPresentationData()   # バリデーション + フォールバック
+        ├── useReveal()              # Reveal.js 初期化
+        └── <SlideRenderer />        # layout に基づきスライド描画
 ```
+
+「スライドを開く」ボタン（`OpenSlideButton`）でローカルの `slides.json` を選び直すと、`presentationKey` を更新して `App` 全体を再マウントし、新しい内容で Reveal.js を再初期化する（差分更新ではなく丸ごと作り直す設計）。
 
 ### コンポーネントシステム
 
@@ -66,6 +94,14 @@ main.tsx
 | `bleed` | BleedLayout | 2カラム全幅（端まで広がるレイアウト） |
 | `custom` | なし | `component` で指定したコンポーネントを直接描画 |
 
+### デスクトップアプリ (Tauri)
+
+`src-tauri/` に Tauri 2 + Rust のネイティブシェルがある。フロントエンドは通常の Vite アプリのままで、`tauri.conf.json` の `devUrl`/`frontendDist` を通じて Tauri の WebView にホストされる。
+
+- **発表者ビュー（別ウィンドウ）**: `usePresenterView`（`src/hooks/usePresenterView.ts`）が `@tauri-apps/api/webviewWindow` の `WebviewWindow` でネイティブウィンドウを生成し、`@tauri-apps/api/event` の `emit`/`listen`（イベント名 `presenter-view`）でメインウィンドウと相互通信する。メッセージ型 `PresenterViewMessage`（`src/data/types.ts`）はブラウザ版当時の設計を維持
+- **ローカルスライド選択**: `src/localSlideLoader.ts` が `@tauri-apps/plugin-dialog` でファイル選択（`slides.json` または `.spkg` パッケージ。旧 `.tgz` も後方互換で開ける）、`@tauri-apps/plugin-fs` で読み込み、Rust コマンド `allow_asset_dir`（`src-tauri/src/lib.rs`）で asset プロトコルの読み取りスコープを動的に許可し、`convertFileSrc` で `image/`・`voice/`・`theme/`・`font/` の相対参照をローカル asset URL に書き換える（`scripts/export-slides.mjs` の `extractAssetPaths` と同じ規則）。`.spkg`/`.tgz` は Rust コマンド `extract_slide_package`（`flate2`/`tar` クレート。バイト列は同一の tar+gzip 形式で拡張子に依存しない）でアプリのキャッシュディレクトリに展開し、`npm pack` の慣習に従って `package/` サブディレクトリを優先的に探す。最後に開いたパスは `@tauri-apps/plugin-store` で永続化し、次回起動時に自動復元する
+- ビルド時同梱（`public/slides.json`、`VITE_SLIDE_PACKAGE` 経由の npm パッケージ／`.spkg` 配布）は変更なし。ローカル選択はあくまで起動後の上書きとして追加された機能。CLI 書き出し（`scripts/export-slides.mjs`）は `npm pack` 出力を `.spkg` へリネームするため、書き出し直後のパッケージをローカル tarball として `npm install` する運用は非対応（詳細は README.md の Slide Packages 節）
+
 ### テーマシステム
 
 2つの方法でカスタマイズ可能:
@@ -86,9 +122,9 @@ main.tsx
 - **Prettier**: セミコロンなし、シングルクォート、末尾カンマ、印刷幅 240
 - **TypeScript**: strict モード、未使用変数・パラメータをエラーとして検出
 
-## AI-SDD Instructions (v3.1.1)
+## AI-SDD Instructions (v4.0.0)
 
-<!-- sdd-workflow version: "3.1.1" -->
+<!-- sdd-workflow version: "4.0.0" -->
 
 このプロジェクトは AI-SDD（AI駆動仕様駆動開発）ワークフローに従います。
 
@@ -102,82 +138,4 @@ main.tsx
 - 新しい仕様書、設計書、要求仕様書の作成
 - `.sdd/` ドキュメントを参照する機能の実装
 
-### ディレクトリ構造
-
-フラット構造と階層構造の両方をサポートしています。
-
-**フラット構造（小〜中規模プロジェクト向け）**:
-
-    .sdd/
-    |- CONSTITUTION.md               # プロジェクト原則（最上位）
-    |- PRD_TEMPLATE.md               # PRDテンプレート
-    |- SPECIFICATION_TEMPLATE.md     # 抽象仕様書テンプレート
-    |- DESIGN_DOC_TEMPLATE.md        # 技術設計書テンプレート
-    |- requirement/                  # PRD（要求仕様書）
-    |   |- {feature-name}.md
-    |- specification/                # 仕様書・設計書
-    |   |- {feature-name}_spec.md    # 抽象仕様書
-    |   |- {feature-name}_design.md  # 技術設計書
-    |- task/                         # 一時タスクログ
-        |- {ticket-number}/
-
-**階層構造（中〜大規模プロジェクト向け）**:
-
-    .sdd/
-    |- CONSTITUTION.md               # プロジェクト原則（最上位）
-    |- PRD_TEMPLATE.md               # PRDテンプレート
-    |- SPECIFICATION_TEMPLATE.md     # 抽象仕様書テンプレート
-    |- DESIGN_DOC_TEMPLATE.md        # 技術設計書テンプレート
-    |- requirement/                  # PRD（要求仕様書）
-    |   |- {feature-name}.md         # トップレベル機能
-    |   |- {parent-feature}/         # 親機能ディレクトリ
-    |       |- index.md              # 親機能概要・要求一覧
-    |       |- {child-feature}.md    # 子機能要求仕様
-    |- specification/                # 仕様書・設計書
-    |   |- {feature-name}_spec.md    # トップレベル機能
-    |   |- {feature-name}_design.md
-    |   |- {parent-feature}/         # 親機能ディレクトリ
-    |       |- index_spec.md         # 親機能抽象仕様書
-    |       |- index_design.md       # 親機能技術設計書
-    |       |- {child-feature}_spec.md   # 子機能抽象仕様書
-    |       |- {child-feature}_design.md # 子機能技術設計書
-    |- task/                         # 一時タスクログ
-        |- {ticket-number}/
-
-### ファイル命名規則（重要）
-
-**注意: requirement と specification でサフィックスの有無が異なります。混同しないでください。**
-
-| ディレクトリ            | ファイル種別 | 命名パターン                                 | 例                                         |
-|:------------------|:-------|:---------------------------------------|:------------------------------------------|
-| **requirement**   | 全ファイル  | `{name}.md`（サフィックスなし）                  | `user-login.md`, `index.md`               |
-| **specification** | 抽象仕様書  | `{name}_spec.md`（`_spec` サフィックス必須）     | `user-login_spec.md`, `index_spec.md`     |
-| **specification** | 技術設計書  | `{name}_design.md`（`_design` サフィックス必須） | `user-login_design.md`, `index_design.md` |
-
-#### 命名パターン早見表
-
-```
-# 正しい命名
-requirement/auth/index.md              # 親機能概要（サフィックスなし）
-requirement/auth/user-login.md         # 子機能要求仕様（サフィックスなし）
-specification/auth/index_spec.md       # 親機能抽象仕様書（_spec 必須）
-specification/auth/index_design.md     # 親機能技術設計書（_design 必須）
-specification/auth/user-login_spec.md  # 子機能抽象仕様書（_spec 必須）
-specification/auth/user-login_design.md # 子機能技術設計書（_design 必須）
-
-# 誤った命名（使用しないこと）
-requirement/auth/index_spec.md         # requirement に _spec は不要
-specification/auth/user-login.md       # specification には _spec/_design が必須
-specification/auth/index.md            # specification には _spec/_design が必須
-```
-
-### ドキュメントリンク規約
-
-ドキュメント内のマークダウンリンクは以下の形式に従ってください:
-
-| リンク先       | 形式                                    | リンクテキスト   | 例                                                    |
-|:-----------|:--------------------------------------|:----------|:-----------------------------------------------------|
-| **ファイル**   | `[filename.md](パスまたはURL)`             | ファイル名を含める | `[user-login.md](../requirement/auth/user-login.md)` |
-| **ディレクトリ** | `[directory-name](パスまたはURL/index.md)` | ディレクトリ名のみ | `[auth](../requirement/auth/index.md)`               |
-
-この規約により、リンク先がファイルかディレクトリかが視覚的に明確になります。
+詳細なディレクトリ構造・ファイル命名規則・ドキュメントリンク規約は、`.claude/rules/ai-sdd-instructions.md` を参照してください。

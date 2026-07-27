@@ -1,8 +1,27 @@
-# スライドコンテンツカスタマイズ
+---
+id: spec-slide-content-customization
+title: スライドコンテンツカスタマイズ 抽象仕様書
+type: spec
+status: draft
+sdd-phase: specify
+created: 2026-02-02
+updated: 2026-07-24
+depends-on:
+  - prd-slide-content-customization
+tags:
+  - slide
+  - data-driven
+  - json
+  - component-registry
+  - theme
+category: slide-content
+---
+
+# スライドコンテンツカスタマイズ 抽象仕様書
 
 **ドキュメント種別:** 抽象仕様書 (Spec)
 **SDDフェーズ:** Specify (仕様化)
-**最終更新日:** 2026-01-30
+**最終更新日:** 2026-07-24
 **関連 Design Doc:** [slide-content-customization_design.md](./slide-content-customization_design.md)
 **関連 PRD:** [slide-content-customization.md](../requirement/slide-content-customization.md)
 
@@ -24,7 +43,7 @@
 
 - **データとビューの分離**: スライドの内容をJSON形式の構造化データとして管理し、レンダリングロジックから分離する
 - **拡張可能性**: カスタムReactコンポーネントやレイアウトをプラグイン的に登録し、データから参照できる
-- **後方互換性**: 既存の10枚のデモ用スライドをデフォルトテンプレートとして保持し、データ未指定時にそのまま表示する
+- **後方互換性**: 既存のデモ用スライドをロケール別のデフォルトテンプレート（`default-slides-ja.json` / `default-slides-en.json`）として保持し、データ未指定時にそのまま表示する
 - **型安全性**: スライドデータの型定義をTypeScriptの型システムで表現し、型安全にデータを扱う
 
 # 3. 要求定義
@@ -45,8 +64,11 @@
 | FR-010 | スライドデータからカスタムコンポーネントにpropsを渡せる                            | 推奨  | コンポーネントへのデータ受け渡しを可能にする | FR_303 |
 | FR-011 | 現在のスライド内容をJSON形式のデフォルトデータとして提供する                          | 必須  | 後方互換性の確保               | FR_401 |
 | FR-012 | 外部データファイルが未指定または読み込み失敗時にデフォルトデータにフォールバックして表示する            | 必須  | 安定的な表示を保証する            | FR_402 |
-| FR-013 | JSONスキーマに基づいてスライドデータの構造を検証する                              | 推奨  | データ品質を保証する             | FR_501 |
-| FR-014 | データ検証エラー時にエラー箇所と修正方法を含むメッセージを表示する                         | 推奨  | 編集者の利便性を向上する           | FR_502 |
+| FR-013 | スライドデータの構造を検証し、必須フィールドの欠落や型の不一致を検出する                       | 推奨  | データ品質を保証する             | FR_501 |
+| FR-014 | データ検証エラー時にエラー箇所（JSONパス・期待型・実際の型）を含むメッセージを表示する              | 推奨  | 編集者の利便性を向上する           | FR_502 |
+| FR-015 | プライマリカラー、アクセントカラー、背景色、テキスト色等のカラーパレットを外部データで定義できる          | 推奨  | 視覚的デザインの切り替えを可能にする      | FR_201 |
+| FR-016 | 見出し用・本文用・コード用フォント、基本フォントサイズ、フォントソースを外部データで定義できる           | 任意  | フォント面のカスタマイズを可能にする      | FR_202 |
+| FR-017 | テーマ定義に加えてカスタムCSSを指定し、デフォルトスタイルを上書きできる                      | 任意  | 細部のスタイル調整を可能にする         | FR_204 |
 
 ## 3.2. 非機能要件 (Non-Functional Requirements)
 
@@ -62,13 +84,15 @@
 
 ## 4.1. 公開API一覧
 
-| ディレクトリ          | ファイル名                 | エクスポート                                       | 概要                            |
-|-----------------|-----------------------|----------------------------------------------|-------------------------------|
-| src/data/       | types.ts              | `SlideData`, `PresentationData`, `ThemeData`, `LogoConfig`, `FontSource` | スライドデータの型定義                   |
-| src/data/       | default-slides.json   | (デフォルトエクスポート)                                | デフォルトのスライドデータ                 |
-| src/data/       | loader.ts             | `loadPresentationData`                       | スライドデータの読み込みとバリデーション          |
-| src/components/ | SlideRenderer.tsx     | `SlideRenderer`                              | スライドデータからReactコンポーネントへのレンダリング |
-| src/components/ | ComponentRegistry.tsx | `ComponentRegistry`, `registerComponent`     | カスタムコンポーネントの登録・解決             |
+| ディレクトリ          | ファイル名                                     | エクスポート                                                                                                                             | 概要                                 |
+|-----------------|-------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------|------------------------------------|
+| src/data/       | types.ts                                  | `PresentationData`, `PresentationMeta`, `LogoConfig`, `SlideData`, `SlideContent`, `ContentItem`, `ComponentReference`, `SlideNotes`, `SlideMeta`, `ThemeData`, `ColorPalette`, `FontDefinition`, `FontSource`, `ValidationError` ほか | スライドデータの型定義                        |
+| src/data/       | default-slides-ja.json / default-slides-en.json | (デフォルトエクスポート)                                                                                                                       | ロケール別（日本語 / 英語）のデフォルトスライドデータ       |
+| src/data/       | loader.ts                                 | `loadPresentationData`, `validatePresentationData`, `getValidationErrors`, `getDefaultPresentationData`                             | スライドデータの読み込み・バリデーション・ロケール別デフォルト取得   |
+| src/data/       | noteHelpers.ts                            | `normalizeNotes`, `getSpeakerNotes`, `getSlideSummary`, `getVoicePath`                                                              | `SlideMeta.notes` の正規化・スピーカーノート等の取得 |
+| src/components/ | SlideRenderer.tsx                         | `SlideRenderer`（`SlideRenderer.Slide` サブコンポーネントを含む）                                                                                | スライドデータからReactコンポーネントへのレンダリング       |
+| src/components/ | ComponentRegistry.tsx                     | `RegisteredComponent`（型）, `registerDefaultComponent`, `registerComponent`, `resolveComponent`, `getRegisteredComponents`, `unregisterOwner`, `clearRegistry` | カスタム／デフォルトコンポーネントの登録・解決・破棄          |
+| src/            | applyTheme.ts                             | `applyTheme`, `applyThemeData`, `applyBaseFontSize`, `loadFontSources`, `resetThemeOverrides`                                       | テーマ（色・フォント・カスタムCSS）のCSS変数適用とリセット    |
 
 ## 4.2. 型定義
 
@@ -86,6 +110,8 @@ interface PresentationMeta {
     description?: string;
     author?: string;
     logo?: LogoConfig;
+    /** 色のみを定義した外部テーマJSON（theme-colors.json 相当）へのパス */
+    themeColors?: string;
 }
 
 /** ロゴ設定 */
@@ -127,12 +153,25 @@ interface ContentItem {
 interface ComponentReference {
     name: string;
     props?: Record<string, unknown>;
+    /** ラッパー要素に適用するインラインスタイル */
+    style?: Record<string, string | number>;
+}
+
+/** スライドのノート情報 */
+interface SlideNotes {
+    /** スピーカーノート（発表者メモ・台本） */
+    speakerNotes?: string;
+    /** 要点サマリー（箇条書き用の配列） */
+    summary?: string[];
+    /** 音声ファイルへの相対パス */
+    voice?: string;
 }
 
 /** スライドのメタ情報 */
 interface SlideMeta {
     transition?: string;
-    notes?: string;
+    /** 文字列（スピーカーノートのみ）または SlideNotes オブジェクト */
+    notes?: string | SlideNotes;
     backgroundImage?: string;
     backgroundColor?: string;
 }
@@ -173,91 +212,121 @@ interface FontDefinition {
     /** フォントソースの配列 */
     sources?: FontSource[];
 }
+
+/** バリデーションエラーの詳細 */
+interface ValidationError {
+    path: string;       // エラー箇所のJSONパス（例: "slides[0].content"）
+    message: string;    // エラーメッセージ
+    expected: string;   // 期待される型・値
+    actual: string;     // 実際の型・値
+}
 ```
+
+> 補足: `SlideContent` はインデックスシグネチャ `[key: string]: unknown` を持ち、レイアウトごとに `variant` / `left` / `right` / `steps` / `tiles` / `commands` 等の任意フィールドを保持できる。`ComponentRegistry` に登録するコンポーネントの型は `RegisteredComponent = ComponentType<Record<string, unknown>>` で表現する。
 
 # 5. 用語集
 
-| 用語           | 説明                                         |
-|--------------|--------------------------------------------|
-| スライドデータ      | プレゼンテーションの内容を定義するJSON形式の構造化データ             |
-| レイアウト種別      | スライドの表示形式（title、two-column、tile、timeline等） |
-| テーマ          | カラーパレット、フォント定義を含む視覚的スタイルの定義                |
-| カスタムコンポーネント  | 開発者が作成し、スライドデータから名前で参照可能なReactコンポーネント      |
-| フォールバック      | 外部データが利用不可時にデフォルトデータに切り替わる動作               |
-| デフォルトテンプレート  | 現在の10枚のデモ用スライドを再現するデフォルトのスライドデータ           |
-| コンポーネントレジストリ | カスタムコンポーネントを名前付きで登録・管理する仕組み                |
-| フラグメント       | スライド内のコンテンツ要素を段階的に表示するReveal.jsの機能         |
+| 用語               | 説明                                                                                              |
+|------------------|-------------------------------------------------------------------------------------------------|
+| スライドデータ          | プレゼンテーションの内容を定義するJSON形式の構造化データ                                                                  |
+| レイアウト種別          | `SlideData.layout` に指定する構造ベースの表示形式。実装値は `center` / `content` / `two-column` / `bleed` / `custom` の5種類 |
+| タイル / タイムライン      | 独立したレイアウト種別ではなく、`content` レイアウト内の `tiles`（FeatureTileGrid）/ `steps`（Timeline）サブ構造として描画される        |
+| テーマ              | カラーパレット、フォント定義、カスタムCSSを含む視覚的スタイルの定義                                                             |
+| カスタムコンポーネント       | 開発者が作成し、スライドデータから名前で参照可能なReactコンポーネント                                                           |
+| フォールバック          | 外部データが利用不可・バリデーション失敗時にデフォルトデータに切り替わる動作                                                         |
+| デフォルトテンプレート       | データ未指定時に表示されるロケール別（`default-slides-ja.json` / `default-slides-en.json`）のデモ用スライドデータ              |
+| コンポーネントレジストリ（概念） | カスタム／デフォルトコンポーネントを名前付きで登録・解決する仕組み。実体は `ComponentRegistry.tsx` のモジュールスコープ関数群（クラスや `ComponentRegistry` という named export は存在しない） |
+| フラグメント           | スライド内のコンテンツ要素を段階的に表示するReveal.jsの機能                                                              |
+| owner            | `registerComponent` の第3引数。パッケージ同梱アドオン等のスコープ単位で登録をまとめて破棄（`unregisterOwner`）するための識別子             |
 
-# 6. 使用例
+# 6. ユースケース
 
-## 6.1. デフォルトデータでの表示（データ未指定時）
+| アクター     | ユースケース                       | 主なフロー                                                                                     |
+|----------|------------------------------|-------------------------------------------------------------------------------------------|
+| コンテンツ編集者 | スライド内容をJSONで差し替える            | `slides.json`（または `.tgz` パッケージ）を編集・選択 → アプリが読み込みバリデーション → 反映（不正時はデフォルトへフォールバック）             |
+| 開発者      | カスタムコンポーネントを登録して利用する         | `registerComponent(name, component, owner?)` で登録 → JSONの `component.name` から参照             |
+| 開発者      | テーマ（色・フォント・カスタムCSS）を切り替える    | `slides.json` の `theme` フィールド、または `meta.themeColors` が指す外部JSONで定義 → `applyThemeData` がCSS変数を適用 |
+| システム     | データ未指定時にデフォルトテンプレートを表示する     | `getDefaultPresentationData(locale)` がロケール別デフォルトを返し、`loadPresentationData` 経由で表示            |
+
+# 7. 使用例
+
+## 7.1. デフォルトデータでの表示（データ未指定時）
 
 ```tsx
-import {App} from './App';
+import { App } from './App'
 
-// データ未指定時はデフォルトのデモ用スライドが表示される
-function Main() {
-    return <App/>;
+// presentationData 未指定時は loadPresentationData がロケール別デフォルト
+// （getDefaultPresentationData(locale)）にフォールバックする。
+// App は onGoHome を必須で受け取る（ホーム画面への復帰ハンドラ）。
+function Example({ onGoHome }: { onGoHome: () => void }) {
+    return <App onGoHome={onGoHome} />
 }
 ```
 
-## 6.2. カスタムスライドデータでの表示
+## 7.2. カスタムスライドデータでの表示
 
 ```tsx
-import {App} from './App';
-import customSlides from './custom-slides.json';
+import { App } from './App'
+import customSlides from './custom-slides.json'
 
-function Main() {
-    return <App presentationData={customSlides}/>;
+function Example({ onGoHome }: { onGoHome: () => void }) {
+    return <App presentationData={customSlides} onGoHome={onGoHome} />
 }
 ```
 
-## 6.3. カスタムコンポーネントの登録と使用
+> 実際の起動フローでは `main.tsx` が `fetch('/slides.json')`（サンプル）またはローカル選択（`localSlideLoader`）でデータを取得し、`App` の `presentationData` prop に渡す。`App` 内では `loadPresentationData(presentationData, defaultData)` でバリデーションとフォールバックを行う。
+
+## 7.3. カスタムコンポーネントの登録と使用
 
 ```tsx
-import {registerComponent} from './components/ComponentRegistry';
+import { registerComponent } from './components/ComponentRegistry'
 
-// カスタムコンポーネントを登録
-registerComponent('MyChart', MyChartComponent);
+// カスタムコンポーネントを登録（owner は任意。指定すると unregisterOwner でまとめて破棄可能）
+registerComponent('MyChart', MyChartComponent)
 
 // JSONデータからの参照
-// { "layout": "custom", "content": { "component": { "name": "MyChart", "props": { "data": [...] } } } }
+// { "layout": "custom", "content": { "component": { "name": "MyChart", "props": { "data": [] } } } }
 ```
 
-# 7. 振る舞い図
+# 8. 振る舞い図
 
-## 7.1. スライドデータ読み込みフロー
+## 8.1. スライドデータ読み込みフロー
+
+JSONファイルの読み込み（`fetch` / ローカルファイル読込）は `main.tsx` および `localSlideLoader` の責務であり、`loadPresentationData` は「読み込み済みデータ」を受け取ってバリデーションとフォールバックのみを担う。
 
 ```mermaid
 sequenceDiagram
+    participant Main as main.tsx / localSlideLoader
     participant App as App
-    participant Loader as DataLoader
-    participant Validator as Validator
+    participant Loader as loadPresentationData
+    participant Validator as getValidationErrors
     participant Registry as ComponentRegistry
     participant Renderer as SlideRenderer
-    App ->> Loader: loadPresentationData(source?)
-    alt 外部データ指定あり
-        Loader ->> Loader: JSONファイル読み込み
-        Loader ->> Validator: validate(data)
-        alt バリデーション成功
-            Validator -->> Loader: 有効なデータ
-        else バリデーション失敗
-            Validator -->> Loader: エラー情報
-            Loader ->> Loader: デフォルトデータにフォールバック
+    Main ->> Main: fetch('/slides.json') もしくはローカル選択でJSON読込
+    Main ->> App: presentationData を渡してマウント
+    App ->> Loader: loadPresentationData(source, defaultData)
+    alt source あり
+        Loader ->> Validator: getValidationErrors(source)
+        alt エラーなし
+            Validator -->> Loader: []（有効）
+            Loader -->> App: source
+        else エラーあり
+            Validator -->> Loader: ValidationError[]
+            Loader ->> Loader: console.error でエラー出力しフォールバック
+            Loader -->> App: defaultData
         end
-    else 外部データ指定なし
-        Loader ->> Loader: デフォルトデータを使用
+    else source なし（undefined）
+        Loader -->> App: defaultData
     end
-    Loader -->> App: PresentationData
-    App ->> Renderer: render(slides)
+    App ->> Renderer: <SlideRenderer slides={data.slides} />
     loop 各スライド
-        Renderer ->> Registry: resolveComponent(layout)
-        Registry -->> Renderer: ReactComponent
-        Renderer ->> Renderer: コンポーネントにpropsを渡してレンダリング
+        Renderer ->> Renderer: layout 種別で描画関数を分岐
+        Renderer ->> Registry: resolveComponent(name)（component/tiles参照時）
+        Registry -->> Renderer: RegisteredComponent
     end
 ```
 
-## 7.2. コンポーネント解決フロー
+## 8.2. コンポーネント解決フロー
 
 ```mermaid
 sequenceDiagram
@@ -273,12 +342,12 @@ sequenceDiagram
     end
 ```
 
-# 8. 制約事項
+# 9. 制約事項
 
 - React + TypeScript + Viteの技術スタックを維持すること（T-001準拠）
 - Reveal.jsのDOM構造（`.reveal > .slides > section`）を維持すること（T-002準拠）
 - 各スライドは独立したコンポーネントとして動作すること（A-001準拠）
-- CSSスタイルは `src/styles/style.css` への集約を基本とすること（A-002準拠）
+- スタイリングは3層モデルを維持すること（A-002準拠）: グローバルCSS（`src/styles/global.css`：テーマCSS変数・レイアウト・Reveal.jsオーバーライド）、CSS Modules（コンポーネント固有スタイル）、MUI `sx` prop（インライン微調整）
 - デフォルトデータ使用時に既存プレゼンテーションの見た目・動作を一切変更しないこと（B-001, B-002準拠）
 
 ---

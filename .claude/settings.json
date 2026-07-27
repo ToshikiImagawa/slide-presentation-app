@@ -1,6 +1,6 @@
 {
   "enabledPlugins": {
-    "sdd-workflow-ja@ai-sdd-workflow": true
+    "sdd-workflow@ai-sdd-workflow": true
   },
   "extraKnownMarketplaces": {
     "ai-sdd-workflow": {

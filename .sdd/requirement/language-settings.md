@@ -1,3 +1,20 @@
+---
+id: prd-language-settings
+title: 言語設定機能 要求仕様書
+type: prd
+status: draft
+priority: medium
+risk: medium
+created: 2026-02-02
+updated: 2026-07-24
+tags:
+  - i18n
+  - localization
+  - settings
+  - ui
+category: internationalization
+---
+
 # 言語設定機能 要求仕様書
 
 ## 概要
@@ -274,9 +291,9 @@ requirementDiagram
 
 **バリデーション要件**（D-002準拠）:
 
-- 言語リソースJSONファイルの構造を検証すること
-- 必須キーの欠落を検出し、フォールバック言語（en-US）から補完すること
-- バリデーションエラーはコンソールに警告として出力し、アプリの動作は継続すること
+- 言語リソースJSONファイルの必須フィールド（`languageCode` / `languageName` / `ui`）の構造を検証すること
+- 個々のUIテキストキーが欠落している場合は、参照時（`t()`）にフォールバック言語（en-US）から補完すること
+- バリデーションエラーはコンソールに警告として出力し、該当リソースを読み込み対象から除外してアプリの動作は継続すること
 
 **優先度:** Must
 **検証方法:** テストによる検証
@@ -285,7 +302,7 @@ requirementDiagram
 
 ### FR-LANG-009: 最低限のサポート言語
 
-日本語（ja-JP）と英語（en-US）の2言語を最低限サポートする。追加言語はJSONファイルの配置で拡張可能。
+日本語（ja-JP）と英語（en-US）の2言語を最低限サポートする。追加言語はJSONファイルの配置で拡張可能。現行実装では拡張例としてフランス語（fr-FR）も同梱している。
 
 **優先度:** Must
 **検証方法:** テストによる検証

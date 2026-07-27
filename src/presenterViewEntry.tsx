@@ -1,106 +1,96 @@
 import { createRoot } from 'react-dom/client'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ThemeProvider } from '@mui/material/styles'
+import { emit, listen } from '@tauri-apps/api/event'
+import type { UnlistenFn } from '@tauri-apps/api/event'
+import { getCurrentWindow } from '@tauri-apps/api/window'
 import 'reveal.js/dist/reveal.css'
 import './styles/global.css'
 import './addon-bridge'
-import { applyTheme, applyThemeData } from './applyTheme'
+import { applyPresentationTheme, applyTheme } from './applyTheme'
+import { loadAddonScripts, loadBuiltinAddons } from './addonLoader'
 import { registerDefaultComponents } from './components/registerDefaults'
+import { unregisterOwner } from './components/ComponentRegistry'
 import { PresenterViewWindow } from './components/PresenterViewWindow'
 import { I18nProvider, loadLocales, useTranslation } from './i18n'
 import { theme } from './theme'
-import type { SlideData, PresentationData, PresenterViewMessage, PresenterControlState } from './data'
+import type { SlideData, PresenterViewMessage, PresenterControlState } from './data'
 
-const CHANNEL_NAME = 'presenter-view'
+const EVENT_NAME = 'presenter-view'
 
 // デフォルトコンポーネントを登録
 registerDefaultComponents()
-
-type AddonManifest = {
-  addons: Array<{ name: string; bundle: string }>
-}
-
-function loadAddonScript(src: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const script = document.createElement('script')
-    script.src = src
-    script.onload = () => resolve()
-    script.onerror = () => reject(new Error(`Failed to load addon: ${src}`))
-    document.head.appendChild(script)
-  })
-}
-
-async function loadAddons(): Promise<void> {
-  try {
-    const res = await fetch('/addons/manifest.json')
-    if (!res.ok) return
-    const manifest: AddonManifest = await res.json()
-    await Promise.all(manifest.addons.map((addon) => loadAddonScript(addon.bundle)))
-  } catch {
-    // manifest が存在しない、またはロード失敗時はフォールバック（アドオンなし）
-  }
-}
 
 function PresenterViewApp() {
   const [slides, setSlides] = useState<SlideData[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [controlState, setControlState] = useState<PresenterControlState | null>(null)
   const [progressState, setProgressState] = useState<{ progress: number; visible: boolean; animationDuration?: number }>({ progress: 0, visible: false })
-  const channelRef = useRef<BroadcastChannel | null>(null)
+
+  // 現在登録済みのパッケージアドオンの owner（切替時のアンロード対象）
+  const currentOwnerRef = useRef<string | undefined>(undefined)
+  // 直近のアドオンロード完了を待つための Promise。slides 描画はこれの完了後に行う
+  const addonLoadRef = useRef<Promise<void>>(Promise.resolve())
 
   useEffect(() => {
-    const channel = new BroadcastChannel(CHANNEL_NAME)
-    channelRef.current = channel
+    let unlisten: UnlistenFn | undefined
+    let unlistenClose: UnlistenFn | undefined
 
-    channel.onmessage = (event: MessageEvent<PresenterViewMessage>) => {
-      if (event.data.type === 'slideChanged') {
-        setSlides(event.data.payload.slides)
-        setCurrentIndex(event.data.payload.currentIndex)
-      } else if (event.data.type === 'controlStateChanged') {
-        setControlState(event.data.payload)
-      } else if (event.data.type === 'progressChanged') {
-        setProgressState(event.data.payload)
+    listen<PresenterViewMessage>(EVENT_NAME, async (event) => {
+      if (event.payload.type === 'themeChanged') {
+        const { themeColors, theme: themeData } = event.payload.payload
+        // 本編とテーマの上書きが食い違わないよう、本編と同じ手順（reset→適用）で再適用する
+        await applyPresentationTheme(themeColors, themeData)
+      } else if (event.payload.type === 'addonsChanged') {
+        const { owner, scripts } = event.payload.payload
+        // 旧 owner を破棄してから新アドオンをロードする（slideChanged 側がこの完了を待つ）
+        // ロード失敗時も slides 描画をブロックしないよう握りつぶす（未解決コンポーネントは fallback 表示）
+        addonLoadRef.current = (async () => {
+          try {
+            if (currentOwnerRef.current) unregisterOwner(currentOwnerRef.current)
+            currentOwnerRef.current = scripts.length > 0 ? owner : undefined
+            if (scripts.length > 0) await loadAddonScripts(scripts, owner)
+          } catch (error) {
+            console.error('[presenter-view] アドオンのロードに失敗しました（アドオンなしで続行）', error)
+          }
+        })()
+      } else if (event.payload.type === 'slideChanged') {
+        const { slides, currentIndex } = event.payload.payload
+        // アドオンのロード完了を待ってから描画し、未解決コンポーネントの fallback 表示を避ける
+        await addonLoadRef.current
+        setSlides(slides)
+        setCurrentIndex(currentIndex)
+      } else if (event.payload.type === 'controlStateChanged') {
+        setControlState(event.payload.payload)
+      } else if (event.payload.type === 'progressChanged') {
+        setProgressState(event.payload.payload)
       }
-    }
+    }).then((fn) => {
+      unlisten = fn
+    })
 
     // メインウィンドウに準備完了を通知
     const readyMessage: PresenterViewMessage = { type: 'presenterViewReady' }
-    channel.postMessage(readyMessage)
+    void emit(EVENT_NAME, readyMessage)
 
-    // ウィンドウが閉じられるときにメインウィンドウに通知
-    const handleBeforeUnload = () => {
-      const closedMessage: PresenterViewMessage = { type: 'presenterViewClosed' }
-      channel.postMessage(closedMessage)
-    }
-    window.addEventListener('beforeunload', handleBeforeUnload)
+    // WKWebView では beforeunload が赤信号ボタン等の操作で発火しないため、Tauri のネイティブなクローズリクエストイベントで通知する
+    getCurrentWindow()
+      .onCloseRequested(async () => {
+        const closedMessage: PresenterViewMessage = { type: 'presenterViewClosed' }
+        await emit(EVENT_NAME, closedMessage)
+      })
+      .then((fn) => {
+        unlistenClose = fn
+      })
 
     return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload)
-      channel.close()
-      channelRef.current = null
+      unlistenClose?.()
+      unlisten?.()
     }
-  }, [])
-
-  // テーマの適用
-  useEffect(() => {
-    fetch(import.meta.env.VITE_SLIDES_PATH || '/slides.json')
-      .then((res) => {
-        if (!res.ok) throw new Error(`${res.status}`)
-        return res.json() as Promise<PresentationData>
-      })
-      .then(async (data) => {
-        await applyTheme(data.meta?.themeColors)
-        if (data.theme) {
-          applyThemeData(data.theme)
-        }
-      })
-      .catch(async () => {
-        await applyTheme()
-      })
   }, [])
 
   const sendMessage = useCallback((message: PresenterViewMessage) => {
-    channelRef.current?.postMessage(message)
+    void emit(EVENT_NAME, message)
   }, [])
 
   const handleNavigate = useCallback(
@@ -157,8 +147,8 @@ function WaitingMessage() {
 
 const root = createRoot(document.getElementById('root')!)
 
-// アドオン・言語リソースをロードしてからレンダリングする
-Promise.all([loadAddons(), loadLocales()]).then(([, locales]) => {
+// 組み込みアドオン・言語リソース・既定テーマをロードしてからレンダリングする（実際のテーマは themeChanged で本編から伝搬される）
+Promise.all([loadBuiltinAddons(), loadLocales(), applyTheme()]).then(([, locales]) => {
   root.render(
     <I18nProvider locales={locales}>
       <PresenterViewApp />

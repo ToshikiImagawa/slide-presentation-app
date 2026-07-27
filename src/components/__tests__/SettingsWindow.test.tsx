@@ -9,7 +9,15 @@ const enUS: LocaleResource = {
   languageCode: 'en-US',
   languageName: 'English',
   ui: {
-    settings: { title: 'Settings', language: 'Language', close: 'Close', scrollSpeed: 'Scroll Speed (sec)' },
+    settings: {
+      title: 'Settings',
+      language: 'Language',
+      close: 'Close',
+      scrollSpeed: 'Scroll Speed (sec)',
+      embeddedAddons: 'Embedded add-ons',
+      disableEmbeddedAddons: 'Always disable embedded add-ons',
+      resetAddonTrust: 'Reset add-on trust history',
+    },
   },
 }
 
@@ -52,6 +60,51 @@ describe('SettingsWindow', () => {
       </Wrapper>,
     )
     expect(screen.getByText('Settings')).toBeDefined()
+  })
+
+  it('role="dialog" と aria-modal="true" を持つ', () => {
+    render(
+      <Wrapper>
+        <SettingsWindow open={true} onClose={() => {}} scrollSpeed={20} setScrollSpeed={() => {}} />
+      </Wrapper>,
+    )
+    const dialog = screen.getByRole('dialog')
+    expect(dialog.getAttribute('aria-modal')).toBe('true')
+    expect(dialog.getAttribute('aria-labelledby')).toBeTruthy()
+  })
+
+  it('Escapeキーで onClose が呼ばれる', () => {
+    const onClose = vi.fn()
+    render(
+      <Wrapper>
+        <SettingsWindow open={true} onClose={onClose} scrollSpeed={20} setScrollSpeed={() => {}} />
+      </Wrapper>,
+    )
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('開いた際にフォーカスが背景（body）から外れてダイアログ側へ移動する', () => {
+    render(
+      <Wrapper>
+        <SettingsWindow open={true} onClose={() => {}} scrollSpeed={20} setScrollSpeed={() => {}} />
+      </Wrapper>,
+    )
+    expect(document.activeElement).not.toBe(document.body)
+  })
+
+  it('末尾のフォーカス境界（sentinel）へ到達すると先頭の要素へ折り返す（フォーカストラップ）', () => {
+    render(
+      <Wrapper>
+        <SettingsWindow open={true} onClose={() => {}} scrollSpeed={20} setScrollSpeed={() => {}} />
+      </Wrapper>,
+    )
+    const closeButtons = screen.getAllByRole('button', { name: 'Close' })
+    const firstFocusable = closeButtons[0]
+    // ブラウザがネイティブのTab移動で最後の要素の次に到達する境界ノード（MUI FocusTrapのsentinel）
+    const sentinelEnd = screen.getByTestId('sentinelEnd')
+    sentinelEnd.focus()
+    expect(document.activeElement).toBe(firstFocusable)
   })
 
   it('言語選択肢が表示される', () => {
@@ -114,5 +167,112 @@ describe('SettingsWindow', () => {
     fireEvent.change(select, { target: { value: 'ja-JP' } })
 
     expect(select.value).toBe('ja-JP')
+  })
+
+  describe('同梱アドオン設定', () => {
+    it('onToggleEmbeddedAddons 未指定時はアドオン設定を表示しない（後方互換）', () => {
+      render(
+        <Wrapper>
+          <SettingsWindow open={true} onClose={() => {}} scrollSpeed={20} setScrollSpeed={() => {}} />
+        </Wrapper>,
+      )
+      expect(screen.queryByText('Always disable embedded add-ons')).toBeNull()
+    })
+
+    it('ハンドラ指定時に無効化トグルとリセットボタンが表示される', () => {
+      render(
+        <Wrapper>
+          <SettingsWindow open={true} onClose={() => {}} scrollSpeed={20} setScrollSpeed={() => {}} embeddedAddonsDisabled={false} onToggleEmbeddedAddons={() => {}} onResetAddonTrust={() => {}} />
+        </Wrapper>,
+      )
+      expect(screen.getByText('Always disable embedded add-ons')).toBeDefined()
+      const checkbox = screen.getByRole('checkbox') as HTMLInputElement
+      expect(checkbox.checked).toBe(false)
+      expect(screen.getByRole('button', { name: 'Reset add-on trust history' })).toBeDefined()
+    })
+
+    it('embeddedAddonsDisabled=true でチェックボックスが ON', () => {
+      render(
+        <Wrapper>
+          <SettingsWindow open={true} onClose={() => {}} scrollSpeed={20} setScrollSpeed={() => {}} embeddedAddonsDisabled={true} onToggleEmbeddedAddons={() => {}} />
+        </Wrapper>,
+      )
+      expect((screen.getByRole('checkbox') as HTMLInputElement).checked).toBe(true)
+    })
+
+    it('トグル切替で onToggleEmbeddedAddons が呼ばれる', () => {
+      const onToggle = vi.fn()
+      render(
+        <Wrapper>
+          <SettingsWindow open={true} onClose={() => {}} scrollSpeed={20} setScrollSpeed={() => {}} embeddedAddonsDisabled={false} onToggleEmbeddedAddons={onToggle} />
+        </Wrapper>,
+      )
+      fireEvent.click(screen.getByRole('checkbox'))
+      expect(onToggle).toHaveBeenCalledWith(true)
+    })
+
+    it('リセットボタンで onResetAddonTrust が呼ばれる', () => {
+      const onReset = vi.fn()
+      render(
+        <Wrapper>
+          <SettingsWindow open={true} onClose={() => {}} scrollSpeed={20} setScrollSpeed={() => {}} embeddedAddonsDisabled={false} onToggleEmbeddedAddons={() => {}} onResetAddonTrust={onReset} />
+        </Wrapper>,
+      )
+      fireEvent.click(screen.getByRole('button', { name: 'Reset add-on trust history' }))
+      expect(onReset).toHaveBeenCalledTimes(1)
+    })
+
+    it('addonTrust を渡すとパッケージごとの許可/拒否セレクトを表示する（層C）', () => {
+      render(
+        <Wrapper>
+          <SettingsWindow
+            open={true}
+            onClose={() => {}}
+            scrollSpeed={20}
+            setScrollSpeed={() => {}}
+            embeddedAddonsDisabled={false}
+            onToggleEmbeddedAddons={() => {}}
+            addonTrust={[
+              { path: '/a/slides.json', title: 'Deck A', decision: 'allowed' },
+              { path: '/b.tgz', title: 'Deck B', decision: undefined },
+            ]}
+            onSetAddonTrust={() => {}}
+          />
+        </Wrapper>,
+      )
+      expect(screen.getByText('Deck A')).toBeDefined()
+      expect(screen.getByText('Deck B')).toBeDefined()
+      // 言語 select ＋ パッケージ2件の select = 計3（checkbox は無効化トグルの1件のまま）
+      expect(screen.getAllByRole('combobox').length).toBe(3)
+    })
+
+    it('セレクト変更で onSetAddonTrust が該当 path・判断で呼ばれる（層C）', () => {
+      const onSet = vi.fn()
+      render(
+        <Wrapper>
+          <SettingsWindow
+            open={true}
+            onClose={() => {}}
+            scrollSpeed={20}
+            setScrollSpeed={() => {}}
+            embeddedAddonsDisabled={false}
+            onToggleEmbeddedAddons={() => {}}
+            addonTrust={[{ path: '/b.tgz', title: 'Deck B', decision: undefined }]}
+            onSetAddonTrust={onSet}
+          />
+        </Wrapper>,
+      )
+      fireEvent.change(screen.getByLabelText('Deck B: アドオンの個別許可'), { target: { value: 'denied' } })
+      expect(onSet).toHaveBeenCalledWith('/b.tgz', 'denied')
+    })
+
+    it('onSetAddonTrust 未指定なら個別許可セクションを表示しない（後方互換）', () => {
+      render(
+        <Wrapper>
+          <SettingsWindow open={true} onClose={() => {}} scrollSpeed={20} setScrollSpeed={() => {}} embeddedAddonsDisabled={false} onToggleEmbeddedAddons={() => {}} addonTrust={[{ path: '/b.tgz', title: 'Deck B', decision: undefined }]} />
+        </Wrapper>,
+      )
+      expect(screen.queryByText('Deck B')).toBeNull()
+    })
   })
 })

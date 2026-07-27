@@ -5,6 +5,8 @@ export type RegisteredComponent = ComponentType<Record<string, unknown>>
 
 const defaultComponents = new Map<string, RegisteredComponent>()
 const customComponents = new Map<string, RegisteredComponent>()
+/** カスタム登録の所有者（owner）を記録する。owner 単位でのアンロードに使用する（name → owner） */
+const customOwners = new Map<string, string>()
 
 /** フォールバックコンポーネント（未登録名指定時に使用） */
 const FallbackComponent = ({ name }: { name?: string; [_: string]: unknown }) => (
@@ -27,9 +29,30 @@ export function registerDefaultComponent(name: string, component: RegisteredComp
   defaultComponents.set(name, component)
 }
 
-/** カスタムコンポーネントを登録する（デフォルトを上書き） */
-export function registerComponent(name: string, component: RegisteredComponent): void {
+/**
+ * カスタムコンポーネントを登録する（デフォルトを上書き）。
+ * owner を指定すると、その所有者スコープで登録され、unregisterOwner でまとめて破棄できる。
+ * 同名で異なる owner による上書きが発生した場合は警告する（パッケージ切替時の名前衝突検知）。
+ */
+export function registerComponent(name: string, component: RegisteredComponent, owner?: string): void {
+  if (owner !== undefined) {
+    const existingOwner = customOwners.get(name)
+    if (existingOwner !== undefined && existingOwner !== owner) {
+      console.warn(`[ComponentRegistry] コンポーネント "${name}" が owner "${existingOwner}" から owner "${owner}" に上書きされます`)
+    }
+    customOwners.set(name, owner)
+  }
   customComponents.set(name, component)
+}
+
+/** 指定した owner に属するカスタム登録のみを削除する（デフォルト登録は温存する） */
+export function unregisterOwner(owner: string): void {
+  for (const [name, componentOwner] of customOwners) {
+    if (componentOwner === owner) {
+      customComponents.delete(name)
+      customOwners.delete(name)
+    }
+  }
 }
 
 /** コンポーネントを解決する（カスタム → デフォルト → フォールバックの優先順） */
@@ -47,4 +70,5 @@ export function getRegisteredComponents(): string[] {
 export function clearRegistry(): void {
   defaultComponents.clear()
   customComponents.clear()
+  customOwners.clear()
 }

@@ -1,7 +1,11 @@
 # Slide Presentation App
 
-A slide presentation tool built with React + Reveal.js.
-Define slide content and themes using JSON files and display them as presentations in the browser.
+**English** | [日本語](README.ja.md)
+
+![version](https://img.shields.io/badge/version-1.0.0-blue)
+
+A slide presentation tool built with React + Reveal.js, packaged as a local desktop app with Tauri.
+Define slide content and themes using JSON files and display them as presentations in a native window.
 
 ## What is Slide Presentation App
 
@@ -23,25 +27,163 @@ Under the hood, the app is built on React and Reveal.js, providing smooth transi
 notes, keyboard navigation, and a plugin system for custom components. The result is a polished presentation tool with
 the simplicity and automation benefits of a data-driven approach.
 
+## Screenshots
+
+|                                                             |                                                         |
+|:-----------------------------------------------------------:|:-------------------------------------------------------:|
+|                          **Home**                           |                    **Presentation**                     |
+|       ![Home screen](resources/screenshots/en/home.png)        | ![Presentation](resources/screenshots/en/presentation.png) |
+|                     **Presenter View**                      |                      **Settings**                       |
+| ![Presenter view](resources/screenshots/en/presenter-view.png) |     ![Settings](resources/screenshots/en/settings.png)     |
+
+> These images are generated automatically — see [Screenshots & E2E](#screenshots--e2e).
+
+## Download / Installation
+
+Pre-built installers for each tagged release are published on the
+[GitHub Releases](https://github.com/ToshikiImagawa/slide-presentation-app/releases) page.
+
+| OS      | File                                         |
+|---------|----------------------------------------------|
+| macOS   | `.dmg`                                       |
+| Windows | `.exe` (NSIS installer) or `.msi`            |
+| Linux   | `.AppImage`, `.deb`, or `.rpm`               |
+
+Download the file matching your OS from the latest release and run it.
+
+### macOS Gatekeeper warning
+
+This app is self-signed but not notarized by Apple, so the first time you open it, macOS Gatekeeper shows a warning
+that the developer cannot be verified. Right-click (or Control-click) the app in Finder and choose **Open**, then
+confirm in the dialog — this clears the quarantine attribute, and the warning will not appear again for that copy of
+the app. This is macOS's own code-signature verification.
+
+### Keychain and password prompts
+
+This app never uses the OS keychain or any secure credential store. The only thing it persists locally is the path
+to the last opened slide file, saved as plain JSON in the app's data directory via `tauri-plugin-store` and
+`tauri-plugin-fs`. You will never be asked for a keychain password when installing or launching the app — the
+Gatekeeper warning above is the only prompt you may see.
+
+### Updating
+
+This app does not currently check for updates automatically. Update by downloading the latest installer from
+[Releases](https://github.com/ToshikiImagawa/slide-presentation-app/releases) and installing it over the existing
+copy.
+
 ## Setup
 
 ```bash
 npm install
 ```
 
+Running the app requires a Rust toolchain (`cargo`/`rustc`) for Tauri. See the
+[Tauri prerequisites guide](https://v2.tauri.app/start/prerequisites/) if you don't have one yet.
+
 ## Commands
 
-| Command                 | Description                                         |
-|-------------------------|-----------------------------------------------------|
-| `npm run dev`           | Start dev server (addon build + Vite HMR)           |
-| `npm run build`         | Production build (addon build + output to `dist/`)  |
-| `npm run build:addons`  | Build addons only                                   |
-| `npm run preview`       | Preview built files                                 |
-| `npm run format`        | Format code with Prettier (`src/**/*.{ts,tsx,css}`) |
-| `npm run typecheck`     | TypeScript type check                               |
-| `npm run test`          | Run tests (Vitest)                                  |
-| `npm run test:watch`    | Run tests in watch mode                             |
-| `npm run export:slides` | Export slide content as an npm package (.tgz)       |
+| Command                        | Description                                                                             |
+|--------------------------------|-----------------------------------------------------------------------------------------|
+| `npm run tauri:dev`            | Start the desktop app (Tauri + addon build + Vite HMR)                                  |
+| `npm run tauri:build`          | Build the desktop app bundle                                                            |
+| `npm run dev`                  | Start frontend-only dev server (addon build + Vite HMR)                                 |
+| `npm run build`                | Frontend-only production build (addon build + output to `dist/`)                        |
+| `npm run build:addons`         | Build addons only                                                                       |
+| `npm run preview`              | Preview built files                                                                     |
+| `npm run format`               | Format code with Prettier (`src/**/*.{ts,tsx,css}`)                                     |
+| `npm run typecheck`            | TypeScript type check                                                                   |
+| `npm run test`                 | Run tests (Vitest)                                                                      |
+| `npm run test:watch`           | Run tests in watch mode                                                                 |
+| `npm run export:slides`        | Export slide content as a distributable package (.spkg)                                 |
+| `npm run format:check`         | Check formatting with Prettier (no writes; used in CI)                                  |
+| `npm run generate-icons`       | Regenerate `src-tauri/icons/` from `resources/icon.svg` (macOS only)                    |
+| `npm run generate-screenshots` | Capture README screenshots with Playwright WebKit (macOS only; doubles as an e2e smoke) |
+| `npm run screenshots:compare`  | Diff a real-app screenshot against a mock one (pixelmatch)                              |
+| `npm run generate-docs`        | Render `README.md` / `CHANGELOG.md` to PDF under `docs/`                                |
+
+## Home Screen
+
+On launch, the app opens on a home screen where you choose what to present.
+
+| Action              | Description                                                                                 |
+|---------------------|---------------------------------------------------------------------------------------------|
+| **Open a File**     | Pick a `slides.json` or a `.spkg` slide package from disk (legacy `.tgz` also supported)    |
+| **Open Sample**     | Load the bundled sample deck (the built-in template guide when no `slides.json` is bundled) |
+| **Recently Opened** | Re-open a recently used package; the list is persisted across launches                      |
+
+While presenting, the **Home** button in the top-left toolbar returns to this screen.
+
+## Opening a Local Slide Package
+
+Besides the slide content bundled at build time (see [Slide Packages](#slide-packages) below), you can pick a
+`slides.json` file, or a `.spkg` slide package produced by `npm run export:slides` (legacy `.tgz` packages exported by
+older versions can still be opened), from disk at any time using the **Open a File** button on the home screen.
+`.spkg`/`.tgz` packages are extracted into the app's cache directory first. Any
+`image/`, `voice/`, `theme/`, or `font/` relative references inside the slide data are resolved against the folder
+the content lives in. The app remembers the last opened file and reloads it automatically on next launch.
+
+## Edit Mode
+
+Beyond viewing, you can author and package slides directly inside the app. Click the **Edit** button in the top-left
+toolbar (next to **Home**) to switch from view to edit mode; **Exit editing** returns to the presentation.
+
+The editor puts the metadata form and preview on top and a full-width `slides.json` editor below:
+
+- **Form** — Edit confirmed fields (title, description, author, theme colors, custom CSS). Updates are partial, so any
+  unknown or free-form fields are preserved untouched.
+- **`slides.json` editor** — Edit the raw JSON directly. The form and the JSON editor share a single source of truth.
+- **Live preview** — Rendered by the same renderer as the actual presentation (not a re-implementation); theme edits
+  are reflected live. While the JSON has a syntax or schema error, the preview is hidden and save/export are disabled
+  until the error is fixed.
+
+### Saving and Exporting
+
+| Action          | Description                                                                                                                        |
+|-----------------|------------------------------------------------------------------------------------------------------------------------------------|
+| **Save**        | Write the edited `slides.json` to a location you choose (relative asset paths are preserved)                                        |
+| **Export .spkg** | Produce a `.spkg` package (name / version from the toolbar inputs); referenced assets are bundled and it round-trips with **Open a File** |
+
+Filesystem writes happen only while edit mode is active and are performed at the Rust boundary — the web layer is never
+granted write permission (least privilege).
+
+### Addon Detachment
+
+Package-bundled addons contain executable code, so addon control is separated into three layers:
+
+| Layer                   | Where                                                                                   | What it controls                                                                                                                                            |
+|-------------------------|-----------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Runtime trust**       | Confirmation prompt on open + **Settings → Per-package add-on trust**                    | Allow / deny loading a package's bundled addons, per package (default: denied). The global **Always disable embedded add-ons** toggle takes precedence.      |
+| **Export selection**    | Edit mode **Bundled add-ons** checkboxes (and `npm run export:slides --addons a,b`)      | Choose which addons to include when exporting a `.spkg`. The choices union package add-ons with dev built-in add-ons; the list stays visible (with an empty-state note) even when none are available. |
+| **Built-in add/remove** | Edit mode **Built-in add-ons (dev)** panel (development builds only)                     | Scaffold or remove `addons/src/<name>/entry.ts` (delete asks for confirmation — it is permanent and outside git), then click **Build** in the panel to rebuild from the app (runs `npm run build:addons`) so the addon appears in the bundle candidates. |
+
+### AI Generation
+
+The **AI Generate** panel in edit mode creates slides (`slides.json`) from a prompt. Generated slides flow into the
+editor's single source of truth — and from there into preview, manual editing, saving, and exporting — only after you
+confirm them in a diff dialog. Two generation methods are available:
+
+| Method                         | Prerequisite                                                           | Billing / online dependency                                                        |
+|--------------------------------|------------------------------------------------------------------------|------------------------------------------------------------------------------------|
+| **Built-in (Vertex AI)**       | A GCP project (Vertex AI) with project / region / model set, plus `gcloud auth application-default login` | Requires an online connection and incurs usage-based charges on your GCP project |
+| **External (Claude Code CLI)** | The local `claude` command is installed                                | Follows your Claude plan and terms (no separate API key needed)                    |
+
+- **GCP setup** — In the built-in panel, set the GCP **project ID / region / model** and **Save**, then click **GCP login**
+  (`gcloud auth application-default login`) once to create the ADC credentials. The access token is obtained from the ADC
+  at the Rust boundary (refreshed and cached for 55 minutes) and is never exposed to the web layer. Networking and token
+  handling are all confined to the Rust boundary (least privilege).
+- **Pre-gate** — The generate button is disabled when the built-in Vertex settings are incomplete or the external `claude`
+  binary is not found, with a hint to the setup path.
+- **Auto-repair loop** — Each candidate is validated on import; if invalid, it is regenerated up to 3 times with the
+  validation errors attached. On reaching the limit, the candidate with the fewest validation errors is applied so you
+  can fix it manually.
+- **Diff confirmation & formatting** — Generated slides are not applied immediately: a dialog previews the structural
+  changes (added / changed / removed slides and meta changes) so you **Apply** or **Cancel** — Cancel leaves the editor
+  untouched. On apply the JSON is normalized to 2-space indentation for readability.
+- **Progress and cancellation** — Progress is shown during generation, and **Cancel** stops an in-flight run. On failure,
+  cancellation, or offline, the editor content is preserved and you can safely fall back to manual editing.
+
+Generation, GCP settings/login, and networking are enabled only while in edit mode with generation active (never reached in
+view or live presentation).
 
 ## Defining Slides
 
@@ -86,7 +228,9 @@ Customize the presentation logo via the `meta.logo` field.
 | `height` | number | `40`        | Logo height (px)   |
 
 If `meta.logo` is omitted, no logo will be displayed. If `width` and `height` are omitted, the defaults of `120` and`40`
-are used respectively.
+are used respectively. The logo is shown in the bottom-left corner of every slide.
+
+![Logo shown in the bottom-left corner](resources/screenshots/en/logo.png)
 
 ### Layouts
 
@@ -114,6 +258,19 @@ The `content` layout determines rendering based on child element fields.
 | `steps`     | Timeline         |
 | `tiles`     | FeatureTileGrid  |
 | `component` | Custom component |
+
+#### Layout Examples
+
+|                                                                   |                                                                  |
+| :---------------------------------------------------------------: | :--------------------------------------------------------------: |
+|                  `content` — Timeline (`steps`)                   |             `content` — FeatureTileGrid (`tiles`)                |
+| ![content steps](resources/screenshots/en/layout-content-steps.png) | ![content tiles](resources/screenshots/en/layout-content-tiles.png) |
+|                           `two-column`                            |                 `center` (`variant: "section"`)                  |
+|    ![two-column](resources/screenshots/en/layout-two-column.png)     |       ![center section](resources/screenshots/en/layout-section.png)|
+|              `bleed` — full-width two-column                       |             `custom` — full-screen component                     |
+|         ![bleed](resources/screenshots/en/layout-bleed.png)          |        ![custom](resources/screenshots/en/layout-custom.png)        |
+
+> The `center` cover/title layout is shown in the [Screenshots](#screenshots) section above.
 
 ### Two-Column Layout Details
 
@@ -411,6 +568,8 @@ Keys within `ui` support up to two levels of nesting (`section.key`).
 Click the "Presenter View" button in the upper right of the presentation screen to open the presenter view in a separate
 window. UI labels in the presenter view follow the language setting described in the Internationalization section.
 
+![Presenter view](resources/screenshots/en/presenter-view.png)
+
 ### Panel Layout
 
 The presenter view consists of the following areas.
@@ -447,7 +606,8 @@ according to the language setting.
 
 ### Bidirectional Sync
 
-The main window and presenter view are bidirectionally synced via `BroadcastChannel`.
+The main window and presenter view are bidirectionally synced via Tauri events (`@tauri-apps/api/event`, event name
+`presenter-view`). The presenter view runs as a separate native Tauri window.
 
 - Navigating slides in the main window updates the presenter view in real time
 - Navigating slides or controlling audio from the presenter view is reflected in the main window
@@ -478,6 +638,8 @@ On slides with a `voice` defined, the following buttons appear in the upper-righ
 
 The toolbar is displayed at reduced opacity by default and fully visible on hover. The same controls are available from
 the presenter view's control bar.
+
+![Toolbar — left: Home / Settings, right: audio playback / auto-play / auto-slideshow / presenter view](resources/screenshots/en/toolbar.png)
 
 ### Manual Playback
 
@@ -575,55 +737,104 @@ Export and distribute slide content (slides.json + images, audio, themes, fonts,
 npm run export:slides -- --name my-presentation --slides slides.json
 ```
 
-| Option      | Required | Description                                  |
-|-------------|:--------:|----------------------------------------------|
-| `--name`    |   Yes    | Package name (generated as `@slides/{name}`) |
-| `--slides`  |   Yes    | Slide JSON filename under `public/`          |
-| `--version` |          | Version (default: `1.0.0`)                   |
+| Option      | Required | Description                                           |
+|-------------|:--------:|-------------------------------------------------------|
+| `--name`    |   Yes    | Package name (generated as `@slides/{name}`)          |
+| `--slides`  |   Yes    | Slide JSON filename under `public/`                   |
+| `--version` |          | Version (default: `1.0.0`)                            |
+| `--addons`  |          | Bundle built add-ons (`addons/dist`) into the package |
 
-This generates a `.tgz` file in `dist-slides/`. Asset paths referenced in slides.json (`image/`, `voice/`, `theme/`,
-`font/`) are auto-detected and included in the package.
+This generates a `.spkg` file in `dist-slides/` (same tar+gzip format as `.tgz`, produced via `npm pack` and renamed
+to a project-specific extension). Asset paths referenced in slides.json (`image/`, `voice/`, `theme/`, `font/`) are
+auto-detected and included in the package. When `--addons` is passed, the built add-ons are bundled under `addons/`
+and are dynamically loaded after the package is opened (Tauri runtime only — see below).
+
+### Embedded Add-ons (Runtime Loading)
+
+When a `.spkg` (or legacy `.tgz`) is opened in the desktop app, any add-ons bundled under its `addons/` directory are loaded at runtime and
+their components become resolvable from `{ "component": { "name": ... } }`. Add-ons are scoped per package (owner), so
+switching between packages unloads the previous package's add-ons and prevents name collisions.
+
+> ⚠️ **Security: only open packages from publishers you trust.**
+> Embedded add-ons are JavaScript that runs with the **same privileges as the app** (no sandbox). A malicious package
+> could reach any capability the app exposes. Therefore:
+>
+> - The first time you open a package that contains add-ons, a confirmation dialog appears. **Add-ons are disabled by
+    > default** — they are only loaded if you explicitly enable them. Your choice (allow / deny) is remembered per
+    package.
+> - If you deny, the slides still open normally; unresolved components fall back to a placeholder.
+> - You can turn off embedded add-ons entirely from **Settings → “Always disable embedded add-ons”**, and reset all
+    > remembered allow/deny decisions with **“Reset add-on trust history.”**
+>
+> Only add-ons declared in the package's `addons/manifest.json` and located under `addons/` are ever loaded.
 
 ### Import (Use Package)
 
-Specify a slide package via the `VITE_SLIDE_PACKAGE` environment variable. Both local paths and npm packages are
-supported.
+Specify a slide package via the `VITE_SLIDE_PACKAGE` environment variable.
 
 #### Use with local path (no npm install required)
 
-Specify the `.tgz` file or extracted directory path in `.env.local`.
+Specify the `.spkg` file (or a legacy `.tgz`) or extracted directory path in `.env.local`.
 
 ```bash
-# Specify .tgz directly
-VITE_SLIDE_PACKAGE=./dist-slides/slides-my-presentation-1.0.0.tgz
+# Specify .spkg directly
+VITE_SLIDE_PACKAGE=./dist-slides/slides-my-presentation-1.0.0.spkg
 
 # Specify extracted directory
 VITE_SLIDE_PACKAGE=./dist-slides/my-presentation
 ```
 
-#### Use as npm package
+#### Use an installed npm package
+
+If the package is already available as an npm dependency (e.g. published to a registry and installed with
+`npm install @slides/my-presentation`), specify its package name directly.
 
 ```bash
-# Install the .tgz
-npm install ./dist-slides/slides-my-presentation-1.0.0.tgz
-
-# Specify the package name in .env.local
 VITE_SLIDE_PACKAGE=@slides/my-presentation
 ```
 
+> **Note:** `npm run export:slides` outputs a `.spkg` file, and npm does not recognize that extension as an
+> installable local tarball (unlike `.tgz`/`.tar.gz`/`.tar`), so `npm install ./dist-slides/xxx.spkg` does not work.
+> To use a freshly exported package, use the local-path method above instead.
+
 #### `VITE_SLIDE_PACKAGE` Value Reference
 
-| Value                         | Behavior                                                |
-|-------------------------------|---------------------------------------------------------|
-| `./dist-slides/xxx-1.0.0.tgz` | Auto-extract .tgz for local use (no npm install)        |
-| `./dist-slides/xxx/`          | Read directly from extracted directory (no npm install) |
-| `@slides/xxx`                 | Read from npm package                                   |
-| (unset)                       | Auto-detect `@slides/*` packages                        |
+| Value                          | Behavior                                                               |
+|--------------------------------|-------------------------------------------------------------------------|
+| `./dist-slides/xxx-1.0.0.spkg` | Auto-extract `.spkg` (or legacy `.tgz`) for local use (no npm install) |
+| `./dist-slides/xxx/`           | Read directly from extracted directory (no npm install)               |
+| `@slides/xxx`                  | Read from an installed npm package                                    |
+| (unset)                        | Auto-detect `@slides/*` packages                                      |
 
 ### Behavior
 
 - If a file with the same name exists in `public/`, the `public/` file takes priority (package serves as fallback)
 - During `npm run build`, package assets are copied to `dist/` (existing files are not overwritten)
+
+## Screenshots & E2E
+
+The screenshots in this README are produced by a Playwright (WebKit) script that also serves as an end-to-end smoke
+test.
+
+```bash
+npm run generate-screenshots            # capture all scenarios
+npm run generate-screenshots -- home    # capture a single scenario
+```
+
+- Runs the app via `vite --mode screenshot`, replacing the Tauri IPC layer with in-memory mocks (`src/__screenshot__/`)
+  so the UI boots in a plain browser. A locale-specific fixture deck (`scripts/screenshot/fixtures/slides.{en,ja}.json`)
+  is served as `/slides.json` based on the browser locale.
+- Captures every scenario (`home`, `presentation`, `toolbar`, `settings`, `presenter-view`, the `layout-*` gallery, and
+  `logo`) for both locales, compositing a macOS window frame. English shots go to `resources/screenshots/en/` and
+  Japanese to `resources/screenshots/ja/`. If any scenario's wait fails, the run exits non-zero — so it doubles as an
+  e2e smoke test.
+- **macOS only** (Japanese fonts and WebKit rendering differ on Linux). CI runs it on a macOS runner via
+  `.github/workflows/screenshots.yml` (manual dispatch) and commits any diff under `resources/screenshots/`.
+- **Assertion-based E2E**: `npm run test:e2e` runs a Playwright Test suite (`e2e/*.spec.ts`) that reuses the same
+  screenshot-mode server, IPC mocks, and fixtures, but adds explicit `expect()` assertions across the `en` and `ja`
+  locales. Because it checks DOM text (not pixels), it runs headless on Linux in CI (`.github/workflows/ci.yml`). See
+  [`e2e/README.md`](e2e/README.md).
+- Real-Tauri-WebView acceptance testing (WebdriverIO + `tauri-driver`) has an optional scaffold under `e2e/`.
 
 ## License
 

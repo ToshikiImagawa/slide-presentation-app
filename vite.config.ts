@@ -5,12 +5,26 @@ import { resolve, extname, dirname } from 'path'
 import { cpSync, existsSync, createReadStream, statSync, readFileSync, readdirSync, mkdirSync, rmSync } from 'fs'
 import { execSync } from 'child_process'
 import { createRequire } from 'module'
+import { isSlidePackageArchivePath } from './src/slidePackageArchive'
 
-/** addons dist to dist/addons copy plugin */
+/**
+ * 組み込みアドオン（層A）の dist を配信ディレクトリへコピーするプラグイン。
+ * 層Aは dev 限定のため、release（本番）ビルドではコピーしない（#35・DC-003）。
+ * ゲートはランタイムの `loadBuiltinAddons`（`import.meta.env.DEV`）と同一軸の
+ * `resolved.env.DEV` で判定し、ビルドとロードのゲートを 1 つの真実源に揃える
+ * （`mode` 文字列軸だと `vite build --mode development` 等で両者が乖離するため）。
+ * dev server では `resolve.alias['/addons']` が addons/dist を直接配信するためコピーは不要
+ * （`closeBundle` はそもそも build 時しか発火しない）。
+ */
 function copyAddonsPlugin(): Plugin {
+  let isDev = false
   return {
     name: 'copy-addons',
+    configResolved(resolved) {
+      isDev = resolved.env.DEV
+    },
     closeBundle() {
+      if (!isDev) return
       cpSync(resolve(__dirname, 'addons/dist'), resolve(__dirname, 'dist/addons'), {
         recursive: true,
       })
@@ -52,8 +66,8 @@ function slideContentPlugin(): Plugin {
     const absPath = resolve(__dirname, value)
     if (!existsSync(absPath)) return null
 
-    // .tgz の場合は展開して使用
-    if (absPath.endsWith('.tgz')) {
+    // .spkg（旧 .tgz）の場合は展開して使用。いずれも tar+gzip 形式で拡張子に依存しない
+    if (isSlidePackageArchivePath(absPath)) {
       const extractDir = resolve(__dirname, 'node_modules/.slide-content-cache')
       if (existsSync(extractDir)) rmSync(extractDir, { recursive: true })
       mkdirSync(extractDir, { recursive: true })
@@ -186,29 +200,73 @@ function slideContentPlugin(): Plugin {
   }
 }
 
-export default defineConfig({
-  plugins: [react(), assetsPlugin(), slideContentPlugin(), copyAddonsPlugin()],
-  build: {
-    rollupOptions: {
-      input: {
-        main: resolve(__dirname, 'index.html'),
-        'presenter-view': resolve(__dirname, 'presenter-view.html'),
+/** screenshot モード専用: ロケール別 fixture を /slides.json として配信する（Accept-Language で出し分け） */
+function screenshotFixturePlugin(): Plugin {
+  const fixtureFor = (lang: string) => resolve(__dirname, `scripts/screenshot/fixtures/slides.${lang}.json`)
+  return {
+    name: 'screenshot-fixture',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const url = (req.url ?? '/').split('?')[0]
+        if (url !== '/slides.json') return next()
+        // Accept-Language（Playwright の context locale が設定する）が ja で始まれば日本語、それ以外は英語 fixture
+        const lang = (req.headers['accept-language'] ?? '').toLowerCase().startsWith('ja') ? 'ja' : 'en'
+        const fixture = fixtureFor(lang)
+        if (!existsSync(fixture)) return next()
+        res.setHeader('Content-Type', 'application/json')
+        res.setHeader('Content-Length', statSync(fixture).size)
+        createReadStream(fixture).pipe(res)
+      })
+    },
+  }
+}
+
+export default defineConfig(({ mode }) => {
+  // スクリーンショット撮影モード。Tauri IPC をインメモリのモックへ alias 差し替えし、
+  // fixture の slides.json を配信する。本番ビルド（mode !== 'screenshot'）には一切混入しない。
+  const isScreenshot = mode === 'screenshot'
+
+  return {
+    // copyAddonsPlugin は内部で env.DEV をゲートし release では層Aをコピーしない（#35・DC-003）
+    plugins: [react(), assetsPlugin(), slideContentPlugin(), copyAddonsPlugin(), ...(isScreenshot ? [screenshotFixturePlugin()] : [])],
+    build: {
+      rollupOptions: {
+        input: {
+          main: resolve(__dirname, 'index.html'),
+          'presenter-view': resolve(__dirname, 'presenter-view.html'),
+        },
       },
     },
-  },
-  server: {
-    fs: {
-      allow: ['.', resolve(__dirname, 'addons'), resolve(__dirname, 'assets')],
+    server: {
+      port: 1420,
+      strictPort: true,
+      fs: {
+        allow: ['.', resolve(__dirname, 'addons'), resolve(__dirname, 'assets')],
+      },
     },
-  },
-  resolve: {
-    alias: {
-      '/addons': resolve(__dirname, 'addons/dist'),
+    resolve: {
+      alias: {
+        '/addons': resolve(__dirname, 'addons/dist'),
+        // screenshot モードのみ: Tauri プラグイン/API をモックへ差し替え（本番非混入）
+        ...(isScreenshot
+          ? {
+              // plugin-store / api/event / webviewWindow のみ差し替える。
+              // api/core は実物の plugin-fs / plugin-dialog が Resource/Channel を import するため
+              // alias しない（対象シナリオでは core.invoke は呼ばれないので実害なし）。
+              '@tauri-apps/plugin-store': resolve(__dirname, 'src/__screenshot__/tauri-store.ts'),
+              '@tauri-apps/api/event': resolve(__dirname, 'src/__screenshot__/tauri-event.ts'),
+              '@tauri-apps/api/webviewWindow': resolve(__dirname, 'src/__screenshot__/tauri-webview.ts'),
+              '@tauri-apps/api/window': resolve(__dirname, 'src/__screenshot__/tauri-window.ts'),
+            }
+          : {}),
+      },
     },
-  },
-  test: {
-    environment: 'jsdom',
-    globals: true,
-    setupFiles: ['./src/test-setup.ts'],
-  },
+    test: {
+      environment: 'jsdom',
+      globals: true,
+      setupFiles: ['./src/test-setup.ts'],
+      // Vitest 対象は単体/統合テストのみ。e2e/ の Playwright spec（*.spec.ts）は除外する
+      include: ['src/**/*.{test,spec}.{ts,tsx}', 'scripts/**/*.test.mjs'],
+    },
+  }
 })

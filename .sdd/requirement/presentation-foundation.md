@@ -1,3 +1,22 @@
+---
+id: prd-presentation-foundation
+title: Reveal.js プレゼンテーション基盤 要求仕様書
+type: prd
+status: draft
+priority: high
+risk: high
+created: 2026-02-02
+updated: 2026-07-24
+tags:
+  - presentation
+  - reveal-js
+  - navigation
+  - scaling
+  - branding
+  - lifecycle
+category: presentation-foundation
+---
+
 # Reveal.js プレゼンテーション基盤 要求仕様書
 
 ## 概要
@@ -85,6 +104,7 @@ graph TB
     - スライドごとのトランジション指定
     - スライド entrance アニメーション
     - 背景グリッドパターンの表示
+    - スライド上部アクセントバーの表示
 - レスポンシブ表示
     - 基準解像度（1280x720）でのレンダリング
     - ウインドウサイズに応じた自動スケーリング
@@ -276,11 +296,19 @@ requirementDiagram
         verifymethod: demonstration
     }
 
+    functionalRequirement AccentBar {
+        id: FR_706
+        text: "スライド上部にプライマリカラーのアクセントバーを表示できること"
+        risk: low
+        verifymethod: demonstration
+    }
+
     SlideDisplay - contains -> SlideRendering
     SlideDisplay - contains -> SlideBackground
     SlideDisplay - contains -> SlideTransition
     SlideDisplay - contains -> EntranceAnimation
     SlideDisplay - contains -> BackgroundGrid
+    SlideDisplay - contains -> AccentBar
 ```
 
 ## 3.4. 非機能要求図
@@ -289,7 +317,7 @@ requirementDiagram
 requirementDiagram
     performanceRequirement ScalingPerformance {
         id: NFR_200
-        text: "スケーリング処理がリアルタイムに行われ、ウインドウリサイズ時に視覚的な遅延が発生しないこと"
+        text: "ウインドウリサイズ時のスケーリング反映を1フレーム（約16ms／60fps相当）以内に完了し、視覚的な遅延やちらつきが発生しないこと"
         risk: medium
         verifymethod: demonstration
     }
@@ -393,6 +421,7 @@ requirementDiagram
 | FR_703 | Should | スライドごとのトランジション指定       |
 | FR_704 | Could  | スライド entrance アニメーション   |
 | FR_705 | Could  | 背景グリッドパターンの表示          |
+| FR_706 | Could  | スライド上部アクセントバーの表示       |
 
 ### FR_800: レスポンシブスケーリング
 
@@ -427,7 +456,7 @@ React コンポーネントのマウント時に Reveal.js を初期化し、ア
 
 ### NFR_200: スケーリングパフォーマンス
 
-ウインドウリサイズ時のスケーリング処理がリアルタイムに行われ、視覚的な遅延やちらつきが発生しないこと。
+ウインドウリサイズ時のスケーリング処理がリアルタイムに行われ、視覚的な遅延やちらつきが発生しないこと。リサイズ操作からスケーリング反映までを 1 フレーム（約 16ms／60fps 相当）以内に完了することを目標とする。
 
 **優先度:** Should
 

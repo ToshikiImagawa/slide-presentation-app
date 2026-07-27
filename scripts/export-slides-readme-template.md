@@ -2,17 +2,13 @@
 
 Slide presentation package.
 
-## Install
-
-```bash
-npm install ./dist-slides/slides-{{name}}-1.0.0.tgz
-```
-
 ## Usage
 
+Specify this package via `VITE_SLIDE_PACKAGE` in `.env.local` (no npm install required — npm does not recognize the
+`.spkg` extension as an installable tarball):
+
 ```bash
-# .env.local に設定
-echo 'VITE_SLIDE_PACKAGE=@slides/{{name}}' >> .env.local
+echo 'VITE_SLIDE_PACKAGE=./dist-slides/slides-{{name}}-1.0.0.spkg' >> .env.local
 
 # 開発サーバー起動
 npm run dev
@@ -21,7 +17,13 @@ npm run dev
 Or specify the package directly:
 
 ```bash
-VITE_SLIDE_PACKAGE=@slides/{{name}} npm run dev
+VITE_SLIDE_PACKAGE=./dist-slides/slides-{{name}}-1.0.0.spkg npm run dev
+```
+
+If you've published and installed this package as an npm dependency instead, reference it by name:
+
+```bash
+VITE_SLIDE_PACKAGE=@slides/{{name}}
 ```
 
 ## Contents

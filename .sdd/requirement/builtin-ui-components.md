@@ -1,3 +1,21 @@
+---
+id: prd-builtin-ui-components
+title: 組み込みUIコンポーネント群 要求仕様書
+type: prd
+status: draft
+priority: high
+risk: medium
+created: 2026-02-02
+updated: 2026-07-24
+tags:
+  - ui-components
+  - component-registry
+  - slide-rendering
+  - theme
+  - mui
+category: ui-components
+---
+
 # 組み込みUIコンポーネント群 要求仕様書
 
 ## 概要
@@ -552,6 +570,7 @@ TerminalAnimation 等のインタラクティブコンポーネントが60fpsで
 
 - TypeScript strict モードに準拠すること（T-001）
 - Reveal.js の DOM 構造（`.reveal > .slides > section`）内で正しく動作すること（T-002）
+- 副作用（`setTimeout` / Intersection Observer 等）を伴うコンポーネントは、アンマウント時に必ずクリーンアップ（`clearTimeout` / `observer.disconnect`）を行うこと（T-003）
 - テーマシステムのCSS変数を直接参照し、ハードコードされた色値を使用しないこと
 
 ## 5.2. ビジネス的制約

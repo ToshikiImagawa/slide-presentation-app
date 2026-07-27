@@ -1,16 +1,36 @@
+---
+id: design-visual-addon
+title: ビジュアルコンポーネントのアドオン化 技術設計書
+type: design
+status: approved
+sdd-phase: plan
+impl-status: implemented
+created: 2026-02-02
+updated: 2026-07-26
+depends-on:
+  - spec-visual-addon
+tags:
+  - addon
+  - visual-component
+  - component-registry
+  - iife-bundle
+category: addon-system
+---
+
 # ビジュアルコンポーネントのアドオン化
 
 **ドキュメント種別:** 技術設計書 (Design Doc)
 **SDDフェーズ:** Plan (計画/設計)
-**最終更新日:** 2026-01-30
+**最終更新日:** 2026-07-24
 **関連 Spec:** [visual-addon_spec.md](./visual-addon_spec.md)
+**関連 Design Doc:** [package-embedded-addon_design.md](./package-embedded-addon_design.md)（owner 機構・パッケージ同梱アドオンのランタイムロードへの発展先）
 **関連 PRD:** [visual-addon.md](../requirement/visual-addon.md)
 
 ---
 
 # 1. 実装ステータス
 
-**ステータス:** 🟢 実装完了
+**ステータス:** 🟢 実装完了（アドオン基盤に加え、組み込みアドオン層Aの dev/release ゲートを実装・#35）
 
 ## 1.1. 実装進捗
 
@@ -19,11 +39,15 @@
 | `addons/src/ai-sdd-visuals/entry.ts`         | 🟢       | アドオン登録エントリポイント（各アドオン内に配置） |
 | `addons/vite.config.ts`                      | 🟢       | IIFE ビルド設定（自動検出方式） |
 | ビジュアルファイル移動（`addons/src/ai-sdd-visuals/`）  | 🟢       | 3コンポーネント + CSS Modules + icons.tsx |
-| `src/addon-bridge.ts`                        | 🟢       | グローバル登録インターフェース |
-| `src/main.tsx` アドオンローダー                    | 🟢       | manifest fetch + スクリプト動的ロード |
+| `src/addon-bridge.ts`                        | 🟢       | グローバル登録インターフェース + `setCurrentAddonOwner` / `currentAddonOwner` 機構 |
+| `src/addonLoader.ts` アドオンローダー              | 🟢       | `loadBuiltinAddons` / `loadAddonScripts`（`main.tsx` から分離）。manifest fetch + script 動的ロード（owner スコープ・冪等再注入） |
+| `src/main.tsx` 起動シーケンス                     | 🟢       | 起動時に `loadBuiltinAddons()`、パッケージ選択時に `loadAddonScripts()` を呼ぶ |
+| `src/components/ComponentRegistry.tsx` owner 機構 | 🟢    | `registerComponent(name, component, owner?)` / `unregisterOwner` / `customOwners` / 名前衝突警告（後方互換） |
 | `src/components/registerDefaults.tsx` 修正     | 🟢       | ビジュアル3つの登録を削除 |
 | `vite.config.ts` dev/prod アドオン配信設定          | 🟢       | alias + copyAddonsPlugin |
 | `src/visuals/` 削除                            | 🟢       |      |
+| `addonLoader.ts` の `loadBuiltinAddons` dev gate | 🟢       | `import.meta.env.DEV` で gate。release では manifest を fetch せず層Aを読み込まない（#35・DC-003）。単体テストで release 経路を検証 |
+| `vite.config.ts` `copyAddonsPlugin` dev gate    | 🟢       | `configResolved` で `resolved.env.DEV`（ランタイムの `import.meta.env.DEV` と同一軸）を取得し、`closeBundle` を dev のみで実行。release では `addons/dist → dist/addons` をコピーしない（#35・DC-003）。ビルド実地で `dist/addons` 非生成を確認 |
 
 ---
 
@@ -56,7 +80,7 @@
 graph TD
     Main[main.tsx] --> Bridge[addon-bridge.ts]
     Main --> RegDef[registerDefaults.tsx]
-    Main --> Loader[アドオンローダー]
+    Main --> Loader[addonLoader.ts]
     Bridge --> Registry[ComponentRegistry]
     RegDef --> Registry
     Loader --> Manifest[manifest.json]
@@ -83,8 +107,10 @@ graph TD
 
 | モジュール名                  | 責務                                           | 依存関係                               | 配置場所                               |
 |--------------------------|----------------------------------------------|-------------------------------------|---------------------------------------|
-| `addon-bridge.ts`        | グローバル登録関数のセットアップ、React インスタンス公開             | ComponentRegistry, React             | `src/addon-bridge.ts`                 |
-| `main.tsx`（ローダー部分）     | manifest.json の fetch とアドオンスクリプト動的ロード        | addon-bridge.ts                      | `src/main.tsx`                        |
+| `addon-bridge.ts`        | グローバル登録関数（`__ADDON_REGISTER__`）のセットアップ、React インスタンス公開、`setCurrentAddonOwner` によるロード中 owner 管理 | ComponentRegistry, React             | `src/addon-bridge.ts`                 |
+| `addonLoader.ts`         | manifest.json の fetch とアドオンスクリプト動的ロード。`loadBuiltinAddons`（owner なし）/ `loadAddonScripts`（owner スコープ・冪等再注入）。`AddonManifest` 型を定義 | addon-bridge.ts                      | `src/addonLoader.ts`                  |
+| `main.tsx`（起動シーケンス）    | 起動時に `loadBuiltinAddons()`、スライドパッケージ選択時に `loadAddonScripts()` を呼ぶ | addonLoader.ts, ComponentRegistry    | `src/main.tsx`                        |
+| `ComponentRegistry.tsx`  | コンポーネントの登録・解決、owner スコープ管理（`registerComponent` の owner 引数 / `unregisterOwner` / 名前衝突警告） | React                                | `src/components/ComponentRegistry.tsx` |
 | `entry.ts`               | アドオンのコンポーネントを `__ADDON_REGISTER__` 経由で登録     | 各ビジュアルコンポーネント, window グローバル         | `addons/src/ai-sdd-visuals/entry.ts`  |
 | `vite.config.ts`         | アドオンの IIFE ビルド設定、自動検出、CSS インライン化、manifest 生成 | Vite                                 | `addons/vite.config.ts`               |
 | ビジュアルコンポーネント（3つ）       | 各ビジュアルの描画ロジック                               | React, CSS Modules                   | `addons/src/ai-sdd-visuals/`          |
@@ -109,43 +135,24 @@ project-root/
 │       ├── addons.iife.js
 │       └── manifest.json
 ├── src/
-│   ├── addon-bridge.ts                      # グローバル登録インターフェース
-│   ├── main.tsx                             # エントリポイント（アドオンローダー含む）
+│   ├── addon-bridge.ts                      # グローバル登録インターフェース + setCurrentAddonOwner
+│   ├── addonLoader.ts                       # アドオンローダー（loadBuiltinAddons / loadAddonScripts、AddonManifest 型）
+│   ├── main.tsx                             # エントリポイント（起動シーケンス。ローダーは addonLoader.ts に分離）
 │   └── components/
-│       ├── ComponentRegistry.tsx             # 変更なし
+│       ├── ComponentRegistry.tsx             # owner スコープ管理を追加（registerComponent owner / unregisterOwner。後方互換）
 │       └── registerDefaults.tsx              # ビジュアル3つの登録を削除
-└── vite.config.ts                           # dev: alias, prod: copyAddonsPlugin
+└── vite.config.ts                           # dev: alias + copyAddonsPlugin / prod: 層A非同梱（copyAddonsPlugin を追加しない・#35）
 ```
 
 ---
 
 # 5. データモデル
 
-## 5.1. manifest.json
+論理スキーマ（`AddonManifest`・`window.__ADDON_REGISTER__`）は仕様書 [visual-addon_spec.md](./visual-addon_spec.md) の §4.3 / §4.4 を参照。本節では実装上の配置と型公開の方針のみを補足する。
 
-```typescript
-type AddonManifest = {
-  addons: Array<{
-    name: string    // アドオン名
-    bundle: string  // バンドルファイルのパス
-  }>
-}
-```
-
-## 5.2. グローバルインターフェース
-
-```typescript
-declare global {
-  interface Window {
-    __ADDON_REGISTER__?: (
-      addonName: string,
-      components: Array<{ name: string; component: React.ComponentType<Record<string, unknown>> }>
-    ) => void
-    React?: typeof React
-    ReactJSXRuntime?: typeof ReactJSXRuntime
-  }
-}
-```
+- **`AddonManifest` 型の定義場所**: `src/addonLoader.ts` で `export type AddonManifest` として定義し、組み込みアドオンとパッケージ同梱アドオンで共通利用する。
+- **グローバル公開の方針**: `window.__ADDON_REGISTER__` のみ `src/addon-bridge.ts` の `declare global` で型宣言する。共有 React インスタンス（`React` / `ReactJSXRuntime`）は型宣言せず、`(window as unknown as Record<string, unknown>).React = React` のようにキャスト経由で代入する（アドオン IIFE が `external` 参照として読み取る）。
+- **登録コンポーネント型**: `RegisteredComponent = ComponentType<Record<string, unknown>>`（`src/components/ComponentRegistry.tsx`）。
 
 ---
 
@@ -155,26 +162,89 @@ declare global {
 
 ```typescript
 // src/addon-bridge.ts
-import React from 'react'
+import * as React from 'react'
 import * as ReactJSXRuntime from 'react/jsx-runtime'
-import { registerComponent, type RegisteredComponent } from './components/ComponentRegistry'
+import { registerComponent } from './components/ComponentRegistry'
+import type { RegisteredComponent } from './components/ComponentRegistry'
 
-// アドオン IIFE が参照するグローバル変数を公開
-window.React = React
-window.ReactJSXRuntime = ReactJSXRuntime
+// アドオン IIFE が external 参照するグローバル変数を公開（型宣言せずキャストで代入）
+;(window as unknown as Record<string, unknown>).React = React
+;(window as unknown as Record<string, unknown>).ReactJSXRuntime = ReactJSXRuntime
 
-// アドオン登録コールバックを定義
-window.__ADDON_REGISTER__ = (
-  _addonName: string,
-  components: Array<{ name: string; component: RegisteredComponent }>
-) => {
+// 現在ロード中のアドオンの owner（組み込みアドオンは undefined）
+let currentAddonOwner: string | undefined
+
+/** 以降に登録されるアドオンコンポーネントの owner を設定する */
+export function setCurrentAddonOwner(owner: string | undefined): void {
+  currentAddonOwner = owner
+}
+
+// アドオン登録コールバックを定義（登録時に現在の owner を紐づける）
+window.__ADDON_REGISTER__ = (_addonName: string, components: Array<{ name: string; component: RegisteredComponent }>) => {
   for (const { name, component } of components) {
-    registerComponent(name, component)
+    registerComponent(name, component, currentAddonOwner)
+  }
+}
+
+declare global {
+  interface Window {
+    __ADDON_REGISTER__?: (addonName: string, components: Array<{ name: string; component: RegisteredComponent }>) => void
   }
 }
 ```
 
-## 6.2. entry.ts（アドオン側）
+## 6.2. addonLoader.ts（ホスト側ローダー）
+
+```typescript
+// src/addonLoader.ts
+import { setCurrentAddonOwner } from './addon-bridge'
+
+export type AddonManifest = {
+  addons: Array<{ name: string; bundle: string }>
+}
+
+// 注入済み script を src ごとに保持し、再ロード時は旧要素を除去してから再注入する（冪等）
+const injectedScripts = new Map<string, HTMLScriptElement>()
+
+function loadAddonScript(src: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    injectedScripts.get(src)?.remove()
+    const script = document.createElement('script')
+    script.src = src
+    script.onload = () => resolve()
+    script.onerror = () => reject(new Error(`Failed to load addon: ${src}`))
+    injectedScripts.set(src, script)
+    document.head.appendChild(script)
+  })
+}
+
+/** owner スコープで一連のアドオンをロードする（パッケージ同梱アドオン用） */
+export async function loadAddonScripts(scripts: string[], owner: string): Promise<void> {
+  if (scripts.length === 0) return
+  setCurrentAddonOwner(owner)
+  try {
+    await Promise.all(scripts.map(loadAddonScript))
+  } finally {
+    setCurrentAddonOwner(undefined)
+  }
+}
+
+/** ビルド時同梱の組み込みアドオン（owner なし）をロードする（層A・dev 限定） */
+export async function loadBuiltinAddons(): Promise<void> {
+  if (!import.meta.env.DEV) return // 層Aは dev 限定。release では読み込まない（#35・DC-003）
+  try {
+    const res = await fetch('/addons/manifest.json')
+    if (!res.ok) return
+    const manifest: AddonManifest = await res.json()
+    setCurrentAddonOwner(undefined)
+    await Promise.all(manifest.addons.map((addon) => loadAddonScript(addon.bundle)))
+  } catch {
+    // manifest 不在・ロード失敗時はフォールバック（アドオンなし）
+  }
+}
+```
+
+## 6.3. entry.ts（アドオン側）
 
 ```typescript
 // addons/src/ai-sdd-visuals/entry.ts
@@ -201,10 +271,10 @@ if (register) {
 | 型安全性（T-001）           | アドオンソースは tsconfig.json の `include` に含め、型チェック対象。vite.config.ts は `exclude` |
 | 表示互換性（DC-002）        | CSS Modules をビルド時に JS にインライン化。ランタイムで `<style>` タグとして注入 |
 | ビルド互換性                | `npm run build:addons` で独立ビルド。メインビルドの前に実行される  |
-| ビルドサイズ（NFR-001）      | React を external 指定しバンドルに含めない。CSS インライン化で追加ファイルなし |
+| ビルドサイズ（NFR-001）      | React を external 指定しバンドルに含めない（重複増分 0）。CSS はインライン化し追加の配信ファイルを増やさない。**目標値**: 本体バンドル（`dist/assets/*.js`）の増分 ≤ 0 バイト（ビジュアルの分離により本体は減少）。新規配布物はアドオン IIFE（`addons.iife.js`）と `manifest.json` のみ |
 | 開発者体験（NFR-002）        | manifest.json のエントリ追加/削除のみでアドオン管理。ホストアプリのソースコード変更不要 |
 | dev server 対応          | `resolve.alias` で `/addons` を `addons/.../dist/` にマッピング |
-| prod ビルド対応            | `copyAddonsPlugin` で `addons/.../dist/` を `dist/addons/` にコピー |
+| prod ビルド対応            | `copyAddonsPlugin` は **dev のみ** `addons/.../dist/` を `dist/addons/` にコピーする。release では層Aを同梱しない（#35・DC-003） |
 
 ---
 
@@ -213,7 +283,7 @@ if (register) {
 | テストレベル | 対象                           | カバレッジ目標 |
 |-----------|------------------------------|----------|
 | 型チェック    | `npx tsc --noEmit`           | エラー 0件   |
-| ユニットテスト | `npx vitest run`（既存34件）       | 全件パス    |
+| ユニットテスト | `npx vitest run`（現状 216 件・アドオンロード/owner 機構の追加分を含む） | 全件パス    |
 | アドオンビルド | `npm run build:addons`       | エラー 0件、dist/ に出力 |
 | ビルド      | `npm run build`              | エラー 0件、dist/addons/ にコピー |
 | 表示確認    | ブラウザでの目視確認                   | 既存と同一    |
@@ -234,10 +304,52 @@ if (register) {
 | React 共有方式            | (A) バンドルに含める (B) window グローバル経由                          | (B) window グローバル経由                    | React の重複を避け、ホストアプリとの状態共有を保証                             |
 | dev server 配信方式       | (A) proxy (B) resolve alias                              | (B) resolve alias                     | 設定がシンプルで、Vite のモジュール解決と統合的に動作する                         |
 | prod ビルド配信方式          | (A) public/ にコピー (B) カスタムプラグインで dist/ にコピー               | (B) カスタムプラグイン（copyAddonsPlugin）      | アドオンの dist/ をそのまま配信ディレクトリにコピー。public/ への依存を排除           |
+| アドオンのライフサイクル管理       | (A) owner を持たず全アドオン恒久登録 (B) owner スコープ + `unregisterOwner`  | (B) owner スコープ管理（`registerComponent` の第3引数 owner・後方互換） | パッケージ同梱アドオン（Epic #4）でパッケージ切替時に該当アドオンのみアンロードするため。組み込みアドオンは owner=undefined で恒久登録。既存の解決順序は不変 |
+| ローダーの配置                | (A) main.tsx に内包 (B) `addonLoader.ts` に分離                     | (B) `addonLoader.ts` に分離             | 組み込み（`loadBuiltinAddons`）とパッケージ同梱（`loadAddonScripts`）の2経路を単一モジュールに集約し、テスト容易性を確保 |
+| 組み込みアドオン層Aの dev/release ゲート | (A) 常時ロード (B) dev 限定                                         | (B) dev 限定                            | 開発者ローカルの層A（gitignore された `addons/src`）が release ビルドへ焼き込まれる #35 を根治する。release への配布は層B（`.spkg` 同梱・slide-edit-mode FR-009）へ委譲する |
 
 ---
 
 # 10. 変更履歴
+
+## v5.1.0 (2026-07-26)
+
+**変更内容:**
+
+- 組み込みアドオン層Aの dev/release ゲートを実装（#35 根治）。`src/addonLoader.ts` の `loadBuiltinAddons()` 冒頭に `if (!import.meta.env.DEV) return` を追加し、`vite.config.ts` の `copyAddonsPlugin` は `configResolved` で取得した `resolved.env.DEV`（ランタイムの `import.meta.env.DEV` と同一軸）で `closeBundle` を dev のみに限定した。ビルドとロードのゲートを単一の真実源（`env.DEV`）に揃え、`mode` 文字列軸との乖離（`vite build --mode development` 等）を排除（dev server は従来どおり `resolve.alias['/addons']` で配信）
+- `impl-status` を `in-progress` → `implemented`、`status` を `review` → `approved` に更新
+- 検証: `npm run typecheck` / 単体テスト 313 件（release 経路で `loadBuiltinAddons` が fetch しないことを検証するテストを追加）/ `npm run format:check` を通過。`npm run build`（production）で `dist/addons` が生成されないことを実地確認
+
+**経緯 / 依存:**
+
+- 報告症状（編集モードで層Bをアンチェックして再書き出ししても除外されない）の真因は、dev 実行時に層A（owner=undefined）が起動時グローバル登録され、パッケージ切替時の `unregisterOwner`（層Bのみ対象）でアンロードされないことにあった。`.spkg` 書き出し経路（`build_slide_package_gated`）は未選択名を同梱しない正しい実装であり、release ビルドから層Aを排除することでエンドユーザー側の症状が根治する
+
+## v5.0.0 (2026-07-26)
+
+**変更内容:**
+
+- 組み込みアドオン（層A）を **dev 限定**化する設計に改訂。release ビルドでは起動時に `loadBuiltinAddons()` を呼ばず（`import.meta.env.DEV` で gate）、`copyAddonsPlugin` も `addons/dist` を `dist/addons` へコピーしない。release では層Aをロードも同梱もしない
+- エンドユーザーへのアドオン配布は層B（`.spkg` 同梱・[slide-edit-mode.md](../requirement/slide-edit-mode.md) FR-009 / [package-embedded-addon_design.md](./package-embedded-addon_design.md)）へ一本化
+- `impl-status` を `implemented` → `in-progress`（dev/release ゲートが未実装のため）、`status` を `draft` → `review` に更新
+- PRD/spec に DC-003（組み込みアドオンの dev 限定）と FR-005（release で loadBuiltinAddons を呼ばない）を additive 追加
+
+**経緯 / 依存:**
+
+- 実機テストで、開発者ローカルの層A（`ai-sdd-visuals`）が release ビルドへ焼き込まれて表示される問題（#35）を確認したことによる設計変更。原因は `loadBuiltinAddons()` の無差別ロードと `copyAddonsPlugin` の無差別コピーで、いずれも dev 限定に gate することで根治する
+
+## v4.0.0 (2026-07-24)
+
+**変更内容:**
+
+- アドオンローダーを `src/main.tsx` から `src/addonLoader.ts` に分離。`loadBuiltinAddons()`（組み込み・owner なし）と `loadAddonScripts(scripts, owner)`（owner スコープ）の2経路を提供。旧 `loadAddons()` は廃止
+- `addon-bridge.ts` に `setCurrentAddonOwner` / `currentAddonOwner` 機構を追加。`__ADDON_REGISTER__` は登録時に現在の owner を紐づける
+- `ComponentRegistry` に owner スコープ管理を追加: `registerComponent(name, component, owner?)` の後方互換なオプション第3引数、`unregisterOwner(owner)`、`customOwners` マップ、同名の owner 上書き時の警告。解決順序（custom → default → fallback）は不変
+- script の冪等再注入を導入（同一 src の旧 `<script>` 要素を除去してから再注入し、owner 切替後の再登録を可能にする）
+- ドキュメントを実装に整合: `window.React` / `window.ReactJSXRuntime` は `declare global` せずキャスト代入。`AddonManifest` 型は `src/addonLoader.ts` 定義。テスト件数を 216 件に更新
+
+**経緯 / 依存:**
+
+- 上記 owner 機構・`loadAddonScripts` は、スライドパッケージ同梱アドオンのランタイムロード（Epic #4、[package-embedded-addon_design.md](./package-embedded-addon_design.md)）の要件から追加された。本アドオン基盤（IIFE ローダ・`addon-bridge`・`__ADDON_REGISTER__`）を流用し、パッケージ切替時のアンロードのため owner を導入したもの
 
 ## v3.0.0 (2026-01-30)
 

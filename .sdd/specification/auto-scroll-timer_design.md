@@ -1,8 +1,28 @@
+---
+id: design-auto-scroll-timer
+title: タイマーベース自動スクロール（Auto Scroll Timer）技術設計書
+type: design
+status: draft
+sdd-phase: plan
+impl-status: implemented
+created: 2026-02-02
+updated: 2026-07-24
+depends-on:
+  - spec-auto-scroll-timer
+tags:
+  - auto-slideshow
+  - timer
+  - scroll-speed
+  - presentation
+  - tauri
+category: presentation-playback
+---
+
 # タイマーベース自動スクロール（Auto Scroll Timer）
 
 **ドキュメント種別:** 技術設計書 (Design Doc)
 **SDDフェーズ:** Plan (計画/設計)
-**最終更新日:** 2026-02-02
+**最終更新日:** 2026-07-24
 **関連 Spec:** [auto-scroll-timer_spec.md](./auto-scroll-timer_spec.md)
 **関連 PRD:** [auto-scroll-timer.md](../requirement/auto-scroll-timer.md)
 
@@ -19,7 +39,7 @@
 | useAutoSlideshow タイマーロジック追加  | 🟢 実装済み  | 既存フックの拡張                |
 | scrollSpeed 状態管理             | 🟢 実装済み  |                         |
 | SettingsWindow スクロールスピード設定UI | 🟢 実装済み  |                         |
-| BroadcastChannel スクロールスピード同期 | 🟢 実装済み  | 発表者ビューとの同期              |
+| Tauri Event スクロールスピード同期    | 🟢 実装済み  | 発表者ビューとの同期              |
 
 ---
 
@@ -40,7 +60,7 @@
 | タイマー     | setTimeout             | 一定時間後の1回実行に適しており、setInterval より制御が容易。スライド遷移ごとにリセットするためワンショットタイマーが自然 |
 | 状態管理     | React useState         | scrollSpeed は既存の useAutoSlideshow フック内でローカル状態として管理。新たなContext追加は不要  |
 | 設定UI     | ネイティブ HTML input + CSS Modules | SettingsWindow が CSS Modules で構築されており、MUI を使わずネイティブ要素で統一              |
-| ウィンドウ間同期 | BroadcastChannel       | 既存の発表者ビュー通信基盤を拡張。新規メッセージタイプ `scrollSpeedChange` を追加                 |
+| ウィンドウ間同期 | Tauri Event（`@tauri-apps/api/event` の emit/listen） | 既存の発表者ビュー通信基盤（イベント/チャネル名 `presenter-view`）を拡張。新規メッセージタイプ `scrollSpeedChange` を追加 |
 
 ---
 
@@ -64,16 +84,16 @@ graph TD
     end
 
     subgraph "ウィンドウ間通信"
-        BC[BroadcastChannel<br/>presenter-view]
+        Evt["Tauri Event<br/>(@tauri-apps/api/event)<br/>チャネル: presenter-view"]
     end
 
     App --> UseAutoSlideshow
     UseAutoSlideshow --> AudioPlayer
     UseAutoSlideshow --> Reveal
     SettingsWindow --> UseAutoSlideshow
-    UseAutoSlideshow --> BC
-    BC --> PVWindow
-    PVControls --> BC
+    UseAutoSlideshow --> Evt
+    Evt --> PVWindow
+    PVControls --> Evt
 ```
 
 ## 4.2. モジュール分割
@@ -82,7 +102,7 @@ graph TD
 |-----------------------|-----------------------------|------------------------|-------------------------------------|
 | useAutoSlideshow (拡張) | タイマーロジック、scrollSpeed 状態管理   | useAudioPlayer, Reveal | `src/hooks/useAutoSlideshow.ts`     |
 | SettingsWindow (拡張)   | スクロールスピード入力UI               | useAutoSlideshow       | `src/components/SettingsWindow.tsx` |
-| usePresenterView (拡張) | scrollSpeedChange メッセージの送受信 | BroadcastChannel       | `src/hooks/usePresenterView.ts`     |
+| usePresenterView (拡張) | scrollSpeedChange メッセージの送受信 | Tauri Event (emit/listen) | `src/hooks/usePresenterView.ts`     |
 
 ## 4.3. useAutoSlideshow の変更概要
 
@@ -125,10 +145,14 @@ scrollSpeed は `localStorage` に永続化される。初期値の決定順序:
 2. `localStorage` に保存値があり、有効な数値（≥ 1）であればその値
 3. いずれもなければ `DEFAULT_SCROLL_SPEED`（20秒）
 
-## 5.2. BroadcastChannel メッセージ拡張
+**有効範囲:** 設定 UI（`SettingsWindow` の数値入力）で下限 1・上限 300 秒を強制する（`min={1}` / `max={300}` および `onChange` の `1 ≤ v ≤ 300` ガード）。hook 側の `localStorage` 読み込み時の検証は下限（≥ 1）のみで、上限チェックは設定 UI が担う。
+
+## 5.2. 発表者ビュー通信（Tauri Event）メッセージ拡張
+
+発表者ビューとの通信は Tauri Event（`@tauri-apps/api/event` の `emit`/`listen`、イベント/チャネル名 `presenter-view`）で行う。本機能では `PresenterViewMessage`（`src/data/types.ts`）に `scrollSpeedChange` を追加する。以下は本機能に関係する部分の抜粋（実際の union には `progressChanged` / `addonsChanged` / `presenterViewReady` / `presenterViewClosed` 等も含まれる）。
 
 ```typescript
-// 既存メッセージタイプに追加
+// PresenterViewMessage（抜粋。本機能で追加するのは scrollSpeedChange）
 type PresenterViewMessage =
   | { type: 'slideChanged'; payload: { currentIndex: number; slides: SlideData[] } }
   | { type: 'controlStateChanged'; payload: PresenterControlState }
@@ -171,25 +195,29 @@ interface UseAutoSlideshowReturn {
 
 # 7. 非機能要件実現方針
 
-| 要件        | 実現方針                                                               |
-|-----------|--------------------------------------------------------------------|
-| タイマー精度    | setTimeout の精度で十分。秒単位の遷移にミリ秒精度は不要                                  |
-| タイマーリーク防止 | useEffect のクリーンアップ関数で clearTimeout を実行。スライド変更・アンマウント時に確実にクリア       |
-| 設定変更の即時反映 | scrollSpeed を useState で管理し、useEffect の依存配列に含めることで、変更時にタイマーが再設定される |
+| 要件ID (spec / PRD)          | 要件        | 実現方針                                                               |
+|----------------------------|-----------|--------------------------------------------------------------------|
+| NFR-001 / NFR_AST_001      | タイマー精度    | setTimeout の精度で十分。秒単位の遷移にミリ秒精度は不要（許容誤差 ±1 秒以内）                    |
+| NFR-002 / NFR_AST_002      | タイマーリーク防止 | useEffect のクリーンアップ関数で clearTimeout を実行。スライド変更・アンマウント時に確実にクリアし、アクティブなタイマーは最大 1 個 |
+| NFR-003 / NFR_AST_003      | 設定変更の即時反映 | scrollSpeed を useState で管理し、useEffect の依存配列に含めることで、変更時にタイマーが再設定される |
 
 ---
 
 # 8. テスト戦略
 
-| テストレベル     | 対象                                        | カバレッジ目標 |
-|------------|-------------------------------------------|---------|
-| ユニットテスト    | useAutoSlideshow: voice 未定義時のタイマー開始       | 主要パス    |
-| ユニットテスト    | useAutoSlideshow: voice 定義済み時のタイマー不動作     | 主要パス    |
-| ユニットテスト    | useAutoSlideshow: voice 定義済みだが音声読み込み失敗時のタイマーフォールバック | 主要パス    |
-| ユニットテスト    | useAutoSlideshow: 最終スライドでのタイマー不動作         | 主要パス    |
-| ユニットテスト    | useAutoSlideshow: 手動スライド移動時のタイマーリセット      | 主要パス    |
-| ユニットテスト    | useAutoSlideshow: scrollSpeed 変更時のタイマー再設定 | 主要パス    |
-| コンポーネントテスト | SettingsWindow: スクロールスピード入力の動作            | ハッピーパス  |
+| テストレベル     | 対象                                        | カバレッジ目標 | 実装状況 |
+|------------|-------------------------------------------|---------|------|
+| ユニットテスト    | useAutoSlideshow: voice 未定義時のタイマー開始       | 主要パス    | ✅ 実装済み（`useAutoSlideshow.test.ts`） |
+| ユニットテスト    | useAutoSlideshow: voice 定義済み時のタイマー不動作     | 主要パス    | ✅ 実装済み |
+| ユニットテスト    | useAutoSlideshow: 最終スライドでのタイマー不動作         | 主要パス    | ✅ 実装済み |
+| ユニットテスト    | useAutoSlideshow: autoSlideshow OFF 時のタイマー不動作 | 主要パス | ✅ 実装済み |
+| ユニットテスト    | useAutoSlideshow: 手動スライド移動時のタイマーリセット      | 主要パス    | ✅ 実装済み |
+| ユニットテスト    | useAutoSlideshow: scrollSpeed 変更時のタイマー再設定 | 主要パス    | ✅ 実装済み |
+| ユニットテスト    | useAutoSlideshow: scrollSpeed のデフォルト値／initialScrollSpeed／timerDuration | 主要パス | ✅ 実装済み |
+| ユニットテスト    | useAutoSlideshow: voice 定義済みだが音声読み込み失敗時のタイマーフォールバック | 主要パス | ⚠️ 未カバー（テスト未実装。§9.2 参照） |
+| コンポーネントテスト | SettingsWindow: スクロールスピード入力の表示・変更         | ハッピーパス  | ✅ 実装済み（`SettingsWindow.test.tsx`） |
+
+> 注: 音声読み込み失敗時のタイマーフォールバック（FR_AST_006 の後段 / DC_SNA_002）はロジックとしては `useAutoSlideshow`（`shouldUseTimer` が `audioPlayer.hasError` を判定）に実装済みだが、これを検証する専用のユニットテストは現時点で存在しない。詳細は §9.2 未解決の課題を参照。
 
 ---
 
@@ -204,9 +232,26 @@ interface UseAutoSlideshowReturn {
 | 設定UIの配置先          | A) language-settings の SettingsWindow B) AudioControlBar に追加 C) 新規UIコンポーネント | **A) SettingsWindow**     | PRDの要求（FR_AST_002）で「設定ウィンドウから変更」と明記。language-settings の SettingsWindow（FR-LANG-010: 拡張性）に設定項目として追加するのが自然 |
 | 自動スライドショートグルの共有   | A) 既存トグル共有 B) 別トグル新設                                                        | **A) 既存トグル共有**            | タイマーベース自動スクロールは自動スライドショーの一部（音声なしスライド向けの補完機能）であるため、既存の autoSlideshow トグルを共有。ユーザーに追加の操作負担を与えない             |
 
+## 9.2. 未解決の課題
+
+| 課題                                             | 影響度 | 対応方針                                                                                                     |
+|------------------------------------------------|-----|----------------------------------------------------------------------------------------------------------|
+| 音声読み込み失敗時のタイマーフォールバックに対する専用ユニットテストが未整備 | 中   | フォールバックロジック自体は `useAutoSlideshow`（`shouldUseTimer` が `audioPlayer.hasError` を判定）に実装済みだが、`audioPlayer.hasError=true` かつ voice 定義済みのケースでタイマーが起動することを検証するテストは未作成。回帰検知のため今後 `useAutoSlideshow.test.ts` にテストを追加する |
+| スクロールスピード上限（300 秒）が hook 側で未検証             | 低   | 上限 300 は設定 UI（`SettingsWindow`）でのみ強制され、`initialScrollSpeed` 直接指定や `localStorage` 読み込みでは上限チェックがない。現状は設定 UI 経由の変更が唯一の入口のため実害はないが、将来 hook 側にも上限検証を持たせるか検討する |
+
 ---
 
 # 10. 変更履歴
+
+## v1.2.0 (2026-07-24)
+
+**実装を真実の源としたドキュメント整合:**
+
+- ウィンドウ間同期の記述を `BroadcastChannel` → **Tauri Event**（`@tauri-apps/api/event` の emit/listen、チャネル `presenter-view`）に修正（§1.1 / §3 / §4.1 図 / §4.2 / §5.2）。実装は `usePresenterView` の Tauri emit/listen
+- §7 非機能要件実現方針に要件 ID（spec NFR-001〜003 / PRD NFR_AST_001〜003）のトレース元を追加
+- §8 テスト戦略を実テスト（`useAutoSlideshow.test.ts` / `SettingsWindow.test.tsx`）に整合。音声読み込み失敗時のフォールバックテストが未実装である旨を明記し §9.2 へ課題として記載
+- §5.1 にスクロールスピードの有効範囲（1〜300 秒、上限は設定 UI で強制）を追記
+- front matter（YAML）を追加
 
 ## v1.1.0 (2026-02-02)
 
