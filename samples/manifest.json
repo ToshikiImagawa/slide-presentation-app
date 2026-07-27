@@ -1,0 +1,10 @@
+{
+  "$comment": "配布サンプル（.spkg）の単一真実源。アプリ（src/sampleSlides.ts）とビルド（scripts/export-samples.mjs）の双方がこれを読む。ロケールを増やすときは slides.<locale>.json を置いて packages に1行足すだけでよい。GitHub Releases のアセット名は <name>.spkg（latest/download で参照するためバージョンは含めない）",
+  "source": "samples/template-guide",
+  "fallbackLocale": "en",
+  "packages": [
+    { "locale": "ja", "slides": "slides.ja.json", "name": "template-guide-ja" },
+    { "locale": "en", "slides": "slides.en.json", "name": "template-guide-en" },
+    { "locale": "fr", "slides": "slides.fr.json", "name": "template-guide-fr" }
+  ]
+}
