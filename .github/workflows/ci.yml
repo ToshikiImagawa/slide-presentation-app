@@ -47,6 +47,26 @@ jobs:
       - run: npm ci
       - run: npm run test
 
+  samples:
+    name: Sample Packages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+      - run: npm ci
+      # 配布サンプルが .spkg として書き出せることを検証する（--strict なので参照アセットの欠損で失敗する）。
+      # リリース時に初めて壊れていることに気づく事態を防ぐゲート
+      - run: npm run export:samples
+      - name: Check exported assets
+        run: |
+          set -euo pipefail
+          for name in $(node -e "console.log(require('./samples/manifest.json').packages.map((p) => p.name).join(' '))"); do
+            test -f "dist-slides/$name.spkg" || { echo "::error::dist-slides/$name.spkg が生成されていません"; exit 1; }
+          done
+
   rust:
     name: Rust
     runs-on: ubuntu-latest

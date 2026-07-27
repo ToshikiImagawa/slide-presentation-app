@@ -231,6 +231,31 @@ jobs:
           body_path: release-notes.md
           files: docs/*.pdf
 
+  export-samples:
+    name: Export sample packages
+    # release ジョブが draft リリースを作ってからアセットを添付する
+    needs: [release, prepare]
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # samples/manifest.json の全ロケールを .spkg 化する（参照アセット欠損は --strict で失敗させる）
+      - name: Export sample packages
+        run: npm run export:samples -- --version "${{ needs.prepare.outputs.version }}"
+      # softprops/action-gh-release ではなく gh release upload を使う。
+      # 前者は draft: true で PATCH するため、publish 後に走ると un-draft を巻き戻してしまう
+      - name: Upload sample packages to draft release
+        run: gh release upload "${{ github.ref_name }}" dist-slides/*.spkg --repo "${{ github.repository }}" --clobber
+
   updater-manifest:
     name: Generate updater manifest (latest.json)
     needs: [release, prepare]
@@ -319,7 +344,9 @@ jobs:
 
   publish:
     name: Publish release
-    needs: [updater-manifest]
+    # softprops/action-gh-release を使うジョブ（generate-pdf）と、アセットを添付するジョブ（export-samples）が
+    # 終わってから un-draft する。前者は draft: true で PATCH するため、公開後に走ると draft へ巻き戻してしまう
+    needs: [updater-manifest, generate-pdf, export-samples]
     permissions:
       contents: write
     runs-on: ubuntu-latest
@@ -330,3 +357,23 @@ jobs:
       - name: Un-draft release
         # --prerelease を渡さないことで作成時の prerelease 判定(prepare ジョブ)を維持する
         run: gh release edit "${{ github.ref_name }}" --draft=false --repo "${{ github.repository }}"
+
+  verify-sample-urls:
+    name: Verify sample package URLs
+    # 公開後の静的ダウンロード URL を検証する。アプリはこの URL からサンプルを取得するため、
+    # 添付漏れ・命名ズレをリリース時に検知できる唯一のゲートになる（draft 中は API 経由でしか読めない）
+    needs: [publish, prepare]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check pinned asset URLs
+        run: |
+          set -euo pipefail
+          REPO="${{ github.repository }}"
+          VERSION="${{ needs.prepare.outputs.version }}"
+          for name in $(node -e "console.log(require('./samples/manifest.json').packages.map((p) => p.name).join(' '))"); do
+            url="https://github.com/$REPO/releases/download/v$VERSION/$name.spkg"
+            echo "checking $url"
+            curl -fsSL -o /dev/null "$url"
+          done
