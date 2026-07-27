@@ -75,7 +75,7 @@ category: slide-package
 | ID | 要件 | 優先度 | 根拠 |
 |------|------|------|------|
 | FR_001 | ファイル選択ダイアログから `slides.json` または `.spkg`（旧 `.tgz`）を単一選択で開けること。キャンセル時は状態を変えないこと | 必須 | UR_001 |
-| FR_002 | HTTPS の URL からパッケージを取得し、アプリのキャッシュへ URL 由来の安定した名前で保存して開けること。HTTPS 以外のスキームは拒否すること | 推奨 | UR_001 |
+| FR_002 | HTTPS の URL からパッケージを取得し、アプリのキャッシュへ URL 由来の安定した名前で保存して開けること。HTTPS 以外のスキームは拒否すること（取得とキャッシュの契約は [slide-package-distribution_spec.md](./slide-package-distribution_spec.md) が所有する） | 推奨 | UR_001 |
 | FR_003 | 開いたパッケージのパス・タイトル・開いた時刻を上限件数つきで永続化し、一覧から選び直せること。開けなかったエントリは一覧から自動除去すること | 推奨 | UR_001 |
 | FR_004 | `.spkg` を OS のファイル関連付けの対象とし、macOS / Windows / Linux のいずれでもダブルクリック・「このアプリで開く」から開けること | 必須 | UR_001 |
 | FR_005 | OS から届いたパスを保留領域に蓄積し、**取得と同時にクリアする単一の取り出し口**から受け渡すこと。空の戻り値が「要求なし」を意味すること | 必須 | UR_002, NFR_001, NFR_002 |
@@ -121,7 +121,7 @@ category: slide-package
 |------|------|------|
 | `allow_asset_dir` | `(dir: string) -> void` | 指定ディレクトリ配下に asset プロトコルと fs の読み取りスコープを再帰的に許可する（FR_009 の第2手順） |
 | `extract_slide_package` | `(packagePath: string) -> string` | `.spkg` / 旧 `.tgz` をアプリのキャッシュへ展開し、内容の基準ディレクトリを返す（FR_009 の第1手順） |
-| `download_slide_package` | `(url: string) -> string` | HTTPS URL のパッケージを取得・展開し、基準ディレクトリを返す（FR_002） |
+| `download_slide_package` | `(url: string, options?: DownloadOptions) -> string` | HTTPS URL のパッケージを取得・展開し、基準ディレクトリを返す（FR_002）。`options`（タイムアウト・キャッシュ再利用・キャッシュキー）の契約は [slide-package-distribution_spec.md](./slide-package-distribution_spec.md) が所有する。未指定時は従来の挙動 |
 | **`take_pending_open_paths`** | **`() -> string[]`** | **保留領域のパス一覧を返し、同時にクリアする（取得とクリアは不可分）。空配列は「開く要求なし」を意味する。FR_005 の唯一の取り出し口（DC_001）** |
 
 ### ネイティブイベント（Rust → フロントエンド）

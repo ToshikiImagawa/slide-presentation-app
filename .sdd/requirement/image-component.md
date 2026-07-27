@@ -210,9 +210,9 @@ requirementDiagram
 | FR_IMG_003 | Must   | ComponentRegistry に `Image` として登録         |
 | FR_IMG_004 | Should | 画像読み込み失敗時の FallbackImage エラーUI 表示         |
 
-### FR_IMG_005: デフォルトスライドへの使用例追加
+### FR_IMG_005: テンプレートガイドへの使用例追加
 
-デフォルトスライド（ロケール別に `src/data/default-slides-ja.json` / `src/data/default-slides-en.json`）に画像表示コンポーネントの使用例を含むスライドを追加する。
+テンプレートガイドのサンプルスライド（ロケール別に `samples/template-guide/slides.{ja,en,fr}.json`。アプリには同梱せず `.spkg` として配布する。[slide-package-distribution.md](./slide-package-distribution.md)）に画像表示コンポーネントの使用例を含むスライドを追加する。
 
 **優先度:** Should
 

@@ -6,7 +6,7 @@ status: draft
 sdd-phase: plan
 impl-status: implemented
 created: 2026-02-02
-updated: 2026-07-24
+updated: 2026-07-27
 depends-on:
   - spec-slide-content-customization
 tags:
@@ -22,9 +22,10 @@ category: slide-content
 
 **ドキュメント種別:** 技術設計書 (Design Doc)
 **SDDフェーズ:** Plan (計画/設計)
-**最終更新日:** 2026-07-24
+**最終更新日:** 2026-07-27
 **関連 Spec:** [slide-content-customization_spec.md](./slide-content-customization_spec.md)
 **関連 PRD:** [slide-content-customization.md](../requirement/slide-content-customization.md)
+**関連設計:** [slide-package-distribution_design.md](./slide-package-distribution_design.md)（テンプレートガイドの配布と取得）
 
 ---
 
@@ -37,7 +38,8 @@ category: slide-content
 | モジュール/機能                                     | ステータス  | 備考                                                     |
 |----------------------------------------------|--------|--------------------------------------------------------|
 | 型定義（types.ts）                                | 🟢 実装済み | スライドデータの型定義（`LogoConfig`, `SlideNotes`, `ValidationError` 等を含む） |
-| デフォルトデータ（default-slides-ja/en.json）          | 🟢 実装済み | デモ用スライドをロケール別にJSON化。`getDefaultPresentationData(locale)` で出し分け |
+| テンプレートガイド（samples/template-guide/slides.{ja,en,fr}.json） | 🟢 実装済み | デモ用スライドをロケール別にJSON化。アプリには同梱せず `.spkg` として配布する（[slide-package-distribution_design.md](./slide-package-distribution_design.md)） |
+| 最小フォールバック（loader.ts）                        | 🟢 実装済み | `getFallbackPresentationData` / `getSampleUnavailablePresentationData` / `getBlankPresentationData` がコード内で1枚を生成 |
 | データローダー（loader.ts）                           | 🟢 実装済み | バリデーション・フォールバック（読み込み自体は main.tsx / localSlideLoader が担当） |
 | ノートヘルパー（noteHelpers.ts）                      | 🟢 実装済み | `SlideMeta.notes` の正規化・スピーカーノート／サマリー／音声パス取得              |
 | コンポーネントレジストリ（ComponentRegistry.tsx）          | 🟢 実装済み | カスタム／デフォルト登録・解決・owner 単位の破棄                            |
@@ -80,7 +82,7 @@ category: slide-content
 graph TD
     subgraph "データ層"
         JSON["スライドデータ (JSON)"]
-        DefaultData["デフォルトデータ"]
+        DefaultData["最小フォールバック<br/>（loader.ts が生成）"]
         Types["型定義 (types.ts)"]
     end
 
@@ -120,8 +122,8 @@ graph TD
 | モジュール名            | 責務                                       | 依存関係                                        | 配置場所                                   |
 |-------------------|------------------------------------------|---------------------------------------------|----------------------------------------|
 | types             | スライドデータの型定義                              | なし                                          | `src/data/types.ts`                    |
-| default-slides    | ロケール別デモ用スライドのデフォルトデータ                    | types                                       | `src/data/default-slides-ja.json` / `default-slides-en.json` |
-| loader            | バリデーション、フォールバック、ロケール別デフォルト取得             | types, default-slides                       | `src/data/loader.ts`                   |
+| template-guide    | ロケール別デモ用スライド（配布サンプル）。アプリからは import しない       | なし                                          | `samples/template-guide/slides.{ja,en,fr}.json` |
+| loader            | バリデーション、フォールバック、最小フォールバックスライドの生成          | types                                       | `src/data/loader.ts`                   |
 | noteHelpers       | `SlideMeta.notes` の正規化・派生値取得             | types                                       | `src/data/noteHelpers.ts`              |
 | ComponentRegistry | コンポーネントの登録・解決・上書き・owner 単位の破棄            | React                                       | `src/components/ComponentRegistry.tsx` |
 | SlideRenderer     | スライドデータからコンポーネントへの変換（レイアウト種別で分岐）         | types, ComponentRegistry, layouts, 共通コンポーネント | `src/components/SlideRenderer.tsx`     |
@@ -139,9 +141,7 @@ src/
 ├── applyTheme.ts               # テーマCSS変数の適用・フォントロード・リセット
 ├── data/
 │   ├── types.ts                # スライドデータの型定義
-│   ├── default-slides-ja.json  # デフォルトスライドデータ（日本語）
-│   ├── default-slides-en.json  # デフォルトスライドデータ（英語）
-│   ├── loader.ts               # バリデーション・フォールバック・ロケール別デフォルト取得
+│   ├── loader.ts               # バリデーション・フォールバック・最小フォールバックスライドの生成
 │   ├── noteHelpers.ts          # notes 正規化・派生値取得
 │   └── index.ts                # re-export
 ├── components/
@@ -160,6 +160,8 @@ src/
 ```
 
 > レイアウトは4つのラッパー（Title/Content/Section/Bleed）で構成し、`two-column` / `custom` は `SlideRenderer` 内の描画分岐で処理する（専用の `TwoColumnLayout` / `CustomLayout` ファイルは存在しない）。既存スライドは完全にデータ駆動化されており、`src/slides/` ディレクトリは存在しない。
+
+> **デモ用スライドは `src/` の外にある**。テンプレートガイドは `samples/template-guide/slides.{ja,en,fr}.json` に置き、アプリには同梱せず `.spkg` として配布する。`src/data/` にあるのはコード生成の最小フォールバック（1枚）のみで、デモ用スライドの JSON ファイルは存在しない（[slide-package-distribution_design.md](./slide-package-distribution_design.md)）。
 
 ---
 
@@ -251,10 +253,25 @@ function loadPresentationData(
 }
 
 /**
- * ロケールに応じたデフォルトプレゼンテーションデータを返す
- * （ja で始まるロケールは日本語、それ以外は英語）。
+ * スライドデータが不正なときの最小フォールバック（1枚）を返す。
+ * loadPresentationData の defaultData として App.tsx から渡す。
+ * ロケールは ja で始まるかどうかで日本語／英語を出し分ける。
  */
-function getDefaultPresentationData(locale: string): PresentationData {
+function getFallbackPresentationData(locale: string): PresentationData {
+}
+
+/**
+ * サンプルをどこからも取得できなかったときの案内スライド（1枚）を返す。
+ * 原因が異なるため getFallbackPresentationData とは文言を共有しない。
+ * 詳細は slide-package-distribution_design.md の決定 #10 を参照。
+ */
+function getSampleUnavailablePresentationData(locale: string): PresentationData {
+}
+
+/**
+ * AI新規作成（ホーム画面）の土台となる最小構成のデータを返す。
+ */
+function getBlankPresentationData(locale: string): PresentationData {
 }
 
 /**
@@ -467,7 +484,7 @@ function getVoicePath(slide: SlideData): string | undefined {
 
 | 課題                                   | 影響度 | 対応方針                                                                | 状況 |
 |--------------------------------------|-----|---------------------------------------------------------------------|------|
-| 既存デモ用スライドの忠実なJSON化                   | 高   | 各スライドコンポーネントの内容を分析し、レイアウト種別を特定した上でJSON化する                           | ✅ 解決済み。`default-slides-ja.json` / `default-slides-en.json` にJSON化 |
+| 既存デモ用スライドの忠実なJSON化                   | 高   | 各スライドコンポーネントの内容を分析し、レイアウト種別を特定した上でJSON化する                           | ✅ 解決済み。`samples/template-guide/slides.{ja,en,fr}.json` にJSON化（当初は `src/data/default-slides-{ja,en}.json` に置いていたが、配布サンプルとして `samples/` へ移設した） |
 | 複雑なスライド（アニメーション付き）のデータ表現             | 中   | TerminalAnimation等の複雑なコンポーネントはカスタムコンポーネントとして登録し、componentフィールドで参照する | ✅ 解決済み。registerDefaults.tsxでデフォルト登録 |
 | SlideMeta対応                          | 低   | Reveal.jsのdata-transition等の属性をsection要素に設定する                         | ✅ 解決済み。全レイアウトが `data-transition` / `data-background-image` / `data-background-color` を設定 |
 | JSONスキーマ（NFR-002）による入力補完             | 低   | TypeScript型定義からのJSON Schema（`$schema`）自動生成でVSCode補完を有効化する            | ❌ 未実装（将来課題）。現状は型定義を手動参照して編集 |
@@ -479,6 +496,27 @@ function getVoicePath(slide: SlideData): string | undefined {
 # 10. 変更履歴
 
 新しいバージョンを上に記載する（降順）。
+
+## v0.7.0 (2026-07-27)
+
+**変更内容:**
+
+- デモ用スライドを `src/data/default-slides-{ja,en}.json` から `samples/template-guide/slides.{ja,en,fr}.json` へ移設し、アプリへの同梱を廃止（`.spkg` として配布）。フランス語を追加
+- `getDefaultPresentationData(locale)` を廃止し、用途別の最小フォールバック（`getFallbackPresentationData` / `getSampleUnavailablePresentationData`）へ置き換え。`src/data/` にデモ用スライドの JSON は存在しない
+- 「デフォルトテンプレート」の用語を「テンプレートガイド」（配布サンプル）と「最小フォールバック」（コード生成の1枚）に分離
+- 配布と取得の設計は [slide-package-distribution_design.md](./slide-package-distribution_design.md) が所有する。本書はスライドデータの構造・バリデーション・描画に責務を絞る
+
+**移行ガイド:**
+
+```tsx
+// ❌ 旧コード
+import { getDefaultPresentationData } from './data'
+const defaultData = getDefaultPresentationData(locale)
+
+// ✅ 新コード（データ不正時のフォールバック）
+import { getFallbackPresentationData } from './data'
+const defaultData = getFallbackPresentationData(locale)
+```
 
 ## v0.6.0 (2026-07-24)
 

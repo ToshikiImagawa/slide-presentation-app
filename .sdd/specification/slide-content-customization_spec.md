@@ -5,7 +5,7 @@ type: spec
 status: draft
 sdd-phase: specify
 created: 2026-02-02
-updated: 2026-07-24
+updated: 2026-07-27
 depends-on:
   - prd-slide-content-customization
 tags:
@@ -21,9 +21,10 @@ category: slide-content
 
 **ドキュメント種別:** 抽象仕様書 (Spec)
 **SDDフェーズ:** Specify (仕様化)
-**最終更新日:** 2026-07-24
+**最終更新日:** 2026-07-27
 **関連 Design Doc:** [slide-content-customization_design.md](./slide-content-customization_design.md)
 **関連 PRD:** [slide-content-customization.md](../requirement/slide-content-customization.md)
+**関連仕様:** [slide-package-distribution_spec.md](./slide-package-distribution_spec.md)（テンプレートガイドの配布と取得）
 
 ---
 
@@ -43,7 +44,7 @@ category: slide-content
 
 - **データとビューの分離**: スライドの内容をJSON形式の構造化データとして管理し、レンダリングロジックから分離する
 - **拡張可能性**: カスタムReactコンポーネントやレイアウトをプラグイン的に登録し、データから参照できる
-- **後方互換性**: 既存のデモ用スライドをロケール別のデフォルトテンプレート（`default-slides-ja.json` / `default-slides-en.json`）として保持し、データ未指定時にそのまま表示する
+- **後方互換性**: 既存のデモ用スライドをロケール別のテンプレートガイド（`samples/template-guide/slides.{ja,en,fr}.json`）として保持する。アプリには同梱せず `.spkg` として配布し、ホーム画面の「サンプルを開く」から表示する（[slide-package-distribution_spec.md](./slide-package-distribution_spec.md)）
 - **型安全性**: スライドデータの型定義をTypeScriptの型システムで表現し、型安全にデータを扱う
 
 # 3. 要求定義
@@ -87,8 +88,8 @@ category: slide-content
 | ディレクトリ          | ファイル名                                     | エクスポート                                                                                                                             | 概要                                 |
 |-----------------|-------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------|------------------------------------|
 | src/data/       | types.ts                                  | `PresentationData`, `PresentationMeta`, `LogoConfig`, `SlideData`, `SlideContent`, `ContentItem`, `ComponentReference`, `SlideNotes`, `SlideMeta`, `ThemeData`, `ColorPalette`, `FontDefinition`, `FontSource`, `ValidationError` ほか | スライドデータの型定義                        |
-| src/data/       | default-slides-ja.json / default-slides-en.json | (デフォルトエクスポート)                                                                                                                       | ロケール別（日本語 / 英語）のデフォルトスライドデータ       |
-| src/data/       | loader.ts                                 | `loadPresentationData`, `validatePresentationData`, `getValidationErrors`, `getDefaultPresentationData`                             | スライドデータの読み込み・バリデーション・ロケール別デフォルト取得   |
+| samples/template-guide/ | slides.ja.json / slides.en.json / slides.fr.json | (アプリからは import しない)                                                                                                              | ロケール別のテンプレートガイド。`.spkg` として配布し取得する（[slide-package-distribution_spec.md](./slide-package-distribution_spec.md)） |
+| src/data/       | loader.ts                                 | `loadPresentationData`, `validatePresentationData`, `getValidationErrors`, `getFallbackPresentationData`, `getSampleUnavailablePresentationData`, `getBlankPresentationData` | スライドデータのバリデーション・フォールバックと、最小フォールバックスライドの生成（データ不正時 / サンプル取得失敗時 / AI新規作成の土台） |
 | src/data/       | noteHelpers.ts                            | `normalizeNotes`, `getSpeakerNotes`, `getSlideSummary`, `getVoicePath`                                                              | `SlideMeta.notes` の正規化・スピーカーノート等の取得 |
 | src/components/ | SlideRenderer.tsx                         | `SlideRenderer`（`SlideRenderer.Slide` サブコンポーネントを含む）                                                                                | スライドデータからReactコンポーネントへのレンダリング       |
 | src/components/ | ComponentRegistry.tsx                     | `RegisteredComponent`（型）, `registerDefaultComponent`, `registerComponent`, `resolveComponent`, `getRegisteredComponents`, `unregisterOwner`, `clearRegistry` | カスタム／デフォルトコンポーネントの登録・解決・破棄          |
@@ -233,8 +234,9 @@ interface ValidationError {
 | タイル / タイムライン      | 独立したレイアウト種別ではなく、`content` レイアウト内の `tiles`（FeatureTileGrid）/ `steps`（Timeline）サブ構造として描画される        |
 | テーマ              | カラーパレット、フォント定義、カスタムCSSを含む視覚的スタイルの定義                                                             |
 | カスタムコンポーネント       | 開発者が作成し、スライドデータから名前で参照可能なReactコンポーネント                                                           |
-| フォールバック          | 外部データが利用不可・バリデーション失敗時にデフォルトデータに切り替わる動作                                                         |
-| デフォルトテンプレート       | データ未指定時に表示されるロケール別（`default-slides-ja.json` / `default-slides-en.json`）のデモ用スライドデータ              |
+| フォールバック          | 外部データが利用不可・バリデーション失敗時に最小フォールバックへ切り替わる動作                                                          |
+| 最小フォールバック         | `src/data/loader.ts` がコード内で生成する1枚のスライド。データ不正時（`getFallbackPresentationData`）とサンプル取得失敗時（`getSampleUnavailablePresentationData`）で文言を分ける |
+| テンプレートガイド         | アプリの使い方を説明するサンプルスライド（`samples/template-guide/slides.{ja,en,fr}.json`）。アプリには同梱せず `.spkg` として配布する（[slide-package-distribution_spec.md](./slide-package-distribution_spec.md)） |
 | コンポーネントレジストリ（概念） | カスタム／デフォルトコンポーネントを名前付きで登録・解決する仕組み。実体は `ComponentRegistry.tsx` のモジュールスコープ関数群（クラスや `ComponentRegistry` という named export は存在しない） |
 | フラグメント           | スライド内のコンテンツ要素を段階的に表示するReveal.jsの機能                                                              |
 | owner            | `registerComponent` の第3引数。パッケージ同梱アドオン等のスコープ単位で登録をまとめて破棄（`unregisterOwner`）するための識別子             |
@@ -246,17 +248,18 @@ interface ValidationError {
 | コンテンツ編集者 | スライド内容をJSONで差し替える            | `slides.json`（または `.tgz` パッケージ）を編集・選択 → アプリが読み込みバリデーション → 反映（不正時はデフォルトへフォールバック）             |
 | 開発者      | カスタムコンポーネントを登録して利用する         | `registerComponent(name, component, owner?)` で登録 → JSONの `component.name` から参照             |
 | 開発者      | テーマ（色・フォント・カスタムCSS）を切り替える    | `slides.json` の `theme` フィールド、または `meta.themeColors` が指す外部JSONで定義 → `applyThemeData` がCSS変数を適用 |
-| システム     | データ未指定時にデフォルトテンプレートを表示する     | `getDefaultPresentationData(locale)` がロケール別デフォルトを返し、`loadPresentationData` 経由で表示            |
+| システム     | データ不正時に最小フォールバックを表示する        | `getFallbackPresentationData(locale)` の1枚を `loadPresentationData` 経由で表示                       |
+| コンテンツ編集者 | テンプレートガイドを見る                 | ホーム画面の「サンプルを開く」→ 配布パッケージを取得して表示（[slide-package-distribution_spec.md](./slide-package-distribution_spec.md)） |
 
 # 7. 使用例
 
-## 7.1. デフォルトデータでの表示（データ未指定時）
+## 7.1. 最小フォールバックでの表示（データ未指定・不正時）
 
 ```tsx
 import { App } from './App'
 
-// presentationData 未指定時は loadPresentationData がロケール別デフォルト
-// （getDefaultPresentationData(locale)）にフォールバックする。
+// presentationData 未指定・バリデーション失敗時は loadPresentationData が
+// 最小フォールバック（getFallbackPresentationData(locale) の1枚）にフォールバックする。
 // App は onGoHome を必須で受け取る（ホーム画面への復帰ハンドラ）。
 function Example({ onGoHome }: { onGoHome: () => void }) {
     return <App onGoHome={onGoHome} />
@@ -274,7 +277,7 @@ function Example({ onGoHome }: { onGoHome: () => void }) {
 }
 ```
 
-> 実際の起動フローでは `main.tsx` が `fetch('/slides.json')`（サンプル）またはローカル選択（`localSlideLoader`）でデータを取得し、`App` の `presentationData` prop に渡す。`App` 内では `loadPresentationData(presentationData, defaultData)` でバリデーションとフォールバックを行う。
+> 実際の起動フローでは `main.tsx` が、サンプル取得（同梱 `slides.json` → 配布 `.spkg` → 案内スライドの3段。[slide-package-distribution_spec.md](./slide-package-distribution_spec.md)）またはローカル選択（`localSlideLoader`）でデータを取得し、`App` の `presentationData` prop に渡す。`App` 内では `loadPresentationData(presentationData, defaultData)` でバリデーションとフォールバックを行う（`defaultData` は `getFallbackPresentationData(locale)`）。
 
 ## 7.3. カスタムコンポーネントの登録と使用
 
@@ -302,7 +305,7 @@ sequenceDiagram
     participant Validator as getValidationErrors
     participant Registry as ComponentRegistry
     participant Renderer as SlideRenderer
-    Main ->> Main: fetch('/slides.json') もしくはローカル選択でJSON読込
+    Main ->> Main: サンプル取得（3段フォールバック）もしくはローカル選択でJSON読込
     Main ->> App: presentationData を渡してマウント
     App ->> Loader: loadPresentationData(source, defaultData)
     alt source あり
