@@ -178,6 +178,8 @@ export function SlideEditor({ source, onExit }: { source: EditSource; onExit: ()
   const showPreview = errors.length === 0
   // 未保存の変更があるか（保存済みの元テキストとの比較。#44: データ損失防止）
   const isDirty = text !== source.rawText
+  // 既に開いているダイアログがあるか（Escape ガード用。MUI Dialog 自身の Escape 処理に委ね、二重発火を避ける）
+  const hasOpenDialog = pendingExit || pendingGenerated !== null || pendingDeleteBuiltin !== null
 
   // 未保存の変更があれば確認ダイアログを挟み、無ければ即終了する
   const handleExitClick = () => {
@@ -211,6 +213,35 @@ export function SlideEditor({ source, onExit }: { source: EditSource; onExit: ()
       setStatus({ kind: 'error', message: `${t('edit.saveFailed', '保存に失敗しました')}: ${e instanceof Error ? e.message : String(e)}` })
     }
   }
+
+  // keydown リスナーからは常に最新のハンドラ・状態を参照する（ref 経由）。こうすることで
+  // effect 自体はマウント時に1回だけ window へ登録すればよく、text 入力等の頻繁な再レンダーで
+  // 毎回 addEventListener/removeEventListener が走ることを避けられる
+  const handleSaveRef = useRef(handleSave)
+  handleSaveRef.current = handleSave
+  const handleExitClickRef = useRef(handleExitClick)
+  handleExitClickRef.current = handleExitClick
+  const hasOpenDialogRef = useRef(hasOpenDialog)
+  hasOpenDialogRef.current = hasOpenDialog
+
+  // Cmd/Ctrl+S で保存。修飾キー付きのため通常の文字入力と衝突せず、フォーカス対象を問わず発火させる。
+  // Esc で編集終了（未保存時は既存の ConfirmDialog 導線を維持）。T（App.tsx）と同様にフォーカス対象を
+  // 確認し、テキスト入力中は無視する（ダイアログ表示中も MUI Dialog 自身の Escape 処理に委ねる）
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault()
+        void handleSaveRef.current()
+      } else if (e.key === 'Escape') {
+        if (hasOpenDialogRef.current) return
+        const target = e.target as HTMLElement | null
+        if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return
+        handleExitClickRef.current()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
 
   // AI 生成結果の受け口（#14・FR-004/DC-005）。即時置換せず、まず差分確認ダイアログへ候補を渡す（①）。
   const applyGeneratedSlides = (candidate: GeneratedCandidate) => {

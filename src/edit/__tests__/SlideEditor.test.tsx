@@ -350,3 +350,78 @@ describe('SlideEditor 組み込みアドオンのアプリ内ビルド（ター�
     await waitFor(() => expect(screen.getByLabelText('newaddon')).toBeTruthy())
   })
 })
+
+describe('SlideEditor キーボードショートカット（#91: Cmd/Ctrl+S 保存・Esc 終了）', () => {
+  beforeEach(() => {
+    h.saveSlidesJson.mockReset()
+    h.exportSlidePackage.mockReset()
+    h.chooseSlidesSavePath.mockReset().mockResolvedValue('/tmp/slides.json')
+    h.chooseExportDir.mockReset()
+    h.listBuiltinAddons.mockReset().mockResolvedValue([])
+    h.listBuiltinDistAddons.mockReset().mockResolvedValue([])
+    h.getPackageAddonNames.mockReset().mockResolvedValue([])
+  })
+
+  it('Ctrl+S で保存される（フォーカスがどこにあっても発火する）', async () => {
+    render(
+      <Wrapper>
+        <SlideEditor source={{ rawText: validJson, baseDir: '' }} onExit={() => {}} />
+      </Wrapper>,
+    )
+    await waitFor(() => expect(screen.getByText('同梱できるアドオンがありません')).toBeTruthy())
+    fireEvent.keyDown(window, { key: 's', ctrlKey: true })
+    await waitFor(() => expect(h.saveSlidesJson).toHaveBeenCalledWith('/tmp/slides.json', validJson))
+  })
+
+  it('JSON textarea にフォーカスがあっても Cmd+S で保存される', async () => {
+    render(
+      <Wrapper>
+        <SlideEditor source={{ rawText: validJson, baseDir: '' }} onExit={() => {}} />
+      </Wrapper>,
+    )
+    const textarea = document.querySelector('textarea')!
+    textarea.focus()
+    fireEvent.keyDown(textarea, { key: 's', metaKey: true })
+    await waitFor(() => expect(h.saveSlidesJson).toHaveBeenCalledWith('/tmp/slides.json', validJson))
+  })
+
+  it('未保存の変更がなければ Esc で即 onExit が呼ばれる', async () => {
+    const onExit = vi.fn()
+    render(
+      <Wrapper>
+        <SlideEditor source={{ rawText: validJson, baseDir: '' }} onExit={onExit} />
+      </Wrapper>,
+    )
+    await waitFor(() => expect(screen.getByText('同梱できるアドオンがありません')).toBeTruthy())
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(onExit).toHaveBeenCalledTimes(1)
+  })
+
+  it('未保存の変更があれば Esc で確認ダイアログが開き、onExit は呼ばれない', async () => {
+    const onExit = vi.fn()
+    render(
+      <Wrapper>
+        <SlideEditor source={{ rawText: validJson, baseDir: '' }} onExit={onExit} />
+      </Wrapper>,
+    )
+    const textarea = document.querySelector('textarea')!
+    fireEvent.change(textarea, { target: { value: validJson + '\n' } })
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(await screen.findByText('未保存の変更を破棄しますか？')).toBeTruthy()
+    expect(onExit).not.toHaveBeenCalled()
+  })
+
+  it('テキスト入力中の Esc は無視され、編集終了は発火しない', async () => {
+    const onExit = vi.fn()
+    render(
+      <Wrapper>
+        <SlideEditor source={{ rawText: validJson, baseDir: '' }} onExit={onExit} />
+      </Wrapper>,
+    )
+    const textarea = document.querySelector('textarea')!
+    textarea.focus()
+    fireEvent.keyDown(textarea, { key: 'Escape' })
+    expect(onExit).not.toHaveBeenCalled()
+    expect(screen.queryByText('未保存の変更を破棄しますか？')).toBeNull()
+  })
+})
