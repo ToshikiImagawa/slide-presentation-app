@@ -56,7 +56,7 @@ Download the file matching your OS from the latest release and run it.
 This app is self-signed but not notarized by Apple, so the first time you open it, macOS Gatekeeper shows a warning
 that the developer cannot be verified. Right-click (or Control-click) the app in Finder and choose **Open**, then
 confirm in the dialog — this clears the quarantine attribute, and the warning will not appear again for that copy of
-the app. This is macOS's own code-signature verification, unrelated to any password prompt from the app itself.
+the app. This is macOS's own code-signature verification.
 
 ### Keychain and password prompts
 
@@ -67,12 +67,9 @@ Gatekeeper warning above is the only prompt you may see.
 
 ### Updating
 
-This app does not currently check for updates automatically. The release pipeline already generates and signs a
-`latest.json` update manifest, and the Tauri updater plugin is registered on the native side, but the frontend does
-not yet call it to check for or apply updates. For now, update by downloading the latest installer from
+This app does not currently check for updates automatically. Update by downloading the latest installer from
 [Releases](https://github.com/ToshikiImagawa/slide-presentation-app/releases) and installing it over the existing
-copy. If in-app update checks are added in the future, updates will be verified against the same signing key, and
-depending on your environment, the Gatekeeper warning above may reappear after updating.
+copy.
 
 ## Setup
 

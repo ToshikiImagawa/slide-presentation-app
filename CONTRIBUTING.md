@@ -19,8 +19,8 @@
    - generates and attaches the updater manifest (`latest.json`), and
    - automatically un-drafts (publishes) the release once the manifest step succeeds — there is no manual
      approval gate in this workflow. If you need to review the draft release before it goes public, check the
-     [Releases page](https://github.com/ToshikiImagawa/slide-presentation-app/releases) during the short window
-     between the `updater-manifest` and `publish` jobs.
+     [Releases page](https://github.com/ToshikiImagawa/slide-presentation-app/releases) any time after the tag
+     push, before the workflow completes.
 
 ### Tag naming
 
