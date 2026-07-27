@@ -36,7 +36,8 @@ export interface EditSource {
 
 type StatusState = { kind: 'idle' | 'ok' | 'error'; message: string }
 
-/** meta.title からパッケージ名（@slides/{name}）の初期値を生成する */
+/** meta.title からパッケージ名（@slides/{name}）の初期値を生成する。あくまで初期値の提案であり、
+ * 書き出し前にユーザーが確認・修正することを前提とする（自動生成値は常に下記検証を満たす・#88） */
 function slugify(title: string): string {
   const slug = title
     .trim()
@@ -44,6 +45,21 @@ function slugify(title: string): string {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
   return slug || 'slides'
+}
+
+/** パッケージ名（@slides/{name} の name 部分）を検証する。npm パッケージ名の規則
+ * （小文字英数字とハイフンのみ・先頭は英数字）に合わせる（src-tauri/src/lib.rs の validate_package_name と同一規則・#88） */
+function validatePackageName(value: string): 'required' | 'invalid' | null {
+  const trimmed = value.trim()
+  if (!trimmed) return 'required'
+  return /^[a-z0-9][a-z0-9-]*$/.test(trimmed) ? null : 'invalid'
+}
+
+/** バージョンを検証する（semver の major.minor.patch。prerelease/build metadata も許可・#88） */
+function validateVersion(value: string): 'required' | 'invalid' | null {
+  const trimmed = value.trim()
+  if (!trimmed) return 'required'
+  return /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(trimmed) ? null : 'invalid'
 }
 
 const JSON_SYNTAX_ERROR_MARK = 'JSON 構文エラー'
@@ -58,6 +74,8 @@ export function SlideEditor({ source, onExit }: { source: EditSource; onExit: ()
   const [text, setText] = useState(source.rawText)
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [name, setName] = useState(() => slugify(parseSlides(source.rawText).data.meta?.title ?? 'slides'))
+  // タイトルからの自動生成値をユーザーが手動編集したか（未編集の間は確認を促すヒントを表示する・#88）
+  const [nameEdited, setNameEdited] = useState(false)
   const [version, setVersion] = useState('1.0.0')
   const [status, setStatus] = useState<StatusState>({ kind: 'idle', message: '' })
   // AI 生成結果の適用待ち候補（差分確認ダイアログで承認するまで器に触れない・①/FR-008）。
@@ -176,6 +194,19 @@ export function SlideEditor({ source, onExit }: { source: EditSource; onExit: ()
   const canWrite = errors.length === 0
   // プレビューはデータが妥当なときだけ表示する（JSON/スキーマエラー時は不要）
   const showPreview = errors.length === 0
+
+  // パッケージ名・バージョンの入力検証（不正な値では書き出せないようにする・#88）
+  const nameErrorCode = validatePackageName(name)
+  const nameErrorMessage =
+    nameErrorCode === 'required'
+      ? t('edit.packageNameRequired', 'パッケージ名を入力してください')
+      : nameErrorCode === 'invalid'
+        ? t('edit.packageNameInvalid', 'パッケージ名は小文字英数字とハイフンのみ使用でき、先頭は英数字にしてください')
+        : null
+  const versionErrorCode = validateVersion(version)
+  const versionErrorMessage =
+    versionErrorCode === 'required' ? t('edit.versionRequired', 'バージョンを入力してください') : versionErrorCode === 'invalid' ? t('edit.versionInvalid', 'バージョンは major.minor.patch 形式（例: 1.0.0）で入力してください') : null
+  const canExport = canWrite && nameErrorMessage === null && versionErrorMessage === null
   // 未保存の変更があるか（保存済みの元テキストとの比較。#44: データ損失防止）
   const isDirty = text !== source.rawText
   // 既に開いているダイアログがあるか（Escape ガード用。MUI Dialog 自身の Escape 処理に委ね、二重発火を避ける）
@@ -264,14 +295,14 @@ export function SlideEditor({ source, onExit }: { source: EditSource; onExit: ()
   }
 
   const handleExport = async () => {
-    if (!canWrite) {
+    if (!canExport) {
       setStatus({ kind: 'error', message: t('edit.exportBlocked', '検証エラーがあるため書き出せません') })
       return
     }
     try {
       const outDir = await chooseExportDir()
       if (!outDir) return
-      const pkgPath = await exportSlidePackage(text, { outDir, name: name || 'slides', version: version || '1.0.0', baseDir: source.baseDir, includedAddons: selectedAddons })
+      const pkgPath = await exportSlidePackage(text, { outDir, name, version, baseDir: source.baseDir, includedAddons: selectedAddons })
       setStatus({ kind: 'ok', message: `${t('edit.exported', '書き出しました')}: ${pkgPath}` })
     } catch (e) {
       setStatus({ kind: 'error', message: `${t('edit.exportFailed', '書き出しに失敗しました')}: ${e instanceof Error ? e.message : String(e)}` })
@@ -287,12 +318,23 @@ export function SlideEditor({ source, onExit }: { source: EditSource; onExit: ()
             {t('edit.exit', '編集を終了')}
           </Button>
           <Box sx={{ flex: 1 }} />
-          <TextField label={t('edit.packageName', 'パッケージ名')} value={name} onChange={(e) => setName(e.target.value)} size="small" sx={{ width: 180 }} />
-          <TextField label={t('edit.version', 'バージョン')} value={version} onChange={(e) => setVersion(e.target.value)} size="small" sx={{ width: 110 }} />
+          <TextField
+            label={t('edit.packageName', 'パッケージ名')}
+            value={name}
+            onChange={(e) => {
+              setName(e.target.value)
+              setNameEdited(true)
+            }}
+            size="small"
+            sx={{ width: 180 }}
+            error={nameErrorMessage !== null}
+            helperText={nameErrorMessage ?? (nameEdited ? '' : t('edit.packageNameHint', 'スライドタイトルから自動生成された値です。書き出し前に確認・修正してください'))}
+          />
+          <TextField label={t('edit.version', 'バージョン')} value={version} onChange={(e) => setVersion(e.target.value)} size="small" sx={{ width: 110 }} error={versionErrorMessage !== null} helperText={versionErrorMessage ?? ''} />
           <Button variant="outlined" size="small" onClick={handleSave} disabled={!canWrite}>
             {t('edit.save', '保存')}
           </Button>
-          <Button variant="contained" size="small" onClick={handleExport} disabled={!canWrite}>
+          <Button variant="contained" size="small" onClick={handleExport} disabled={!canExport}>
             {t('edit.export', '.spkg 書き出し')}
           </Button>
         </Stack>
