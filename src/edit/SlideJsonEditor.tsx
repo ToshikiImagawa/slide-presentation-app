@@ -1,5 +1,15 @@
+import { useEffect, useMemo, useRef, useState } from 'react'
+import type { KeyboardEvent } from 'react'
 import Box from '@mui/material/Box'
+import Button from '@mui/material/Button'
+import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
+import Typography from '@mui/material/Typography'
+import CloseIcon from '@mui/icons-material/Close'
+import FindReplaceIcon from '@mui/icons-material/FindReplace'
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
+import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp'
+import SearchIcon from '@mui/icons-material/Search'
 import type { ValidationError } from '../data/types'
 import { useTranslation } from '../i18n'
 import { ValidationErrorList } from './ValidationErrorList'
@@ -13,15 +23,128 @@ interface SlideJsonEditorProps {
   errors: ValidationError[]
 }
 
+/** 大文字小文字を無視して value 内の query の出現開始位置を全て返す */
+function findMatches(value: string, query: string): number[] {
+  if (!query) return []
+  const lowerValue = value.toLowerCase()
+  const lowerQuery = query.toLowerCase()
+  const matches: number[] = []
+  let index = lowerValue.indexOf(lowerQuery)
+  while (index !== -1) {
+    matches.push(index)
+    index = lowerValue.indexOf(lowerQuery, index + lowerQuery.length)
+  }
+  return matches
+}
+
+/** 大文字小文字を無視して value 内の query をすべて replacement に置き換える */
+function replaceAllMatches(value: string, query: string, replacement: string): string {
+  if (!query) return value
+  const lowerValue = value.toLowerCase()
+  const lowerQuery = query.toLowerCase()
+  let result = ''
+  let cursor = 0
+  let index = lowerValue.indexOf(lowerQuery)
+  while (index !== -1) {
+    result += value.slice(cursor, index) + replacement
+    cursor = index + query.length
+    index = lowerValue.indexOf(lowerQuery, cursor)
+  }
+  return result + value.slice(cursor)
+}
+
 /**
  * slides.json を編集する plain textarea（MUI TextField multiline）。
  * 構文強調ライブラリは持たず、検証は親から渡る errors を外部表示するだけに留める（DC-005 と整合）。
+ * 検索(Ctrl/Cmd+F)・置換はテキスト選択(setSelectionRange)ベースで実装し、オーバーレイ描画は行わない。
  */
 export function SlideJsonEditor({ value, onChange, errors }: SlideJsonEditorProps) {
   const { t } = useTranslation()
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [showReplace, setShowReplace] = useState(false)
+  const [query, setQuery] = useState('')
+  const [replaceValue, setReplaceValue] = useState('')
+  const [currentIndex, setCurrentIndex] = useState(-1)
+
+  const matches = useMemo(() => findMatches(value, query), [value, query])
+
+  // クエリ・本文の変化でマッチ数が変わったら現在位置を範囲内に収める
+  useEffect(() => {
+    setCurrentIndex((prev) => {
+      if (matches.length === 0) return -1
+      if (prev < 0) return 0
+      return prev % matches.length
+    })
+  }, [matches])
+
+  // 現在のマッチをテキスト選択でハイライトし、該当行が見える位置までスクロールする
+  useEffect(() => {
+    if (!searchOpen || currentIndex < 0 || currentIndex >= matches.length) return
+    const el = textareaRef.current
+    if (!el) return
+    const start = matches[currentIndex]
+    const end = start + query.length
+    el.setSelectionRange(start, end)
+    const lineCount = value.split('\n').length || 1
+    const lineHeight = el.scrollHeight / lineCount
+    const targetLine = value.slice(0, start).split('\n').length - 1
+    el.scrollTop = Math.max(0, lineHeight * targetLine - el.clientHeight / 2)
+  }, [currentIndex, matches, searchOpen, query, value])
+
+  function closeSearch() {
+    setSearchOpen(false)
+    setShowReplace(false)
+    setQuery('')
+    setReplaceValue('')
+    setCurrentIndex(-1)
+    textareaRef.current?.focus()
+  }
+
+  function goNext() {
+    if (matches.length === 0) return
+    setCurrentIndex((i) => (i + 1) % matches.length)
+  }
+
+  function goPrev() {
+    if (matches.length === 0) return
+    setCurrentIndex((i) => (i - 1 + matches.length) % matches.length)
+  }
+
+  function handleReplaceCurrent() {
+    if (currentIndex < 0 || currentIndex >= matches.length) return
+    const start = matches[currentIndex]
+    const end = start + query.length
+    onChange(value.slice(0, start) + replaceValue + value.slice(end))
+  }
+
+  function handleReplaceAll() {
+    if (matches.length === 0) return
+    onChange(replaceAllMatches(value, query, replaceValue))
+  }
+
+  function handleContainerKeyDown(e: KeyboardEvent<HTMLDivElement>) {
+    const isFindShortcut = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'f'
+    if (isFindShortcut) {
+      e.preventDefault()
+      setSearchOpen(true)
+      return
+    }
+    if (!searchOpen) return
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      closeSearch()
+      return
+    }
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      if (e.shiftKey) goPrev()
+      else goNext()
+    }
+  }
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, gap: 1 }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, gap: 1, position: 'relative' }} onKeyDown={handleContainerKeyDown}>
       <TextField
         label={t('edit.jsonLabel', 'slides.json')}
         value={value}
@@ -30,6 +153,7 @@ export function SlideJsonEditor({ value, onChange, errors }: SlideJsonEditorProp
         minRows={12}
         fullWidth
         spellCheck={false}
+        inputRef={textareaRef}
         slotProps={{
           htmlInput: {
             'aria-label': t('edit.jsonLabel', 'slides.json'),
@@ -45,6 +169,66 @@ export function SlideJsonEditor({ value, onChange, errors }: SlideJsonEditorProp
           '& .MuiInputBase-input': { height: '100% !important', overflow: 'auto !important', resize: 'none' },
         }}
       />
+      {!searchOpen && (
+        <Button size="small" onClick={() => setSearchOpen(true)} aria-label={t('edit.searchOpen', '検索')} sx={{ position: 'absolute', top: 24, right: 8, minWidth: 0, p: 0.5, zIndex: 1 }}>
+          <SearchIcon fontSize="small" />
+        </Button>
+      )}
+      {searchOpen && (
+        <Box
+          sx={{
+            position: 'absolute',
+            top: 24,
+            right: 8,
+            zIndex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 0.5,
+            p: 1,
+            borderRadius: 1,
+            backgroundColor: 'var(--fixed-background-alt)',
+            border: '1px solid var(--fixed-border)',
+            boxShadow: 3,
+          }}
+        >
+          <Stack direction="row" spacing={0.5} alignItems="center">
+            <TextField size="small" autoFocus value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t('edit.searchPlaceholder', '検索...')} aria-label={t('edit.searchPlaceholder', '検索...')} sx={{ width: 160 }} />
+            <Typography variant="caption" sx={{ color: 'var(--fixed-text-body)', minWidth: 40, textAlign: 'center' }}>
+              {matches.length > 0 ? `${currentIndex + 1}/${matches.length}` : '0/0'}
+            </Typography>
+            <Button size="small" onClick={goPrev} disabled={matches.length === 0} aria-label={t('edit.searchPrevious', '前のマッチへ')} sx={{ minWidth: 0, p: 0.5 }}>
+              <KeyboardArrowUpIcon fontSize="small" />
+            </Button>
+            <Button size="small" onClick={goNext} disabled={matches.length === 0} aria-label={t('edit.searchNext', '次のマッチへ')} sx={{ minWidth: 0, p: 0.5 }}>
+              <KeyboardArrowDownIcon fontSize="small" />
+            </Button>
+            <Button size="small" onClick={() => setShowReplace((v) => !v)} aria-label={t('edit.searchToggleReplace', '置換を表示')} aria-pressed={showReplace} sx={{ minWidth: 0, p: 0.5 }}>
+              <FindReplaceIcon fontSize="small" />
+            </Button>
+            <Button size="small" onClick={closeSearch} aria-label={t('edit.searchClose', '検索を閉じる')} sx={{ minWidth: 0, p: 0.5 }}>
+              <CloseIcon fontSize="small" />
+            </Button>
+          </Stack>
+          {showReplace && (
+            <Stack direction="row" spacing={0.5} alignItems="center">
+              <TextField
+                size="small"
+                value={replaceValue}
+                onChange={(e) => setReplaceValue(e.target.value)}
+                placeholder={t('edit.searchReplacePlaceholder', '置換後の文字列')}
+                aria-label={t('edit.searchReplacePlaceholder', '置換後の文字列')}
+                sx={{ width: 160 }}
+              />
+              <Button size="small" onClick={handleReplaceCurrent} disabled={matches.length === 0}>
+                {t('edit.searchReplace', '置換')}
+              </Button>
+              <Button size="small" onClick={handleReplaceAll} disabled={matches.length === 0}>
+                {t('edit.searchReplaceAll', 'すべて置換')}
+              </Button>
+            </Stack>
+          )}
+        </Box>
+      )}
       <ValidationErrorList errors={errors} sx={{ flexShrink: 0 }} />
     </Box>
   )

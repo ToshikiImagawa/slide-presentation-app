@@ -50,4 +50,83 @@ describe('SlideJsonEditor', () => {
 
     expect(screen.queryByRole('alert')).toBeNull()
   })
+
+  it('Ctrl+F で検索バーが開く', () => {
+    render(
+      <Wrapper>
+        <SlideJsonEditor value='{"a":"foo","b":"foo"}' onChange={() => {}} errors={[]} />
+      </Wrapper>,
+    )
+
+    expect(screen.queryByPlaceholderText('検索...')).toBeNull()
+    fireEvent.keyDown(screen.getByLabelText('slides.json'), { key: 'f', ctrlKey: true })
+    expect(screen.getByPlaceholderText('検索...')).not.toBeNull()
+  })
+
+  it('検索クエリを入力するとマッチ数が表示され、次/前へ移動できる', () => {
+    render(
+      <Wrapper>
+        <SlideJsonEditor value='{"a":"foo","b":"foo"}' onChange={() => {}} errors={[]} />
+      </Wrapper>,
+    )
+
+    fireEvent.keyDown(screen.getByLabelText('slides.json'), { key: 'f', ctrlKey: true })
+    fireEvent.change(screen.getByPlaceholderText('検索...'), { target: { value: 'foo' } })
+
+    expect(screen.getByText('1/2')).not.toBeNull()
+
+    fireEvent.click(screen.getByLabelText('次のマッチへ'))
+    expect(screen.getByText('2/2')).not.toBeNull()
+
+    fireEvent.click(screen.getByLabelText('前のマッチへ'))
+    expect(screen.getByText('1/2')).not.toBeNull()
+  })
+
+  it('Escape で検索バーを閉じる', () => {
+    render(
+      <Wrapper>
+        <SlideJsonEditor value='{"a":"foo"}' onChange={() => {}} errors={[]} />
+      </Wrapper>,
+    )
+
+    fireEvent.keyDown(screen.getByLabelText('slides.json'), { key: 'f', ctrlKey: true })
+    expect(screen.getByPlaceholderText('検索...')).not.toBeNull()
+
+    fireEvent.keyDown(screen.getByPlaceholderText('検索...'), { key: 'Escape' })
+    expect(screen.queryByPlaceholderText('検索...')).toBeNull()
+  })
+
+  it('現在のマッチを置換できる', () => {
+    const onChange = vi.fn()
+    render(
+      <Wrapper>
+        <SlideJsonEditor value='{"a":"foo","b":"foo"}' onChange={onChange} errors={[]} />
+      </Wrapper>,
+    )
+
+    fireEvent.keyDown(screen.getByLabelText('slides.json'), { key: 'f', ctrlKey: true })
+    fireEvent.change(screen.getByPlaceholderText('検索...'), { target: { value: 'foo' } })
+    fireEvent.click(screen.getByLabelText('置換を表示'))
+    fireEvent.change(screen.getByPlaceholderText('置換後の文字列'), { target: { value: 'bar' } })
+    fireEvent.click(screen.getByText('置換'))
+
+    expect(onChange).toHaveBeenCalledWith('{"a":"bar","b":"foo"}')
+  })
+
+  it('すべて置換できる', () => {
+    const onChange = vi.fn()
+    render(
+      <Wrapper>
+        <SlideJsonEditor value='{"a":"foo","b":"foo"}' onChange={onChange} errors={[]} />
+      </Wrapper>,
+    )
+
+    fireEvent.keyDown(screen.getByLabelText('slides.json'), { key: 'f', ctrlKey: true })
+    fireEvent.change(screen.getByPlaceholderText('検索...'), { target: { value: 'foo' } })
+    fireEvent.click(screen.getByLabelText('置換を表示'))
+    fireEvent.change(screen.getByPlaceholderText('置換後の文字列'), { target: { value: 'bar' } })
+    fireEvent.click(screen.getByText('すべて置換'))
+
+    expect(onChange).toHaveBeenCalledWith('{"a":"bar","b":"bar"}')
+  })
 })
