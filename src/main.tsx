@@ -13,27 +13,24 @@ import type { PresentationData, ThemeData } from './data'
 import { I18nProvider, loadLocales, useI18n } from './i18n'
 import type { LocaleResource } from './i18n'
 import { ToastProvider, useToast } from './toast'
-import { clearAddonTrustDecision, getRecentSlidePackages, isAddonAllowed, loadSlidePackageFromUrl, openRecentSlidePackage, openSlidePackageFromPath, pickAndLoadSlidePackage, removeRecentSlidePackage } from './localSlideLoader'
+import {
+  clearAddonTrustDecision,
+  getRecentSlidePackages,
+  isAddonAllowed,
+  loadSampleSlidePackageFromUrl,
+  loadSlidePackageFromUrl,
+  openRecentSlidePackage,
+  openSlidePackageFromPath,
+  pickAndLoadSlidePackage,
+  removeRecentSlidePackage,
+} from './localSlideLoader'
 import type { LoadedSlidePackage, RecentSlidePackageEntry, SlidePackageLoadResult } from './localSlideLoader'
+import { getSampleSources, loadBundledSampleSlides } from './sampleSlides'
 import { useOpenSlideRequest } from './hooks/useOpenSlideRequest'
 import { SlideEditor } from './edit/SlideEditor'
 import type { EditSource } from './edit/SlideEditor'
 import { serializeSlides } from './edit/slidesSerialize'
 import { enterEditMode, exitEditMode } from './editModeSave'
-
-/** バンドル済みの slides.json を読み込む。取得できない場合は取得失敗の案内スライドを返す（ホーム画面の「サンプルスライド」用） */
-async function loadSamplePresentationData(locale: string): Promise<PresentationData> {
-  try {
-    const res = await fetch(import.meta.env.VITE_SLIDES_PATH || '/slides.json')
-    if (res.ok) {
-      return (await res.json()) as PresentationData
-    }
-    console.error(`Failed to load sample presentation data: ${res.status}`)
-  } catch {
-    // fetch 失敗時は取得失敗の案内スライドにフォールバックする
-  }
-  return getSampleUnavailablePresentationData(locale)
-}
 
 type View = 'home' | 'presentation' | 'edit'
 
@@ -118,7 +115,7 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
       if (!data) return false
       await applyPackageAddons(data)
       // 編集は書換前の生 JSON（相対パス）を対象にする
-      setEditSource({ rawText: data.rawText, baseDir: data.baseDir, sourcePath: data.sourcePath, packageName: data.identity.name, packageVersion: data.identity.version })
+      setEditSource({ rawText: data.rawText, baseDir: data.baseDir, sourcePath: data.savePath, packageName: data.identity.name, packageVersion: data.identity.version })
       await showPresentation(data.data)
       return true
     },
@@ -148,14 +145,34 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
     setRecentPackages(updated)
   }, [])
 
+  /**
+   * ホーム画面の「サンプルを開く」。サンプルはアプリに同梱せず配布パッケージから取得するため、3 段で解決する。
+   * (1) ビルド時同梱の slides.json → (2) オンライン配布の .spkg → (3) 取得失敗の案内スライド
+   */
   const handleOpenSample = useCallback(async () => {
     // サンプルは組み込みアドオンのみを使うため、パッケージ由来のアドオンは破棄する
     clearPackageAddons()
-    const data = await loadSamplePresentationData(locale)
-    // サンプル/デフォルトは相対パスのまま。baseDir は無い（アセットは app 配下で解決される）
-    setEditSource({ rawText: serializeSlides(data), baseDir: '', sourcePath: undefined })
-    await showPresentation(data)
-  }, [clearPackageAddons, locale, showPresentation])
+
+    // (1) VITE_SLIDE_PACKAGE による同梱・スクリーンショット fixture・dev の samples 配信
+    const bundled = await loadBundledSampleSlides()
+    if (bundled) {
+      // 同梱データは相対パスのまま。baseDir は無い（アセットは app 配下で解決される）
+      setEditSource({ rawText: serializeSlides(bundled), baseDir: '', sourcePath: undefined })
+      await showPresentation(bundled)
+      return
+    }
+
+    // (2) オンライン配布のサンプルパッケージ（同梱アセットは baseDir 基準で解決される）
+    for (const source of await getSampleSources(locale)) {
+      if (await applyLoadResult(await loadSampleSlidePackageFromUrl(source.url, source.download))) return
+    }
+
+    // (3) どこからも取得できない場合（オフライン等）は案内スライドを表示する
+    showToast(t('home.sampleUnavailable'))
+    const unavailable = getSampleUnavailablePresentationData(locale)
+    setEditSource({ rawText: serializeSlides(unavailable), baseDir: '', sourcePath: undefined })
+    await showPresentation(unavailable)
+  }, [applyLoadResult, clearPackageAddons, locale, showPresentation, showToast, t])
 
   const handleGoHome = useCallback(() => {
     // ホーム復帰時はパッケージ由来のカスタム登録をクリアする
