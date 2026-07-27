@@ -16,6 +16,7 @@ jobs:
     name: Prepare release metadata
     runs-on: ubuntu-latest
     outputs:
+      version: ${{ steps.version.outputs.version }}
       prerelease: ${{ steps.version.outputs.prerelease }}
     steps:
       - uses: actions/checkout@v4
@@ -232,43 +233,48 @@ jobs:
 
   updater-manifest:
     name: Generate updater manifest (latest.json)
-    needs: [release]
+    needs: [release, prepare]
     permissions:
       contents: write
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      TAG: ${{ github.ref_name }}
+      REPO: ${{ github.repository }}
     steps:
       - name: Locate draft release for this tag
         # draft release は /repos/{owner}/{repo}/releases/tags/{tag} に出ないため、
         # 一覧 API を tag_name でフィルタして特定する
         run: |
           set -euo pipefail
-          TAG="${{ github.ref_name }}"
-          REPO="${{ github.repository }}"
-
           gh api "repos/$REPO/releases?per_page=100" --paginate \
             --jq ".[] | select(.tag_name == \"$TAG\")" > release.json
 
-          if [ ! -s release.json ]; then
-            echo "::error::タグ $TAG に対応する draft release が見つかりません"
+          MATCH_COUNT=$(jq -s 'length' release.json)
+          if [ "$MATCH_COUNT" -ne 1 ]; then
+            echo "::error::タグ $TAG に一致する release が $MATCH_COUNT 件見つかりました(1件である必要があります)"
             exit 1
           fi
 
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-notes
+
       - name: Build latest.json
         # 本体 asset は public repo の静的ダウンロード URL(browser_download_url)を使う。
-        # .sig は draft 状態でも読めるよう asset の API URL 経由(Accept: application/octet-stream)で取得する
+        # .sig は draft 状態でも読めるよう asset の API URL 経由(Accept: application/octet-stream)で取得する。
+        # url_pattern は release ジョブの matrix.assets(このファイル内)のファイル拡張子と
+        # 対応させる必要がある
         run: |
           set -euo pipefail
-          TAG="${{ github.ref_name }}"
-          REPO="${{ github.repository }}"
-          VERSION="${TAG#v}"
+          VERSION="${{ needs.prepare.outputs.version }}"
           PUB_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          NOTES="$(jq -r '.body' release.json)"
+          NOTES="$(cat release-notes.md)"
 
           resolve_platform() {
-            local platform="$1" url_pattern="$2" sig_pattern="$3"
+            local platform="$1" url_pattern="$2"
+            local sig_pattern="${url_pattern%\$}\\.sig\$"
             local url sig_id sig
 
             url=$(jq -r --arg p "$url_pattern" '.assets[] | select(.name | test($p)) | .browser_download_url' release.json)
@@ -284,9 +290,9 @@ jobs:
             jq -n --arg url "$url" --arg signature "$sig" '{url: $url, signature: $signature}'
           }
 
-          DARWIN=$(resolve_platform "darwin-aarch64" '\.app\.tar\.gz$' '\.app\.tar\.gz\.sig$')
-          WINDOWS=$(resolve_platform "windows-x86_64" '-setup\.exe$' '-setup\.exe\.sig$')
-          LINUX=$(resolve_platform "linux-x86_64" '\.AppImage$' '\.AppImage\.sig$')
+          DARWIN=$(resolve_platform "darwin-aarch64" '\.app\.tar\.gz$')
+          WINDOWS=$(resolve_platform "windows-x86_64" '-setup\.exe$')
+          LINUX=$(resolve_platform "linux-x86_64" '\.AppImage$')
 
           jq -n \
             --arg version "$VERSION" \
@@ -309,7 +315,7 @@ jobs:
           cat latest.json
 
       - name: Upload latest.json to draft release
-        run: gh release upload "${{ github.ref_name }}" latest.json --repo "${{ github.repository }}" --clobber
+        run: gh release upload "$TAG" latest.json --repo "$REPO" --clobber
 
   publish:
     name: Publish release
