@@ -111,15 +111,16 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
     setAddonInfo({ owner: '', scripts: [] })
   }, [])
 
-  /** スライドパッケージの読み込み結果を受けて、最近使ったリストの更新・アドオン適用・プレゼン表示までを行う（各読み込み口の共通後処理） */
+  /** スライドパッケージの読み込み結果を受けて、最近使ったリストの更新・アドオン適用・プレゼン表示までを行う（各読み込み口の共通後処理）。プレゼンを表示できたかを返す */
   const applyLoadResult = useCallback(
-    async ({ data, recentPackages }: SlidePackageLoadResult) => {
+    async ({ data, recentPackages }: SlidePackageLoadResult): Promise<boolean> => {
       if (recentPackages) setRecentPackages(recentPackages)
-      if (!data) return
+      if (!data) return false
       await applyPackageAddons(data)
       // 編集は書換前の生 JSON（相対パス）を対象にする
       setEditSource({ rawText: data.rawText, baseDir: data.baseDir, sourcePath: data.sourcePath, packageName: data.identity.name, packageVersion: data.identity.version })
       await showPresentation(data.data)
+      return true
     },
     [applyPackageAddons, showPresentation],
   )
@@ -182,22 +183,21 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
     handleStartEdit()
   }, [applyPresentationData, clearPackageAddons, handleStartEdit, locale])
 
-  const handleExitEdit = useCallback(() => {
+  /** Rust 側の編集モードフラグ（書き込みゲート）を閉じる。失敗しても UI 遷移はブロックしない（A-005） */
+  const closeEditGate = useCallback(() => {
     void exitEditMode().catch((error) => console.error('[main] 編集モードの無効化に失敗しました', error))
+  }, [])
+
+  const handleExitEdit = useCallback(() => {
+    closeEditGate()
     // 編集中に適用したテーマを、表示中プレゼンのテーマへ戻す
     void applyThemeAndNotify(presentationData?.meta?.themeColors, presentationData?.theme)
     setView('presentation')
-  }, [presentationData, applyThemeAndNotify])
+  }, [closeEditGate, presentationData, applyThemeAndNotify])
 
-  // 編集画面に渡す供給元（null = 編集画面を表示しない）。オープン要求を SlideEditor へ降ろすかの判定にも使う
-  const activeEditSource = view === 'edit' ? editSource : null
-
-  /** OS のファイル関連付けから渡されたパスを開く。読み込みに成功したかを返す */
-  const openAssociatedPath = useCallback(
-    async (path: string): Promise<boolean> => {
-      const result = await openSlidePackageFromPath(path)
-      await applyLoadResult(result)
-      return result.data !== null
+  const handleOpenAssociated = useCallback(
+    async (path: string) => {
+      return applyLoadResult(await openSlidePackageFromPath(path))
     },
     [applyLoadResult],
   )
@@ -206,34 +206,30 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
   // 編集中は未保存の変更を勝手に破棄しないよう、SlideEditor へ降ろして確認ダイアログを任せる
   const handleOpenRequest = useCallback(
     (path: string) => {
-      if (activeEditSource) {
+      if (view === 'edit') {
         setPendingOpenPath(path)
         return
       }
-      void openAssociatedPath(path)
+      void handleOpenAssociated(path)
     },
-    [activeEditSource, openAssociatedPath],
+    [view, handleOpenAssociated],
   )
   useOpenSlideRequest(handleOpenRequest)
 
-  const confirmPendingOpen = useCallback(
-    (path: string) => {
+  // 編集中のオープン要求に対する SlideEditor からの回答（確認ダイアログの確定／取消、未保存でなければ即確定）
+  const handleResolveOpen = useCallback(
+    async (confirmed: boolean) => {
+      const path = pendingOpenPath
       setPendingOpenPath(null)
-      void openAssociatedPath(path)
-        .then((opened) => {
-          // 読み込みに成功した場合のみ Rust の編集モードフラグを落とす
-          // （失敗時は編集画面に留まるため、書き込みゲートを閉じて保存できなくしない）
-          if (opened) return exitEditMode()
-        })
-        .catch((error) => console.error('[main] 編集モードの無効化に失敗しました', error))
+      if (!confirmed || path === null) return
+      // 読み込みに失敗したときは編集画面に留まるため、書き込みゲートは閉じない（保存できなくしない）
+      if (await handleOpenAssociated(path)) closeEditGate()
     },
-    [openAssociatedPath],
+    [pendingOpenPath, handleOpenAssociated, closeEditGate],
   )
 
-  const cancelPendingOpen = useCallback(() => setPendingOpenPath(null), [])
-
-  if (activeEditSource) {
-    return <SlideEditor source={activeEditSource} onExit={handleExitEdit} pendingOpenPath={pendingOpenPath} onConfirmOpen={confirmPendingOpen} onCancelOpen={cancelPendingOpen} />
+  if (view === 'edit' && editSource) {
+    return <SlideEditor source={editSource} onExit={handleExitEdit} openRequestPath={pendingOpenPath} onResolveOpen={handleResolveOpen} />
   }
 
   if (view === 'home') {

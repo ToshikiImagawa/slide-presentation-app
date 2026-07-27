@@ -6,6 +6,7 @@ const h = vi.hoisted(() => ({
   invoke: vi.fn(),
   listeners: [] as Array<() => void>,
   listen: vi.fn(),
+  unlisten: vi.fn(),
 }))
 
 vi.mock('@tauri-apps/api/core', () => ({ invoke: h.invoke }))
@@ -19,9 +20,10 @@ describe('useOpenSlideRequest', () => {
   beforeEach(() => {
     h.invoke.mockReset()
     h.listeners.length = 0
+    h.unlisten.mockReset()
     h.listen.mockReset().mockImplementation(async (_name: string, cb: () => void) => {
       h.listeners.push(cb)
-      return () => {}
+      return h.unlisten
     })
   })
 
@@ -55,13 +57,17 @@ describe('useOpenSlideRequest', () => {
     expect(onRequest).toHaveBeenCalledWith('/decks/c.spkg')
   })
 
-  it('pull より先に listen を張る（両者の隙間で要求を落とさない）', async () => {
+  it('listen の完了までは pull しない（両者の隙間で要求を落とさない）', async () => {
+    let resolveListen: (fn: () => void) => void = () => {}
+    h.listen.mockReturnValue(new Promise<() => void>((resolve) => (resolveListen = resolve)))
     h.invoke.mockResolvedValue([])
+
     renderHook(() => useOpenSlideRequest(vi.fn()))
 
-    await waitFor(() => expect(h.invoke).toHaveBeenCalled())
-    // listen 登録が先に完了していること
-    expect(h.listeners.length).toBe(1)
+    // listen が解決するまで take は呼ばれない
+    expect(h.invoke).not.toHaveBeenCalled()
+    await act(async () => resolveListen(h.unlisten))
+    expect(h.invoke).toHaveBeenCalledWith(COMMAND)
   })
 
   it('open-slide-package イベント受信時も take_pending_open_paths からパスを取り出して渡す', async () => {
@@ -121,16 +127,26 @@ describe('useOpenSlideRequest', () => {
 
   it('アンマウント時に unlisten する', async () => {
     h.invoke.mockResolvedValue([])
-    const unlisten = vi.fn()
-    h.listen.mockImplementation(async (_name: string, cb: () => void) => {
-      h.listeners.push(cb)
-      return unlisten
-    })
-
     const { unmount } = renderHook(() => useOpenSlideRequest(vi.fn()))
     await waitFor(() => expect(h.listeners.length).toBe(1))
 
     unmount()
-    expect(unlisten).toHaveBeenCalled()
+    expect(h.unlisten).toHaveBeenCalled()
+  })
+
+  it('listen の解決前にアンマウントされても購読を残さず、要求も take しない', async () => {
+    let resolveListen: (fn: () => void) => void = () => {}
+    h.listen.mockReturnValue(new Promise<() => void>((resolve) => (resolveListen = resolve)))
+    h.invoke.mockResolvedValue(['/decks/a.spkg'])
+    const onRequest = vi.fn()
+
+    const { unmount } = renderHook(() => useOpenSlideRequest(onRequest))
+    unmount()
+    await act(async () => resolveListen(h.unlisten))
+
+    // 遅れて解決した購読は即解除し、take していないので要求は Rust 側に残る
+    expect(h.unlisten).toHaveBeenCalled()
+    expect(h.invoke).not.toHaveBeenCalled()
+    expect(onRequest).not.toHaveBeenCalled()
   })
 })

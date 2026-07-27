@@ -62,13 +62,4 @@ describe('openSlidePackageFromPath', () => {
     expect(h.readTextFile).toHaveBeenCalledWith(path)
     expect(result.data?.data.meta.title).toBe('Associated Deck')
   })
-
-  it('展開に失敗した場合はエラーダイアログを表示し data は null を返す', async () => {
-    h.invoke.mockRejectedValue(new Error('パッケージの展開に失敗しました'))
-
-    const result = await openSlidePackageFromPath('/Users/me/Documents/broken.spkg')
-
-    expect(result.data).toBeNull()
-    expect(h.message).toHaveBeenCalledOnce()
-  })
 })

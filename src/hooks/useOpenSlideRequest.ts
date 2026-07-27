@@ -38,24 +38,31 @@ export function useOpenSlideRequest(onRequest: (path: string) => void): void {
 
   useEffect(() => {
     let unlisten: UnlistenFn | undefined
+    let cancelled = false
 
     const deliverPending = async () => {
+      // アンマウント後は取り出さない（take で消えた要求を、破棄済みのツリーへ渡して失わないため）
+      if (cancelled) return
       const path = await takePendingOpenPath()
       if (path !== undefined) onRequestRef.current(path)
     }
 
-    // listen を先に張り、その後に起動時の要求を pull する（両者の隙間で要求を落とさないため）。
-    // listen 自身も内部で invoke するため非 Tauri 環境では reject する。起動をブロックしないよう握りつぶす
-    void listen(EVENT_NAME, () => void deliverPending())
-      .then((fn) => {
-        unlisten = fn
-      })
-      .catch((error) => {
+    void (async () => {
+      try {
+        // listen を先に張り、その後に起動時の要求を pull する（両者の隙間で要求を落とさないため）
+        const fn = await listen(EVENT_NAME, () => void deliverPending())
+        // listen の解決前にアンマウントされた場合は即解除する（購読が残るのを防ぐ）
+        if (cancelled) fn()
+        else unlisten = fn
+      } catch (error) {
+        // listen 自身も内部で invoke するため非 Tauri 環境では reject する。起動をブロックしないよう握りつぶす
         console.warn('[useOpenSlideRequest] オープン要求の購読をスキップしました', error)
-      })
-      .finally(() => void deliverPending())
+      }
+      await deliverPending()
+    })()
 
     return () => {
+      cancelled = true
       unlisten?.()
     }
   }, [])
