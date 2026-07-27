@@ -229,3 +229,98 @@ jobs:
           prerelease: ${{ needs.prepare.outputs.prerelease }}
           body_path: release-notes.md
           files: docs/*.pdf
+
+  updater-manifest:
+    name: Generate updater manifest (latest.json)
+    needs: [release]
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Locate draft release for this tag
+        # draft release は /repos/{owner}/{repo}/releases/tags/{tag} に出ないため、
+        # 一覧 API を tag_name でフィルタして特定する
+        run: |
+          set -euo pipefail
+          TAG="${{ github.ref_name }}"
+          REPO="${{ github.repository }}"
+
+          gh api "repos/$REPO/releases?per_page=100" --paginate \
+            --jq ".[] | select(.tag_name == \"$TAG\")" > release.json
+
+          if [ ! -s release.json ]; then
+            echo "::error::タグ $TAG に対応する draft release が見つかりません"
+            exit 1
+          fi
+
+      - name: Build latest.json
+        # 本体 asset は public repo の静的ダウンロード URL(browser_download_url)を使う。
+        # .sig は draft 状態でも読めるよう asset の API URL 経由(Accept: application/octet-stream)で取得する
+        run: |
+          set -euo pipefail
+          TAG="${{ github.ref_name }}"
+          REPO="${{ github.repository }}"
+          VERSION="${TAG#v}"
+          PUB_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          NOTES="$(jq -r '.body' release.json)"
+
+          resolve_platform() {
+            local platform="$1" url_pattern="$2" sig_pattern="$3"
+            local url sig_id sig
+
+            url=$(jq -r --arg p "$url_pattern" '.assets[] | select(.name | test($p)) | .browser_download_url' release.json)
+            sig_id=$(jq -r --arg p "$sig_pattern" '.assets[] | select(.name | test($p)) | .id' release.json)
+
+            if [ -z "$url" ] || [ -z "$sig_id" ]; then
+              echo "::error::$platform 用のアセットまたは署名ファイルが見つかりません" >&2
+              exit 1
+            fi
+
+            sig=$(gh api "repos/$REPO/releases/assets/$sig_id" -H "Accept: application/octet-stream")
+
+            jq -n --arg url "$url" --arg signature "$sig" '{url: $url, signature: $signature}'
+          }
+
+          DARWIN=$(resolve_platform "darwin-aarch64" '\.app\.tar\.gz$' '\.app\.tar\.gz\.sig$')
+          WINDOWS=$(resolve_platform "windows-x86_64" '-setup\.exe$' '-setup\.exe\.sig$')
+          LINUX=$(resolve_platform "linux-x86_64" '\.AppImage$' '\.AppImage\.sig$')
+
+          jq -n \
+            --arg version "$VERSION" \
+            --arg notes "$NOTES" \
+            --arg pub_date "$PUB_DATE" \
+            --argjson darwin "$DARWIN" \
+            --argjson windows "$WINDOWS" \
+            --argjson linux "$LINUX" \
+            '{
+              version: $version,
+              notes: $notes,
+              pub_date: $pub_date,
+              platforms: {
+                "darwin-aarch64": $darwin,
+                "windows-x86_64": $windows,
+                "linux-x86_64": $linux
+              }
+            }' > latest.json
+
+          cat latest.json
+
+      - name: Upload latest.json to draft release
+        run: gh release upload "${{ github.ref_name }}" latest.json --repo "${{ github.repository }}" --clobber
+
+  publish:
+    name: Publish release
+    needs: [updater-manifest]
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Un-draft release
+        # --prerelease を渡さないことで作成時の prerelease 判定(prepare ジョブ)を維持する
+        run: gh release edit "${{ github.ref_name }}" --draft=false --repo "${{ github.repository }}"
