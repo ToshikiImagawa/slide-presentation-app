@@ -22,9 +22,11 @@ type SettingsWindowProps = {
   addonTrust?: AddonTrustEntry[]
   /** 層C: 個別 allow/deny の設定ハンドラ（decision が undefined なら「未設定」へ戻す） */
   onSetAddonTrust?: (path: string, decision: AddonTrustDecision | undefined) => void
+  /** キーボードショートカット一覧ダイアログを開くハンドラ（未指定時はボタンを表示しない） */
+  onOpenShortcuts?: () => void
 }
 
-export function SettingsWindow({ open, onClose, scrollSpeed, setScrollSpeed, embeddedAddonsDisabled, onToggleEmbeddedAddons, onResetAddonTrust, addonTrust, onSetAddonTrust }: SettingsWindowProps) {
+export function SettingsWindow({ open, onClose, scrollSpeed, setScrollSpeed, embeddedAddonsDisabled, onToggleEmbeddedAddons, onResetAddonTrust, addonTrust, onSetAddonTrust, onOpenShortcuts }: SettingsWindowProps) {
   const { locale, locales, setLocale } = useI18n()
   const { t } = useTranslation()
 
@@ -71,6 +73,14 @@ export function SettingsWindow({ open, onClose, scrollSpeed, setScrollSpeed, emb
             }}
           />
         </div>
+        {onOpenShortcuts && (
+          <div className={styles.settingRow}>
+            <label className={styles.label}>{t('settings.shortcuts', 'キーボードショートカット')}</label>
+            <button type="button" className={styles.footerButton} onClick={onOpenShortcuts}>
+              {t('settings.shortcutsOpen', '表示')}
+            </button>
+          </div>
+        )}
         {onToggleEmbeddedAddons && (
           <>
             <div className={styles.settingRow}>

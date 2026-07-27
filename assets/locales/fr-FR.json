@@ -41,7 +41,9 @@
       "addonTrustUnset": "Non défini",
       "addonTrustAllow": "Autoriser",
       "addonTrustDeny": "Refuser",
-      "addonTrustDisabledNote": "Tant que la désactivation globale est active, elle prime sur les réglages par paquet"
+      "addonTrustDisabledNote": "Tant que la désactivation globale est active, elle prime sur les réglages par paquet",
+      "shortcuts": "Raccourcis clavier",
+      "shortcutsOpen": "Afficher"
     },
     "edit": {
       "startEdit": "Éditer",
@@ -185,6 +187,25 @@
       "before": "Avant",
       "after": "Après",
       "unparseable": "La structure n'a pas pu être analysée ; tout le contenu sera remplacé. Le résultat à appliquer est affiché ci-dessous."
+    },
+    "shortcuts": {
+      "title": "Raccourcis clavier",
+      "viewerSection": "Visionneuse de présentation",
+      "editSection": "Mode édition",
+      "toggleToolbar": "Afficher/masquer la barre d'outils",
+      "openHelp": "Afficher cette liste de raccourcis",
+      "nextSlide": "Diapositive suivante",
+      "prevSlide": "Diapositive précédente",
+      "jumpFirstLast": "Aller à la première / dernière diapositive",
+      "ignoreFragments": "Naviguer en ignorant les fragments",
+      "pause": "Mettre en pause (écran noir)",
+      "fullscreen": "Basculer le plein écran",
+      "jumpToSlide": "Aller à un numéro de diapositive précis",
+      "overview": "Basculer l'aperçu des diapositives",
+      "save": "Enregistrer",
+      "exitEdit": "Quitter l'édition",
+      "search": "Rechercher dans le JSON",
+      "searchNav": "Aller au résultat de recherche suivant / précédent"
     }
   }
 }

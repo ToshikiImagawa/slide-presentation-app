@@ -17,6 +17,8 @@ const enUS: LocaleResource = {
       embeddedAddons: 'Embedded add-ons',
       disableEmbeddedAddons: 'Always disable embedded add-ons',
       resetAddonTrust: 'Reset add-on trust history',
+      shortcuts: 'Keyboard shortcuts',
+      shortcutsOpen: 'Show',
     },
   },
 }
@@ -167,6 +169,28 @@ describe('SettingsWindow', () => {
     fireEvent.change(select, { target: { value: 'ja-JP' } })
 
     expect(select.value).toBe('ja-JP')
+  })
+
+  describe('キーボードショートカット導線', () => {
+    it('onOpenShortcuts 未指定時はボタンを表示しない（後方互換）', () => {
+      render(
+        <Wrapper>
+          <SettingsWindow open={true} onClose={() => {}} scrollSpeed={20} setScrollSpeed={() => {}} />
+        </Wrapper>,
+      )
+      expect(screen.queryByText('Keyboard shortcuts')).toBeNull()
+    })
+
+    it('onOpenShortcuts 指定時にボタンが表示され、クリックで呼ばれる', () => {
+      const onOpenShortcuts = vi.fn()
+      render(
+        <Wrapper>
+          <SettingsWindow open={true} onClose={() => {}} scrollSpeed={20} setScrollSpeed={() => {}} onOpenShortcuts={onOpenShortcuts} />
+        </Wrapper>,
+      )
+      fireEvent.click(screen.getByRole('button', { name: 'Show' }))
+      expect(onOpenShortcuts).toHaveBeenCalledTimes(1)
+    })
   })
 
   describe('同梱アドオン設定', () => {
