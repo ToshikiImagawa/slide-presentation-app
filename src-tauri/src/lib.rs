@@ -520,14 +520,11 @@ fn validate_package_name(name: &str) -> Result<(), String> {
   if trimmed.is_empty() {
     return Err("パッケージ名を入力してください".to_string());
   }
-  let mut chars = trimmed.chars();
-  let starts_with_alnum = chars
-    .next()
-    .is_some_and(|c| c.is_ascii_lowercase() || c.is_ascii_digit());
-  let rest_ok = trimmed
+  let valid = trimmed
     .chars()
-    .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-');
-  if !starts_with_alnum || !rest_ok {
+    .enumerate()
+    .all(|(i, c)| c.is_ascii_lowercase() || c.is_ascii_digit() || (i > 0 && c == '-'));
+  if !valid {
     return Err(
       "パッケージ名は小文字英数字とハイフンのみ使用でき、先頭は英数字にしてください".to_string(),
     );
@@ -539,9 +536,10 @@ fn validate_package_name(name: &str) -> Result<(), String> {
 fn validate_version(version: &str) -> Result<(), String> {
   let trimmed = version.trim();
   let core = trimmed.split(['-', '+']).next().unwrap_or(trimmed);
-  let core_ok = core.split('.').collect::<Vec<_>>().len() == 3
-    && core
-      .split('.')
+  let parts: Vec<&str> = core.split('.').collect();
+  let core_ok = parts.len() == 3
+    && parts
+      .iter()
       .all(|part| !part.is_empty() && part.chars().all(|c| c.is_ascii_digit()));
   if !core_ok {
     return Err("バージョンは major.minor.patch 形式（例: 1.0.0）で入力してください".to_string());
