@@ -1,4 +1,15 @@
 .window {
+  /* 設定画面はプレゼンのテーマ変更から独立させる（editorUiTheme と同じ固定パレット。§9.1 のテーマ波及対策に準拠） */
+  --theme-primary: #e07a5f;
+  --theme-background: #1c1917;
+  --theme-background-alt: #292524;
+  --theme-text-heading: #faf8f5;
+  --theme-text-body: #a8a29e;
+  --theme-text-muted: #78716c;
+  --theme-border: #3d3835;
+  --theme-font-heading: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --theme-font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
   background: var(--theme-background-alt);
   border: 1px solid var(--theme-border);
   border-radius: 12px;
