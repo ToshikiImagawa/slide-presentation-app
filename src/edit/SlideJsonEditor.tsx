@@ -38,6 +38,7 @@ const basicSetup = { searchKeymap: false }
  * 行番号・JSON シンタックスハイライトを持ち、検証エラー一覧の行番号クリックで該当箇所へジャンプできる（DC-005 からの転換・#90）。
  * 検索(Ctrl/Cmd+F)・置換はオフセットベースの選択操作（view.dispatch）で実装し、独自オーバーレイ描画は行わない。
  * CodeMirror 内蔵の検索キーマップ（Mod-f）は既存のカスタム検索 UI と競合するため無効化する。
+ * 見た目は jsonEditorTheme（--fixed-* の固定ダークパレット）のみで構成し、ライブラリ既定の light テーマ（背景 #fff）は theme="none" で注入自体を止める。
  */
 export function SlideJsonEditor({ value, onChange, errors }: SlideJsonEditorProps) {
   const { t } = useTranslation()
@@ -137,7 +138,7 @@ export function SlideJsonEditor({ value, onChange, errors }: SlideJsonEditorProp
         {jsonLabel}
       </Typography>
       <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
-        <CodeMirror ref={editorRef} value={value} onChange={onChange} height="100%" style={{ height: '100%' }} basicSetup={basicSetup} extensions={extensions} />
+        <CodeMirror ref={editorRef} value={value} onChange={onChange} height="100%" style={{ height: '100%' }} theme="none" basicSetup={basicSetup} extensions={extensions} />
       </Box>
       {!searchOpen && (
         <Button size="small" onClick={() => setSearchOpen(true)} aria-label={t('edit.searchOpen', '検索')} sx={{ position: 'absolute', top: 24, right: 8, minWidth: 0, p: 0.5, zIndex: 1 }}>
