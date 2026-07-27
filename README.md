@@ -108,6 +108,7 @@ On launch, the app opens on a home screen where you choose what to present.
 
 | Action                     | Description                                                                                 |
 |----------------------------|---------------------------------------------------------------------------------------------|
+| **Create with AI**         | Generate a deck from scratch with AI and continue straight into [edit mode](#edit-mode) (requires the generation setup described in [AI Generation](#ai-generation)) |
 | **Open a File**            | Pick a `slides.json` or a `.spkg` slide package from disk (legacy `.tgz` also supported)     |
 | **Open from a URL**        | Fetch a `.spkg` slide package over HTTPS and open it (the download is cached locally)        |
 | **Open Sample**            | Open the distributed sample (template guide). Fetched from GitHub Releases and cached, so it opens offline afterwards (see [Distributed Sample](#distributed-sample)) |
@@ -178,7 +179,8 @@ The editor puts the metadata form and preview on top and a full-width `slides.js
 
 - **Form** — Edit confirmed fields (title, description, author, theme colors, custom CSS). Updates are partial, so any
   unknown or free-form fields are preserved untouched.
-- **`slides.json` editor** — Edit the raw JSON directly. The form and the JSON editor share a single source of truth.
+- **`slides.json` editor** — Edit the raw JSON directly, with line numbers, JSON syntax highlighting, and search /
+  replace (`Ctrl`/`Cmd` + `F`). The form and the JSON editor share a single source of truth.
 - **Live preview** — Rendered by the same renderer as the actual presentation (not a re-implementation); theme edits
   are reflected live. While the JSON has a syntax or schema error, the preview is hidden and save/export are disabled
   until the error is fixed.
@@ -686,7 +688,10 @@ On slides with a `voice` defined, the following buttons appear in the upper-righ
 The toolbar is displayed at reduced opacity by default and fully visible on hover. The same controls are available from
 the presenter view's control bar.
 
-![Toolbar — left: Home / Settings, right: audio playback / auto-play / auto-slideshow / presenter view](resources/screenshots/en/toolbar.png)
+To get the toolbar out of the way entirely, use the **Hide toolbar** button in the top-left toolbar or press `T`. While
+hidden, the button itself is not clickable either, so press `T` again to bring the toolbar back.
+
+![Toolbar — left: Home / Edit / Hide toolbar / Settings, right: audio playback / auto-play / auto-slideshow / presenter view](resources/screenshots/en/toolbar.png)
 
 ### Manual Playback
 
@@ -703,6 +708,37 @@ navigate to it.
 When the auto-slideshow button (▶▶) is ON, the presentation automatically advances to the next slide when audio playback
 ends. It does not auto-advance on the last slide. Combined with auto-play, this enables a fully automated presentation
 through all slides.
+
+## Keyboard Shortcuts
+
+Press `?` during a presentation to show the list inside the app — the same list opens from
+**Settings → Keyboard shortcuts → Show**.
+
+### Presentation viewer
+
+| Key                                   | Action                          |
+|---------------------------------------|---------------------------------|
+| `T`                                   | Show/hide the toolbar           |
+| `?`                                   | Show this shortcut list         |
+| `→` / `↓` / `Space` / `N` / `L` / `J` | Next slide                      |
+| `←` / `↑` / `P` / `H` / `K`           | Previous slide                  |
+| `Shift` + `←` / `→`                   | Jump to the first / last slide  |
+| `Alt` + `←` / `↑` / `→` / `↓`         | Navigate ignoring fragments     |
+| `B` / `.`                             | Pause (black out)               |
+| `F`                                   | Toggle fullscreen               |
+| `G`                                   | Jump to a specific slide number |
+| `Esc` / `O`                           | Toggle slide overview           |
+
+### Edit mode
+
+| Key                         | Action                             |
+|-----------------------------|------------------------------------|
+| `Ctrl`/`Cmd` + `S`          | Save                               |
+| `Esc`                       | Exit editing                       |
+| `Ctrl`/`Cmd` + `F`          | Search within the JSON             |
+| `Enter` / `Shift` + `Enter` | Go to next / previous search match  |
+
+The presenter view has its own navigation keys — see [Keyboard Navigation](#keyboard-navigation).
 
 ## Adding Addons
 
