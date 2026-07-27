@@ -633,7 +633,8 @@
             "Specify audio files with meta.notes.voice",
             "Toolbar controls: manual play, auto-play, auto-slideshow",
             "Auto-play + auto-slideshow for fully automated presentations"
-          ]
+          ],
+          "voice": "voice/guide-audio-en.wav"
         }
       }
     },
