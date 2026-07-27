@@ -550,7 +550,9 @@
           "paragraphs": [
             "画面右上の「発表者ビュー」ボタンをクリックすると、別ウィンドウで発表者専用の画面が開きます。",
             "メインウィンドウと発表者ビューは双方向に同期されます。どちらからでもスライドを操作できます。"
-          ],
+          ]
+        },
+        "right": {
           "codeBlock": {
             "header": "> notes の設定例",
             "items": [
@@ -561,33 +563,49 @@
               "\u00a0\u00a0}",
               "}"
             ]
-          }
-        },
-        "right": {
-          "heading": "4つのパネル",
-          "items": [
-            {"text": "スピーカーノート:", "emphasis": true, "description": " 現在のスライドの発表者メモ（speakerNotes）を表示"},
-            {"text": "前スライドプレビュー:", "emphasis": true, "description": " 前のスライドの縮小プレビューを表示"},
-            {"text": "次スライドプレビュー:", "emphasis": true, "description": " 次のスライドの縮小プレビューを表示"},
-            {"text": "要点サマリー:", "emphasis": true, "description": " 現在のスライドの要点（summary）を箇条書き表示"}
-          ],
-          "titledBulletList": {
-            "title": "キーボード操作",
-            "items": [
-              "<strong>← / →</strong>: 前後のスライドへ移動",
-              "<strong>Space</strong>: 次のスライドへ移動"
-            ]
           },
           "accentText": "→ meta.notes に speakerNotes と summary を設定して活用しましょう"
         }
       },
       "meta": {
         "notes": {
-          "speakerNotes": "発表者ビューは別ウィンドウで開き、スピーカーノート・前後スライドプレビュー・要点サマリーの4パネルを表示します。メインウィンドウと双方向に同期されます。",
+          "speakerNotes": "発表者ビューは別ウィンドウで開き、メインウィンドウと双方向に同期されます。どちらのウィンドウからでもスライドを操作できます。",
           "summary": [
             "右上ボタンで別ウィンドウに表示",
-            "スピーカーノート・前後プレビュー・要点サマリーの4パネル",
             "メインウィンドウと双方向同期",
+            "meta.notes の speakerNotes / summary を活用"
+          ]
+        }
+      }
+    },
+    {
+      "id": "guide-presenter-view-panels",
+      "layout": "two-column",
+      "content": {
+        "title": "発表者ビュー — 4つのパネル",
+        "left": {
+          "items": [
+            {"text": "スピーカーノート:", "emphasis": true, "description": " 現在のスライドの発表者メモ（speakerNotes）を表示"},
+            {"text": "前スライドプレビュー:", "emphasis": true, "description": " 前のスライドの縮小プレビューを表示"},
+            {"text": "次スライドプレビュー:", "emphasis": true, "description": " 次のスライドの縮小プレビューを表示"},
+            {"text": "要点サマリー:", "emphasis": true, "description": " 現在のスライドの要点（summary）を箇条書き表示"}
+          ]
+        },
+        "right": {
+          "titledBulletList": {
+            "title": "キーボード操作",
+            "items": [
+              "<strong>← / →</strong>: 前後のスライドへ移動",
+              "<strong>Space</strong>: 次のスライドへ移動"
+            ]
+          }
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "発表者ビューはスピーカーノート・前後スライドプレビュー・要点サマリーの4パネルを表示します。キーボードの ←/→/Space でどちらのウィンドウからでも操作できます。",
+          "summary": [
+            "スピーカーノート・前後プレビュー・要点サマリーの4パネル",
             "←/→/Space でスライド操作"
           ]
         }

@@ -550,7 +550,9 @@
           "paragraphs": [
             "Click the \"Presenter View\" button in the top right to open a dedicated presenter window.",
             "The main window and presenter view are synchronized bidirectionally. You can navigate slides from either window."
-          ],
+          ]
+        },
+        "right": {
           "codeBlock": {
             "header": "> notes configuration example",
             "items": [
@@ -561,33 +563,49 @@
               "\u00a0\u00a0}",
               "}"
             ]
-          }
-        },
-        "right": {
-          "heading": "4 Panels",
-          "items": [
-            {"text": "Speaker Notes:", "emphasis": true, "description": " Displays speaker notes (speakerNotes) for the current slide"},
-            {"text": "Previous Slide Preview:", "emphasis": true, "description": " Shows a thumbnail of the previous slide"},
-            {"text": "Next Slide Preview:", "emphasis": true, "description": " Shows a thumbnail of the next slide"},
-            {"text": "Key Points Summary:", "emphasis": true, "description": " Displays summary points as bullet list"}
-          ],
-          "titledBulletList": {
-            "title": "Keyboard Controls",
-            "items": [
-              "<strong>← / →</strong>: Navigate to previous/next slide",
-              "<strong>Space</strong>: Navigate to next slide"
-            ]
           },
           "accentText": "→ Set speakerNotes and summary in meta.notes to make the most of it"
         }
       },
       "meta": {
         "notes": {
-          "speakerNotes": "The presenter view opens in a separate window and displays 4 panels: speaker notes, previous/next slide previews, and key points summary. It is synchronized bidirectionally with the main window.",
+          "speakerNotes": "The presenter view opens in a separate window and is synchronized bidirectionally with the main window. You can navigate slides from either window.",
           "summary": [
             "Opens in separate window via top-right button",
-            "4 panels: speaker notes, prev/next previews, summary",
             "Bidirectional sync with main window",
+            "Set speakerNotes / summary in meta.notes"
+          ]
+        }
+      }
+    },
+    {
+      "id": "guide-presenter-view-panels",
+      "layout": "two-column",
+      "content": {
+        "title": "Presenter View — 4 Panels",
+        "left": {
+          "items": [
+            {"text": "Speaker Notes:", "emphasis": true, "description": " Displays speaker notes (speakerNotes) for the current slide"},
+            {"text": "Previous Slide Preview:", "emphasis": true, "description": " Shows a thumbnail of the previous slide"},
+            {"text": "Next Slide Preview:", "emphasis": true, "description": " Shows a thumbnail of the next slide"},
+            {"text": "Key Points Summary:", "emphasis": true, "description": " Displays summary points as bullet list"}
+          ]
+        },
+        "right": {
+          "titledBulletList": {
+            "title": "Keyboard Controls",
+            "items": [
+              "<strong>← / →</strong>: Navigate to previous/next slide",
+              "<strong>Space</strong>: Navigate to next slide"
+            ]
+          }
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "The presenter view shows 4 panels: speaker notes, previous/next slide previews, and key points summary. Use ←/→/Space to navigate from either window.",
+          "summary": [
+            "4 panels: speaker notes, prev/next previews, summary",
             "Navigate with ←/→/Space"
           ]
         }

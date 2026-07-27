@@ -550,7 +550,9 @@
           "paragraphs": [
             "Cliquez sur le bouton « Vue présentateur » en haut à droite pour ouvrir une fenêtre dédiée au présentateur.",
             "La fenêtre principale et la vue présentateur sont synchronisées de façon bidirectionnelle. Vous pouvez naviguer entre les diapositives depuis l'une ou l'autre fenêtre."
-          ],
+          ]
+        },
+        "right": {
           "codeBlock": {
             "header": "> Exemple de configuration de notes",
             "items": [
@@ -561,33 +563,49 @@
               "\u00a0\u00a0}",
               "}"
             ]
-          }
-        },
-        "right": {
-          "heading": "4 panneaux",
-          "items": [
-            {"text": "Notes du présentateur :", "emphasis": true, "description": " affiche les notes du présentateur (speakerNotes) de la diapositive actuelle"},
-            {"text": "Aperçu de la diapositive précédente :", "emphasis": true, "description": " affiche une vignette de la diapositive précédente"},
-            {"text": "Aperçu de la diapositive suivante :", "emphasis": true, "description": " affiche une vignette de la diapositive suivante"},
-            {"text": "Résumé des points clés :", "emphasis": true, "description": " affiche les points de summary sous forme de liste à puces"}
-          ],
-          "titledBulletList": {
-            "title": "Commandes clavier",
-            "items": [
-              "<strong>← / →</strong> : aller à la diapositive précédente / suivante",
-              "<strong>Espace</strong> : aller à la diapositive suivante"
-            ]
           },
           "accentText": "→ Définissez speakerNotes et summary dans meta.notes pour en tirer le meilleur parti"
         }
       },
       "meta": {
         "notes": {
-          "speakerNotes": "La vue présentateur s'ouvre dans une fenêtre séparée et affiche 4 panneaux : les notes du présentateur, les aperçus des diapositives précédente et suivante, et le résumé des points clés. Elle est synchronisée de façon bidirectionnelle avec la fenêtre principale.",
+          "speakerNotes": "La vue présentateur s'ouvre dans une fenêtre séparée et reste synchronisée de façon bidirectionnelle avec la fenêtre principale. Vous pouvez naviguer depuis l'une ou l'autre fenêtre.",
           "summary": [
             "S'ouvre dans une fenêtre séparée via le bouton en haut à droite",
-            "4 panneaux : notes du présentateur, aperçus précédent / suivant, résumé",
             "Synchronisation bidirectionnelle avec la fenêtre principale",
+            "Définir speakerNotes / summary dans meta.notes"
+          ]
+        }
+      }
+    },
+    {
+      "id": "guide-presenter-view-panels",
+      "layout": "two-column",
+      "content": {
+        "title": "Vue présentateur — 4 panneaux",
+        "left": {
+          "items": [
+            {"text": "Notes du présentateur :", "emphasis": true, "description": " affiche les notes du présentateur (speakerNotes) de la diapositive actuelle"},
+            {"text": "Aperçu de la diapositive précédente :", "emphasis": true, "description": " affiche une vignette de la diapositive précédente"},
+            {"text": "Aperçu de la diapositive suivante :", "emphasis": true, "description": " affiche une vignette de la diapositive suivante"},
+            {"text": "Résumé des points clés :", "emphasis": true, "description": " affiche les points de summary sous forme de liste à puces"}
+          ]
+        },
+        "right": {
+          "titledBulletList": {
+            "title": "Commandes clavier",
+            "items": [
+              "<strong>← / →</strong> : aller à la diapositive précédente / suivante",
+              "<strong>Espace</strong> : aller à la diapositive suivante"
+            ]
+          }
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "La vue présentateur affiche 4 panneaux : les notes du présentateur, les aperçus des diapositives précédente et suivante, et le résumé des points clés. Naviguez avec ←/→/Espace depuis l'une ou l'autre fenêtre.",
+          "summary": [
+            "4 panneaux : notes du présentateur, aperçus précédent / suivant, résumé",
             "Naviguer avec ←/→/Espace"
           ]
         }
