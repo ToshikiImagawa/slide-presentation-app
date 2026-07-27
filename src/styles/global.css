@@ -29,6 +29,16 @@
   --theme-font-size-subtitle1: 28px;
   --theme-font-size-body1: 20px;
   --theme-font-size-body2: 16px;
+
+  /* 固定パレット（applyTheme が上書きしない。プレゼンのテーマ変更から独立させたいUI chrome用。editorUiTheme(src/theme.ts) と揃える） */
+  --fixed-primary: #e07a5f;
+  --fixed-background: #1c1917;
+  --fixed-background-alt: #292524;
+  --fixed-text-heading: #faf8f5;
+  --fixed-text-body: #a8a29e;
+  --fixed-text-muted: #78716c;
+  --fixed-border: #3d3835;
+  --fixed-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
 /* 0. KEYFRAMES */

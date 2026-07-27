@@ -140,9 +140,8 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
   )
 
   const handleRemoveRecent = useCallback(async (path: string) => {
-    const updated = await removeRecentSlidePackage(path)
+    const [updated] = await Promise.all([removeRecentSlidePackage(path), clearAddonTrustDecision(path)])
     setRecentPackages(updated)
-    await clearAddonTrustDecision(path)
   }, [])
 
   const handleOpenSample = useCallback(async () => {
