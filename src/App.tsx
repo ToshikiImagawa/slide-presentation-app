@@ -56,17 +56,14 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
     void isEmbeddedAddonsDisabled().then(setAddonsDisabled)
   }, [])
 
-  // 設定ダイアログを開くたびに、信頼判断を持つパッケージ（trustMap 全キー）と最近開いたパッケージを
-  // 突き合わせて一覧化する（層C・FR-008）。trustMap を基点にすることで、最近リストの上限を超えて
-  // 追い出された「許可済み」パッケージも一覧に残り、個別に取り消せる。title は recent から補完する
+  // 設定ダイアログを開くたびに、信頼判断を持つパッケージ（trustMap 全キー）を一覧化する（層C・FR-008）。
+  // trustMap を基点にすることで、最近リストの上限を超えて追い出された「許可済み」パッケージも一覧に残り、
+  // 個別に取り消せる一方、信頼判断が一度も記録されていないパッケージは表示されない。title は recent から補完する
   useEffect(() => {
     if (!settingsOpen) return
     void Promise.all([getRecentSlidePackages(), getAddonTrustMap()]).then(([recent, trustMap]) => {
       const titleByPath = new Map(recent.map((r) => [r.path, r.title]))
-      const recentPaths = recent.map((r) => r.path)
-      // recent を先頭に、trustMap にしか無い（＝追い出された）判断済みパッケージを後ろに並べる
-      const extraPaths = Object.keys(trustMap).filter((p) => !recentPaths.includes(p))
-      setAddonTrustList([...recentPaths, ...extraPaths].map((path) => ({ path, title: titleByPath.get(path) ?? path, decision: trustMap[path] })))
+      setAddonTrustList(Object.keys(trustMap).map((path) => ({ path, title: titleByPath.get(path) ?? path, decision: trustMap[path] })))
     })
   }, [settingsOpen])
 

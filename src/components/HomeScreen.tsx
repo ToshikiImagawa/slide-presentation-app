@@ -194,7 +194,9 @@ export function HomeScreen({ recentPackages, onOpenRecent, onRemoveRecent, onOpe
                     {busy?.kind === 'recent' && busy.path === entry.path ? <Spinner className={styles.recentIcon} /> : <DocumentIcon />}
                     <span className={styles.recentItemText}>
                       <span className={styles.recentItemTitle}>{entry.title}</span>
-                      <span className={styles.recentItemPath}>{entry.path}</span>
+                      <span className={styles.recentItemPath} title={entry.path}>
+                        {entry.path}
+                      </span>
                     </span>
                   </button>
                   {/* 履歴からの除外のみで実ファイルは削除されないため、ConfirmDialog は使わず即時実行する */}

@@ -13,7 +13,7 @@ import type { PresentationData, ThemeData } from './data'
 import { I18nProvider, loadLocales, useI18n } from './i18n'
 import type { LocaleResource } from './i18n'
 import { ToastProvider, useToast } from './toast'
-import { getRecentSlidePackages, isAddonAllowed, loadSlidePackageFromUrl, openRecentSlidePackage, pickAndLoadSlidePackage, removeRecentSlidePackage } from './localSlideLoader'
+import { clearAddonTrustDecision, getRecentSlidePackages, isAddonAllowed, loadSlidePackageFromUrl, openRecentSlidePackage, pickAndLoadSlidePackage, removeRecentSlidePackage } from './localSlideLoader'
 import type { LoadedSlidePackage, RecentSlidePackageEntry, SlidePackageLoadResult } from './localSlideLoader'
 import { SlideEditor } from './edit/SlideEditor'
 import type { EditSource } from './edit/SlideEditor'
@@ -140,7 +140,7 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
   )
 
   const handleRemoveRecent = useCallback(async (path: string) => {
-    const updated = await removeRecentSlidePackage(path)
+    const [updated] = await Promise.all([removeRecentSlidePackage(path), clearAddonTrustDecision(path)])
     setRecentPackages(updated)
   }, [])
 

@@ -254,7 +254,10 @@
   gap: 8px;
   margin: 0;
   padding: 0;
+  padding-right: 2px;
   list-style: none;
+  max-height: 296px;
+  overflow-y: auto;
 }
 
 .recentRow {
@@ -323,6 +326,8 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   max-width: 100%;
+  direction: rtl;
+  text-align: left;
 }
 
 .removeButton {

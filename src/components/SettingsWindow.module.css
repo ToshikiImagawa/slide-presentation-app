@@ -1,4 +1,15 @@
 .window {
+  /* 設定画面はプレゼンのテーマ変更から独立させる（global.css の固定パレットで上書き。§9.1 のテーマ波及対策に準拠） */
+  --theme-primary: var(--fixed-primary);
+  --theme-background: var(--fixed-background);
+  --theme-background-alt: var(--fixed-background-alt);
+  --theme-text-heading: var(--fixed-text-heading);
+  --theme-text-body: var(--fixed-text-body);
+  --theme-text-muted: var(--fixed-text-muted);
+  --theme-border: var(--fixed-border);
+  --theme-font-heading: var(--fixed-font-family);
+  --theme-font-body: var(--fixed-font-family);
+
   background: var(--theme-background-alt);
   border: 1px solid var(--theme-border);
   border-radius: 12px;
@@ -139,6 +150,9 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+  padding-right: 2px;
 }
 
 .addonTrustItem {

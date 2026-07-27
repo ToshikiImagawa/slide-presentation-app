@@ -28,7 +28,7 @@ export function ConfirmDialog({ open, title, message, confirmLabel, cancelLabel,
     <Dialog open={open} onClose={onCancel} maxWidth="xs" fullWidth aria-labelledby="confirm-dialog-title">
       <DialogTitle id="confirm-dialog-title">{title}</DialogTitle>
       <DialogContent>
-        <DialogContentText sx={{ color: 'var(--theme-text-body)', whiteSpace: 'pre-line' }}>{message}</DialogContentText>
+        <DialogContentText sx={{ color: 'var(--fixed-text-body)', whiteSpace: 'pre-line' }}>{message}</DialogContentText>
       </DialogContent>
       <DialogActions>
         <Button onClick={onCancel} color="inherit">
