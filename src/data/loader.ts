@@ -1,13 +1,44 @@
 import type { PresentationData, SlideData, ValidationError } from './types'
-import defaultSlidesJa from './default-slides-ja.json'
-import defaultSlidesEn from './default-slides-en.json'
 
-/** ロケールに応じたデフォルトプレゼンテーションデータを返す */
-export function getDefaultPresentationData(locale: string): PresentationData {
-  if (locale.startsWith('ja')) {
-    return defaultSlidesJa as PresentationData
+/**
+ * スライドデータが不正なときに表示する最小フォールバック（A-005: エラー状態でもプレゼンテーションが表示可能であること）。
+ * テンプレートガイドのサンプルは .spkg として配布するため、アプリに同梱するのはこの1枚だけに留める
+ */
+export function getFallbackPresentationData(locale: string): PresentationData {
+  const isJa = locale.startsWith('ja')
+  const title = isJa ? 'スライドを表示できません' : 'Cannot display slides'
+  return {
+    meta: { title },
+    slides: [
+      {
+        id: 'fallback-invalid-data',
+        layout: 'center',
+        content: {
+          title,
+          subtitle: isJa ? 'スライドデータの形式を確認してください（<code>meta.title</code> と <code>slides</code> 配列が必要です）' : 'Check the slide data format (<code>meta.title</code> and a <code>slides</code> array are required)',
+        },
+      },
+    ],
   }
-  return defaultSlidesEn as PresentationData
+}
+
+/** サンプルスライドをオンラインから取得できなかったときに表示する最小フォールバック */
+export function getSampleUnavailablePresentationData(locale: string): PresentationData {
+  const isJa = locale.startsWith('ja')
+  const title = isJa ? 'サンプルを取得できませんでした' : 'Could not load the sample'
+  return {
+    meta: { title },
+    slides: [
+      {
+        id: 'sample-unavailable',
+        layout: 'center',
+        content: {
+          title,
+          subtitle: isJa ? 'サンプルスライドはオンラインで配布されています。\nネットワーク接続を確認して、もう一度お試しください。' : 'The sample deck is distributed online.\nCheck your network connection and try again.',
+        },
+      },
+    ],
+  }
 }
 
 /** AI新規作成（ホーム画面）の土台となる最小構成のプレゼンテーションデータを返す */

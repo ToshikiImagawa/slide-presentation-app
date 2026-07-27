@@ -95,7 +95,6 @@
         "right": {
           "component": {
             "name": "TerminalAnimation",
-            "props": { "logTextUrl": "/demo-log.txt" },
             "style": { "height": "400px", "width": "90%", "margin": "auto" }
           }
         }
@@ -177,7 +176,6 @@
         "title": "layout: \"content\" — コンポーネント (component)",
         "component": {
           "name": "TerminalAnimation",
-          "props": { "logTextUrl": "/demo-log.txt" },
           "style": { "height": "400px", "width": "90%", "margin": "auto" }
         },
         "footer": "content レイアウトの component はタイトルバー付きのラッパー内に描画されます"
@@ -206,7 +204,6 @@
         ],
         "component": {
           "name": "TerminalAnimation",
-          "props": { "logTextUrl": "/demo-log.txt" },
           "style": { "height": "400px", "width": "90%", "margin": "auto" }
         }
       },
@@ -227,7 +224,6 @@
       "content": {
         "component": {
           "name": "TerminalAnimation",
-          "props": { "logTextUrl": "/demo-log.txt" },
           "style": { "height": "100%", "width": "100%" }
         }
       },
@@ -638,7 +634,7 @@
             "ツールバーで手動再生・自動再生・自動スライドショーを制御",
             "自動再生 + 自動スライドショーで全自動プレゼンテーション"
           ],
-          "voice": "/assets/voice/guide-audio-ja.wav"
+          "voice": "voice/guide-audio-ja.wav"
         }
       }
     },

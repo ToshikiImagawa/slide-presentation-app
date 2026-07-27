@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { ALLOWED_LAYOUTS, getSchemaConformanceErrors } from '../slideContentSchema'
-import defaultSlidesJa from '../default-slides-ja.json'
-import defaultSlidesEn from '../default-slides-en.json'
+import sampleSlidesJa from '../../../samples/template-guide/slides.ja.json'
+import sampleSlidesEn from '../../../samples/template-guide/slides.en.json'
 import type { PresentationData } from '../types'
 
 describe('ALLOWED_LAYOUTS', () => {
@@ -11,9 +11,9 @@ describe('ALLOWED_LAYOUTS', () => {
 })
 
 describe('getSchemaConformanceErrors', () => {
-  it('デフォルトスライド（ja/en）は0エラーである', () => {
-    expect(getSchemaConformanceErrors(defaultSlidesJa as PresentationData)).toEqual([])
-    expect(getSchemaConformanceErrors(defaultSlidesEn as PresentationData)).toEqual([])
+  it('配布サンプル（samples/template-guide の ja/en）は0エラーである', () => {
+    expect(getSchemaConformanceErrors(sampleSlidesJa as PresentationData)).toEqual([])
+    expect(getSchemaConformanceErrors(sampleSlidesEn as PresentationData)).toEqual([])
   })
 
   it('未知のlayoutをエラーにする', () => {

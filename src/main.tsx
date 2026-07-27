@@ -8,7 +8,7 @@ import { HomeScreen } from './components/HomeScreen'
 import { applyPresentationTheme, applyTheme, resetThemeOverrides } from './applyTheme'
 import { loadAddonScripts, loadBuiltinAddons } from './addonLoader'
 import { unregisterOwner } from './components/ComponentRegistry'
-import { getBlankPresentationData, getDefaultPresentationData } from './data'
+import { getBlankPresentationData, getSampleUnavailablePresentationData } from './data'
 import type { PresentationData, ThemeData } from './data'
 import { I18nProvider, loadLocales, useI18n } from './i18n'
 import type { LocaleResource } from './i18n'
@@ -21,7 +21,7 @@ import type { EditSource } from './edit/SlideEditor'
 import { serializeSlides } from './edit/slidesSerialize'
 import { enterEditMode, exitEditMode } from './editModeSave'
 
-/** バンドル済みの slides.json を読み込む。存在しない場合はビルトインのテンプレートガイドを返す（ホーム画面の「サンプルスライド」用） */
+/** バンドル済みの slides.json を読み込む。取得できない場合は取得失敗の案内スライドを返す（ホーム画面の「サンプルスライド」用） */
 async function loadSamplePresentationData(locale: string): Promise<PresentationData> {
   try {
     const res = await fetch(import.meta.env.VITE_SLIDES_PATH || '/slides.json')
@@ -30,9 +30,9 @@ async function loadSamplePresentationData(locale: string): Promise<PresentationD
     }
     console.error(`Failed to load sample presentation data: ${res.status}`)
   } catch {
-    // fetch 失敗時はビルトインのテンプレートガイドにフォールバックする
+    // fetch 失敗時は取得失敗の案内スライドにフォールバックする
   }
-  return getDefaultPresentationData(locale)
+  return getSampleUnavailablePresentationData(locale)
 }
 
 type View = 'home' | 'presentation' | 'edit'

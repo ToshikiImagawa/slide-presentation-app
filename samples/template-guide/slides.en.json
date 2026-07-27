@@ -95,7 +95,6 @@
         "right": {
           "component": {
             "name": "TerminalAnimation",
-            "props": { "logTextUrl": "/demo-log.txt" },
             "style": { "height": "400px", "width": "90%", "margin": "auto" }
           }
         }
@@ -177,7 +176,6 @@
         "title": "layout: \"content\" — Component (component)",
         "component": {
           "name": "TerminalAnimation",
-          "props": { "logTextUrl": "/demo-log.txt" },
           "style": { "height": "400px", "width": "90%", "margin": "auto" }
         },
         "footer": "Content layout components are rendered inside a wrapper with a title bar"
@@ -206,7 +204,6 @@
         ],
         "component": {
           "name": "TerminalAnimation",
-          "props": { "logTextUrl": "/demo-log.txt" },
           "style": { "height": "400px", "width": "90%", "margin": "auto" }
         }
       },
@@ -227,7 +224,6 @@
       "content": {
         "component": {
           "name": "TerminalAnimation",
-          "props": { "logTextUrl": "/demo-log.txt" },
           "style": { "height": "100%", "width": "100%" }
         }
       },
@@ -637,8 +633,7 @@
             "Specify audio files with meta.notes.voice",
             "Toolbar controls: manual play, auto-play, auto-slideshow",
             "Auto-play + auto-slideshow for fully automated presentations"
-          ],
-          "voice": "/assets/voice/guide-audio-en.wav"
+          ]
         }
       }
     },

@@ -11,7 +11,7 @@ import { ShortcutsDialog } from './components/ShortcutsDialog'
 import { SlideRenderer } from './components/SlideRenderer'
 import { ToolbarVisibilityButton } from './components/ToolbarVisibilityButton'
 import { registerDefaultComponents } from './components/registerDefaults'
-import { getDefaultPresentationData, loadPresentationData } from './data'
+import { getFallbackPresentationData, loadPresentationData } from './data'
 import type { PresentationData } from './data'
 import { clearAddonTrustDecision, getAddonTrustMap, getRecentSlidePackages, isEmbeddedAddonsDisabled, resetAddonTrust, setAddonTrustDecision, setEmbeddedAddonsDisabled } from './localSlideLoader'
 import type { AddonTrustDecision } from './localSlideLoader'
@@ -43,7 +43,7 @@ type AppProps = {
 
 export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addonScripts }: AppProps) {
   const { locale } = useI18n()
-  const defaultData = useMemo(() => getDefaultPresentationData(locale), [locale])
+  const defaultData = useMemo(() => getFallbackPresentationData(locale), [locale])
   const data = loadPresentationData(presentationData, defaultData)
   const [currentIndex, setCurrentIndex] = useState(0)
   const [settingsOpen, setSettingsOpen] = useState(false)
