@@ -41,7 +41,9 @@
       "addonTrustUnset": "未設定",
       "addonTrustAllow": "許可",
       "addonTrustDeny": "拒否",
-      "addonTrustDisabledNote": "一律無効化が有効な間は個別設定より優先されます"
+      "addonTrustDisabledNote": "一律無効化が有効な間は個別設定より優先されます",
+      "shortcuts": "キーボードショートカット",
+      "shortcutsOpen": "表示"
     },
     "edit": {
       "startEdit": "編集",
@@ -185,6 +187,25 @@
       "before": "変更前",
       "after": "変更後",
       "unparseable": "構造を解析できないため、全体を置換します。以下が適用後の内容です。"
+    },
+    "shortcuts": {
+      "title": "キーボードショートカット",
+      "viewerSection": "プレゼンビューア",
+      "editSection": "編集モード",
+      "toggleToolbar": "ツールバーの表示/非表示",
+      "openHelp": "このショートカット一覧を表示",
+      "nextSlide": "次のスライド",
+      "prevSlide": "前のスライド",
+      "jumpFirstLast": "最初 / 最後のスライドへ移動",
+      "ignoreFragments": "フラグメントを無視して移動",
+      "pause": "一時停止（ブラックアウト）",
+      "fullscreen": "フルスクリーン表示",
+      "jumpToSlide": "指定したスライド番号へ移動",
+      "overview": "スライド概要の表示切替",
+      "save": "保存",
+      "exitEdit": "編集を終了",
+      "search": "JSON内を検索",
+      "searchNav": "次 / 前の検索結果へ移動"
     }
   }
 }

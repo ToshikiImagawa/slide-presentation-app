@@ -41,7 +41,9 @@
       "addonTrustUnset": "Not set",
       "addonTrustAllow": "Allow",
       "addonTrustDeny": "Deny",
-      "addonTrustDisabledNote": "While globally disabled, this takes precedence over per-package settings"
+      "addonTrustDisabledNote": "While globally disabled, this takes precedence over per-package settings",
+      "shortcuts": "Keyboard shortcuts",
+      "shortcutsOpen": "Show"
     },
     "edit": {
       "startEdit": "Edit",
@@ -185,6 +187,25 @@
       "before": "Before",
       "after": "After",
       "unparseable": "The structure could not be parsed, so the entire content will be replaced. The result to be applied is shown below."
+    },
+    "shortcuts": {
+      "title": "Keyboard shortcuts",
+      "viewerSection": "Presentation viewer",
+      "editSection": "Edit mode",
+      "toggleToolbar": "Show/hide the toolbar",
+      "openHelp": "Show this shortcut list",
+      "nextSlide": "Next slide",
+      "prevSlide": "Previous slide",
+      "jumpFirstLast": "Jump to the first / last slide",
+      "ignoreFragments": "Navigate ignoring fragments",
+      "pause": "Pause (black out)",
+      "fullscreen": "Toggle fullscreen",
+      "jumpToSlide": "Jump to a specific slide number",
+      "overview": "Toggle slide overview",
+      "save": "Save",
+      "exitEdit": "Exit editing",
+      "search": "Search within the JSON",
+      "searchNav": "Go to next / previous search match"
     }
   }
 }

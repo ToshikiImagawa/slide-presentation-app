@@ -7,6 +7,7 @@ import { HomeButton } from './components/HomeButton'
 import { PresenterViewButton } from './components/PresenterViewButton'
 import { SettingsButton } from './components/SettingsButton'
 import { SettingsWindow } from './components/SettingsWindow'
+import { ShortcutsDialog } from './components/ShortcutsDialog'
 import { SlideRenderer } from './components/SlideRenderer'
 import { ToolbarVisibilityButton } from './components/ToolbarVisibilityButton'
 import { registerDefaultComponents } from './components/registerDefaults'
@@ -46,6 +47,7 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
   const data = loadPresentationData(presentationData, defaultData)
   const [currentIndex, setCurrentIndex] = useState(0)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [toolbarHidden, setToolbarHidden] = useState(false)
   const [addonsDisabled, setAddonsDisabled] = useState(false)
   // 層C: 実行時信頼の個別付け外し対象（最近開いたパッケージ × 現在の信頼判断）
@@ -236,14 +238,17 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
 
   const handleToggleToolbar = useCallback(() => setToolbarHidden((prev) => !prev), [])
 
-  // T キーでツールバーの表示・非表示をトグル（入力中は無視）。T は Reveal.js のデフォルトキーバインド
-  // （H/L/K/J/N/P/B/V/F/A/G/C/O 等）と衝突しないキーとして選定した
+  // T キーでツールバーの表示・非表示をトグル、? キーでショートカット一覧を表示（いずれも入力中は無視）。
+  // T は Reveal.js のデフォルトキーバインド（H/L/K/J/N/P/B/F/G/O 等）と衝突しないキーとして選定した
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key.toLowerCase() !== 't') return
       const target = e.target as HTMLElement | null
       if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return
-      handleToggleToolbar()
+      if (e.key.toLowerCase() === 't') {
+        handleToggleToolbar()
+      } else if (e.key === '?') {
+        setShortcutsOpen(true)
+      }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
@@ -294,7 +299,9 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
         onResetAddonTrust={handleResetAddonTrust}
         addonTrust={addonTrustList}
         onSetAddonTrust={handleSetAddonTrust}
+        onOpenShortcuts={() => setShortcutsOpen(true)}
       />
+      <ShortcutsDialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
     </ThemeProvider>
   )
 }
