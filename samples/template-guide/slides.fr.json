@@ -671,7 +671,8 @@
             "Indiquer les fichiers audio avec meta.notes.voice",
             "Commandes de la barre d'outils : lecture manuelle, lecture automatique, diaporama automatique",
             "Lecture automatique + diaporama automatique pour des présentations entièrement automatisées"
-          ]
+          ],
+          "voice": "voice/guide-audio-fr.wav"
         }
       }
     },
