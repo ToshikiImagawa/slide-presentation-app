@@ -13,6 +13,7 @@ import SearchIcon from '@mui/icons-material/Search'
 import type { ValidationError } from '../data/types'
 import { useTranslation } from '../i18n'
 import { ValidationErrorList } from './ValidationErrorList'
+import { findMatches, replaceAllMatches } from './textSearch'
 
 interface SlideJsonEditorProps {
   /** 現在の JSON テキスト（無損失往復の土台） */
@@ -23,34 +24,13 @@ interface SlideJsonEditorProps {
   errors: ValidationError[]
 }
 
-/** 大文字小文字を無視して value 内の query の出現開始位置を全て返す */
-function findMatches(value: string, query: string): number[] {
-  if (!query) return []
-  const lowerValue = value.toLowerCase()
-  const lowerQuery = query.toLowerCase()
-  const matches: number[] = []
-  let index = lowerValue.indexOf(lowerQuery)
-  while (index !== -1) {
-    matches.push(index)
-    index = lowerValue.indexOf(lowerQuery, index + lowerQuery.length)
+/** value 内で index より前にある改行の数を数える（split による配列生成を避ける） */
+function countNewlinesBefore(value: string, index: number): number {
+  let count = 0
+  for (let i = 0; i < index; i++) {
+    if (value.charCodeAt(i) === 10) count++
   }
-  return matches
-}
-
-/** 大文字小文字を無視して value 内の query をすべて replacement に置き換える */
-function replaceAllMatches(value: string, query: string, replacement: string): string {
-  if (!query) return value
-  const lowerValue = value.toLowerCase()
-  const lowerQuery = query.toLowerCase()
-  let result = ''
-  let cursor = 0
-  let index = lowerValue.indexOf(lowerQuery)
-  while (index !== -1) {
-    result += value.slice(cursor, index) + replacement
-    cursor = index + query.length
-    index = lowerValue.indexOf(lowerQuery, cursor)
-  }
-  return result + value.slice(cursor)
+  return count
 }
 
 /**
@@ -65,62 +45,60 @@ export function SlideJsonEditor({ value, onChange, errors }: SlideJsonEditorProp
   const [showReplace, setShowReplace] = useState(false)
   const [query, setQuery] = useState('')
   const [replaceValue, setReplaceValue] = useState('')
-  const [currentIndex, setCurrentIndex] = useState(-1)
+  const [currentIndex, setCurrentIndex] = useState(0)
 
   const matches = useMemo(() => findMatches(value, query), [value, query])
-
-  // クエリ・本文の変化でマッチ数が変わったら現在位置を範囲内に収める
-  useEffect(() => {
-    setCurrentIndex((prev) => {
-      if (matches.length === 0) return -1
-      if (prev < 0) return 0
-      return prev % matches.length
-    })
-  }, [matches])
+  // matches の増減に応じてラップさせた「表示上の現在位置」（クランプ用の別 effect は不要）
+  const activeIndex = matches.length === 0 ? -1 : ((currentIndex % matches.length) + matches.length) % matches.length
 
   // 現在のマッチをテキスト選択でハイライトし、該当行が見える位置までスクロールする
   useEffect(() => {
-    if (!searchOpen || currentIndex < 0 || currentIndex >= matches.length) return
+    if (!searchOpen || activeIndex < 0) return
     const el = textareaRef.current
     if (!el) return
-    const start = matches[currentIndex]
-    const end = start + query.length
+    const { start, end } = matches[activeIndex]
     el.setSelectionRange(start, end)
-    const lineCount = value.split('\n').length || 1
+    // scrollHeight は clientHeight を下回らない（CSSOM View 仕様）ため、行高を過大評価しても
+    // scrollTop は自動的に有効範囲へクランプされ実害はない
+    const lineCount = countNewlinesBefore(value, value.length) + 1
     const lineHeight = el.scrollHeight / lineCount
-    const targetLine = value.slice(0, start).split('\n').length - 1
+    const targetLine = countNewlinesBefore(value, start)
     el.scrollTop = Math.max(0, lineHeight * targetLine - el.clientHeight / 2)
-  }, [currentIndex, matches, searchOpen, query, value])
+  }, [activeIndex, matches, searchOpen, value])
+
+  function handleQueryChange(next: string) {
+    setQuery(next)
+    setCurrentIndex(0)
+  }
 
   function closeSearch() {
     setSearchOpen(false)
     setShowReplace(false)
     setQuery('')
     setReplaceValue('')
-    setCurrentIndex(-1)
+    setCurrentIndex(0)
     textareaRef.current?.focus()
   }
 
   function goNext() {
     if (matches.length === 0) return
-    setCurrentIndex((i) => (i + 1) % matches.length)
+    setCurrentIndex((i) => i + 1)
   }
 
   function goPrev() {
     if (matches.length === 0) return
-    setCurrentIndex((i) => (i - 1 + matches.length) % matches.length)
+    setCurrentIndex((i) => i - 1)
   }
 
   function handleReplaceCurrent() {
-    if (currentIndex < 0 || currentIndex >= matches.length) return
-    const start = matches[currentIndex]
-    const end = start + query.length
+    if (activeIndex < 0) return
+    const { start, end } = matches[activeIndex]
     onChange(value.slice(0, start) + replaceValue + value.slice(end))
   }
 
   function handleReplaceAll() {
     if (matches.length === 0) return
-    onChange(replaceAllMatches(value, query, replaceValue))
+    onChange(replaceAllMatches(value, matches, replaceValue))
   }
 
   function handleContainerKeyDown(e: KeyboardEvent<HTMLDivElement>) {
@@ -192,9 +170,9 @@ export function SlideJsonEditor({ value, onChange, errors }: SlideJsonEditorProp
           }}
         >
           <Stack direction="row" spacing={0.5} alignItems="center">
-            <TextField size="small" autoFocus value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t('edit.searchPlaceholder', '検索...')} aria-label={t('edit.searchPlaceholder', '検索...')} sx={{ width: 160 }} />
+            <TextField size="small" autoFocus value={query} onChange={(e) => handleQueryChange(e.target.value)} placeholder={t('edit.searchPlaceholder', '検索...')} aria-label={t('edit.searchPlaceholder', '検索...')} sx={{ width: 160 }} />
             <Typography variant="caption" sx={{ color: 'var(--fixed-text-body)', minWidth: 40, textAlign: 'center' }}>
-              {matches.length > 0 ? `${currentIndex + 1}/${matches.length}` : '0/0'}
+              {matches.length > 0 ? `${activeIndex + 1}/${matches.length}` : '0/0'}
             </Typography>
             <Button size="small" onClick={goPrev} disabled={matches.length === 0} aria-label={t('edit.searchPrevious', '前のマッチへ')} sx={{ minWidth: 0, p: 0.5 }}>
               <KeyboardArrowUpIcon fontSize="small" />
