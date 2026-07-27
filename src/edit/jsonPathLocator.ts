@@ -14,12 +14,22 @@ function parseErrorPath(path: string): Segment[] {
 }
 
 /**
+ * 同じ JSON テキストに対する複数の path 解決を、パースを1回だけ行って処理する関数を返す。
+ * 検証エラー一覧のように同一テキストへ多数の path を解決する場合に使う。
+ */
+export function createErrorLocator(text: string): (path: string) => number | null {
+  const root = parseTree(text)
+  return (path: string) => {
+    if (!root) return null
+    const node = findNodeAtLocation(root, parseErrorPath(path))
+    return node ? node.offset : null
+  }
+}
+
+/**
  * ValidationError.path に対応する JSON テキスト内の文字オフセットを求める。
  * テキストが構文的に妥当でない、または path に対応する値が見つからない場合は null を返す。
  */
 export function locateErrorOffset(text: string, path: string): number | null {
-  const root = parseTree(text)
-  if (!root) return null
-  const node = findNodeAtLocation(root, parseErrorPath(path))
-  return node ? node.offset : null
+  return createErrorLocator(text)(path)
 }

@@ -29,6 +29,10 @@ interface SlideJsonEditorProps {
   errors: ValidationError[]
 }
 
+// 参照が変わるたびに CodeMirror が拡張構成全体を reconfigure するため、変化しない設定はモジュールスコープで固定する。
+// 既存のカスタム検索 UI（Ctrl+F）と衝突するため、内蔵の検索キーマップ（Mod-f）は無効化する。
+const basicSetup = { searchKeymap: false }
+
 /**
  * slides.json を編集する CodeMirror ベースのエディタ。
  * 行番号・JSON シンタックスハイライトを持ち、検証エラー一覧の行番号クリックで該当箇所へジャンプできる（DC-005 からの転換・#90）。
@@ -48,21 +52,24 @@ export function SlideJsonEditor({ value, onChange, errors }: SlideJsonEditorProp
   // matches の増減に応じてラップさせた「表示上の現在位置」（クランプ用の別 effect は不要）
   const activeIndex = matches.length === 0 ? -1 : ((currentIndex % matches.length) + matches.length) % matches.length
 
+  /** anchor(~head) を選択状態にし、該当行が見える位置までスクロールする */
+  function selectRange(anchor: number, head: number = anchor) {
+    const view = editorRef.current?.view
+    if (!view) return null
+    view.dispatch({ selection: { anchor, head }, scrollIntoView: true })
+    return view
+  }
+
   // 現在のマッチをエディタ上で選択状態にし、該当行が見える位置までスクロールする
   useEffect(() => {
     if (!searchOpen || activeIndex < 0) return
-    const view = editorRef.current?.view
-    if (!view) return
     const { start, end } = matches[activeIndex]
-    view.dispatch({ selection: { anchor: start, head: end }, scrollIntoView: true })
+    selectRange(start, end)
   }, [activeIndex, matches, searchOpen])
 
   /** 指定オフセットへカーソルを移動しスクロールする（検証エラーの行番号ジャンプ用・#90） */
   function jumpToOffset(offset: number) {
-    const view = editorRef.current?.view
-    if (!view) return
-    view.dispatch({ selection: { anchor: offset }, scrollIntoView: true })
-    view.focus()
+    selectRange(offset)?.focus()
   }
 
   function handleQueryChange(next: string) {
@@ -121,6 +128,8 @@ export function SlideJsonEditor({ value, onChange, errors }: SlideJsonEditorProp
   }
 
   const jsonLabel = t('edit.jsonLabel', 'slides.json')
+  // 参照が変わるたびに CodeMirror が拡張構成全体を reconfigure するため、jsonLabel が変わらない限り安定させる
+  const extensions = useMemo(() => [json(), jsonEditorTheme, EditorView.contentAttributes.of({ 'aria-label': jsonLabel })], [jsonLabel])
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, gap: 0.5, position: 'relative' }} onKeyDown={handleContainerKeyDown}>
@@ -128,15 +137,7 @@ export function SlideJsonEditor({ value, onChange, errors }: SlideJsonEditorProp
         {jsonLabel}
       </Typography>
       <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
-        <CodeMirror
-          ref={editorRef}
-          value={value}
-          onChange={onChange}
-          height="100%"
-          style={{ height: '100%' }}
-          basicSetup={{ searchKeymap: false }}
-          extensions={[json(), jsonEditorTheme, EditorView.contentAttributes.of({ 'aria-label': jsonLabel })]}
-        />
+        <CodeMirror ref={editorRef} value={value} onChange={onChange} height="100%" style={{ height: '100%' }} basicSetup={basicSetup} extensions={extensions} />
       </Box>
       {!searchOpen && (
         <Button size="small" onClick={() => setSearchOpen(true)} aria-label={t('edit.searchOpen', '検索')} sx={{ position: 'absolute', top: 24, right: 8, minWidth: 0, p: 0.5, zIndex: 1 }}>

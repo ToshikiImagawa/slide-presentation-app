@@ -1,10 +1,12 @@
+import { useMemo } from 'react'
 import Box from '@mui/material/Box'
 import Link from '@mui/material/Link'
 import Typography from '@mui/material/Typography'
 import type { SxProps, Theme } from '@mui/material/styles'
+import { Text } from '@codemirror/state'
 import type { ValidationError } from '../data/types'
 import { useTranslation } from '../i18n'
-import { locateErrorOffset } from './jsonPathLocator'
+import { createErrorLocator } from './jsonPathLocator'
 
 interface ValidationErrorListProps {
   errors: ValidationError[]
@@ -15,21 +17,15 @@ interface ValidationErrorListProps {
   onJumpToOffset?: (offset: number) => void
 }
 
-/** offset より前にある改行の数から 1-indexed の行番号を求める */
-function lineNumberAt(text: string, offset: number): number {
-  let line = 1
-  for (let i = 0; i < offset; i++) {
-    if (text.charCodeAt(i) === 10) line++
-  }
-  return line
-}
-
 /**
  * 検証エラー一覧の共通表示（`SlideJsonEditor` / `GeneratedDiffDialog` で共用・#47）。
  * errors が空なら何も描画しない。text/onJumpToOffset が渡された場合のみ行番号を表示し、クリックでジャンプできる（#90）。
  */
 export function ValidationErrorList({ errors, sx, text, onJumpToOffset }: ValidationErrorListProps) {
   const { t } = useTranslation()
+  // text は errors 件数分パース/走査されうるため、1回だけ解決する locator と行番号ドキュメントを用意する
+  const locate = useMemo(() => (text !== undefined ? createErrorLocator(text) : null), [text])
+  const doc = useMemo(() => (text !== undefined ? Text.of(text.split('\n')) : null), [text])
   if (errors.length === 0) return null
 
   return (
@@ -38,16 +34,22 @@ export function ValidationErrorList({ errors, sx, text, onJumpToOffset }: Valida
         {t('edit.validationErrors', '検証エラー')} ({errors.length})
       </Typography>
       {errors.map((err, i) => {
-        const offset = text !== undefined ? locateErrorOffset(text, err.path) : null
-        const line = offset !== null ? lineNumberAt(text!, offset) : null
+        const offset = locate?.(err.path) ?? null
+        const jump = offset !== null && doc && onJumpToOffset ? { offset, line: doc.lineAt(offset).number, onJumpToOffset } : null
         return (
           <Typography key={`${err.path}-${i}`} variant="body2" sx={{ color: 'var(--fixed-text-body)', fontFamily: 'var(--fixed-font-code)', fontSize: 12 }}>
-            {line !== null && onJumpToOffset ? (
-              <Link component="button" type="button" onClick={() => onJumpToOffset(offset!)} sx={{ color: 'var(--fixed-primary)', fontFamily: 'inherit', fontSize: 'inherit' }} aria-label={`${t('edit.jumpToLine', '該当行へ移動')} L${line}`}>
-                L{line}
+            {jump && (
+              <Link
+                component="button"
+                type="button"
+                onClick={() => jump.onJumpToOffset(jump.offset)}
+                sx={{ color: 'var(--fixed-primary)', fontFamily: 'inherit', fontSize: 'inherit' }}
+                aria-label={`${t('edit.jumpToLine', '該当行へ移動')} L${jump.line}`}
+              >
+                L{jump.line}
               </Link>
-            ) : null}
-            {line !== null && onJumpToOffset ? ' ' : ''}
+            )}
+            {jump ? ' ' : ''}
             {err.path ? `${err.path}: ` : ''}
             {err.message}
           </Typography>
