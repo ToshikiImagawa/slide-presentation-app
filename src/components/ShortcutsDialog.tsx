@@ -1,6 +1,5 @@
-import type { ComponentProps } from 'react'
-import Dialog from '@mui/material/Dialog'
 import { useTranslation } from '../i18n'
+import { DialogFrame } from './DialogFrame'
 import styles from './ShortcutsDialog.module.css'
 
 type ShortcutEntry = { keys: string; descKey: string; fallback: string }
@@ -27,6 +26,11 @@ const EDIT_SHORTCUTS: ShortcutEntry[] = [
   { keys: 'Enter / Shift + Enter', descKey: 'shortcuts.searchNav', fallback: '次 / 前の検索結果へ移動' },
 ]
 
+const SECTIONS: { titleKey: string; fallback: string; entries: ShortcutEntry[] }[] = [
+  { titleKey: 'shortcuts.viewerSection', fallback: 'プレゼンビューア', entries: VIEWER_SHORTCUTS },
+  { titleKey: 'shortcuts.editSection', fallback: '編集モード', entries: EDIT_SHORTCUTS },
+]
+
 type ShortcutsDialogProps = {
   open: boolean
   onClose: () => void
@@ -36,23 +40,21 @@ export function ShortcutsDialog({ open, onClose }: ShortcutsDialogProps) {
   const { t } = useTranslation()
 
   return (
-    <Dialog open={open} onClose={onClose} aria-labelledby="shortcuts-dialog-title" slotProps={{ paper: { className: styles.window, 'data-testid': 'shortcuts-dialog' } as ComponentProps<'div'> }}>
-      <div className={styles.header}>
-        <h2 className={styles.title} id="shortcuts-dialog-title">
-          {t('shortcuts.title', 'キーボードショートカット')}
-        </h2>
-        <button className={styles.closeButton} onClick={onClose} aria-label={t('settings.close')}>
-          <svg className={styles.closeIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18" />
-            <line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
-        </button>
-      </div>
-      <div className={styles.body}>
-        <div className={styles.section}>
-          <h3 className={styles.sectionTitle}>{t('shortcuts.viewerSection', 'プレゼンビューア')}</h3>
+    <DialogFrame
+      open={open}
+      onClose={onClose}
+      titleId="shortcuts-dialog-title"
+      title={t('shortcuts.title', 'キーボードショートカット')}
+      closeLabel={t('settings.close')}
+      testId="shortcuts-dialog"
+      paperStyle={{ maxWidth: 560 }}
+      bodyStyle={{ gap: 20, maxHeight: '70vh', overflowY: 'auto' }}
+    >
+      {SECTIONS.map((section) => (
+        <div className={styles.section} key={section.titleKey}>
+          <h3 className={styles.sectionTitle}>{t(section.titleKey, section.fallback)}</h3>
           <div className={styles.list}>
-            {VIEWER_SHORTCUTS.map((entry) => (
+            {section.entries.map((entry) => (
               <div className={styles.row} key={entry.keys}>
                 <span className={styles.keys}>{entry.keys}</span>
                 <span className={styles.description}>{t(entry.descKey, entry.fallback)}</span>
@@ -60,23 +62,7 @@ export function ShortcutsDialog({ open, onClose }: ShortcutsDialogProps) {
             ))}
           </div>
         </div>
-        <div className={styles.section}>
-          <h3 className={styles.sectionTitle}>{t('shortcuts.editSection', '編集モード')}</h3>
-          <div className={styles.list}>
-            {EDIT_SHORTCUTS.map((entry) => (
-              <div className={styles.row} key={entry.keys}>
-                <span className={styles.keys}>{entry.keys}</span>
-                <span className={styles.description}>{t(entry.descKey, entry.fallback)}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-      <div className={styles.footer}>
-        <button className={styles.footerButton} onClick={onClose}>
-          {t('settings.close')}
-        </button>
-      </div>
-    </Dialog>
+      ))}
+    </DialogFrame>
   )
 }
