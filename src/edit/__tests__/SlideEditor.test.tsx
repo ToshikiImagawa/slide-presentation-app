@@ -351,6 +351,94 @@ describe('SlideEditor 組み込みアドオンのアプリ内ビルド（ター�
   })
 })
 
+describe('SlideEditor パッケージ名・バージョンの入力検証（#88）', () => {
+  beforeEach(() => {
+    h.saveSlidesJson.mockReset()
+    h.exportSlidePackage.mockReset()
+    h.chooseSlidesSavePath.mockReset().mockResolvedValue('/tmp/slides.json')
+    h.chooseExportDir.mockReset().mockResolvedValue('/out')
+    h.exportSlidePackage.mockResolvedValue('/out/slides.spkg')
+    h.listBuiltinAddons.mockReset().mockResolvedValue([])
+    h.listBuiltinDistAddons.mockReset().mockResolvedValue([])
+    h.getPackageAddonNames.mockReset().mockResolvedValue([])
+  })
+
+  function exportButton(): HTMLButtonElement {
+    return screen.getByRole('button', { name: '.spkg 書き出し' }) as HTMLButtonElement
+  }
+
+  it('自動生成された初期値は検証を通過し、書き出しボタンが有効', async () => {
+    render(
+      <Wrapper>
+        <SlideEditor source={{ rawText: validJson, baseDir: '' }} onExit={() => {}} />
+      </Wrapper>,
+    )
+    await waitFor(() => expect(exportButton().disabled).toBe(false))
+  })
+
+  it('未編集の間はパッケージ名フィールドに確認を促すヒントが表示される', async () => {
+    render(
+      <Wrapper>
+        <SlideEditor source={{ rawText: validJson, baseDir: '' }} onExit={() => {}} />
+      </Wrapper>,
+    )
+    expect(await screen.findByText('スライドタイトルから自動生成された値です。書き出し前に確認・修正してください')).toBeTruthy()
+  })
+
+  it('パッケージ名に不正な文字（大文字・空白）を入力すると検証エラーが表示され、書き出せない', async () => {
+    render(
+      <Wrapper>
+        <SlideEditor source={{ rawText: validJson, baseDir: '' }} onExit={() => {}} />
+      </Wrapper>,
+    )
+    fireEvent.change(screen.getByLabelText('パッケージ名'), { target: { value: 'My Slides' } })
+    expect(await screen.findByText('パッケージ名は小文字英数字とハイフンのみ使用でき、先頭は英数字にしてください')).toBeTruthy()
+    expect(exportButton().disabled).toBe(true)
+    fireEvent.click(exportButton())
+    expect(h.exportSlidePackage).not.toHaveBeenCalled()
+  })
+
+  it('パッケージ名を空にすると必須エラーが表示され、書き出せない', async () => {
+    render(
+      <Wrapper>
+        <SlideEditor source={{ rawText: validJson, baseDir: '' }} onExit={() => {}} />
+      </Wrapper>,
+    )
+    fireEvent.change(screen.getByLabelText('パッケージ名'), { target: { value: '' } })
+    expect(await screen.findByText('パッケージ名を入力してください')).toBeTruthy()
+    expect(exportButton().disabled).toBe(true)
+  })
+
+  it('バージョンが semver 形式でないと検証エラーが表示され、書き出せない', async () => {
+    render(
+      <Wrapper>
+        <SlideEditor source={{ rawText: validJson, baseDir: '' }} onExit={() => {}} />
+      </Wrapper>,
+    )
+    fireEvent.change(screen.getByLabelText('バージョン'), { target: { value: 'v1.0' } })
+    expect(await screen.findByText('バージョンは major.minor.patch 形式（例: 1.0.0）で入力してください')).toBeTruthy()
+    expect(exportButton().disabled).toBe(true)
+  })
+
+  it('有効な値に修正すると書き出しが有効になり、入力値がそのまま exportSlidePackage に渡る', async () => {
+    render(
+      <Wrapper>
+        <SlideEditor source={{ rawText: validJson, baseDir: '' }} onExit={() => {}} />
+      </Wrapper>,
+    )
+    fireEvent.change(screen.getByLabelText('パッケージ名'), { target: { value: 'my-deck' } })
+    fireEvent.change(screen.getByLabelText('バージョン'), { target: { value: '2.1.0' } })
+    // 手動編集後はヒントが消える
+    expect(screen.queryByText('スライドタイトルから自動生成された値です。書き出し前に確認・修正してください')).toBeNull()
+
+    fireEvent.click(exportButton())
+    await waitFor(() => expect(h.exportSlidePackage).toHaveBeenCalled())
+    const opts = h.exportSlidePackage.mock.calls[0][1] as { name: string; version: string }
+    expect(opts.name).toBe('my-deck')
+    expect(opts.version).toBe('2.1.0')
+  })
+})
+
 describe('SlideEditor キーボードショートカット（#91: Cmd/Ctrl+S 保存・Esc 終了）', () => {
   beforeEach(() => {
     h.saveSlidesJson.mockReset()

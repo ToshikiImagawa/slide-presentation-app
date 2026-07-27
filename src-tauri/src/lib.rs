@@ -512,6 +512,43 @@ fn filter_addon_manifest(
   (filtered, bundles)
 }
 
+/// export 用パッケージ名（package.json の `@slides/{name}` に埋め込む name 部分）を検証する。
+/// npm パッケージ名の規則（小文字英数字とハイフンのみ・先頭は英数字）に合わせる
+/// （sanitize_addon_name と防御方針は同じだが、npm パッケージ名として埋め込むため大文字・アンダースコアは許可しない・#88）
+fn validate_package_name(name: &str) -> Result<(), String> {
+  let trimmed = name.trim();
+  if trimmed.is_empty() {
+    return Err("パッケージ名を入力してください".to_string());
+  }
+  let mut chars = trimmed.chars();
+  let starts_with_alnum = chars
+    .next()
+    .is_some_and(|c| c.is_ascii_lowercase() || c.is_ascii_digit());
+  let rest_ok = trimmed
+    .chars()
+    .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-');
+  if !starts_with_alnum || !rest_ok {
+    return Err(
+      "パッケージ名は小文字英数字とハイフンのみ使用でき、先頭は英数字にしてください".to_string(),
+    );
+  }
+  Ok(())
+}
+
+/// export 用バージョンを検証する（semver の major.minor.patch。prerelease/build metadata も許可・#88）
+fn validate_version(version: &str) -> Result<(), String> {
+  let trimmed = version.trim();
+  let core = trimmed.split(['-', '+']).next().unwrap_or(trimmed);
+  let core_ok = core.split('.').collect::<Vec<_>>().len() == 3
+    && core
+      .split('.')
+      .all(|part| !part.is_empty() && part.chars().all(|c| c.is_ascii_digit()));
+  if !core_ok {
+    return Err("バージョンは major.minor.patch 形式（例: 1.0.0）で入力してください".to_string());
+  }
+  Ok(())
+}
+
 /// 編集モードゲートつきのスライドパッケージ (.spkg) 生成（純粋ロジック。テストはこの関数を直接叩く）。
 /// slides.json は無損失のため受け取った json 文字列をそのまま格納し、アセットは base_dir 基準で
 /// 収集する（存在しないものは export-slides.mjs と同様スキップ）。全ファイルを package/ 配下へ
@@ -530,6 +567,8 @@ fn build_slide_package_gated(
   if !enabled {
     return Err("編集モードが無効です".to_string());
   }
+  validate_package_name(name)?;
+  validate_version(version)?;
 
   let value: serde_json::Value = serde_json::from_str(json).map_err(|e| e.to_string())?;
   let asset_paths = extract_asset_paths(&value);
@@ -1102,6 +1141,77 @@ mod tests {
 
     assert!(result.is_err());
     assert!(!out_dir.exists(), "編集モード無効時は出力しない");
+  }
+
+  #[test]
+  fn validate_package_name_accepts_lowercase_alnum_and_hyphens() {
+    assert!(validate_package_name("demo").is_ok());
+    assert!(validate_package_name("my-slides-2").is_ok());
+  }
+
+  #[test]
+  fn validate_package_name_rejects_empty_and_invalid_chars() {
+    assert!(validate_package_name("").is_err());
+    assert!(validate_package_name("   ").is_err());
+    assert!(
+      validate_package_name("My Slides").is_err(),
+      "大文字・空白は不可"
+    );
+    assert!(
+      validate_package_name("-slides").is_err(),
+      "先頭ハイフンは不可"
+    );
+    assert!(
+      validate_package_name("slides.json").is_err(),
+      "ドットは不可（#88）"
+    );
+  }
+
+  #[test]
+  fn validate_version_accepts_semver_with_optional_prerelease() {
+    assert!(validate_version("1.0.0").is_ok());
+    assert!(validate_version("1.0.0-beta.1").is_ok());
+    assert!(validate_version("1.0.0+build.5").is_ok());
+  }
+
+  #[test]
+  fn validate_version_rejects_non_semver() {
+    assert!(validate_version("").is_err());
+    assert!(validate_version("1.0").is_err());
+    assert!(validate_version("v1.0.0").is_err());
+    assert!(validate_version("1.0.x").is_err());
+  }
+
+  #[test]
+  fn export_slide_package_rejects_invalid_name_or_version() {
+    let out_dir = std::env::temp_dir().join(format!("slide-export-invalid-{}", std::process::id()));
+    fs::remove_dir_all(&out_dir).ok();
+
+    let invalid_name = build_slide_package_gated(
+      true,
+      r#"{"meta":{"title":"t"},"slides":[]}"#,
+      out_dir.to_str().unwrap(),
+      "",
+      "Invalid Name",
+      "1.0.0",
+      &[],
+      None,
+    );
+    assert!(invalid_name.is_err());
+
+    let invalid_version = build_slide_package_gated(
+      true,
+      r#"{"meta":{"title":"t"},"slides":[]}"#,
+      out_dir.to_str().unwrap(),
+      "",
+      "demo",
+      "not-a-version",
+      &[],
+      None,
+    );
+    assert!(invalid_version.is_err());
+
+    assert!(!out_dir.exists(), "検証エラー時は出力しない");
   }
 
   #[test]
