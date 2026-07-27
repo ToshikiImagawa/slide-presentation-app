@@ -53,6 +53,16 @@ All notable changes to this project will be documented in this file.
     - `npm run export:samples` exports every locale; `npm run export:slides` gained `--source` (input directory) and
       `--strict` (fail on missing referenced assets)
 
+### Fixed
+
+- **Clipped content in the distributed sample** — Split two overcrowded slides so nothing is cut off at 1280x720
+    - "Presenter View" split into an overview and a panel list (the right column overflowed by 52px, clipping its
+      heading and colliding with the page number)
+    - "Logo & Font Settings" split into "Logo Settings" and "Font Settings" (overflowed by 237px, truncating the end of
+      the code block)
+- **Broken references in the sample** — Removed references to a non-existent audio file (English) and log file
+  (`/demo-log.txt`)
+
 ## [1.0.0] - 2026-02-02
 
 First release. A presentation tool that defines slides with JSON data and displays them in the browser.
