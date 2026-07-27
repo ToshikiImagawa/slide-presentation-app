@@ -62,6 +62,11 @@
         "files": {
           "/usr/share/mime/packages/slide-presentation-app.xml": "linux/slide-package-mime.xml"
         }
+      },
+      "rpm": {
+        "files": {
+          "/usr/share/mime/packages/slide-presentation-app.xml": "linux/slide-package-mime.xml"
+        }
       }
     },
     "windows": {

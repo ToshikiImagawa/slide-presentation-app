@@ -80,7 +80,9 @@ struct PendingOpenPaths(Mutex<Vec<String>>);
 
 /// OS から渡されたパスがアプリで開ける対象（.spkg・旧 .tgz・slides.json）かを判定する（純粋ロジック・テスト対象）。
 /// src/slidePackageArchive.ts の isSlidePackageArchivePath と同一規則（小文字化して拡張子一致・`DECK.SPKG` も通す）を
-/// ファイル選択ダイアログの受付拡張子（.json を含む）まで広げて移植する（DC-003）
+/// ファイル選択ダイアログの受付拡張子（.json を含む）まで広げて移植する（DC-003）。
+/// 書き出し用の SLIDE_PACKAGE_EXTENSION とは意図的に別管理にする（あちらは現行の書き出し値 1 つ、
+/// こちらは後方互換のため追加のみで減らさない受付リスト。書き出し拡張子が変わっても .spkg の受付は残す）
 fn is_slide_package_path(path: &str) -> bool {
   const EXTENSIONS: [&str; 3] = [".spkg", ".tgz", ".json"];
   let lower = path.to_lowercase();
@@ -1072,8 +1074,7 @@ pub fn run() {
     if let tauri::RunEvent::Opened { urls } = &_event {
       let paths: Vec<String> = urls
         .iter()
-        .filter_map(|url| url.to_file_path().ok())
-        .filter_map(|path| path.to_str().map(str::to_string))
+        .filter_map(|url| Some(url.to_file_path().ok()?.to_str()?.to_string()))
         .filter(|path| is_slide_package_path(path))
         .collect();
       dispatch_open_paths(_app_handle, paths);
