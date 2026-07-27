@@ -10,7 +10,7 @@ import Typography from '@mui/material/Typography'
 import { editorUiTheme, theme } from '../theme'
 import { useTranslation } from '../i18n'
 import { applyTheme, applyThemeData, resetThemeOverrides } from '../applyTheme'
-import { getPackageAddonNames, getPackageIdentity, resolveLocalAssetPaths } from '../localSlideLoader'
+import { getPackageAddonNames, resolveLocalAssetPaths } from '../localSlideLoader'
 import type { PresentationData, SlideData } from '../data'
 import type { GeneratedCandidate } from '../aiGenerate'
 import { parseSlides, serializeSlides, prettyPrintJson } from './slidesSerialize'
@@ -30,15 +30,15 @@ export interface EditSource {
   baseDir: string
   /** 保存ダイアログの初期パス（読込元）。サンプル/新規は undefined */
   sourcePath?: string
+  /** パッケージ package.json 由来の書き出しパッケージ名（@slides/ を除いた name 部分）。無い場合は meta.title から自動生成する */
+  packageName?: string | null
+  /** パッケージ package.json 由来のバージョン。無い場合は DEFAULT_VERSION を初期値にする */
+  packageVersion?: string | null
   /** AI 生成パネルを開いた状態で編集を開始するか（ホーム画面の「AIで新規作成」導線から遷移した場合のみ true） */
   aiPanelExpanded?: boolean
 }
 
 type StatusState = { kind: 'idle' | 'ok' | 'error'; message: string }
-
-/** パッケージ名・バージョンの初期値の由来。'package' は package.json からの復元、'auto' は meta.title からの
- * 自動生成（この間だけ確認を促すヒントを出す・#88）、'user' は手動編集後 */
-type NameSource = 'auto' | 'package' | 'user'
 
 const DEFAULT_VERSION = '1.0.0'
 
@@ -79,15 +79,12 @@ export function SlideEditor({ source, onExit }: { source: EditSource; onExit: ()
   const { t } = useTranslation()
   const [text, setText] = useState(source.rawText)
   const [selectedIndex, setSelectedIndex] = useState(0)
-  // パッケージ名・バージョンの初期値は meta.title からの自動生成で始め、パッケージを開いている場合は
-  // 直後の effect で package.json の値に差し替える（#88 の続き）
-  const [name, setName] = useState(() => slugify(parseSlides(source.rawText).data.meta?.title ?? 'slides'))
-  const [nameSource, setNameSource] = useState<NameSource>('auto')
-  const [version, setVersion] = useState(DEFAULT_VERSION)
-  // package.json の非同期読み込みが、その間に行われた手動編集を上書きしないための現在値参照
-  const nameSourceRef = useRef(nameSource)
-  nameSourceRef.current = nameSource
-  const versionEditedRef = useRef(false)
+  // パッケージ名・バージョンの初期値は package.json 由来の値を優先し、無ければ meta.title から自動生成する（#88 の続き）。
+  // 検証に通らない name（CLI 書き出しは無検証なので実在する）もそのまま入れ、UI の検証エラーで修正を促す
+  const [name, setName] = useState(() => source.packageName || slugify(parseSlides(source.rawText).data.meta?.title ?? 'slides'))
+  const [version, setVersion] = useState(source.packageVersion || DEFAULT_VERSION)
+  // 自動生成値のままか（package.json 由来・手動編集後は確認を促すヒントを出さない・#88）
+  const [nameIsAuto, setNameIsAuto] = useState(!source.packageName)
   const [status, setStatus] = useState<StatusState>({ kind: 'idle', message: '' })
   // AI 生成結果の適用待ち候補（差分確認ダイアログで承認するまで器に触れない・①/FR-008）。
   // validationErrors は exhausted で非空になりうる残存検証エラー（差分確認ダイアログへ渡す・#47）
@@ -133,24 +130,6 @@ export function SlideEditor({ source, onExit }: { source: EditSource; onExit: ()
       setPackageAddons(names)
       setSelectedAddons(names)
     })
-  }, [source.baseDir])
-
-  // パッケージを開いて編集している場合は baseDir/package.json の name/version を初期値として復元する（#88 の続き）。
-  // package.json が無い（slides.json 単体・サンプル・新規作成）ときは meta.title からの自動生成値を維持する。
-  // 検証に通らない name（CLI 書き出しは無検証なので実在する）もそのまま入れ、UI の検証エラーで修正を促す
-  useEffect(() => {
-    let cancelled = false
-    void getPackageIdentity(source.baseDir).then((identity) => {
-      if (cancelled || !identity) return
-      if (identity.name !== null && nameSourceRef.current === 'auto') {
-        setName(identity.name)
-        setNameSource('package')
-      }
-      if (identity.version !== null && !versionEditedRef.current) setVersion(identity.version)
-    })
-    return () => {
-      cancelled = true
-    }
   }, [source.baseDir])
 
   // 同梱候補 = 層B（パッケージ）∪ 層A の**ビルド済み**（dist・実際に同梱可能なものだけ）。name で重複排除（層B 優先の並び）。
@@ -352,25 +331,14 @@ export function SlideEditor({ source, onExit }: { source: EditSource; onExit: ()
             value={name}
             onChange={(e) => {
               setName(e.target.value)
-              setNameSource('user')
+              setNameIsAuto(false)
             }}
             size="small"
             sx={{ width: 180 }}
             error={nameErrorMessage !== null}
-            helperText={nameErrorMessage ?? (nameSource === 'auto' ? t('edit.packageNameHint', 'スライドタイトルから自動生成された値です。書き出し前に確認・修正してください') : '')}
+            helperText={nameErrorMessage ?? (nameIsAuto ? t('edit.packageNameHint', 'スライドタイトルから自動生成された値です。書き出し前に確認・修正してください') : '')}
           />
-          <TextField
-            label={t('edit.version', 'バージョン')}
-            value={version}
-            onChange={(e) => {
-              setVersion(e.target.value)
-              versionEditedRef.current = true
-            }}
-            size="small"
-            sx={{ width: 110 }}
-            error={versionErrorMessage !== null}
-            helperText={versionErrorMessage ?? ''}
-          />
+          <TextField label={t('edit.version', 'バージョン')} value={version} onChange={(e) => setVersion(e.target.value)} size="small" sx={{ width: 110 }} error={versionErrorMessage !== null} helperText={versionErrorMessage ?? ''} />
           <Button variant="outlined" size="small" onClick={handleSave} disabled={!canWrite}>
             {t('edit.save', '保存')}
           </Button>

@@ -115,7 +115,7 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
       if (!data) return
       await applyPackageAddons(data)
       // 編集は書換前の生 JSON（相対パス）を対象にする
-      setEditSource({ rawText: data.rawText, baseDir: data.baseDir, sourcePath: data.sourcePath })
+      setEditSource({ rawText: data.rawText, baseDir: data.baseDir, sourcePath: data.sourcePath, packageName: data.identity.name, packageVersion: data.identity.version })
       await showPresentation(data.data)
     },
     [applyPackageAddons, showPresentation],

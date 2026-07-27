@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { upsertRecentEntry, removeRecentEntry, extractAddonBundlePaths, resolveAddonTrust, stripPackageScope, parsePackageIdentity } from '../localSlideLoader'
+import { upsertRecentEntry, removeRecentEntry, extractAddonBundlePaths, resolveAddonTrust, parsePackageIdentity } from '../localSlideLoader'
 import type { RecentSlidePackageEntry } from '../localSlideLoader'
 import { isSlidePackageArchivePath } from '../slidePackageArchive'
 
@@ -109,23 +109,14 @@ describe('resolveAddonTrust', () => {
   })
 })
 
-describe('stripPackageScope', () => {
-  it('スコープ付きは name 部分だけを返す', () => {
-    expect(stripPackageScope('@slides/my-deck')).toBe('my-deck')
-  })
-
-  it('@slides 以外のスコープも同様に除く', () => {
-    expect(stripPackageScope('@acme/my-deck')).toBe('my-deck')
-  })
-
-  it('スコープなしはそのまま返す', () => {
-    expect(stripPackageScope('my-deck')).toBe('my-deck')
-  })
-})
-
 describe('parsePackageIdentity（パッケージ名・バージョンの復元・#88 の続き）', () => {
   it('name のスコープを除き、version をそのまま取り出す', () => {
     expect(parsePackageIdentity('{"name":"@slides/my-deck","version":"2.1.0"}')).toEqual({ name: 'my-deck', version: '2.1.0' })
+  })
+
+  it('@slides 以外のスコープも除き、スコープなしはそのまま返す', () => {
+    expect(parsePackageIdentity('{"name":"@acme/my-deck"}').name).toBe('my-deck')
+    expect(parsePackageIdentity('{"name":"my-deck"}').name).toBe('my-deck')
   })
 
   it('検証規則に反する name（CLI 書き出しのアンダースコア等）も加工せず返す', () => {
@@ -138,9 +129,9 @@ describe('parsePackageIdentity（パッケージ名・バージョンの復元�
     expect(parsePackageIdentity('{"name":"@slides/my-deck"}')).toEqual({ name: 'my-deck', version: null })
   })
 
-  it('JSON が不正・オブジェクトでない場合は null（呼び出し側は自動生成にフォールバック）', () => {
-    expect(parsePackageIdentity('{ not json')).toBeNull()
-    expect(parsePackageIdentity('null')).toBeNull()
-    expect(parsePackageIdentity('"string"')).toBeNull()
+  it('JSON が不正・オブジェクトでない場合は両フィールド null（呼び出し側は自動生成にフォールバック）', () => {
+    expect(parsePackageIdentity('{ not json')).toEqual({ name: null, version: null })
+    expect(parsePackageIdentity('null')).toEqual({ name: null, version: null })
+    expect(parsePackageIdentity('"string"')).toEqual({ name: null, version: null })
   })
 })

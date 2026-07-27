@@ -12,7 +12,6 @@ const h = vi.hoisted(() => ({
   listBuiltinAddons: vi.fn(),
   listBuiltinDistAddons: vi.fn(),
   getPackageAddonNames: vi.fn(),
-  getPackageIdentity: vi.fn(),
   removeBuiltinAddon: vi.fn(),
   buildBuiltinAddons: vi.fn(),
 }))
@@ -30,7 +29,7 @@ vi.mock('../../editModeSave', () => ({
   buildBuiltinAddons: h.buildBuiltinAddons,
 }))
 vi.mock('../../applyTheme', () => ({ applyTheme: vi.fn().mockResolvedValue(undefined), applyThemeData: vi.fn(), resetThemeOverrides: vi.fn() }))
-vi.mock('../../localSlideLoader', () => ({ resolveLocalAssetPaths: (v: unknown) => v, getPackageAddonNames: h.getPackageAddonNames, getPackageIdentity: h.getPackageIdentity }))
+vi.mock('../../localSlideLoader', () => ({ resolveLocalAssetPaths: (v: unknown) => v, getPackageAddonNames: h.getPackageAddonNames }))
 
 import { SlideEditor } from '../SlideEditor'
 import { I18nProvider } from '../../i18n'
@@ -61,9 +60,16 @@ function saveButton(): HTMLButtonElement {
   return screen.getByRole('button', { name: '保存' }) as HTMLButtonElement
 }
 
+function exportButton(): HTMLButtonElement {
+  return screen.getByRole('button', { name: '.spkg 書き出し' }) as HTMLButtonElement
+}
+
+/** assets/locales/ja-JP.json の edit.packageNameHint（自動生成値の確認を促すヒント） */
+const PACKAGE_NAME_HINT = 'スライドタイトルから自動生成された値です。書き出し前に確認・修正してください'
+
 /** 「.spkg 書き出し」を押し、exportSlidePackage に渡された includedAddons を取り出す */
 async function exportAndGetIncludedAddons(): Promise<string[]> {
-  fireEvent.click(screen.getByRole('button', { name: '.spkg 書き出し' }))
+  fireEvent.click(exportButton())
   await waitFor(() => expect(h.exportSlidePackage).toHaveBeenCalled())
   const opts = h.exportSlidePackage.mock.calls[0][1] as { includedAddons: string[] }
   return opts.includedAddons
@@ -78,7 +84,6 @@ describe('SlideEditor 保存前バリデーション（FR-005）', () => {
     h.listBuiltinAddons.mockReset().mockResolvedValue([])
     h.listBuiltinDistAddons.mockReset().mockResolvedValue([])
     h.getPackageAddonNames.mockReset().mockResolvedValue([])
-    h.getPackageIdentity.mockReset().mockResolvedValue(null)
   })
 
   it('妥当な JSON では保存が有効で、saveSlidesJson が編集テキストで呼ばれる', async () => {
@@ -137,7 +142,6 @@ describe('SlideEditor 同梱アドオン選択（②・層A∪層B・0件表示�
     h.listBuiltinAddons.mockReset().mockResolvedValue([])
     h.listBuiltinDistAddons.mockReset().mockResolvedValue([])
     h.getPackageAddonNames.mockReset().mockResolvedValue([])
-    h.getPackageIdentity.mockReset().mockResolvedValue(null)
   })
 
   it('同梱可能なアドオンが無いとき、UI を消さず「同梱できるアドオンがありません」を明示する', async () => {
@@ -226,7 +230,6 @@ describe('SlideEditor 組み込みアドオン削除の確認（× 誤クリッ�
     h.listBuiltinAddons.mockReset().mockResolvedValue(['ai-sdd-visuals']) // dev パネルに 1 件表示
     h.listBuiltinDistAddons.mockReset().mockResolvedValue([])
     h.getPackageAddonNames.mockReset().mockResolvedValue([])
-    h.getPackageIdentity.mockReset().mockResolvedValue(null)
     h.removeBuiltinAddon.mockReset().mockResolvedValue(undefined)
     h.buildBuiltinAddons.mockReset().mockResolvedValue(undefined)
   })
@@ -267,7 +270,6 @@ describe('SlideEditor 未保存変更の終了確認（編集モード終了時�
     h.listBuiltinAddons.mockReset().mockResolvedValue([])
     h.listBuiltinDistAddons.mockReset().mockResolvedValue([])
     h.getPackageAddonNames.mockReset().mockResolvedValue([])
-    h.getPackageIdentity.mockReset().mockResolvedValue(null)
   })
 
   it('変更がなければ確認なしで即 onExit が呼ばれる', async () => {
@@ -334,7 +336,6 @@ describe('SlideEditor 組み込みアドオンのアプリ内ビルド（ター�
     h.chooseSlidesSavePath.mockReset().mockResolvedValue('/tmp/slides.json')
     h.chooseExportDir.mockReset()
     h.getPackageAddonNames.mockReset().mockResolvedValue([])
-    h.getPackageIdentity.mockReset().mockResolvedValue(null)
     h.removeBuiltinAddon.mockReset().mockResolvedValue(undefined)
     h.buildBuiltinAddons.mockReset().mockResolvedValue(undefined)
   })
@@ -368,12 +369,7 @@ describe('SlideEditor パッケージ名・バージョンの入力検証（#88�
     h.listBuiltinAddons.mockReset().mockResolvedValue([])
     h.listBuiltinDistAddons.mockReset().mockResolvedValue([])
     h.getPackageAddonNames.mockReset().mockResolvedValue([])
-    h.getPackageIdentity.mockReset().mockResolvedValue(null)
   })
-
-  function exportButton(): HTMLButtonElement {
-    return screen.getByRole('button', { name: '.spkg 書き出し' }) as HTMLButtonElement
-  }
 
   it('自動生成された初期値は検証を通過し、書き出しボタンが有効', async () => {
     render(
@@ -390,7 +386,7 @@ describe('SlideEditor パッケージ名・バージョンの入力検証（#88�
         <SlideEditor source={{ rawText: validJson, baseDir: '' }} onExit={() => {}} />
       </Wrapper>,
     )
-    expect(await screen.findByText('スライドタイトルから自動生成された値です。書き出し前に確認・修正してください')).toBeTruthy()
+    expect(await screen.findByText(PACKAGE_NAME_HINT)).toBeTruthy()
   })
 
   it('パッケージ名に不正な文字（大文字・空白）を入力すると検証エラーが表示され、書き出せない', async () => {
@@ -437,7 +433,7 @@ describe('SlideEditor パッケージ名・バージョンの入力検証（#88�
     fireEvent.change(screen.getByLabelText('パッケージ名'), { target: { value: 'my-deck' } })
     fireEvent.change(screen.getByLabelText('バージョン'), { target: { value: '2.1.0' } })
     // 手動編集後はヒントが消える
-    expect(screen.queryByText('スライドタイトルから自動生成された値です。書き出し前に確認・修正してください')).toBeNull()
+    expect(screen.queryByText(PACKAGE_NAME_HINT)).toBeNull()
 
     fireEvent.click(exportButton())
     await waitFor(() => expect(h.exportSlidePackage).toHaveBeenCalled())
@@ -448,8 +444,6 @@ describe('SlideEditor パッケージ名・バージョンの入力検証（#88�
 })
 
 describe('SlideEditor パッケージ名・バージョンの package.json 復元（#88 の続き）', () => {
-  const HINT = 'スライドタイトルから自動生成された値です。書き出し前に確認・修正してください'
-
   beforeEach(() => {
     h.saveSlidesJson.mockReset()
     h.exportSlidePackage.mockReset().mockResolvedValue('/out/slides.spkg')
@@ -458,25 +452,19 @@ describe('SlideEditor パッケージ名・バージョンの package.json 復�
     h.listBuiltinAddons.mockReset().mockResolvedValue([])
     h.listBuiltinDistAddons.mockReset().mockResolvedValue([])
     h.getPackageAddonNames.mockReset().mockResolvedValue([])
-    h.getPackageIdentity.mockReset().mockResolvedValue(null)
   })
 
-  function exportButton(): HTMLButtonElement {
-    return screen.getByRole('button', { name: '.spkg 書き出し' }) as HTMLButtonElement
-  }
-
-  it('package.json があれば name/version を初期値に復元し、自動生成ヒントを出さない', async () => {
-    h.getPackageIdentity.mockResolvedValue({ name: 'restored-deck', version: '3.2.1' })
+  it('package.json 由来の name/version が初期値になり、自動生成ヒントを出さない', async () => {
     render(
       <Wrapper>
-        <SlideEditor source={{ rawText: validJson, baseDir: '/pkg' }} onExit={() => {}} />
+        <SlideEditor source={{ rawText: validJson, baseDir: '/pkg', packageName: 'restored-deck', packageVersion: '3.2.1' }} onExit={() => {}} />
       </Wrapper>,
     )
 
-    await waitFor(() => expect((screen.getByLabelText('パッケージ名') as HTMLInputElement).value).toBe('restored-deck'))
+    expect((screen.getByLabelText('パッケージ名') as HTMLInputElement).value).toBe('restored-deck')
     expect((screen.getByLabelText('バージョン') as HTMLInputElement).value).toBe('3.2.1')
     // package.json 由来の値は自動生成ではないのでヒントは出さない
-    expect(screen.queryByText(HINT)).toBeNull()
+    expect(screen.queryByText(PACKAGE_NAME_HINT)).toBeNull()
 
     fireEvent.click(exportButton())
     await waitFor(() => expect(h.exportSlidePackage).toHaveBeenCalled())
@@ -485,48 +473,28 @@ describe('SlideEditor パッケージ名・バージョンの package.json 復�
     expect(opts.version).toBe('3.2.1')
   })
 
-  it('package.json が無ければ meta.title からの自動生成にフォールバックし、ヒントを表示する', async () => {
-    h.getPackageIdentity.mockResolvedValue(null)
+  it('package.json が無い（name/version が null）なら meta.title からの自動生成にフォールバックし、ヒントを表示する', async () => {
     render(
       <Wrapper>
-        <SlideEditor source={{ rawText: validJson, baseDir: '/pkg' }} onExit={() => {}} />
+        <SlideEditor source={{ rawText: validJson, baseDir: '/pkg', packageName: null, packageVersion: null }} onExit={() => {}} />
       </Wrapper>,
     )
 
-    expect(await screen.findByText(HINT)).toBeTruthy()
+    expect(await screen.findByText(PACKAGE_NAME_HINT)).toBeTruthy()
     expect((screen.getByLabelText('パッケージ名') as HTMLInputElement).value).toBe('t')
     expect((screen.getByLabelText('バージョン') as HTMLInputElement).value).toBe('1.0.0')
   })
 
-  it('検証に通らない name（CLI 書き出しのアンダースコア等）もそのまま復元し、検証エラーで修正を促す', async () => {
-    h.getPackageIdentity.mockResolvedValue({ name: 'sdd-workflow_af_ja_dena', version: '1.0.0' })
+  it('検証に通らない name（CLI 書き出しのアンダースコア等）もそのまま初期値になり、検証エラーで修正を促す', async () => {
     render(
       <Wrapper>
-        <SlideEditor source={{ rawText: validJson, baseDir: '/pkg' }} onExit={() => {}} />
+        <SlideEditor source={{ rawText: validJson, baseDir: '/pkg', packageName: 'sdd-workflow_af_ja_dena', packageVersion: '1.0.0' }} onExit={() => {}} />
       </Wrapper>,
     )
 
-    await waitFor(() => expect((screen.getByLabelText('パッケージ名') as HTMLInputElement).value).toBe('sdd-workflow_af_ja_dena'))
+    expect((screen.getByLabelText('パッケージ名') as HTMLInputElement).value).toBe('sdd-workflow_af_ja_dena')
     expect(screen.getByText('パッケージ名は小文字英数字とハイフンのみ使用でき、先頭は英数字にしてください')).toBeTruthy()
     expect(exportButton().disabled).toBe(true)
-  })
-
-  it('復元完了前に手動編集した値は package.json の値で上書きされない', async () => {
-    let resolveIdentity: (value: { name: string; version: string }) => void = () => {}
-    h.getPackageIdentity.mockReturnValue(new Promise((resolve) => (resolveIdentity = resolve)))
-    render(
-      <Wrapper>
-        <SlideEditor source={{ rawText: validJson, baseDir: '/pkg' }} onExit={() => {}} />
-      </Wrapper>,
-    )
-
-    fireEvent.change(screen.getByLabelText('パッケージ名'), { target: { value: 'user-typed' } })
-    fireEvent.change(screen.getByLabelText('バージョン'), { target: { value: '9.9.9' } })
-    resolveIdentity({ name: 'restored-deck', version: '3.2.1' })
-
-    await waitFor(() => expect(h.getPackageIdentity).toHaveBeenCalled())
-    expect((screen.getByLabelText('パッケージ名') as HTMLInputElement).value).toBe('user-typed')
-    expect((screen.getByLabelText('バージョン') as HTMLInputElement).value).toBe('9.9.9')
   })
 })
 
@@ -539,7 +507,6 @@ describe('SlideEditor キーボードショートカット（#91: Cmd/Ctrl+S 保
     h.listBuiltinAddons.mockReset().mockResolvedValue([])
     h.listBuiltinDistAddons.mockReset().mockResolvedValue([])
     h.getPackageAddonNames.mockReset().mockResolvedValue([])
-    h.getPackageIdentity.mockReset().mockResolvedValue(null)
   })
 
   it('Ctrl+S で保存される（フォーカスがどこにあっても発火する）', async () => {
