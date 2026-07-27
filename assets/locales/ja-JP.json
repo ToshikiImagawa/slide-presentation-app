@@ -108,7 +108,10 @@
       "builtinBuildingShort": "ビルド中…",
       "builtinBuilding": "組み込みアドオンをビルド中…",
       "builtinBuilt": "組み込みアドオンをビルドしました（同梱候補を更新）",
-      "builtinBuildFailed": "ビルドに失敗しました"
+      "builtinBuildFailed": "ビルドに失敗しました",
+      "openConfirmTitle": "未保存の変更を破棄して開きますか？",
+      "openConfirmMessage": "編集内容は保存されていません。破棄して選択されたスライドを開きますか？",
+      "openConfirmDiscard": "破棄して開く"
     },
     "presenterView": {
       "open": "発表者ビュー",

@@ -108,7 +108,10 @@
       "builtinBuildingShort": "Building…",
       "builtinBuilding": "Building built-in add-ons…",
       "builtinBuilt": "Built the built-in add-ons (bundle candidates updated)",
-      "builtinBuildFailed": "Build failed"
+      "builtinBuildFailed": "Build failed",
+      "openConfirmTitle": "Discard unsaved changes and open?",
+      "openConfirmMessage": "Your edits are not saved. Discard them and open the selected slides?",
+      "openConfirmDiscard": "Discard and open"
     },
     "presenterView": {
       "open": "Presenter View",

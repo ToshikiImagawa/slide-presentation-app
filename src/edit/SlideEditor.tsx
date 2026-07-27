@@ -75,7 +75,22 @@ const JSON_SYNTAX_ERROR_MARK = 'JSON 構文エラー'
  * 保存 / .spkg 書き出しを行う。編集対象は相対パスの生 JSON（source.rawText）で、プレビュー表示のみ
  * baseDir 基準でアセット解決する（保存・書き出しは相対パスのまま＝可搬・無損失）。
  */
-export function SlideEditor({ source, onExit }: { source: EditSource; onExit: () => void }) {
+export function SlideEditor({
+  source,
+  onExit,
+  pendingOpenPath = null,
+  onConfirmOpen,
+  onCancelOpen,
+}: {
+  source: EditSource
+  onExit: () => void
+  /** OS のファイル関連付けから届いたオープン要求のパス（要求なしは null）。未保存の変更があれば確認ダイアログを挟む */
+  pendingOpenPath?: string | null
+  /** 開くことが確定したときの通知（未保存の変更がなければ確認なしで即呼ぶ） */
+  onConfirmOpen?: (path: string) => void
+  /** 開くのを取り消したときの通知（編集画面に留まる） */
+  onCancelOpen?: () => void
+}) {
   const { t } = useTranslation()
   const [text, setText] = useState(source.rawText)
   const [selectedIndex, setSelectedIndex] = useState(0)
@@ -217,8 +232,18 @@ export function SlideEditor({ source, onExit }: { source: EditSource; onExit: ()
   const canExport = canWrite && nameErrorMessage === null && versionErrorMessage === null
   // 未保存の変更があるか（保存済みの元テキストとの比較。#44: データ損失防止）
   const isDirty = text !== source.rawText
+  // 外部からのオープン要求の確認待ちか（未保存の変更があるときのみ確認を挟む・#105）
+  const showOpenConfirm = pendingOpenPath !== null && isDirty
   // 既に開いているダイアログがあるか（Escape ガード用。MUI Dialog 自身の Escape 処理に委ね、二重発火を避ける）
-  const hasOpenDialog = pendingExit || pendingGenerated !== null || pendingDeleteBuiltin !== null
+  const hasOpenDialog = pendingExit || pendingGenerated !== null || pendingDeleteBuiltin !== null || showOpenConfirm
+
+  // 外部（OS のファイル関連付け）からのオープン要求。未保存の変更がなければ確認を挟まず即開く。
+  // 要求を受けた時点の dirty 状態で判断する（以降の編集で再発火させないため pendingOpenPath のみを依存にする）
+  useEffect(() => {
+    if (pendingOpenPath === null || isDirty) return
+    onConfirmOpen?.(pendingOpenPath)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingOpenPath])
 
   // 未保存の変更があれば確認ダイアログを挟み、無ければ即終了する
   const handleExitClick = () => {
@@ -372,6 +397,19 @@ export function SlideEditor({ source, onExit }: { source: EditSource; onExit: ()
           cancelLabel={t('edit.cancel', 'キャンセル')}
           onConfirm={confirmExit}
           onCancel={cancelExit}
+        />
+
+        {/* 外部（OS のファイル関連付け）から開く要求が来たとき、未保存の変更を破棄する前の確認（#105） */}
+        <ConfirmDialog
+          open={showOpenConfirm}
+          title={t('edit.openConfirmTitle', '未保存の変更を破棄して開きますか？')}
+          message={t('edit.openConfirmMessage', '編集内容は保存されていません。破棄して選択されたスライドを開きますか？')}
+          confirmLabel={t('edit.openConfirmDiscard', '破棄して開く')}
+          cancelLabel={t('edit.cancel', 'キャンセル')}
+          onConfirm={() => {
+            if (pendingOpenPath !== null) onConfirmOpen?.(pendingOpenPath)
+          }}
+          onCancel={() => onCancelOpen?.()}
         />
 
         {/* 組み込みアドオン削除の確認（× は確認経由。addons/src を完全削除し git 管理外＝復元不可のため誤クリック防止） */}

@@ -13,8 +13,9 @@ import type { PresentationData, ThemeData } from './data'
 import { I18nProvider, loadLocales, useI18n } from './i18n'
 import type { LocaleResource } from './i18n'
 import { ToastProvider, useToast } from './toast'
-import { clearAddonTrustDecision, getRecentSlidePackages, isAddonAllowed, loadSlidePackageFromUrl, openRecentSlidePackage, pickAndLoadSlidePackage, removeRecentSlidePackage } from './localSlideLoader'
+import { clearAddonTrustDecision, getRecentSlidePackages, isAddonAllowed, loadSlidePackageFromUrl, openRecentSlidePackage, openSlidePackageFromPath, pickAndLoadSlidePackage, removeRecentSlidePackage } from './localSlideLoader'
 import type { LoadedSlidePackage, RecentSlidePackageEntry, SlidePackageLoadResult } from './localSlideLoader'
+import { useOpenSlideRequest } from './hooks/useOpenSlideRequest'
 import { SlideEditor } from './edit/SlideEditor'
 import type { EditSource } from './edit/SlideEditor'
 import { serializeSlides } from './edit/slidesSerialize'
@@ -50,6 +51,8 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
   const currentOwnerRef = useRef<string | undefined>(undefined)
   // 編集モードの供給元（現在表示中プレゼンの生 JSON / baseDir / 読込元パス）。編集は相対パスの生 JSON を対象にする
   const [editSource, setEditSource] = useState<EditSource | null>(null)
+  // OS のファイル関連付けから届いたオープン要求のうち、編集中のため確認待ちのパス（#105）
+  const [pendingOpenPath, setPendingOpenPath] = useState<string | null>(null)
 
   // 表示中プレゼンデータを更新する（App を再マウントするための key 更新を含む）。
   // showPresentation・handleCreateWithAi の両方から使う共通処理
@@ -186,8 +189,51 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
     setView('presentation')
   }, [presentationData, applyThemeAndNotify])
 
-  if (view === 'edit' && editSource) {
-    return <SlideEditor source={editSource} onExit={handleExitEdit} />
+  // 編集画面に渡す供給元（null = 編集画面を表示しない）。オープン要求を SlideEditor へ降ろすかの判定にも使う
+  const activeEditSource = view === 'edit' ? editSource : null
+
+  /** OS のファイル関連付けから渡されたパスを開く。読み込みに成功したかを返す */
+  const openAssociatedPath = useCallback(
+    async (path: string): Promise<boolean> => {
+      const result = await openSlidePackageFromPath(path)
+      await applyLoadResult(result)
+      return result.data !== null
+    },
+    [applyLoadResult],
+  )
+
+  // OS のファイル関連付け（Finder の「このアプリケーションで開く」等）から届いたオープン要求の受け口（#105・4番目の読み込み導線）。
+  // 編集中は未保存の変更を勝手に破棄しないよう、SlideEditor へ降ろして確認ダイアログを任せる
+  const handleOpenRequest = useCallback(
+    (path: string) => {
+      if (activeEditSource) {
+        setPendingOpenPath(path)
+        return
+      }
+      void openAssociatedPath(path)
+    },
+    [activeEditSource, openAssociatedPath],
+  )
+  useOpenSlideRequest(handleOpenRequest)
+
+  const confirmPendingOpen = useCallback(
+    (path: string) => {
+      setPendingOpenPath(null)
+      void openAssociatedPath(path)
+        .then((opened) => {
+          // 読み込みに成功した場合のみ Rust の編集モードフラグを落とす
+          // （失敗時は編集画面に留まるため、書き込みゲートを閉じて保存できなくしない）
+          if (opened) return exitEditMode()
+        })
+        .catch((error) => console.error('[main] 編集モードの無効化に失敗しました', error))
+    },
+    [openAssociatedPath],
+  )
+
+  const cancelPendingOpen = useCallback(() => setPendingOpenPath(null), [])
+
+  if (activeEditSource) {
+    return <SlideEditor source={activeEditSource} onExit={handleExitEdit} pendingOpenPath={pendingOpenPath} onConfirmOpen={confirmPendingOpen} onCancelOpen={cancelPendingOpen} />
   }
 
   if (view === 'home') {
