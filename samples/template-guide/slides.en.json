@@ -475,13 +475,20 @@
       }
     },
     {
-      "id": "guide-logo-fonts",
+      "id": "guide-logo",
       "layout": "two-column",
       "content": {
-        "title": "Logo & Font Settings",
+        "title": "Logo Settings",
         "left": {
           "heading": "meta.logo",
           "headingDescription": "Set a presentation logo",
+          "items": [
+            {"text": "src:", "emphasis": true, "description": " Path to logo image (default: /logo.png)"},
+            {"text": "width / height:", "emphasis": true, "description": " Size specification (default: 120 x 40)"},
+            {"text": "When omitted:", "emphasis": true, "description": " Logo is not displayed"}
+          ]
+        },
+        "right": {
           "codeBlock": {
             "header": "> JSON specification",
             "items": [
@@ -493,16 +500,37 @@
               "\u00a0\u00a0}",
               "}"
             ]
-          },
+          }
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "Set a logo image with meta.logo. Specify the path with src and the size with width / height. The logo is not displayed when meta.logo is omitted.",
+          "summary": [
+            "Set logo image with meta.logo",
+            "Specify src / width / height",
+            "No logo is shown when omitted"
+          ]
+        }
+      }
+    },
+    {
+      "id": "guide-fonts",
+      "layout": "two-column",
+      "content": {
+        "title": "Font Settings",
+        "left": {
+          "heading": "theme.fonts",
+          "headingDescription": "Customize font families",
           "items": [
-            {"text": "src:", "emphasis": true, "description": " Path to logo image (default: /logo.png)"},
-            {"text": "width / height:", "emphasis": true, "description": " Size specification (default: 120 x 40)"},
-            {"text": "When omitted:", "emphasis": true, "description": " Logo is not displayed"}
+            {"text": "heading:", "emphasis": true, "description": " Font for headings"},
+            {"text": "body:", "emphasis": true, "description": " Font for body text"},
+            {"text": "code:", "emphasis": true, "description": " Font for code blocks"},
+            {"text": "baseFontSize:", "emphasis": true, "description": " Base font size (default: 24px)"},
+            {"text": "sources:", "emphasis": true, "description": " Array of external font URLs (e.g., Google Fonts)"}
           ]
         },
         "right": {
-          "heading": "theme.fonts",
-          "headingDescription": "Customize font families",
           "codeBlock": {
             "header": "> JSON specification",
             "items": [
@@ -518,21 +546,13 @@
               "\u00a0\u00a0}",
               "}"
             ]
-          },
-          "items": [
-            {"text": "heading:", "emphasis": true, "description": " Font for headings"},
-            {"text": "body:", "emphasis": true, "description": " Font for body text"},
-            {"text": "code:", "emphasis": true, "description": " Font for code blocks"},
-            {"text": "baseFontSize:", "emphasis": true, "description": " Base font size (default: 24px)"},
-            {"text": "sources:", "emphasis": true, "description": " Array of external font URLs (e.g., Google Fonts)"}
-          ]
+          }
         }
       },
       "meta": {
         "notes": {
-          "speakerNotes": "Set a logo image with meta.logo and customize font families with theme.fonts. The logo is not displayed when meta.logo is omitted.",
+          "speakerNotes": "Customize font families with theme.fonts. Three types can be specified — heading / body / code — along with baseFontSize for the base size and sources for external font URLs.",
           "summary": [
-            "Set logo image with meta.logo",
             "Customize fonts with theme.fonts",
             "3 font types: heading / body / code",
             "baseFontSize and sources also configurable"

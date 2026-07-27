@@ -475,13 +475,20 @@
       }
     },
     {
-      "id": "guide-logo-fonts",
+      "id": "guide-logo",
       "layout": "two-column",
       "content": {
-        "title": "ロゴ・フォント設定",
+        "title": "ロゴ設定",
         "left": {
           "heading": "meta.logo",
           "headingDescription": "プレゼンテーションのロゴを設定",
+          "items": [
+            {"text": "src:", "emphasis": true, "description": " ロゴ画像のパス（デフォルト: /logo.png）"},
+            {"text": "width / height:", "emphasis": true, "description": " サイズ指定（デフォルト: 120 x 40）"},
+            {"text": "省略時:", "emphasis": true, "description": " ロゴは表示されません"}
+          ]
+        },
+        "right": {
           "codeBlock": {
             "header": "> JSON での指定方法",
             "items": [
@@ -493,16 +500,37 @@
               "\u00a0\u00a0}",
               "}"
             ]
-          },
+          }
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "meta.logo でロゴ画像を設定できます。src でパスを、width / height でサイズを指定します。meta.logo を省略するとロゴは表示されません。",
+          "summary": [
+            "meta.logo でロゴ画像を設定",
+            "src / width / height を指定",
+            "省略時はロゴを表示しない"
+          ]
+        }
+      }
+    },
+    {
+      "id": "guide-fonts",
+      "layout": "two-column",
+      "content": {
+        "title": "フォント設定",
+        "left": {
+          "heading": "theme.fonts",
+          "headingDescription": "フォントファミリーをカスタマイズ",
           "items": [
-            {"text": "src:", "emphasis": true, "description": " ロゴ画像のパス（デフォルト: /logo.png）"},
-            {"text": "width / height:", "emphasis": true, "description": " サイズ指定（デフォルト: 120 x 40）"},
-            {"text": "省略時:", "emphasis": true, "description": " ロゴは表示されません"}
+            {"text": "heading:", "emphasis": true, "description": " 見出し用フォント"},
+            {"text": "body:", "emphasis": true, "description": " 本文用フォント"},
+            {"text": "code:", "emphasis": true, "description": " コードブロック用フォント"},
+            {"text": "baseFontSize:", "emphasis": true, "description": " 基本フォントサイズ（デフォルト: 24px）"},
+            {"text": "sources:", "emphasis": true, "description": " Google Fonts 等の外部フォント URL 配列"}
           ]
         },
         "right": {
-          "heading": "theme.fonts",
-          "headingDescription": "フォントファミリーをカスタマイズ",
           "codeBlock": {
             "header": "> JSON での指定方法",
             "items": [
@@ -518,21 +546,13 @@
               "\u00a0\u00a0}",
               "}"
             ]
-          },
-          "items": [
-            {"text": "heading:", "emphasis": true, "description": " 見出し用フォント"},
-            {"text": "body:", "emphasis": true, "description": " 本文用フォント"},
-            {"text": "code:", "emphasis": true, "description": " コードブロック用フォント"},
-            {"text": "baseFontSize:", "emphasis": true, "description": " 基本フォントサイズ（デフォルト: 24px）"},
-            {"text": "sources:", "emphasis": true, "description": " Google Fonts 等の外部フォント URL 配列"}
-          ]
+          }
         }
       },
       "meta": {
         "notes": {
-          "speakerNotes": "meta.logo でロゴ画像を設定し、theme.fonts でフォントファミリーをカスタマイズできます。ロゴは meta.logo を省略すると表示されません。",
+          "speakerNotes": "theme.fonts でフォントファミリーをカスタマイズできます。heading / body / code の3種類を指定でき、baseFontSize で基本サイズ、sources で外部フォントの URL を指定します。",
           "summary": [
-            "meta.logo でロゴ画像を設定",
             "theme.fonts でフォントをカスタマイズ",
             "heading / body / code の3種類を指定可能",
             "baseFontSize と sources も設定可能"

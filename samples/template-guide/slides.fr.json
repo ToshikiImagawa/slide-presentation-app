@@ -475,13 +475,20 @@
       }
     },
     {
-      "id": "guide-logo-fonts",
+      "id": "guide-logo",
       "layout": "two-column",
       "content": {
-        "title": "Paramètres de logo et de polices",
+        "title": "Paramètres de logo",
         "left": {
           "heading": "meta.logo",
           "headingDescription": "Définir un logo de présentation",
+          "items": [
+            {"text": "src:", "emphasis": true, "description": " chemin de l'image du logo (par défaut : /logo.png)"},
+            {"text": "width / height:", "emphasis": true, "description": " spécification de la taille (par défaut : 120 x 40)"},
+            {"text": "En cas d'omission :", "emphasis": true, "description": " le logo n'est pas affiché"}
+          ]
+        },
+        "right": {
           "codeBlock": {
             "header": "> Spécification JSON",
             "items": [
@@ -493,16 +500,37 @@
               "\u00a0\u00a0}",
               "}"
             ]
-          },
+          }
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "Définissez une image de logo avec meta.logo. Indiquez le chemin avec src et la taille avec width / height. Le logo n'est pas affiché lorsque meta.logo est omis.",
+          "summary": [
+            "Définir l'image du logo avec meta.logo",
+            "Indiquer src / width / height",
+            "Aucun logo affiché en cas d'omission"
+          ]
+        }
+      }
+    },
+    {
+      "id": "guide-fonts",
+      "layout": "two-column",
+      "content": {
+        "title": "Paramètres de polices",
+        "left": {
+          "heading": "theme.fonts",
+          "headingDescription": "Personnaliser les familles de polices",
           "items": [
-            {"text": "src:", "emphasis": true, "description": " chemin de l'image du logo (par défaut : /logo.png)"},
-            {"text": "width / height:", "emphasis": true, "description": " spécification de la taille (par défaut : 120 x 40)"},
-            {"text": "En cas d'omission :", "emphasis": true, "description": " le logo n'est pas affiché"}
+            {"text": "heading:", "emphasis": true, "description": " police des titres"},
+            {"text": "body:", "emphasis": true, "description": " police du corps de texte"},
+            {"text": "code:", "emphasis": true, "description": " police des blocs de code"},
+            {"text": "baseFontSize:", "emphasis": true, "description": " taille de police de base (par défaut : 24px)"},
+            {"text": "sources:", "emphasis": true, "description": " tableau d'URL de polices externes (par ex. Google Fonts)"}
           ]
         },
         "right": {
-          "heading": "theme.fonts",
-          "headingDescription": "Personnaliser les familles de polices",
           "codeBlock": {
             "header": "> Spécification JSON",
             "items": [
@@ -518,21 +546,13 @@
               "\u00a0\u00a0}",
               "}"
             ]
-          },
-          "items": [
-            {"text": "heading:", "emphasis": true, "description": " police des titres"},
-            {"text": "body:", "emphasis": true, "description": " police du corps de texte"},
-            {"text": "code:", "emphasis": true, "description": " police des blocs de code"},
-            {"text": "baseFontSize:", "emphasis": true, "description": " taille de police de base (par défaut : 24px)"},
-            {"text": "sources:", "emphasis": true, "description": " tableau d'URL de polices externes (par ex. Google Fonts)"}
-          ]
+          }
         }
       },
       "meta": {
         "notes": {
-          "speakerNotes": "Définissez une image de logo avec meta.logo et personnalisez les familles de polices avec theme.fonts. Le logo n'est pas affiché lorsque meta.logo est omis.",
+          "speakerNotes": "Personnalisez les familles de polices avec theme.fonts. Trois types peuvent être définis — heading / body / code — ainsi que baseFontSize pour la taille de base et sources pour les URL de polices externes.",
           "summary": [
-            "Définir l'image du logo avec meta.logo",
             "Personnaliser les polices avec theme.fonts",
             "3 types de polices : heading / body / code",
             "baseFontSize et sources sont aussi configurables"
