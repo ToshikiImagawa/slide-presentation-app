@@ -5,7 +5,7 @@ type: spec
 status: draft
 sdd-phase: specify
 created: 2026-02-02
-updated: 2026-07-24
+updated: 2026-07-27
 depends-on:
   - prd-presentation-foundation
 tags:
@@ -22,7 +22,7 @@ category: presentation-foundation
 
 **ドキュメント種別:** 抽象仕様書 (Spec)
 **SDDフェーズ:** Specify (仕様化)
-**最終更新日:** 2026-07-24
+**最終更新日:** 2026-07-27
 **関連 Design Doc:** [presentation-foundation_design.md](./presentation-foundation_design.md)
 **関連 PRD:** [presentation-foundation.md](../requirement/presentation-foundation.md)
 
@@ -51,7 +51,7 @@ category: presentation-foundation
 | アクター | ユースケース | 概要 | 関連要求 |
 |------|------|------|------|
 | 発表者 | スライドをナビゲーションする | キーボード・タッチ・矢印ボタンでスライド間を移動し、スライド番号・プログレスバー・URLハッシュで現在位置を把握・共有する | FR_600〜FR_606 |
-| 発表者 | プレゼンテーションを表示する | ホーム画面からスライド（サンプルまたはローカルパッケージ）を選び、Reveal.js でレンダリングして発表を開始する | FR_700, FR_701 |
+| 発表者 | プレゼンテーションを表示する | 選ばれたスライドを Reveal.js でレンダリングして発表を開始する。**スライドを選ぶ／開く側の要求は [slide-package-open_spec.md](./slide-package-open_spec.md) が所有する**（本仕様は開いた後の描画に責務を絞る） | FR_700, FR_701 |
 | 聴衆 | スライドを閲覧する | 基準解像度を維持したまま、任意のウインドウサイズで崩れなく表示されたスライドを閲覧する | FR_800, NFR_200, NFR_203 |
 | 発表者 | ブランディングを表示する | 画面左下にロゴを常時固定表示し、`meta.logo` でロゴをカスタマイズする（未指定時は非表示） | FR_900〜FR_902 |
 
@@ -243,6 +243,8 @@ function PresentationContainer() {
 ## 7.1. 初期化シーケンス
 
 起動時はまず並行初期化を完了させてホーム画面を表示し、ユーザーがスライド（サンプルまたはローカルパッケージ）を選択した時点で App をマウントして Reveal.js を初期化する。
+
+> **開く経路の詳細は [slide-package-open_spec.md](./slide-package-open_spec.md) に委譲する。** ローカルパッケージの入口は4経路（ファイル選択 / URL / 最近開いた一覧 / OS ファイル関連付け）あり、OS ファイル関連付け経由では**並行初期化の完了後に保留された開く要求を引き取ってから**ホーム画面かプレゼンテーションかを決める。下図はホーム画面経由の経路のみを示す。
 
 ```mermaid
 sequenceDiagram

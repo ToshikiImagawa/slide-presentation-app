@@ -4,7 +4,7 @@ title: パッケージ同梱アドオンのランタイムロード 要求仕様
 type: prd
 status: approved
 created: 2026-07-22
-updated: 2026-07-26
+updated: 2026-07-27
 priority: high
 risk: high
 tags:
@@ -441,6 +441,8 @@ macOS（WKWebView）で asset URL の `<script>` 実行が可能であること�
 
 アドオンのロードは「`.tgz` 展開 → `allow_asset_dir(baseDir)` → `<script>` 注入」の順序を守る。`allow_asset_dir` 実行前に asset URL を読むと 403 になる（実機 PoC で確認済み）。
 
+入口が増えてもこの順序は不変とする。**OS のファイル関連付け経由で開いた場合でも、展開 → `allow_asset_dir` → `<script>` 注入の順序は変わらない**（[slide-package-open.md](./slide-package-open.md) FR-009 / DC-005）。
+
 **検証方法:** テストによる検証
 
 ---
@@ -463,7 +465,7 @@ macOS（WKWebView）で asset URL の `<script>` 実行が可能であること�
 
 # 6. 前提条件
 
-- `extract_slide_package`（`.tgz` 展開）と `allow_asset_dir`（asset スコープの再帰許可）が Rust 側に存在すること
+- `extract_slide_package`（`.tgz` 展開）と `allow_asset_dir`（asset スコープの再帰許可）が Rust 側に存在すること。開く入口は [slide-package-open.md](./slide-package-open.md) が所有し、本要求はどの入口から開かれた場合も同じロード順序（DC-004）を前提とする
 - `convertFileSrc` によりローカルパスを asset URL 化できること
 - 実機 PoC（#5）で macOS における asset URL の `<script>` 実行が確認済みであること
 - `ComponentRegistry` が default/custom の二層構造で動作していること

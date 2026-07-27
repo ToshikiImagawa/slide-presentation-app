@@ -105,11 +105,13 @@ Running the app requires a Rust toolchain (`cargo`/`rustc`) for Tauri. See the
 
 On launch, the app opens on a home screen where you choose what to present.
 
-| Action              | Description                                                                                 |
-|---------------------|---------------------------------------------------------------------------------------------|
-| **Open a File**     | Pick a `slides.json` or a `.spkg` slide package from disk (legacy `.tgz` also supported)    |
-| **Open Sample**     | Load the bundled sample deck (the built-in template guide when no `slides.json` is bundled) |
-| **Recently Opened** | Re-open a recently used package; the list is persisted across launches                      |
+| Action                     | Description                                                                                 |
+|----------------------------|---------------------------------------------------------------------------------------------|
+| **Open a File**            | Pick a `slides.json` or a `.spkg` slide package from disk (legacy `.tgz` also supported)     |
+| **Open from a URL**        | Fetch a `.spkg` slide package over HTTPS and open it (the download is cached locally)        |
+| **Open Sample**            | Load the bundled sample deck (the built-in template guide when no `slides.json` is bundled)  |
+| **Recently Opened**        | Re-open a recently used package; the list is persisted across launches                      |
+| **Double-click a `.spkg`** | Open a package straight from your OS file manager — no need to launch the app first          |
 
 While presenting, the **Home** button in the top-left toolbar returns to this screen.
 
@@ -121,6 +123,22 @@ older versions can still be opened), from disk at any time using the **Open a Fi
 `.spkg`/`.tgz` packages are extracted into the app's cache directory first. Any
 `image/`, `voice/`, `theme/`, or `font/` relative references inside the slide data are resolved against the folder
 the content lives in. The app remembers the last opened file and reloads it automatically on next launch.
+
+### Opening a `.spkg` from the OS
+
+`.spkg` files are associated with the app on **macOS, Windows, and Linux**, so you can double-click one in Finder /
+Explorer / your file manager — or right-click and choose to open it with this app — without launching the app first.
+Everything described above applies unchanged: the package is extracted into the cache directory, `image/`, `voice/`,
+`theme/`, and `font/` relative references resolve the same way, embedded add-ons go through the same trust prompt, and
+the file is recorded as the last opened one so the next launch reloads it automatically.
+
+- If the app is **not running**, it launches and goes straight to the presentation, skipping the home screen.
+- If the app is **already running**, the existing window is reused — no second window is opened.
+- If you are **in edit mode with unsaved changes**, a confirmation dialog appears first so nothing is discarded
+  silently.
+
+Only `.spkg` is associated. Legacy `.tgz` packages can still be opened from the home screen, but they are not
+registered with the OS (`.tgz` is a generic tar+gzip extension that belongs to your archiver).
 
 ## Edit Mode
 
@@ -730,6 +748,10 @@ Files placed in the `public/` directory are accessible at the root path after bu
 ## Slide Packages
 
 Export and distribute slide content (slides.json + images, audio, themes, fonts, etc.) as npm packages.
+
+A distributed `.spkg` can be opened by the recipient with a plain double-click from their OS file manager — see
+[Opening a `.spkg` from the OS](#opening-a-spkg-from-the-os). No build step, no `VITE_SLIDE_PACKAGE`, no instructions
+beyond "double-click this file."
 
 ### Export (Create Package)
 
