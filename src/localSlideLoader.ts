@@ -26,6 +26,8 @@ export interface LoadedSlidePackage {
   sourcePath: string
   /** convertFileSrc で asset URL 化済みのアドオンバンドル URL（manifest 宣言かつ addons/ 配下のみ） */
   addonScripts: string[]
+  /** package.json 由来の書き出し用 name/version。編集モードの初期値に使う（無ければ両フィールド null） */
+  identity: SlidePackageIdentity
   /** アドオン登録の所有者スコープ（= baseDir）。パッケージ切替時の owner 単位アンロードに使用する */
   owner: string
 }
@@ -164,6 +166,50 @@ export async function getPackageAddonNames(baseDir: string): Promise<string[]> {
   }
 }
 
+/** パッケージの package.json 由来の書き出し用の識別情報。読めない・欠落・型不一致のフィールドは null */
+export interface SlidePackageIdentity {
+  /** スコープを除いたパッケージ名（@slides/foo → foo）。UI・書き出しは @slides/{name} 固定表記なので name 部分だけを扱う */
+  name: string | null
+  version: string | null
+}
+
+/** package.json が無い・読めない場合の identity（呼び出し側は meta.title からの自動生成にフォールバックする） */
+const NO_PACKAGE_IDENTITY: SlidePackageIdentity = { name: null, version: null }
+
+/**
+ * package.json テキストから書き出し用の name / version を取り出す（純粋関数）。JSON が不正・オブジェクトでない・
+ * フィールドが欠落/型不一致なら該当フィールドは null。値の妥当性は検証しない（CLI 書き出しは name を無検証で
+ * 通すため、既存パッケージには GUI の検証規則に反する name が実在する。そのまま返し、UI 側の検証でユーザーに
+ * 提示して修正させる）
+ */
+export function parsePackageIdentity(raw: string): SlidePackageIdentity {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    return NO_PACKAGE_IDENTITY
+  }
+  if (typeof parsed !== 'object' || parsed === null) return NO_PACKAGE_IDENTITY
+  const { name, version } = parsed as { name?: unknown; version?: unknown }
+  const trimmedName = typeof name === 'string' ? name.trim() : ''
+  const trimmedVersion = typeof version === 'string' ? version.trim() : ''
+  return {
+    // スコープを除く（@slides/foo → foo）
+    name: trimmedName === '' ? null : trimmedName.replace(/^@[^/]*\//, ''),
+    version: trimmedVersion === '' ? null : trimmedVersion,
+  }
+}
+
+/** baseDir/package.json から書き出し用の name / version を取得する（編集モードの初期値に使う）。
+ * package.json が無い（slides.json 単体を開いた場合など）・読めない場合は両フィールド null */
+async function getPackageIdentity(baseDir: string): Promise<SlidePackageIdentity> {
+  try {
+    return parsePackageIdentity(await readTextFile(`${baseDir}/package.json`))
+  } catch {
+    return NO_PACKAGE_IDENTITY
+  }
+}
+
 /** スライド読み込みの結果と、それに伴う最近使ったリストの更新をまとめて返す（recentPackages が null のときは変更なし＝再設定不要） */
 export interface SlidePackageLoadResult {
   data: LoadedSlidePackage | null
@@ -253,10 +299,11 @@ async function loadSlidePackage(selectedPath: string): Promise<LoadedSlidePackag
     throw new Error('スライドデータの形式が正しくありません（meta.title、slides 配列などを確認してください）')
   }
 
-  // allow_asset_dir 完了後に同梱アドオンを解決する（owner はパッケージ単位で一意な baseDir）
-  const addonScripts = await resolvePackageAddons(baseDir)
+  // allow_asset_dir 完了後に同梱アドオンと書き出し用 identity を解決する（互いに独立した読み取りなので並列）。
+  // owner はパッケージ単位で一意な baseDir
+  const [addonScripts, identity] = await Promise.all([resolvePackageAddons(baseDir), getPackageIdentity(baseDir)])
 
-  return { data: resolveLocalAssetPaths(parsed, baseDir), rawText: raw, baseDir, sourcePath: selectedPath, addonScripts, owner: baseDir }
+  return { data: resolveLocalAssetPaths(parsed, baseDir), rawText: raw, baseDir, sourcePath: selectedPath, addonScripts, identity, owner: baseDir }
 }
 
 /** 最近使ったリストを取得する */

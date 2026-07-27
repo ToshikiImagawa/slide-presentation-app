@@ -30,11 +30,17 @@ export interface EditSource {
   baseDir: string
   /** 保存ダイアログの初期パス（読込元）。サンプル/新規は undefined */
   sourcePath?: string
+  /** パッケージ package.json 由来の書き出しパッケージ名（@slides/ を除いた name 部分）。無い場合は meta.title から自動生成する */
+  packageName?: string | null
+  /** パッケージ package.json 由来のバージョン。無い場合は DEFAULT_VERSION を初期値にする */
+  packageVersion?: string | null
   /** AI 生成パネルを開いた状態で編集を開始するか（ホーム画面の「AIで新規作成」導線から遷移した場合のみ true） */
   aiPanelExpanded?: boolean
 }
 
 type StatusState = { kind: 'idle' | 'ok' | 'error'; message: string }
+
+const DEFAULT_VERSION = '1.0.0'
 
 /** meta.title からパッケージ名（@slides/{name}）の初期値を生成する。あくまで初期値の提案であり、
  * 書き出し前にユーザーが確認・修正することを前提とする（自動生成値は常に下記検証を満たす・#88） */
@@ -73,10 +79,12 @@ export function SlideEditor({ source, onExit }: { source: EditSource; onExit: ()
   const { t } = useTranslation()
   const [text, setText] = useState(source.rawText)
   const [selectedIndex, setSelectedIndex] = useState(0)
-  const [name, setName] = useState(() => slugify(parseSlides(source.rawText).data.meta?.title ?? 'slides'))
-  // タイトルからの自動生成値をユーザーが手動編集したか（未編集の間は確認を促すヒントを表示する・#88）
-  const [nameEdited, setNameEdited] = useState(false)
-  const [version, setVersion] = useState('1.0.0')
+  // パッケージ名・バージョンの初期値は package.json 由来の値を優先し、無ければ meta.title から自動生成する（#88 の続き）。
+  // 検証に通らない name（CLI 書き出しは無検証なので実在する）もそのまま入れ、UI の検証エラーで修正を促す
+  const [name, setName] = useState(() => source.packageName || slugify(parseSlides(source.rawText).data.meta?.title ?? 'slides'))
+  const [version, setVersion] = useState(source.packageVersion || DEFAULT_VERSION)
+  // 自動生成値のままか（package.json 由来・手動編集後は確認を促すヒントを出さない・#88）
+  const [nameIsAuto, setNameIsAuto] = useState(!source.packageName)
   const [status, setStatus] = useState<StatusState>({ kind: 'idle', message: '' })
   // AI 生成結果の適用待ち候補（差分確認ダイアログで承認するまで器に触れない・①/FR-008）。
   // validationErrors は exhausted で非空になりうる残存検証エラー（差分確認ダイアログへ渡す・#47）
@@ -323,12 +331,12 @@ export function SlideEditor({ source, onExit }: { source: EditSource; onExit: ()
             value={name}
             onChange={(e) => {
               setName(e.target.value)
-              setNameEdited(true)
+              setNameIsAuto(false)
             }}
             size="small"
             sx={{ width: 180 }}
             error={nameErrorMessage !== null}
-            helperText={nameErrorMessage ?? (nameEdited ? '' : t('edit.packageNameHint', 'スライドタイトルから自動生成された値です。書き出し前に確認・修正してください'))}
+            helperText={nameErrorMessage ?? (nameIsAuto ? t('edit.packageNameHint', 'スライドタイトルから自動生成された値です。書き出し前に確認・修正してください') : '')}
           />
           <TextField label={t('edit.version', 'バージョン')} value={version} onChange={(e) => setVersion(e.target.value)} size="small" sx={{ width: 110 }} error={versionErrorMessage !== null} helperText={versionErrorMessage ?? ''} />
           <Button variant="outlined" size="small" onClick={handleSave} disabled={!canWrite}>

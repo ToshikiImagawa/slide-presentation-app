@@ -60,9 +60,16 @@ function saveButton(): HTMLButtonElement {
   return screen.getByRole('button', { name: '保存' }) as HTMLButtonElement
 }
 
+function exportButton(): HTMLButtonElement {
+  return screen.getByRole('button', { name: '.spkg 書き出し' }) as HTMLButtonElement
+}
+
+/** assets/locales/ja-JP.json の edit.packageNameHint（自動生成値の確認を促すヒント） */
+const PACKAGE_NAME_HINT = 'スライドタイトルから自動生成された値です。書き出し前に確認・修正してください'
+
 /** 「.spkg 書き出し」を押し、exportSlidePackage に渡された includedAddons を取り出す */
 async function exportAndGetIncludedAddons(): Promise<string[]> {
-  fireEvent.click(screen.getByRole('button', { name: '.spkg 書き出し' }))
+  fireEvent.click(exportButton())
   await waitFor(() => expect(h.exportSlidePackage).toHaveBeenCalled())
   const opts = h.exportSlidePackage.mock.calls[0][1] as { includedAddons: string[] }
   return opts.includedAddons
@@ -364,10 +371,6 @@ describe('SlideEditor パッケージ名・バージョンの入力検証（#88�
     h.getPackageAddonNames.mockReset().mockResolvedValue([])
   })
 
-  function exportButton(): HTMLButtonElement {
-    return screen.getByRole('button', { name: '.spkg 書き出し' }) as HTMLButtonElement
-  }
-
   it('自動生成された初期値は検証を通過し、書き出しボタンが有効', async () => {
     render(
       <Wrapper>
@@ -383,7 +386,7 @@ describe('SlideEditor パッケージ名・バージョンの入力検証（#88�
         <SlideEditor source={{ rawText: validJson, baseDir: '' }} onExit={() => {}} />
       </Wrapper>,
     )
-    expect(await screen.findByText('スライドタイトルから自動生成された値です。書き出し前に確認・修正してください')).toBeTruthy()
+    expect(await screen.findByText(PACKAGE_NAME_HINT)).toBeTruthy()
   })
 
   it('パッケージ名に不正な文字（大文字・空白）を入力すると検証エラーが表示され、書き出せない', async () => {
@@ -430,13 +433,68 @@ describe('SlideEditor パッケージ名・バージョンの入力検証（#88�
     fireEvent.change(screen.getByLabelText('パッケージ名'), { target: { value: 'my-deck' } })
     fireEvent.change(screen.getByLabelText('バージョン'), { target: { value: '2.1.0' } })
     // 手動編集後はヒントが消える
-    expect(screen.queryByText('スライドタイトルから自動生成された値です。書き出し前に確認・修正してください')).toBeNull()
+    expect(screen.queryByText(PACKAGE_NAME_HINT)).toBeNull()
 
     fireEvent.click(exportButton())
     await waitFor(() => expect(h.exportSlidePackage).toHaveBeenCalled())
     const opts = h.exportSlidePackage.mock.calls[0][1] as { name: string; version: string }
     expect(opts.name).toBe('my-deck')
     expect(opts.version).toBe('2.1.0')
+  })
+})
+
+describe('SlideEditor パッケージ名・バージョンの package.json 復元（#88 の続き）', () => {
+  beforeEach(() => {
+    h.saveSlidesJson.mockReset()
+    h.exportSlidePackage.mockReset().mockResolvedValue('/out/slides.spkg')
+    h.chooseSlidesSavePath.mockReset().mockResolvedValue('/tmp/slides.json')
+    h.chooseExportDir.mockReset().mockResolvedValue('/out')
+    h.listBuiltinAddons.mockReset().mockResolvedValue([])
+    h.listBuiltinDistAddons.mockReset().mockResolvedValue([])
+    h.getPackageAddonNames.mockReset().mockResolvedValue([])
+  })
+
+  it('package.json 由来の name/version が初期値になり、自動生成ヒントを出さない', async () => {
+    render(
+      <Wrapper>
+        <SlideEditor source={{ rawText: validJson, baseDir: '/pkg', packageName: 'restored-deck', packageVersion: '3.2.1' }} onExit={() => {}} />
+      </Wrapper>,
+    )
+
+    expect((screen.getByLabelText('パッケージ名') as HTMLInputElement).value).toBe('restored-deck')
+    expect((screen.getByLabelText('バージョン') as HTMLInputElement).value).toBe('3.2.1')
+    // package.json 由来の値は自動生成ではないのでヒントは出さない
+    expect(screen.queryByText(PACKAGE_NAME_HINT)).toBeNull()
+
+    fireEvent.click(exportButton())
+    await waitFor(() => expect(h.exportSlidePackage).toHaveBeenCalled())
+    const opts = h.exportSlidePackage.mock.calls[0][1] as { name: string; version: string }
+    expect(opts.name).toBe('restored-deck')
+    expect(opts.version).toBe('3.2.1')
+  })
+
+  it('package.json が無い（name/version が null）なら meta.title からの自動生成にフォールバックし、ヒントを表示する', async () => {
+    render(
+      <Wrapper>
+        <SlideEditor source={{ rawText: validJson, baseDir: '/pkg', packageName: null, packageVersion: null }} onExit={() => {}} />
+      </Wrapper>,
+    )
+
+    expect(await screen.findByText(PACKAGE_NAME_HINT)).toBeTruthy()
+    expect((screen.getByLabelText('パッケージ名') as HTMLInputElement).value).toBe('t')
+    expect((screen.getByLabelText('バージョン') as HTMLInputElement).value).toBe('1.0.0')
+  })
+
+  it('検証に通らない name（CLI 書き出しのアンダースコア等）もそのまま初期値になり、検証エラーで修正を促す', async () => {
+    render(
+      <Wrapper>
+        <SlideEditor source={{ rawText: validJson, baseDir: '/pkg', packageName: 'sdd-workflow_af_ja_dena', packageVersion: '1.0.0' }} onExit={() => {}} />
+      </Wrapper>,
+    )
+
+    expect((screen.getByLabelText('パッケージ名') as HTMLInputElement).value).toBe('sdd-workflow_af_ja_dena')
+    expect(screen.getByText('パッケージ名は小文字英数字とハイフンのみ使用でき、先頭は英数字にしてください')).toBeTruthy()
+    expect(exportButton().disabled).toBe(true)
   })
 })
 
