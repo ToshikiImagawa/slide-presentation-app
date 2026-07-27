@@ -60,6 +60,8 @@ All notable changes to this project will be documented in this file.
       heading and colliding with the page number)
     - "Logo & Font Settings" split into "Logo Settings" and "Font Settings" (overflowed by 237px, truncating the end of
       the code block)
+- **Clipped content in the French sample** — Shortened the two lines on "Theme Configuration Details" that wrapped only
+  in French, so its right column no longer overflows by 43px at 1280x720 (`slides.fr.json` only; ja / en already fit)
 - **Broken references in the sample** — Removed references to a non-existent audio file (English) and log file
   (`/demo-log.txt`)
 
