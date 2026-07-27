@@ -124,7 +124,6 @@ describe('SlideJsonEditor', () => {
 
     // jsdom が解釈できないセレクタ（MUI の ::-moz-focus-inner 等）は matches が throw するため無視する
     function appliesToEditor(rule: CSSRule): rule is CSSStyleRule {
-      if (!('selectorText' in rule)) return false
       try {
         return editor.matches((rule as CSSStyleRule).selectorText)
       } catch {
@@ -141,7 +140,8 @@ describe('SlideJsonEditor', () => {
 
     // 走査が CodeMirror の注入分を実際に捕捉できている証明（これが無いと空振りで pass してしまう）
     expect(backgrounds).toContain('var(--fixed-background)')
-    expect(backgrounds.filter((bg) => /^(#fff(fff)?|white|rgb\(255,\s*255,\s*255\))$/i.test(bg))).toEqual([])
+    // CSSOM は色指定を rgb() 形式へ正規化するため、ライブラリが white / #fff どちらで書いてもこの 1 値で検知できる
+    expect(backgrounds).not.toContain('rgb(255, 255, 255)')
   })
 
   it('すべて置換できる', () => {
