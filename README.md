@@ -38,6 +38,42 @@ the simplicity and automation benefits of a data-driven approach.
 
 > These images are generated automatically — see [Screenshots & E2E](#screenshots--e2e).
 
+## Download / Installation
+
+Pre-built installers for each tagged release are published on the
+[GitHub Releases](https://github.com/ToshikiImagawa/slide-presentation-app/releases) page.
+
+| OS      | File                                         |
+|---------|----------------------------------------------|
+| macOS   | `.dmg`                                       |
+| Windows | `.exe` (NSIS installer) or `.msi`            |
+| Linux   | `.AppImage`, `.deb`, or `.rpm`               |
+
+Download the file matching your OS from the latest release and run it.
+
+### macOS Gatekeeper warning
+
+This app is self-signed but not notarized by Apple, so the first time you open it, macOS Gatekeeper shows a warning
+that the developer cannot be verified. Right-click (or Control-click) the app in Finder and choose **Open**, then
+confirm in the dialog — this clears the quarantine attribute, and the warning will not appear again for that copy of
+the app. This is macOS's own code-signature verification, unrelated to any password prompt from the app itself.
+
+### Keychain and password prompts
+
+This app never uses the OS keychain or any secure credential store. The only thing it persists locally is the path
+to the last opened slide file, saved as plain JSON in the app's data directory via `tauri-plugin-store` and
+`tauri-plugin-fs`. You will never be asked for a keychain password when installing or launching the app — the
+Gatekeeper warning above is the only prompt you may see.
+
+### Updating
+
+This app does not currently check for updates automatically. The release pipeline already generates and signs a
+`latest.json` update manifest, and the Tauri updater plugin is registered on the native side, but the frontend does
+not yet call it to check for or apply updates. For now, update by downloading the latest installer from
+[Releases](https://github.com/ToshikiImagawa/slide-presentation-app/releases) and installing it over the existing
+copy. If in-app update checks are added in the future, updates will be verified against the same signing key, and
+depending on your environment, the Gatekeeper warning above may reappear after updating.
+
 ## Setup
 
 ```bash
