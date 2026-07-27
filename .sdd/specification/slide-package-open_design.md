@@ -34,7 +34,7 @@ category: slide-package
 
 本設計書は [Issue #106](https://github.com/ToshikiImagawa/slide-presentation-app/issues/106) にて、**確定済みの設計を先行して文書化**したものである（D-001: 仕様書は実装前に更新されている）。ネイティブ層とフロントエンド層は本書の「4.3. 層間契約」を唯一の真実源として別 Issue で並行実装され、Rust 層は [PR #108](https://github.com/ToshikiImagawa/slide-presentation-app/pull/108)、フロントエンド層は [PR #107](https://github.com/ToshikiImagawa/slide-presentation-app/pull/107) で完了した。
 
-**実装時に設計から変えた点**は本書に反映済みである（4.3 の契約シグネチャと採用パス、6.1 / 6.3 のコード例、9.1 の決定 #3 の `cfg` 範囲、8. のテスト戦略）。設計と実装が食い違って見える場合は、コードを真実として本書を疑うこと。
+**実装時に設計から変えた点**は、該当する各節に「実装時の変更」として注記してある。設計と実装が食い違って見える場合は、コードを真実として本書を疑うこと。
 
 ## 1.1. 実装進捗
 
@@ -51,7 +51,7 @@ category: slide-package
 | `RunEvent::Opened` の購読 | 🟢 | FR_004。`.build()`（`src-tauri/src/lib.rs:1131`）後の `app.run(\|_app_handle, _event\|)`（`:1134`）内で購読。`#[cfg(target_os = "macos")]` でアームを隔離（`:1137`・決定 #3 参照） |
 | Linux MIME 型定義（shared-mime-info XML） | 🟢 | NFR_004。`src-tauri/linux/slide-package-mime.xml`。`bundle.linux.deb.files` / `rpm.files` で `/usr/share/mime/packages/slide-presentation-app.xml` へ同梱（`src-tauri/tauri.conf.json:60-71`） |
 | 起動時の pending 引き取り | 🟢 | FR_005。`useOpenSlideRequest(handleOpenRequest)`（`src/main.tsx:234`）。hook 内で `listen` を張った後に pull する（`src/hooks/useOpenSlideRequest.ts:53-61`） |
-| 編集モード中の確認ダイアログ | 🟢 | FR_008。`view === 'edit'` なら `setPendingOpenPath`（`src/main.tsx:224-233`）→ `SlideEditor` へ `openRequestPath` / `onResolveOpen` を渡し（`:249`）、回答を `handleResolveOpen`（`:237-246`）で受ける。エディタ側の分岐は `src/edit/SlideEditor.tsx:240-245` |
+| 編集モード中の確認ダイアログ | 🟢 | FR_008。外部要求ゲート（`src/main.tsx:224-246` ＋ `src/edit/SlideEditor.tsx:240-250`）。責務の分担は 4.2、判定基準は 7. の NFR_003 が持つ |
 
 ## 1.2. 実機動作確認の状況
 
@@ -175,13 +175,19 @@ Rust イベント:  emit("open-slide-package")
 |:---|:---|
 | 取り出し口 | `take_pending_open_paths` のみ。他のコマンド・イベントから実データを取得しない |
 | 戻り値の意味 | 空配列は「開く要求なし」。エラーではない |
-| 戻り値の型 | `Result<Vec<String>, String>`（`src-tauri/src/lib.rs:115`）。設計当初は `Vec<String>` としていたが、`Mutex` の毒化を `unwrap` で panic させず `Err` に落とす形へ実装時に変更した。JS 境界では `Ok` が resolve・`Err` が reject になるため、成功時の契約（配列 1 本）は変わらない |
+| 戻り値の型 | `Result<Vec<String>, String>`（`take_pending_open_paths`）※1 |
 | クリアのタイミング | 戻り値を作るのと同じロック内。呼び出し側の ack を待たない |
 | シグナルのペイロード | なし。フロントエンドはペイロードを一切読まない |
-| シグナルの発火条件 | 保留領域へ push した直後。実装は `dispatch_open_paths()`（`src-tauri/src/lib.rs:122`）に集約し、**コールドスタート・ホットスタートの両方で emit する**（設計当初はホットスタートのみとしたが、経路ごとに分岐させず「push したら必ず通知する」1本の関数に寄せた。コールドスタートで listen 前に emit が飛んでも、起動時 pull が同じ pending を取るため取りこぼさない） |
-| 複数パス | `Vec<String>` を返すが、フロントエンドは**最後の1件**のみを開く（`src/hooks/useOpenSlideRequest.ts:18`・9.2 参照） |
+| シグナルの発火条件 | 保留領域へ push した直後。**コールドスタート・ホットスタートの両方で emit する** ※2 |
+| 複数パス | `Vec<String>` を返すが、フロントエンドは**最後の1件**のみを開く ※3 |
 | 呼び出し回数 | フロントエンドは「起動時に1回」＋「シグナル受信ごとに1回」叩く。空配列が返るのは正常系 |
-| 非 Tauri 環境 | `invoke` / `listen` の reject は握りつぶす（`src/hooks/useOpenSlideRequest.ts:19-22`・`:57-60`）。`vite --mode screenshot` の素のブラウザでコマンドが存在せず、起動をブロックさせないため |
+| 非 Tauri 環境 | `invoke` / `listen` の reject は握りつぶす。`vite --mode screenshot` の素のブラウザでコマンドが存在せず、起動をブロックさせないため |
+
+**※1 実装時の変更**: 設計当初は `Vec<String>` としていたが、`Mutex` の毒化を `unwrap` で panic させず `Err` に落とす形へ変更した。JS 境界では `Ok` が resolve・`Err` が reject になるため、成功時の契約（配列 1 本）は変わらない。
+
+**※2 実装時の変更**: 当初はホットスタート経路のみ emit するとしていたが、経路ごとに分岐させず「push したら必ず通知する」1本の関数（`dispatch_open_paths`）に寄せた。コールドスタートで listen 前に emit が飛んでも、起動時 pull が同じ保留領域を取るため取りこぼさない。
+
+**※3 実装時の変更**: 当初は「先頭1件」としていたが、単一ウィンドウアプリでは「最後に届いた要求＝利用者の最新の意図」を採るのが自然なため変更した（9.2 参照）。
 
 ---
 
@@ -202,7 +208,7 @@ fn take_pending_open_paths(state: tauri::State<PendingOpenPaths>) -> Result<Vec<
 
 `std::mem::take` により「現在の内容を返す」と「空にする」が同一のロック区間で完了する。ロックを2回取る実装（`clone()` してから `clear()`）にしてはならない。
 
-毒化した `Mutex` は `unwrap_or_else(|e| e.into_inner())` で押し通さず `Err` を返す（4.3 参照）。フロントエンドは reject を「要求なし」と同じ扱いで握りつぶすため（`src/hooks/useOpenSlideRequest.ts:19-22`）、取りこぼしはあってもアプリは起動を続ける。
+毒化した `Mutex` を `Err` で返す理由は 4.3 の ※1 が持つ。フロントエンドはこの reject を「要求なし」と同じ扱いで握りつぶすため、取りこぼしはあってもアプリの起動は継続する。
 
 ---
 
@@ -256,7 +262,7 @@ app.run(|_app_handle, _event| {
 });
 ```
 
-保留領域は空で `manage` し、コールドスタートの argv 収集は `setup` 内で行う（`manage` の引数で collect する形にはしなかった）。emit を含む `dispatch_open_paths` を1本使うため、コールドスタートでもシグナルが飛ぶ（4.3 参照）。
+保留領域は空で `manage` し、コールドスタートの argv 収集は `setup` 内で行う（`manage` の引数で collect する形にはしなかった）。3経路すべてが `dispatch_open_paths` を通る（発火条件は 4.3 参照）。
 
 ## 6.2. フロントエンド層
 
@@ -327,7 +333,7 @@ function handleResolveOpen(confirmed: boolean): Promise<void>
 | NFR_004（3 OS 同等性） | 到着経路の差（`argv` / `RunEvent::Opened` / 多重起動抑止コールバック）をすべて `dispatch_open_paths`（`src-tauri/src/lib.rs:122`）経由で保留領域へ収束させる。Linux は MIME 型定義 XML の同梱で登録の欠落を、macOS は `exportedType` の UTI 宣言で型解決を補う |
 | NFR_005（リグレッションなし） | 既存3経路の関数・共通読み込み手順に手を入れず、外部要求を「パス1本」に正規化して既存経路へ合流させる。既存プラグイン登録・`invoke_handler`・`setup` の内容は変更しない（追加のみ） |
 | DC_005（アドオンロード順序の不変） | 外部要求を `loadSlidePackage()`（`src/localSlideLoader.ts:306`）の入力である「パス1本」へ正規化することで実現する。展開 → `allow_asset_dir` → `<script>` 注入の順序はこの関数の内部に閉じており、入口の追加では触れない |
-| NFR_006（条件付きコンパイル） | `RunEvent::Opened` の参照箇所を `#[cfg(target_os = "macos")]` で隔離する（`src-tauri/src/lib.rs:1137`）。他 OS ではバリアント自体が存在しないため、`if let` のアームごと消える形にする。当初案は `any(macos, ios, android)` だったが、PRD の対象がデスクトップ3 OS のため macOS のみに絞った（決定 #3） |
+| NFR_006（条件付きコンパイル） | `RunEvent::Opened` の参照箇所を `#[cfg(target_os = "macos")]` で隔離する（`src-tauri/src/lib.rs:1137`）。他 OS ではバリアント自体が存在しないため、`if let` のアームごと消える形にする（`cfg` の範囲を絞った理由は決定 #3 参照） |
 
 ---
 
@@ -335,12 +341,12 @@ function handleResolveOpen(confirmed: boolean): Promise<void>
 
 | テストレベル | 対象 | 実装状況 |
 |------|------|------|
-| Rust 単体 | 受付拡張子の判定（`.spkg` / `.tgz` / `slides.json` を拾う・大文字小文字を無視する・他拡張子とフラグを捨てる） | 🟢 `is_slide_package_path_*` 3 ケース（`src-tauri/src/lib.rs:1319-1337`） |
-| Rust 単体 | 起動引数からのパス抽出（`argv[0]` をスキップ・対象外の引数を捨てる・引数なしで空） | 🟢 `resolve_open_paths_from_argv_*` 2 ケース（`src-tauri/src/lib.rs:1339-1366`） |
+| Rust 単体 | 受付拡張子の判定（`.spkg` / `.tgz` / `slides.json` を拾う・大文字小文字を無視する・他拡張子とフラグを捨てる） | 🟢 `is_slide_package_path_*` 3 ケース（`src-tauri/src/lib.rs`） |
+| Rust 単体 | 起動引数からのパス抽出（`argv[0]` をスキップ・対象外の引数を捨てる・引数なしで空） | 🟢 `resolve_open_paths_from_argv_*` 2 ケース（`src-tauri/src/lib.rs`） |
 | Rust 単体 | `take_pending_open_paths` の take セマンティクス（1回目は内容を返し、2回目は空配列） | 🔴 未実装。`tauri::State` を要求するため純粋ロジックとして切り出せておらず、単体テストから呼べない。take の不可分性は `std::mem::take` 1行に閉じているため、代替として JS 単体（下記）が「同じパスを二度開かない」側から担保する |
 | JS 単体 | 起動時 pull・イベント受信ごとの pull・空配列で何もしない・複数件は最後の1件・`listen` 完了までは pull しない・reject の握りつぶし・アンマウント時の unlisten | 🟢 `src/hooks/__tests__/useOpenSlideRequest.test.tsx`（10 ケース。FR_005 / FR_006） |
-| JS 単体 | 外部要求ゲート: 未保存でなければ確認なしで即開く／未保存なら確認を挟む／[破棄して開く] で確定／[キャンセル] で拒否／確認中の Esc の二重発火ガード | 🟢 `src/edit/__tests__/SlideEditor.test.tsx:332-400`（5 ケース。FR_008・NFR_003） |
-| 手動（実機） | 3 OS での関連付け登録・コールドスタート・ホットスタート・編集中の要求 | 🟡 macOS のみ確認済み（1.2 参照）。**CI では検証できないため実機確認が必須** |
+| JS 単体 | 外部要求ゲート: 未保存でなければ確認なしで即開く／未保存なら確認を挟む／[破棄して開く] で確定／[キャンセル] で拒否／確認中の Esc の二重発火ガード | 🟢 `src/edit/__tests__/SlideEditor.test.tsx`（「外部からのオープン要求」5 ケース。FR_008・NFR_003） |
+| 手動（実機） | 3 OS での関連付け登録・コールドスタート・ホットスタート・編集中の要求 | 🟡 プラットフォーム別の実施状況は 1.2 が持つ。**CI では検証できないため実機確認が必須** |
 
 > **CI で検証できない範囲**: OS へのファイル関連付けはインストーラ経由の登録を伴うため、`npm run test:e2e`（Playwright・ブラウザ）でも Rust 単体テストでも検証できない。3 OS の実機でのインストール後確認を受け入れ条件に含める。
 

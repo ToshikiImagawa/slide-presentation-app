@@ -171,7 +171,7 @@ interface RecentSlidePackageEntry {
 struct PendingOpenPaths(Mutex<Vec<String>>);
 
 /// FR_005 の唯一の取り出し口（新規）。取得とクリアが不可分。
-/// Mutex の毒化は panic させず Err に落とすため Result で返す（JS 境界では Ok が resolve・Err が reject）
+/// JS 境界では Ok が resolve・Err が reject（Result にした理由は design の 4.3 が持つ）
 #[tauri::command]
 fn take_pending_open_paths(state: State<PendingOpenPaths>) -> Result<Vec<String>, String>;
 ```
