@@ -21,6 +21,8 @@ npm run typecheck    # TypeScript 型チェック
 npm run test         # テスト実行（Vitest 単体テスト）
 npm run test:watch   # テスト監視モード
 npm run test:e2e     # Playwright E2E（アサーション付き・en/ja 2ロケール・Linux 可）
+npm run export:slides   # スライド内容を .spkg として書き出す（--source / --slides / --name / --version / --addons / --strict）
+npm run export:samples  # samples/manifest.json の全ロケールを .spkg 化（リリース時に Releases へ添付）
 npm run generate-icons       # resources/icon.svg から src-tauri/icons/ を再生成（macOS 専用: sips + tauri icon）
 npm run generate-screenshots # README 用スクリーンショット撮影（Playwright WebKit・macOS 専用・e2e スモーク兼用）
 npm run screenshots:compare  # 実アプリ画像とモック画像の手動比較（pixelmatch）
@@ -48,25 +50,36 @@ npm run generate-docs        # README.md / CHANGELOG.md を PDF 化（docs/ に�
 
 ### データ駆動型スライドシステム
 
-スライドは React コンポーネントではなく **JSON データ**で定義する。`public/slides.json` を配置するとカスタムスライドを表示し、存在しない場合は `src/data/default-slides.json` のテンプレートガイドを表示する。
+スライドは React コンポーネントではなく **JSON データ**で定義する。`public/slides.json` を配置するとカスタムスライドを表示する。
 
 ### 起動フロー
 
 ```
 main.tsx
-├── loadAddons()                    # addons/manifest.json → script 挿入 → ComponentRegistry に登録
-├── loadLastSlidePackage()          # 前回ローカルで開いたスライドを復元（plugin-store）
-│   └── なければ fetch('/slides.json')  # バンドル済みデフォルトのロード
-├── applyTheme() / applyThemeData() # テーマ適用
-└── <Root>                          # presentationData / presentationKey を state で保持
-    └── <App key={presentationKey} presentationData={data} onOpenSlidePackage={...} />
+├── loadBuiltinAddons()             # addons/manifest.json → script 挿入 → ComponentRegistry に登録（層A・dev 限定）
+├── loadLocales()                   # assets/locales/ の言語リソース
+├── getRecentSlidePackages()        # 最近開いたパッケージ一覧（plugin-store）
+├── applyTheme()                    # テーマ適用
+└── <Root> → <RootContent>          # 起動時は常にホーム画面（HomeScreen）
+    ├── ファイルを開く / URL から開く / サンプルを開く / 最近開いた / AIで新規作成
+    └── <App key={presentationKey} presentationData={data} ... />
         ├── registerDefaultComponents()
-        ├── loadPresentationData()   # バリデーション + フォールバック
+        ├── loadPresentationData()   # バリデーション + 最小フォールバック
         ├── useReveal()              # Reveal.js 初期化
         └── <SlideRenderer />        # layout に基づきスライド描画
 ```
 
-「スライドを開く」ボタン（`OpenSlideButton`）でローカルの `slides.json` を選び直すと、`presentationKey` を更新して `App` 全体を再マウントし、新しい内容で Reveal.js を再初期化する（差分更新ではなく丸ごと作り直す設計）。
+スライドを開き直すと `presentationKey` を更新して `App` 全体を再マウントし、新しい内容で Reveal.js を再初期化する（差分更新ではなく丸ごと作り直す設計）。
+
+### 配布サンプル
+
+ホーム画面の「サンプルを開く」で表示するテンプレートガイドは**アプリに同梱しない**。`samples/template-guide/slides.{ja,en,fr}.json` と参照アセットを `.spkg` として GitHub Releases のアセットで配布し、実行時に取得する。
+
+- `src/sampleSlides.ts` — 取得元の決定を集約（`main.tsx` はトップレベルで `createRoot` するためテストから import できない）。3 段で解決する: ①ビルド時同梱の `slides.json` → ②`releases/download/v{version}/<name>.spkg`（内容不変なのでキャッシュ再利用・オフライン可） → ③`releases/latest/download/<name>.spkg`
+- ①の判定は `res.ok` では足りない。Vite dev サーバーは存在しないパスにも SPA フォールバックで 200 + HTML を返すため、content-type とスキーマの両方を検証する
+- `samples/manifest.json` がロケール → パッケージ名の**単一真実源**。アプリ（`src/sampleSlides.ts`）とビルド（`scripts/export-samples.mjs`）の双方が読む。アセット名にバージョンを含めない（`latest/download/` では URL を確定できないため）
+- アプリに残るのは最小フォールバック 2 つ（`src/data/loader.ts`）。用途を分けている: `getFallbackPresentationData`（データ不正時）と `getSampleUnavailablePresentationData`（取得失敗時）
+- `vite.config.ts` の `devSampleSlidesPlugin` が dev サーバー限定（`apply: 'serve'`）で `samples/` を `/slides.json`・`/voice/*` として配信する（本番出力には混入しない）
 
 ### コンポーネントシステム
 

@@ -41,6 +41,17 @@ All notable changes to this project will be documented in this file.
     - Import-time validation with an auto-repair loop (up to 3 attempts; best candidate retained at the limit), progress display, cancellation, and safe fallback to manual editing on failure
     - Before applying, a diff-confirmation dialog previews the structural changes (added / changed / removed slides and meta changes) for **Apply** / **Cancel** (Cancel leaves the editor untouched); on apply the JSON is normalized to 2-space indentation
     - Generation, GCP settings/login, and networking are enabled only in edit mode with generation active (pre-gate disables when the Vertex settings are incomplete or the CLI is not found)
+- **Sample deck distributed externally** — The template guide is no longer bundled into the app. It ships as a `.spkg`
+  package attached to GitHub Releases and is fetched by **Open Sample** (see [Distributed Sample](README.md#distributed-sample))
+    - Three sources are tried in order: a `slides.json` bundled at build time → the release asset pinned to the app
+      version → the `latest` release asset. If none is reachable, a single slide asks you to check your network
+      connection (app startup is unaffected)
+    - The pinned asset never changes, so its extraction is cached and the sample opens offline from the second time on
+    - The sample audio (~3MB) is no longer shipped in the app bundle, and sample updates are decoupled from app releases
+    - Added a French sample (the UI already supported fr-FR, but the sample fell back to English)
+    - `VITE_SAMPLE_PACKAGE_URL` / `VITE_SAMPLE_SOURCE=remote` override where the sample comes from
+    - `npm run export:samples` exports every locale; `npm run export:slides` gained `--source` (input directory) and
+      `--strict` (fail on missing referenced assets)
 
 ## [1.0.0] - 2026-02-02
 
