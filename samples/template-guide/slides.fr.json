@@ -1,0 +1,662 @@
+{
+  "meta": {
+    "title": "Slide Template Guide",
+    "description": "Présentation des mises en page et des composants disponibles"
+  },
+  "slides": [
+    {
+      "id": "guide-title",
+      "layout": "center",
+      "content": {
+        "title": "Slide Template Guide",
+        "subtitle": "Présentation des mises en page et des composants disponibles\nPlacez <code>public/slides.json</code> pour personnaliser"
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "Cette présentation explique comment utiliser les modèles de diapositives.\nEn plaçant public/slides.json, vous pouvez personnaliser librement le contenu des diapositives.",
+          "summary": [
+            "Présentation du guide des modèles de diapositives",
+            "Personnalisable via slides.json"
+          ]
+        }
+      }
+    },
+    {
+      "id": "guide-two-column-basic",
+      "layout": "two-column",
+      "content": {
+        "title": "layout: \"two-column\" — Structure de base",
+        "left": {
+          "heading": "Colonne de gauche : heading",
+          "headingDescription": "Ajoutez un sous-texte avec headingDescription",
+          "paragraphs": [
+            "Rédigez le corps du texte avec paragraphs. Les <strong>balises HTML</strong> sont aussi prises en charge.",
+            "Vous pouvez indiquer plusieurs paragraphes à l'aide d'un tableau."
+          ],
+          "items": [
+            {"text": "items:", "emphasis": true, "description": " emphasis: true pour du texte en gras"},
+            {"text": "Élément normal :", "description": " ajoutez un sous-texte avec description"},
+            {"text": "Élément simple"}
+          ]
+        },
+        "right": {
+          "codeBlock": {
+            "header": "> codeBlock.header",
+            "items": [
+              "codeBlock.items[0]",
+              "Idéal pour afficher du code ou des structures hiérarchiques",
+              "Les <strong>balises HTML</strong> sont prises en charge"
+            ]
+          },
+          "titledBulletList": {
+            "title": "titledBulletList.title",
+            "items": [
+              "Élément titledBulletList 1",
+              "Élément titledBulletList 2"
+            ]
+          },
+          "accentText": "→ accentText : mis en évidence avec la couleur primaire"
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "Cette diapositive explique la structure de base de la mise en page two-column. La colonne de gauche contient heading, paragraphs et items, tandis que la colonne de droite contient codeBlock, titledBulletList et accentText.",
+          "summary": [
+            "Structure de base de la mise en page two-column",
+            "Gauche : heading, paragraphs, items",
+            "Droite : codeBlock, titledBulletList, accentText"
+          ]
+        }
+      }
+    },
+    {
+      "id": "guide-two-column-component",
+      "layout": "two-column",
+      "content": {
+        "title": "layout: \"two-column\" — Placement de composants",
+        "left": {
+          "paragraphs": [
+            "Indiquez <code>component</code> dans left / right pour intégrer des visuels enregistrés."
+          ],
+          "codeBlock": {
+            "header": "> Spécification JSON",
+            "items": [
+              "\"right\": {",
+              "\u00a0\u00a0\"component\": {",
+              "\u00a0\u00a0\u00a0\u00a0\"name\": \"TerminalAnimation\",",
+              "\u00a0\u00a0\u00a0\u00a0\"props\": {",
+              "\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"logTextUrl\": \"/demo-log.txt\"",
+              "\u00a0\u00a0\u00a0\u00a0}",
+              "\u00a0\u00a0}",
+              "}"
+            ]
+          }
+        },
+        "right": {
+          "component": {
+            "name": "TerminalAnimation",
+            "style": { "height": "400px", "width": "90%", "margin": "auto" }
+          }
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "Vous pouvez intégrer des composants enregistrés en indiquant un champ component dans les colonnes left ou right d'une mise en page two-column.",
+          "summary": [
+            "Indiquer component dans left / right",
+            "Intégrer des composants enregistrés",
+            "Configurer avec name, props, style"
+          ]
+        }
+      }
+    },
+    {
+      "id": "guide-workflow",
+      "layout": "content",
+      "content": {
+        "title": "layout: \"content\" — Chronologie (steps)",
+        "steps": [
+          {"number": 1, "title": "Step Title", "description": "Description de chaque étape", "command": "/command_name"},
+          {"number": 2, "title": "Step Title", "description": "command est facultatif"},
+          {"number": 3, "title": "Step Title", "description": "Aucune limite sur le nombre d'étapes", "command": "/another"},
+          {"number": 4, "title": "Step Title", "description": "Dernière étape"}
+        ],
+        "footer": "footer : affiche un texte complémentaire sous la chronologie"
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "Lorsque vous indiquez steps dans une mise en page content, l'affichage se fait sous forme de chronologie. Chaque étape requiert number, title et description. command est facultatif.",
+          "summary": [
+            "Afficher une chronologie avec steps",
+            "number, title, description sont obligatoires",
+            "command est facultatif",
+            "footer pour le texte complémentaire"
+          ]
+        }
+      }
+    },
+    {
+      "id": "guide-features",
+      "layout": "content",
+      "content": {
+        "title": "layout: \"content\" — Grille de tuiles (tiles)",
+        "tiles": [
+          {
+            "icon": "Description",
+            "title": "Icon: Description",
+            "description": "Indiquez les noms d'icônes dans le champ icon.<br/>Les icônes enregistrées dans registerDefaults sont disponibles."
+          },
+          {
+            "icon": "PlaylistAddCheck",
+            "title": "Icon: PlaylistAddCheck",
+            "description": "Les balises HTML comme<br/><code>&lt;br/&gt;</code> et <code>&lt;code&gt;</code> sont prises en charge dans description."
+          },
+          {
+            "icon": "Traffic",
+            "title": "Icon: Traffic",
+            "description": "Les tuiles s'affichent dans une grille à 3 colonnes. Vous pouvez en placer 2 ou 3."
+          }
+        ]
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "Lorsque vous indiquez tiles dans une mise en page content, l'affichage se fait sous forme de grille de tuiles. Chaque tuile possède icon, title et description.",
+          "summary": [
+            "Afficher une grille de tuiles avec tiles",
+            "Définir icon, title, description",
+            "Disposées dans une grille à 3 colonnes"
+          ]
+        }
+      }
+    },
+    {
+      "id": "guide-content-component",
+      "layout": "content",
+      "content": {
+        "title": "layout: \"content\" — Composant (component)",
+        "component": {
+          "name": "TerminalAnimation",
+          "style": { "height": "400px", "width": "90%", "margin": "auto" }
+        },
+        "footer": "Les composants de la mise en page content sont rendus dans un conteneur doté d'une barre de titre"
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "Lorsque vous indiquez component dans une mise en page content, le composant est rendu dans un conteneur ContentLayout doté d'une barre de titre. Il est traité comme un élément enfant de la mise en page content, tout comme steps et tiles.",
+          "summary": [
+            "Indiquer component dans la mise en page content",
+            "Rendu dans le conteneur ContentLayout",
+            "La barre de titre s'affiche automatiquement"
+          ]
+        }
+      }
+    },
+    {
+      "id": "guide-demo",
+      "layout": "bleed",
+      "content": {
+        "title": "layout: \"bleed\" — Deux colonnes pleine largeur",
+        "titleDescription": "titleDescription : affiche un complément de titre dans la colonne de gauche",
+        "commands": [
+          {"text": "$ commands[0].text", "color": "var(--theme-text-heading)"},
+          {"text": "$ commands[1].text", "color": "var(--theme-primary)"},
+          {"text": "✓ Vous pouvez indiquer color pour chaque ligne", "color": "var(--theme-success)"}
+        ],
+        "component": {
+          "name": "TerminalAnimation",
+          "style": { "height": "400px", "width": "90%", "margin": "auto" }
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "La mise en page bleed s'affiche sur deux colonnes pleine largeur. La colonne de gauche contient title, titleDescription et commands, tandis que la colonne de droite accueille un component.",
+          "summary": [
+            "Deux colonnes pleine largeur avec la mise en page bleed",
+            "Gauche : title, titleDescription, commands",
+            "Droite : component pour tout composant enregistré"
+          ]
+        }
+      }
+    },
+    {
+      "id": "guide-custom-layout",
+      "layout": "custom",
+      "content": {
+        "component": {
+          "name": "TerminalAnimation",
+          "style": { "height": "100%", "width": "100%" }
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "La mise en page custom rend directement le composant indiqué. Contrairement à la mise en page content, il n'y a aucun conteneur tel qu'une barre de titre, et le composant occupe toute la diapositive.",
+          "summary": [
+            "layout: \"custom\" rend directement le composant",
+            "Aucun conteneur comme la barre de titre",
+            "Comprendre la différence avec la mise en page content"
+          ]
+        }
+      }
+    },
+    {
+      "id": "guide-image-component",
+      "layout": "two-column",
+      "content": {
+        "title": "component: \"Image\" — Afficher des images",
+        "left": {
+          "paragraphs": [
+            "Indiquez <code>Image</code> comme <code>component</code> pour afficher des images.",
+            "Il encapsule <code>FallbackImage</code> et affiche une interface de repli en cas d'erreur de chargement."
+          ],
+          "codeBlock": {
+            "header": "> Spécification JSON",
+            "items": [
+              "\"component\": {",
+              "\u00a0\u00a0\"name\": \"Image\",",
+              "\u00a0\u00a0\"props\": {",
+              "\u00a0\u00a0\u00a0\u00a0\"src\": \"https://...\",",
+              "\u00a0\u00a0\u00a0\u00a0\"width\": 320,",
+              "\u00a0\u00a0\u00a0\u00a0\"height\": 320,",
+              "\u00a0\u00a0}",
+              "}"
+            ]
+          }
+        },
+        "right": {
+          "component": {
+            "name": "Image",
+            "props": {
+              "src": "https://avatars.githubusercontent.com/u/6396938?v=4",
+              "width": 320,
+              "height": 320
+            },
+            "style": { "display": "flex", "justifyContent": "center", "alignItems": "center", "height": "100%" }
+          }
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "Le composant Image encapsule FallbackImage et affiche une interface de repli lorsque le chargement de l'image échoue. Indiquez src, width et height dans props.",
+          "summary": [
+            "Afficher des images avec le composant Image",
+            "Prise en charge du repli via FallbackImage",
+            "Indiquer src, width, height dans props"
+          ]
+        }
+      }
+    },
+    {
+      "id": "guide-custom",
+      "layout": "two-column",
+      "content": {
+        "title": "Composants enregistrés par défaut",
+        "left": {
+          "titledBulletList": {
+            "title": "TerminalAnimation",
+            "description": "Affichage de terminal avec animation",
+            "items": [
+              "<strong>logTextUrl</strong> : URL du fichier journal\nex. : \"/demo-log.txt\"",
+              "Utilise la valeur par défaut intégrée lorsque logTextUrl est omis"
+            ]
+          }
+        },
+        "right": {
+          "codeBlock": {
+            "header": "> Icônes MUI enregistrées",
+            "items": [
+              "Icon:Description",
+              "Icon:PlaylistAddCheck",
+              "Icon:Traffic",
+              "Icon:Memory",
+              "Icon:Search"
+            ]
+          },
+          "accentText": "→ Utilisez les noms d'icônes dans le champ icon de tiles de la mise en page content"
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "Voici la liste des composants enregistrés par défaut. TerminalAnimation et 5 icônes MUI sont disponibles.",
+          "summary": [
+            "TerminalAnimation : terminal avec animation",
+            "5 icônes MUI enregistrées",
+            "À utiliser dans le champ icon de tiles"
+          ]
+        }
+      }
+    },
+    {
+      "id": "guide-addon",
+      "layout": "two-column",
+      "content": {
+        "title": "Composants des modules complémentaires",
+        "left": {
+          "paragraphs": [
+            "Placez des composants dans <code>addons/src/</code> pour les enregistrer dynamiquement et les utiliser dans les diapositives."
+          ],
+          "items": [
+            {"text": "Enregistrement automatique :", "emphasis": true, "description": " les modules complémentaires sont enregistrés dans ComponentRegistry au démarrage"},
+            {"text": "Lorsqu'ils ne sont pas chargés :", "emphasis": true, "description": " affichage de repli (le nom du composant est affiché)"}
+          ],
+          "codeBlock": {
+            "header": "> Exemple de spécification JSON",
+            "items": [
+              "\"component\": {",
+              "\u00a0\u00a0\"name\": \"VibeCodingDemo\"",
+              "}"
+            ]
+          }
+        },
+        "right": {
+          "titledBulletList": {
+            "title": "Comment créer un module complémentaire",
+            "items": [
+              "<strong>addons/src/{nom}/entry.ts</strong> — créer le fichier",
+              "<code>window.__ADDON_REGISTER__</code> — enregistrer le composant",
+              "<code>npm run build:addons</code> — compiler"
+            ]
+          },
+          "accentText": "→ addons/ est ignoré par git et ne fonctionne qu'en local"
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "Le système de modules complémentaires permet d'ajouter des composants personnalisés. Placez un fichier d'entrée dans addons/src/ et enregistrez-le avec window.__ADDON_REGISTER__.",
+          "summary": [
+            "Ajouter des composants via addons/src/{nom}/entry.ts",
+            "Enregistrer avec window.__ADDON_REGISTER__",
+            "Compiler avec npm run build:addons"
+          ]
+        }
+      }
+    },
+    {
+      "id": "guide-meta",
+      "layout": "two-column",
+      "content": {
+        "title": "Options de configuration des diapositives",
+        "left": {
+          "codeBlock": {
+            "header": "> meta (commun à toutes les diapositives)",
+            "items": [
+              "\"meta\": {",
+              "\u00a0\u00a0\"transition\": \"slide\",",
+              "\u00a0\u00a0\"backgroundColor\": \"#1a1a2e\",",
+              "\u00a0\u00a0\"backgroundImage\": \"/bg.png\",",
+              "\u00a0\u00a0\"notes\": \"chaîne\" or {",
+              "\u00a0\u00a0\u00a0\u00a0\"speakerNotes\": \"Notes du présentateur\",",
+              "\u00a0\u00a0\u00a0\u00a0\"summary\": [\"Point 1\", ...]",
+              "\u00a0\u00a0}",
+              "}"
+            ]
+          }
+        },
+        "right": {
+          "codeBlock": {
+            "header": "> theme (toute la présentation)",
+            "items": [
+              "\"theme\": {",
+              "\u00a0\u00a0\"colors\": {",
+              "\u00a0\u00a0\u00a0\u00a0\"primary\": \"#6c63ff\",",
+              "\u00a0\u00a0\u00a0\u00a0\"background\": \"#0f0e17\"",
+              "\u00a0\u00a0}",
+              "}"
+            ]
+          },
+          "accentText": "→ Détails dans la diapositive suivante"
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "Le champ meta permet de définir la transition, la couleur de fond, l'image de fond et les notes du présentateur pour chaque diapositive. Le champ theme configure les couleurs et les polices de toute la présentation.",
+          "summary": [
+            "meta : transition, backgroundColor, backgroundImage, notes",
+            "theme : colors, fonts pour toute la présentation",
+            "notes accepte une chaîne ou un objet"
+          ]
+        }
+      }
+    },
+    {
+      "id": "guide-theme-detail",
+      "layout": "two-column",
+      "content": {
+        "title": "Détails de la configuration du thème",
+        "left": {
+          "heading": "Toutes les clés de theme.colors",
+          "codeBlock": {
+            "header": "> theme.colors dans slides.json",
+            "items": [
+              "\"colors\": {",
+              "\u00a0\u00a0\"primary\": \"#6c63ff\",",
+              "\u00a0\u00a0\"background\": \"#0f0e17\",",
+              "\u00a0\u00a0\"surface\": \"#1a1a2e\",",
+              "\u00a0\u00a0\"textHeading\": \"#ffffff\",",
+              "\u00a0\u00a0\"textBody\": \"#a0a0b0\",",
+              "\u00a0\u00a0\"accent\": \"#ff6b6b\",",
+              "\u00a0\u00a0\"success\": \"#4ecdc4\",",
+              "\u00a0\u00a0\"border\": \"#2a2a4a\"",
+              "}",
+              "",
+              "\"customCSS\": \".reveal { ... }\""
+            ]
+          }
+        },
+        "right": {
+          "heading": "Deux façons de définir le thème",
+          "items": [
+            {"text": "Méthode 1 :", "emphasis": true, "description": " champ theme de slides.json (colors, fonts, customCSS)"},
+            {"text": "Méthode 2 :", "emphasis": true, "description": " public/theme-colors.json (couleurs uniquement)"},
+            {"text": "meta.themeColors:", "emphasis": true, "description": " indiquer les couleurs dans meta de slides.json (équivalent à la méthode 1)"}
+          ],
+          "codeBlock": {
+            "header": "> theme-colors.json (méthode 2)",
+            "items": [
+              "{",
+              "\u00a0\u00a0\"primary\": \"#6c63ff\",",
+              "\u00a0\u00a0\"background\": \"#0f0e17\",",
+              "\u00a0\u00a0\"surface\": \"#1a1a2e\"",
+              "}"
+            ]
+          },
+          "accentText": "→ Toutes les couleurs ont une variante -rgb (utilisable avec rgba())"
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "Les couleurs du thème peuvent être définies via theme.colors dans slides.json ou via public/theme-colors.json. Du CSS personnalisé peut aussi être indiqué avec customCSS. Toutes les couleurs génèrent automatiquement une variante -rgb.",
+          "summary": [
+            "8 clés de couleur disponibles dans theme.colors",
+            "Ajouter du CSS personnalisé avec customCSS",
+            "theme-colors.json pour les couleurs uniquement",
+            "Toutes les couleurs génèrent automatiquement une variante -rgb"
+          ]
+        }
+      }
+    },
+    {
+      "id": "guide-logo-fonts",
+      "layout": "two-column",
+      "content": {
+        "title": "Paramètres de logo et de polices",
+        "left": {
+          "heading": "meta.logo",
+          "headingDescription": "Définir un logo de présentation",
+          "codeBlock": {
+            "header": "> Spécification JSON",
+            "items": [
+              "\"meta\": {",
+              "\u00a0\u00a0\"logo\": {",
+              "\u00a0\u00a0\u00a0\u00a0\"src\": \"/my-logo.png\",",
+              "\u00a0\u00a0\u00a0\u00a0\"width\": 150,",
+              "\u00a0\u00a0\u00a0\u00a0\"height\": 50",
+              "\u00a0\u00a0}",
+              "}"
+            ]
+          },
+          "items": [
+            {"text": "src:", "emphasis": true, "description": " chemin de l'image du logo (par défaut : /logo.png)"},
+            {"text": "width / height:", "emphasis": true, "description": " spécification de la taille (par défaut : 120 x 40)"},
+            {"text": "En cas d'omission :", "emphasis": true, "description": " le logo n'est pas affiché"}
+          ]
+        },
+        "right": {
+          "heading": "theme.fonts",
+          "headingDescription": "Personnaliser les familles de polices",
+          "codeBlock": {
+            "header": "> Spécification JSON",
+            "items": [
+              "\"theme\": {",
+              "\u00a0\u00a0\"fonts\": {",
+              "\u00a0\u00a0\u00a0\u00a0\"heading\": \"'Noto Sans JP'\",",
+              "\u00a0\u00a0\u00a0\u00a0\"body\": \"'Noto Sans JP'\",",
+              "\u00a0\u00a0\u00a0\u00a0\"code\": \"'Fira Code'\",",
+              "\u00a0\u00a0\u00a0\u00a0\"baseFontSize\": \"24px\",",
+              "\u00a0\u00a0\u00a0\u00a0\"sources\": [",
+              "\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"https://fonts...\"",
+              "\u00a0\u00a0\u00a0\u00a0]",
+              "\u00a0\u00a0}",
+              "}"
+            ]
+          },
+          "items": [
+            {"text": "heading:", "emphasis": true, "description": " police des titres"},
+            {"text": "body:", "emphasis": true, "description": " police du corps de texte"},
+            {"text": "code:", "emphasis": true, "description": " police des blocs de code"},
+            {"text": "baseFontSize:", "emphasis": true, "description": " taille de police de base (par défaut : 24px)"},
+            {"text": "sources:", "emphasis": true, "description": " tableau d'URL de polices externes (par ex. Google Fonts)"}
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "Définissez une image de logo avec meta.logo et personnalisez les familles de polices avec theme.fonts. Le logo n'est pas affiché lorsque meta.logo est omis.",
+          "summary": [
+            "Définir l'image du logo avec meta.logo",
+            "Personnaliser les polices avec theme.fonts",
+            "3 types de polices : heading / body / code",
+            "baseFontSize et sources sont aussi configurables"
+          ]
+        }
+      }
+    },
+    {
+      "id": "guide-presenter-view",
+      "layout": "two-column",
+      "content": {
+        "title": "Vue présentateur",
+        "left": {
+          "heading": "Vue d'ensemble",
+          "paragraphs": [
+            "Cliquez sur le bouton « Vue présentateur » en haut à droite pour ouvrir une fenêtre dédiée au présentateur.",
+            "La fenêtre principale et la vue présentateur sont synchronisées de façon bidirectionnelle. Vous pouvez naviguer entre les diapositives depuis l'une ou l'autre fenêtre."
+          ],
+          "codeBlock": {
+            "header": "> Exemple de configuration de notes",
+            "items": [
+              "\"meta\": {",
+              "\u00a0\u00a0\"notes\": {",
+              "\u00a0\u00a0\u00a0\u00a0\"speakerNotes\": \"Notes du présentateur\",",
+              "\u00a0\u00a0\u00a0\u00a0\"summary\": [\"Point 1\", \"Point 2\"]",
+              "\u00a0\u00a0}",
+              "}"
+            ]
+          }
+        },
+        "right": {
+          "heading": "4 panneaux",
+          "items": [
+            {"text": "Notes du présentateur :", "emphasis": true, "description": " affiche les notes du présentateur (speakerNotes) de la diapositive actuelle"},
+            {"text": "Aperçu de la diapositive précédente :", "emphasis": true, "description": " affiche une vignette de la diapositive précédente"},
+            {"text": "Aperçu de la diapositive suivante :", "emphasis": true, "description": " affiche une vignette de la diapositive suivante"},
+            {"text": "Résumé des points clés :", "emphasis": true, "description": " affiche les points de summary sous forme de liste à puces"}
+          ],
+          "titledBulletList": {
+            "title": "Commandes clavier",
+            "items": [
+              "<strong>← / →</strong> : aller à la diapositive précédente / suivante",
+              "<strong>Espace</strong> : aller à la diapositive suivante"
+            ]
+          },
+          "accentText": "→ Définissez speakerNotes et summary dans meta.notes pour en tirer le meilleur parti"
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "La vue présentateur s'ouvre dans une fenêtre séparée et affiche 4 panneaux : les notes du présentateur, les aperçus des diapositives précédente et suivante, et le résumé des points clés. Elle est synchronisée de façon bidirectionnelle avec la fenêtre principale.",
+          "summary": [
+            "S'ouvre dans une fenêtre séparée via le bouton en haut à droite",
+            "4 panneaux : notes du présentateur, aperçus précédent / suivant, résumé",
+            "Synchronisation bidirectionnelle avec la fenêtre principale",
+            "Naviguer avec ←/→/Espace"
+          ]
+        }
+      }
+    },
+    {
+      "id": "guide-audio",
+      "layout": "two-column",
+      "content": {
+        "title": "Lecture audio",
+        "left": {
+          "heading": "Champ voice",
+          "headingDescription": "Indiquer un fichier audio par diapositive",
+          "codeBlock": {
+            "header": "> Spécification JSON",
+            "items": [
+              "\"meta\": {",
+              "\u00a0\u00a0\"notes\": {",
+              "\u00a0\u00a0\u00a0\u00a0\"voice\": \"/voice/slide-01.wav\",",
+              "\u00a0\u00a0\u00a0\u00a0\"speakerNotes\": \"Notes du présentateur\"",
+              "\u00a0\u00a0}",
+              "}"
+            ]
+          },
+          "paragraphs": [
+            "Placez les fichiers audio sous <code>public/</code>. La barre d'outils est activée sur les diapositives où <code>voice</code> est défini."
+          ]
+        },
+        "right": {
+          "heading": "Boutons de la barre d'outils",
+          "items": [
+            {"text": "Lecture / Arrêt :", "emphasis": true, "description": " lire ou arrêter manuellement l'audio de la diapositive actuelle"},
+            {"text": "Lecture automatique :", "emphasis": true, "description": " activer ou désactiver la lecture audio automatique lors du changement de diapositive"},
+            {"text": "Diaporama automatique :", "emphasis": true, "description": " activer ou désactiver l'avance automatique des diapositives à la fin de l'audio"}
+          ],
+          "accentText": "→ Lecture automatique + diaporama automatique permettent des présentations entièrement automatisées"
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "Cette diapositive présente la fonction de lecture audio. Indiquez le chemin du fichier audio dans meta.notes.voice pour permettre la lecture depuis la barre d'outils. En combinant la lecture automatique et le diaporama automatique, vous obtenez une présentation entièrement automatisée sur l'ensemble des diapositives.",
+          "summary": [
+            "Indiquer les fichiers audio avec meta.notes.voice",
+            "Commandes de la barre d'outils : lecture manuelle, lecture automatique, diaporama automatique",
+            "Lecture automatique + diaporama automatique pour des présentations entièrement automatisées"
+          ]
+        }
+      }
+    },
+    {
+      "id": "guide-summary",
+      "layout": "center",
+      "content": {
+        "variant": "section",
+        "title": "layout: \"center\" (variant: \"section\")",
+        "body": "Grand titre et corps de texte.\nVous pouvez afficher un code QR et un lien GitHub.",
+        "qrCode": "https://github.com/ToshikiImagawa/ai-sdd-workflow-demo",
+        "githubRepo": "ToshikiImagawa/ai-sdd-workflow-demo"
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "La mise en page center avec variant: section convient parfaitement aux séparateurs de section ou aux diapositives de synthèse, avec un grand titre. Vous pouvez également y placer un code QR et un lien GitHub.",
+          "summary": [
+            "center + variant: section pour les diapositives de synthèse",
+            "Placement d'un code QR et d'un lien GitHub",
+            "Également utile comme séparateur de section"
+          ]
+        }
+      }
+    }
+  ]
+}
