@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 
 // Tauri 依存（invoke/dialog）を持つモジュールをモックして jsdom で描画可能にする
@@ -285,7 +286,7 @@ describe('SlideEditor 未保存変更の終了確認（編集モード終了時�
       </Wrapper>,
     )
     await waitFor(() => expect(screen.getByText('同梱できるアドオンがありません')).toBeTruthy())
-    fireEvent.change(document.querySelector('textarea')!, { target: { value: validJson + '\n' } })
+    await userEvent.type(screen.getByLabelText('slides.json'), ' ')
     fireEvent.click(screen.getByRole('button', { name: '編集を終了' }))
     expect(await screen.findByText('未保存の変更を破棄しますか？')).toBeTruthy()
     expect(onExit).not.toHaveBeenCalled()
@@ -299,7 +300,7 @@ describe('SlideEditor 未保存変更の終了確認（編集モード終了時�
       </Wrapper>,
     )
     await waitFor(() => expect(screen.getByText('同梱できるアドオンがありません')).toBeTruthy())
-    fireEvent.change(document.querySelector('textarea')!, { target: { value: validJson + '\n' } })
+    await userEvent.type(screen.getByLabelText('slides.json'), ' ')
     fireEvent.click(screen.getByRole('button', { name: '編集を終了' }))
     fireEvent.click(await screen.findByRole('button', { name: '破棄して終了' }))
     expect(onExit).toHaveBeenCalledTimes(1)
@@ -313,7 +314,7 @@ describe('SlideEditor 未保存変更の終了確認（編集モード終了時�
       </Wrapper>,
     )
     await waitFor(() => expect(screen.getByText('同梱できるアドオンがありません')).toBeTruthy())
-    fireEvent.change(document.querySelector('textarea')!, { target: { value: validJson + '\n' } })
+    await userEvent.type(screen.getByLabelText('slides.json'), ' ')
     fireEvent.click(screen.getByRole('button', { name: '編集を終了' }))
     fireEvent.click(await screen.findByRole('button', { name: 'キャンセル' }))
     expect(onExit).not.toHaveBeenCalled()
@@ -467,9 +468,9 @@ describe('SlideEditor キーボードショートカット（#91: Cmd/Ctrl+S 保
         <SlideEditor source={{ rawText: validJson, baseDir: '' }} onExit={() => {}} />
       </Wrapper>,
     )
-    const textarea = document.querySelector('textarea')!
-    textarea.focus()
-    fireEvent.keyDown(textarea, { key: 's', metaKey: true })
+    const editor = screen.getByLabelText('slides.json')
+    editor.focus()
+    fireEvent.keyDown(editor, { key: 's', metaKey: true })
     await waitFor(() => expect(h.saveSlidesJson).toHaveBeenCalledWith('/tmp/slides.json', validJson))
   })
 
@@ -492,8 +493,7 @@ describe('SlideEditor キーボードショートカット（#91: Cmd/Ctrl+S 保
         <SlideEditor source={{ rawText: validJson, baseDir: '' }} onExit={onExit} />
       </Wrapper>,
     )
-    const textarea = document.querySelector('textarea')!
-    fireEvent.change(textarea, { target: { value: validJson + '\n' } })
+    await userEvent.type(screen.getByLabelText('slides.json'), ' ')
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(await screen.findByText('未保存の変更を破棄しますか？')).toBeTruthy()
     expect(onExit).not.toHaveBeenCalled()
@@ -506,9 +506,9 @@ describe('SlideEditor キーボードショートカット（#91: Cmd/Ctrl+S 保
         <SlideEditor source={{ rawText: validJson, baseDir: '' }} onExit={onExit} />
       </Wrapper>,
     )
-    const textarea = document.querySelector('textarea')!
-    textarea.focus()
-    fireEvent.keyDown(textarea, { key: 'Escape' })
+    const editor = screen.getByLabelText('slides.json')
+    editor.focus()
+    fireEvent.keyDown(editor, { key: 'Escape' })
     expect(onExit).not.toHaveBeenCalled()
     expect(screen.queryByText('未保存の変更を破棄しますか？')).toBeNull()
   })
