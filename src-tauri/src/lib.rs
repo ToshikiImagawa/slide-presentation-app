@@ -43,12 +43,21 @@ fn extract_slide_archive(bytes: &[u8], extract_dir: &Path) -> Result<PathBuf, St
     .unpack(extract_dir)
     .map_err(|e| e.to_string())?;
 
+  resolve_extracted_package_dir(extract_dir)
+    .ok_or_else(|| "展開したパッケージに slides.json が見つかりません".to_string())
+}
+
+/// 展開済みディレクトリから slides.json のあるディレクトリを返す（純粋ロジック・テスト対象）。
+/// `npm pack` の package/ ネストを優先して探し、slides.json が無ければ None（展開途中・破損したキャッシュの検出にも使う）
+fn resolve_extracted_package_dir(extract_dir: &Path) -> Option<PathBuf> {
   let package_dir = extract_dir.join("package");
-  Ok(if package_dir.is_dir() {
-    package_dir
-  } else {
-    extract_dir.to_path_buf()
-  })
+  if package_dir.join("slides.json").is_file() {
+    return Some(package_dir);
+  }
+  if extract_dir.join("slides.json").is_file() {
+    return Some(extract_dir.to_path_buf());
+  }
+  None
 }
 
 /// スライドパッケージ (.spkg・旧 .tgz) をアプリのキャッシュディレクトリに展開し、slides.json のあるディレクトリを返す
@@ -155,7 +164,9 @@ fn download_http_client() -> reqwest::Client {
 
 /// URL からキャッシュ展開先ディレクトリ名を導出する（純粋ロジック・テスト対象）。
 /// extract_slide_package がローカルパスの file_stem を展開先名に使うのと同様、
-/// 同一 URL は同じ展開先を再利用・上書きする
+/// 同一 URL は同じ展開先を再利用・上書きする。
+/// 注: DefaultHasher の値は Rust バージョン間で安定とは保証されないため、
+/// キャッシュを再利用したい呼び出し（配布サンプル）は cache_key を明示して安定した名前を使う
 fn url_cache_stem(url: &str) -> String {
   use std::collections::hash_map::DefaultHasher;
   use std::hash::{Hash, Hasher};
@@ -164,15 +175,75 @@ fn url_cache_stem(url: &str) -> String {
   format!("url-{:x}", hasher.finish())
 }
 
+/// キャッシュ展開先のディレクトリ名を決める（純粋ロジック・テスト対象）。
+/// cache_key が与えられていればそれを使う（配布サンプルのように「バージョンごとに安定した名前」が欲しい場合）。
+/// パス区切りなどを含む値でキャッシュ領域の外に出ないよう、英数・ハイフン・アンダースコア・ドット以外は落とす
+fn cache_dir_name(url: &str, cache_key: Option<&str>) -> String {
+  match cache_key {
+    Some(key) => {
+      let sanitized: String = key
+        .chars()
+        .filter(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.'))
+        .collect();
+      if sanitized.is_empty() {
+        url_cache_stem(url)
+      } else {
+        sanitized
+      }
+    }
+    None => url_cache_stem(url),
+  }
+}
+
+/// download_slide_package の呼び出しオプション。
+/// 既定（すべて未指定）では従来どおり「共有クライアントのタイムアウト・URL ハッシュの展開先・毎回再ダウンロード」で動く
+#[derive(Debug, Default, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct DownloadOptions {
+  /// このリクエストだけのタイムアウト秒（共有クライアントの既定 300 秒を短くしたい経路のため）
+  timeout_secs: Option<u64>,
+  /// 展開済みキャッシュがあればネットワークに触れず再利用する。
+  /// 内容が変わらない URL（バージョン固定のリリースアセット）にのみ指定すること
+  reuse_cache: Option<bool>,
+  /// 展開先ディレクトリ名（未指定なら URL のハッシュ）
+  cache_key: Option<String>,
+}
+
 /// URL からスライドパッケージ（.spkg・旧 .tgz と同一 tar+gzip 形式）をダウンロードし、
 /// アプリのキャッシュディレクトリに展開して slides.json のあるディレクトリを返す（issue #40）。
 /// https の URL のみ許可する
 #[tauri::command]
-async fn download_slide_package(app: tauri::AppHandle, url: String) -> Result<String, String> {
+async fn download_slide_package(
+  app: tauri::AppHandle,
+  url: String,
+  options: Option<DownloadOptions>,
+) -> Result<String, String> {
   let parsed = validate_download_url(&url)?;
+  let options = options.unwrap_or_default();
 
-  let response = download_http_client()
-    .get(parsed)
+  let extract_dir = app
+    .path()
+    .app_cache_dir()
+    .map_err(|e| e.to_string())?
+    .join("slide-packages")
+    .join(cache_dir_name(&url, options.cache_key.as_deref()));
+
+  // 展開済みキャッシュの再利用（内容が不変な URL のみ）。オフラインでも2回目以降は開ける
+  if options.reuse_cache.unwrap_or(false) {
+    if let Some(cached) = resolve_extracted_package_dir(&extract_dir) {
+      return cached
+        .to_str()
+        .map(|s| s.to_string())
+        .ok_or_else(|| "抽出先パスの文字列化に失敗しました".to_string());
+    }
+  }
+
+  let mut request = download_http_client().get(parsed);
+  if let Some(secs) = options.timeout_secs {
+    request = request.timeout(std::time::Duration::from_secs(secs));
+  }
+
+  let response = request
     .send()
     .await
     .map_err(|e| format!("ダウンロードに失敗しました: {e}"))?;
@@ -186,13 +257,6 @@ async fn download_slide_package(app: tauri::AppHandle, url: String) -> Result<St
     .bytes()
     .await
     .map_err(|e| format!("ダウンロードに失敗しました: {e}"))?;
-
-  let extract_dir = app
-    .path()
-    .app_cache_dir()
-    .map_err(|e| e.to_string())?
-    .join("slide-packages")
-    .join(url_cache_stem(&url));
 
   let result_dir = extract_slide_archive(&bytes, &extract_dir)?;
   result_dir
@@ -1814,6 +1878,80 @@ mod tests {
       url_cache_stem("https://example.com/a.spkg"),
       url_cache_stem("https://example.com/b.spkg")
     );
+  }
+
+  #[test]
+  fn cache_dir_name_prefers_cache_key_and_stays_inside_cache_dir() {
+    // cache_key を指定すればハッシュではなく安定した名前を使う（配布サンプルのキャッシュ再利用のため）
+    assert_eq!(
+      cache_dir_name("https://example.com/a.spkg", Some("sample-ja-1.2.3")),
+      "sample-ja-1.2.3"
+    );
+    // パス区切り・親ディレクトリ参照は落とし、キャッシュ領域の外に出さない
+    assert_eq!(
+      cache_dir_name("https://example.com/a.spkg", Some("../../etc/passwd")),
+      "....etcpasswd"
+    );
+    // 記号だけの cache_key は無意味なので URL ハッシュへ退避する
+    assert_eq!(
+      cache_dir_name("https://example.com/a.spkg", Some("///")),
+      url_cache_stem("https://example.com/a.spkg")
+    );
+    // 未指定なら従来どおり URL ハッシュ
+    assert_eq!(
+      cache_dir_name("https://example.com/a.spkg", None),
+      url_cache_stem("https://example.com/a.spkg")
+    );
+  }
+
+  #[test]
+  fn resolve_extracted_package_dir_detects_usable_cache() {
+    let base =
+      std::env::temp_dir().join(format!("slide-cache-detect-{}-{}", std::process::id(), "a"));
+    fs::remove_dir_all(&base).ok();
+    fs::create_dir_all(&base).unwrap();
+
+    // slides.json がまだ無い（ダウンロード途中・破損）なら再利用させない
+    assert!(resolve_extracted_package_dir(&base).is_none());
+
+    // npm pack の package/ ネストを優先して返す
+    fs::create_dir_all(base.join("package")).unwrap();
+    fs::write(base.join("package").join("slides.json"), b"{}").unwrap();
+    assert_eq!(
+      resolve_extracted_package_dir(&base),
+      Some(base.join("package"))
+    );
+
+    fs::remove_dir_all(&base).ok();
+  }
+
+  #[test]
+  fn extract_slide_archive_errors_when_slides_json_is_missing() {
+    // slides.json を含まないアーカイブは展開先を返さずエラーにする（キャッシュ再利用の判定と同じ条件）
+    let mut gz_bytes = Vec::new();
+    {
+      let encoder = flate2::write::GzEncoder::new(&mut gz_bytes, flate2::Compression::default());
+      let mut builder = tar::Builder::new(encoder);
+      let content = b"not slides";
+      let mut header = tar::Header::new_gnu();
+      header.set_size(content.len() as u64);
+      header.set_mode(0o644);
+      header.set_cksum();
+      builder
+        .append_data(&mut header, "package/readme.txt", &content[..])
+        .unwrap();
+      let encoder = builder.into_inner().unwrap();
+      encoder.finish().unwrap();
+    }
+
+    let extract_dir = std::env::temp_dir().join(format!(
+      "slide-extract-test-no-slides-{}",
+      std::process::id()
+    ));
+    let result = extract_slide_archive(&gz_bytes, &extract_dir);
+
+    assert!(result.is_err());
+    fs::remove_dir_all(&extract_dir).ok();
   }
 
   #[test]

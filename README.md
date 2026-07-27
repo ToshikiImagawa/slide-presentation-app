@@ -95,6 +95,7 @@ Running the app requires a Rust toolchain (`cargo`/`rustc`) for Tauri. See the
 | `npm run test`                 | Run tests (Vitest)                                                                      |
 | `npm run test:watch`           | Run tests in watch mode                                                                 |
 | `npm run export:slides`        | Export slide content as a distributable package (.spkg)                                 |
+| `npm run export:samples`       | Export the `samples/` decks as `.spkg` packages for every locale (attached to Releases) |
 | `npm run format:check`         | Check formatting with Prettier (no writes; used in CI)                                  |
 | `npm run generate-icons`       | Regenerate `src-tauri/icons/` from `resources/icon.svg` (macOS only)                    |
 | `npm run generate-screenshots` | Capture README screenshots with Playwright WebKit (macOS only; doubles as an e2e smoke) |
@@ -109,7 +110,7 @@ On launch, the app opens on a home screen where you choose what to present.
 |----------------------------|---------------------------------------------------------------------------------------------|
 | **Open a File**            | Pick a `slides.json` or a `.spkg` slide package from disk (legacy `.tgz` also supported)     |
 | **Open from a URL**        | Fetch a `.spkg` slide package over HTTPS and open it (the download is cached locally)        |
-| **Open Sample**            | Load the bundled sample deck (the built-in template guide when no `slides.json` is bundled)  |
+| **Open Sample**            | Open the distributed sample (template guide). Fetched from GitHub Releases and cached, so it opens offline afterwards (see [Distributed Sample](#distributed-sample)) |
 | **Recently Opened**        | Re-open a recently used package; the list is persisted across launches                      |
 | **Double-click a `.spkg`** | Open a package straight from your OS file manager — no need to launch the app first          |
 
@@ -139,6 +140,34 @@ the file is recorded as the last opened one so the next launch reloads it automa
 
 Only `.spkg` is associated. Legacy `.tgz` packages can still be opened from the home screen, but they are not
 registered with the OS (`.tgz` is a generic tar+gzip extension that belongs to your archiver).
+
+## Distributed Sample
+
+The template guide behind **Open Sample** is not bundled into the app. It is distributed as a `.spkg` package
+attached to GitHub Releases and fetched at runtime, so sample updates are decoupled from app releases and its
+assets (audio in particular) are not shipped to every user.
+
+Sources are tried in this order:
+
+| # | Source | Notes |
+|---|---|---|
+| 1 | A `slides.json` bundled at build time | When bundled via `VITE_SLIDE_PACKAGE`, or when running the dev server (which serves `samples/`) |
+| 2 | `releases/download/v{version}/template-guide-{locale}.spkg` | The sample matching the running app version. Its contents never change, so the extraction is cached and **it opens offline from the second time on** |
+| 3 | `releases/latest/download/template-guide-{locale}.spkg` | Fallback when 2 does not exist (e.g. a local build of an unreleased version) |
+
+If none of them can be reached, a single slide asking you to check your network connection is shown. App startup is
+unaffected — the sample is only fetched when you press the button.
+
+Samples ship for `ja` / `en` / `fr`; languages without a sample fall back to English. The locale-to-package mapping
+lives in `samples/manifest.json` as the single source of truth, read by both the app and the build. To add a locale,
+drop in `samples/template-guide/slides.{locale}.json` and add one line to `packages`.
+
+### Pointing at your own sample
+
+| Environment variable | Effect |
+|---|---|
+| `VITE_SAMPLE_PACKAGE_URL` | Overrides the source URL (https only). Useful for verifying an unreleased version, or distributing your own sample |
+| `VITE_SAMPLE_SOURCE=remote` | Ignores the bundled `slides.json` and always fetches remotely (to exercise the remote path) |
 
 ## Edit Mode
 
@@ -206,7 +235,7 @@ view or live presentation).
 ## Defining Slides
 
 Create `public/slides.json` to customize slide content.
-If this file does not exist, the built-in template guide will be displayed.
+If this file does not exist, **Open Sample** fetches the [distributed sample](#distributed-sample) (template guide) instead.
 
 ### Basic Structure
 
@@ -762,9 +791,11 @@ npm run export:slides -- --name my-presentation --slides slides.json
 | Option      | Required | Description                                           |
 |-------------|:--------:|-------------------------------------------------------|
 | `--name`    |   Yes    | Package name (generated as `@slides/{name}`)          |
-| `--slides`  |   Yes    | Slide JSON filename under `public/`                   |
+| `--slides`  |   Yes    | Slide JSON filename under the source directory        |
+| `--source`  |          | Base directory for the slide JSON and its assets (default: `public`) |
 | `--version` |          | Version (default: `1.0.0`)                            |
 | `--addons`  |          | Bundle built add-ons (`addons/dist`) into the package |
+| `--strict`  |          | Fail if any referenced asset is missing (used when building distributables; the default only warns) |
 
 This generates a `.spkg` file in `dist-slides/` (same tar+gzip format as `.tgz`, produced via `npm pack` and renamed
 to a project-specific extension). Asset paths referenced in slides.json (`image/`, `voice/`, `theme/`, `font/`) are

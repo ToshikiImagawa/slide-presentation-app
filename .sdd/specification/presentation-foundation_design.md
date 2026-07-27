@@ -26,6 +26,7 @@ category: presentation-foundation
 **最終更新日:** 2026-07-27
 **関連 Spec:** [presentation-foundation_spec.md](./presentation-foundation_spec.md)
 **関連 PRD:** [presentation-foundation.md](../requirement/presentation-foundation.md)
+**関連設計:** [slide-package-distribution_design.md](./slide-package-distribution_design.md)（サンプルスライドの配布と取得）
 
 ---
 
@@ -190,13 +191,13 @@ src/
 │   └── index.ts                # re-export
 ├── data/
 │   ├── types.ts                # 型定義
-│   ├── loader.ts               # データローダー（getDefaultPresentationData でロケール出し分け）
-│   ├── default-slides-ja.json  # デフォルトスライドデータ（日本語）
-│   ├── default-slides-en.json  # デフォルトスライドデータ（英語）
+│   ├── loader.ts               # データローダー（最小フォールバックをロケール別に生成）
 │   └── index.ts                # re-export
 └── styles/
     └── global.css              # CSS変数、アニメーション、Reveal.js オーバーライド
 ```
+
+> **デモ用スライドは `src/` の外にある**。テンプレートガイドは `samples/template-guide/slides.{ja,en,fr}.json` に置き、アプリには同梱せず `.spkg` として配布する。ホーム画面の「サンプルを開く」は同梱 `slides.json` → 配布パッケージ → 案内スライドの3段で解決する（[slide-package-distribution_design.md](./slide-package-distribution_design.md)）。
 
 ---
 
@@ -412,6 +413,14 @@ function resetThemeOverrides(): void {
 ---
 
 # 10. 変更履歴
+
+## v1.4.0 (2026-07-27)
+
+**変更内容:**
+
+- ディレクトリ構造から `src/data/default-slides-{ja,en}.json` を削除。デモ用スライドは `samples/template-guide/` へ移設し、アプリには同梱せず `.spkg` として配布する
+- `src/data/loader.ts` の責務を「最小フォールバックの生成」に更新（`getDefaultPresentationData` は廃止）
+- ホーム画面の「サンプルを開く」が3段フォールバック（同梱 → 配布パッケージ → 案内スライド）で解決することを注記。配布と取得の設計は [slide-package-distribution_design.md](./slide-package-distribution_design.md) が所有する
 
 ## v1.3.0 (2026-07-24)
 

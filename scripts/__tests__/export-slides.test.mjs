@@ -30,6 +30,16 @@ describe('parseArgs', () => {
     expect(parseArgs(['--addons', '']).addons).toBe(false)
     expect(parseArgs(['--addons', '  ']).addons).toBe(false)
   })
+
+  it('--source 未指定時は public を既定とする', () => {
+    expect(parseArgs(['--name', 'demo', '--slides', 'slides.json']).source).toBe('public')
+  })
+
+  it('--source で slides とアセットの基準ディレクトリを指定できる', () => {
+    const r = parseArgs(['--name', 'demo', '--slides', 'slides.ja.json', '--source', 'samples/template-guide'])
+    expect(r.source).toBe('samples/template-guide')
+    expect(r.slides).toBe('slides.ja.json')
+  })
 })
 
 describe('selectAddons（層B）', () => {

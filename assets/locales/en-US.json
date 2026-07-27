@@ -19,7 +19,8 @@
       "urlInputLabel": "Slide package URL",
       "urlSubmit": "Open",
       "urlOpening": "Opening…",
-      "loading": "Loading…"
+      "loading": "Loading…",
+      "sampleUnavailable": "Could not load the sample. Check your network connection."
     },
     "toolbar": {
       "hide": "Hide toolbar (T)",

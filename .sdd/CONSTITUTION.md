@@ -128,7 +128,7 @@
 
 **検証方法**:
 
-- [ ] スライドの内容がJSONデータ（`public/slides.json` または `src/data/default-slides.json`）で定義されているか
+- [ ] スライドの内容がJSONデータ（`public/slides.json`、`.spkg` パッケージ内の `slides.json`、または `samples/template-guide/slides.{locale}.json`）で定義されているか
 - [ ] `SlideRenderer` がデータの `layout` フィールドに基づいて描画を切り替えているか
 - [ ] 新しいスライドの追加がJSONデータの追加のみで可能か
 - [ ] スライドの順序変更がJSONの配列順序変更のみで可能か
@@ -142,7 +142,8 @@
 **準拠例**:
 
 - `public/slides.json` でスライドデータを外部定義
-- `src/data/default-slides.json` でデフォルトテンプレートを提供
+- `samples/template-guide/slides.{ja,en,fr}.json` でテンプレートガイドのサンプルを提供（アプリには同梱せず `.spkg` として配布。[slide-package-distribution.md](./requirement/slide-package-distribution.md)）
+- `src/data/loader.ts` の `getFallbackPresentationData` / `getSampleUnavailablePresentationData` / `getBlankPresentationData` で最小フォールバックを生成
 - `SlideRenderer.tsx` の `renderSlide()` で `layout` フィールドに基づく描画関数の切り替え
 
 ---
@@ -186,7 +187,7 @@
 
 - [ ] データバリデーション失敗時にデフォルトデータへフォールバックするか
 - [ ] 未登録コンポーネント参照時に `FallbackComponent` が表示されるか
-- [ ] カスタム `slides.json` が存在しない場合に `default-slides.json` が使用されるか
+- [ ] スライドデータを取得できない場合に最小フォールバック（`getFallbackPresentationData` / `getSampleUnavailablePresentationData`）が表示されるか
 - [ ] テーマ設定エラー時にデフォルトテーマで表示されるか
 
 **違反例**:
@@ -197,9 +198,9 @@
 
 **準拠例**:
 
-- `loader.ts` の `loadPresentationData()` でバリデーション失敗時にデフォルトデータを返却
+- `loader.ts` の `loadPresentationData()` でバリデーション失敗時に `getFallbackPresentationData(locale)` の1枚を返却
 - `ComponentRegistry.tsx` の `resolveComponent()` で `FallbackComponent` を最終手段として提供
-- `main.tsx` で `slides.json` 取得失敗時に `default-slides.json` を使用
+- `main.tsx` の `handleOpenSample()` でサンプル取得を3段（同梱 → 配布パッケージ → `getSampleUnavailablePresentationData(locale)` の案内スライド）にフォールバックさせる（[slide-package-distribution_design.md](./specification/slide-package-distribution_design.md)）
 
 ---
 

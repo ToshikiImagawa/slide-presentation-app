@@ -39,7 +39,7 @@ category: slide-package
 | モジュール/機能 | ステータス | 備考 |
 |----------|--------|------|
 | ファイル選択ダイアログ経路 | 🟢 | FR_001。`pickAndLoadSlidePackage()`（`src/localSlideLoader.ts:352`）。フィルタは `SLIDE_PACKAGE_ARCHIVE_EXTENSIONS`（`src/slidePackageArchive.ts:6`）から生成 |
-| HTTPS URL 経路 | 🟢 | FR_002。`loadSlidePackageFromUrl()`（`src/localSlideLoader.ts:368`）＋ Rust `download_slide_package`（`src-tauri/src/lib.rs:119`）。https 以外は `validate_download_url`（`:80`）で拒否 |
+| HTTPS URL 経路 | 🟢 | FR_002。`loadSlidePackageFromUrl()`（`src/localSlideLoader.ts`）＋ Rust `download_slide_package`（`src-tauri/src/lib.rs`）。https 以外は `validate_download_url` で拒否。取得・キャッシュ・タイムアウトの設計は [slide-package-distribution_design.md](./slide-package-distribution_design.md) が所有する |
 | 最近開いた一覧経路 | 🟢 | FR_003。`openRecentSlidePackage()`（`src/localSlideLoader.ts:373`）。`LazyStore('slide-package-state.json')` の `recentSlidePackages` キー・上限 8 件 |
 | 共通読み込み手順 | 🟢 | FR_009。`loadSlidePackage()`（`src/localSlideLoader.ts:290`）。`allow_asset_dir` を `readTextFile` より先に呼ぶ順序を保持（`:294`） |
 | `fileAssociations` 宣言 | 🔴 | FR_004 / FR_010。`src-tauri/tauri.conf.json` の `bundle` に未追加 |

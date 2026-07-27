@@ -221,6 +221,64 @@ function screenshotFixturePlugin(): Plugin {
   }
 }
 
+/**
+ * dev サーバー限定: 同梱スライドが無いとき samples/ の配布サンプルを /slides.json として配信する。
+ *
+ * 配布サンプルはアプリに同梱せず GitHub Releases から取得する設計だが、それだけだと素のブラウザ（Tauri IPC なし）や
+ * 未公開バージョンの開発中にサンプルを開けなくなる。真実源を samples/ の1箇所に保ったまま開発時の確認を可能にする。
+ * `apply: 'serve'` なので本番ビルドの出力には一切混入しない（= バンドルから外すという目的と両立する）。
+ * 相対参照（voice/...）はアプリ実行時は baseDir 基準で解決されるが dev には baseDir が無いため、ここで併せて配信する。
+ */
+function devSampleSlidesPlugin(): Plugin {
+  const manifestPath = resolve(__dirname, 'samples/manifest.json')
+  return {
+    name: 'dev-sample-slides',
+    apply: 'serve',
+    configureServer(server) {
+      // VITE_SAMPLE_SOURCE=remote のときは配信せず、リモート取得の経路を実機で確認できるようにする
+      if (server.config.env.VITE_SAMPLE_SOURCE === 'remote') return
+      if (!existsSync(manifestPath)) return
+
+      const manifest = JSON.parse(readFileSync(manifestPath, 'utf-8')) as {
+        source: string
+        fallbackLocale: string
+        packages: Array<{ locale: string; slides: string; name: string }>
+      }
+      const sourceDir = resolve(__dirname, manifest.source)
+
+      const send = (res: Parameters<Parameters<typeof server.middlewares.use>[0]>[1], filePath: string, contentType: string) => {
+        res.setHeader('Content-Type', contentType)
+        res.setHeader('Content-Length', statSync(filePath).size)
+        createReadStream(filePath).pipe(res)
+      }
+
+      server.middlewares.use((req, res, next) => {
+        const url = (req.url ?? '/').split('?')[0]
+
+        // サンプルが参照する音声（voice/xxx.wav）。実行時は baseDir 基準で解決されるパス
+        if (url.startsWith('/voice/')) {
+          const relative = url.replace(/^\//, '')
+          // public/ に同名ファイルがあればそちらを優先する（/slides.json と同じ規則）
+          if (existsSync(resolve(__dirname, 'public', relative))) return next()
+          const filePath = resolve(sourceDir, relative)
+          if (!filePath.startsWith(sourceDir) || !existsSync(filePath)) return next()
+          return send(res, filePath, 'audio/wav')
+        }
+
+        if (url !== '/slides.json') return next()
+        // public/slides.json（Vite の静的配信）や VITE_SLIDE_PACKAGE（slideContentPlugin）を上書きしない
+        if (existsSync(resolve(__dirname, 'public/slides.json'))) return next()
+
+        const lang = (req.headers['accept-language'] ?? '').toLowerCase().split(',')[0].split('-')[0]
+        const pkg = manifest.packages.find((p) => p.locale === lang) ?? manifest.packages.find((p) => p.locale === manifest.fallbackLocale)
+        const filePath = pkg && resolve(sourceDir, pkg.slides)
+        if (!filePath || !existsSync(filePath)) return next()
+        return send(res, filePath, 'application/json')
+      })
+    },
+  }
+}
+
 export default defineConfig(({ mode }) => {
   // スクリーンショット撮影モード。Tauri IPC をインメモリのモックへ alias 差し替えし、
   // fixture の slides.json を配信する。本番ビルド（mode !== 'screenshot'）には一切混入しない。
@@ -228,7 +286,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     // copyAddonsPlugin は内部で env.DEV をゲートし release では層Aをコピーしない（#35・DC-003）
-    plugins: [react(), assetsPlugin(), slideContentPlugin(), copyAddonsPlugin(), ...(isScreenshot ? [screenshotFixturePlugin()] : [])],
+    plugins: [react(), assetsPlugin(), slideContentPlugin(), copyAddonsPlugin(), ...(isScreenshot ? [screenshotFixturePlugin()] : [devSampleSlidesPlugin()])],
     build: {
       rollupOptions: {
         input: {

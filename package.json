@@ -17,6 +17,7 @@
     "test:e2e": "playwright test",
     "test:e2e:report": "playwright show-report",
     "export:slides": "npm run build:addons && node scripts/export-slides.mjs",
+    "export:samples": "node scripts/export-samples.mjs",
     "generate-icons": "node scripts/generate-icons.mjs",
     "generate-docs": "node scripts/generate-docs-pdf.mjs",
     "generate-screenshots": "node scripts/screenshot/capture-screenshots.mjs",

@@ -19,7 +19,8 @@
       "urlInputLabel": "URL du paquet de diapositives",
       "urlSubmit": "Ouvrir",
       "urlOpening": "Ouverture…",
-      "loading": "Chargement…"
+      "loading": "Chargement…",
+      "sampleUnavailable": "Impossible de récupérer l'exemple. Vérifiez votre connexion réseau."
     },
     "toolbar": {
       "hide": "Masquer la barre d'outils (T)",

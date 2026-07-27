@@ -22,8 +22,14 @@ export interface LoadedSlidePackage {
   /** 書換前の元 slides.json テキスト（編集モードの無損失往復の土台）。相対アセットパスを保持する */
   rawText: string
   baseDir: string
-  /** 利用者が選択した元パス（.spkg/.tgz または slides.json）。信頼判断の永続化キーに使う */
+  /** 利用者が選択した元パス（.spkg/.tgz・slides.json・URL）。信頼判断の永続化キーに使う */
   sourcePath: string
+  /**
+   * 編集モードの保存ダイアログに渡す既定パス。
+   * URL から取得したパッケージはローカルの元ファイルを持たないため undefined にする
+   * （sourcePath をそのまま渡すと defaultPath に https URL が入ってしまう）
+   */
+  savePath?: string
   /** convertFileSrc で asset URL 化済みのアドオンバンドル URL（manifest 宣言かつ addons/ 配下のみ） */
   addonScripts: string[]
   /** package.json 由来の書き出し用 name/version。編集モードの初期値に使う（無ければ両フィールド null） */
@@ -261,10 +267,20 @@ function isRemoteUrl(path: string): boolean {
   return /^https:\/\//i.test(path)
 }
 
+/** download_slide_package（Rust）へ渡すオプション。未指定なら共有クライアントの既定タイムアウト・URL ハッシュの展開先・毎回再ダウンロード */
+export interface SlidePackageDownloadOptions {
+  /** このリクエストだけのタイムアウト秒（既定は 300 秒。ユーザーを長く待たせたくない経路で短くする） */
+  timeoutSecs?: number
+  /** 展開済みキャッシュがあればネットワークに触れず再利用する。内容が不変な URL にのみ指定する */
+  reuseCache?: boolean
+  /** 展開先ディレクトリ名（未指定なら URL のハッシュ） */
+  cacheKey?: string
+}
+
 /** 選択されたパスから slides.json の実パスとその基準ディレクトリを求める（.spkg/.tgz・URL は Rust 側でダウンロード/展開） */
-async function resolvePackageEntry(selectedPath: string): Promise<{ slidesJsonPath: string; baseDir: string }> {
+async function resolvePackageEntry(selectedPath: string, download?: SlidePackageDownloadOptions): Promise<{ slidesJsonPath: string; baseDir: string }> {
   if (isRemoteUrl(selectedPath)) {
-    const extractedDir = await invoke<string>('download_slide_package', { url: selectedPath })
+    const extractedDir = await invoke<string>('download_slide_package', { url: selectedPath, options: download })
     return { slidesJsonPath: `${extractedDir}/slides.json`, baseDir: extractedDir }
   }
   if (isSlidePackageArchivePath(selectedPath)) {
@@ -287,8 +303,8 @@ async function resolvePackageAddons(baseDir: string): Promise<string[]> {
 }
 
 /** 指定パス（slides.json または .spkg/.tgz パッケージ）を読み込み、バリデーション・ローカルアセット解決を行う。失敗時は例外を投げる */
-async function loadSlidePackage(selectedPath: string): Promise<LoadedSlidePackage> {
-  const { slidesJsonPath, baseDir } = await resolvePackageEntry(selectedPath)
+async function loadSlidePackage(selectedPath: string, download?: SlidePackageDownloadOptions): Promise<LoadedSlidePackage> {
+  const { slidesJsonPath, baseDir } = await resolvePackageEntry(selectedPath, download)
 
   // asset プロトコル・fs プラグイン双方にこのディレクトリの読み取りを許可する（readTextFile より先に必要）
   await invoke('allow_asset_dir', { dir: baseDir })
@@ -303,7 +319,17 @@ async function loadSlidePackage(selectedPath: string): Promise<LoadedSlidePackag
   // owner はパッケージ単位で一意な baseDir
   const [addonScripts, identity] = await Promise.all([resolvePackageAddons(baseDir), getPackageIdentity(baseDir)])
 
-  return { data: resolveLocalAssetPaths(parsed, baseDir), rawText: raw, baseDir, sourcePath: selectedPath, addonScripts, identity, owner: baseDir }
+  return {
+    data: resolveLocalAssetPaths(parsed, baseDir),
+    rawText: raw,
+    baseDir,
+    sourcePath: selectedPath,
+    // URL 由来はローカルの元ファイルが無いため保存ダイアログの既定パスにしない
+    savePath: isRemoteUrl(selectedPath) ? undefined : selectedPath,
+    addonScripts,
+    identity,
+    owner: baseDir,
+  }
 }
 
 /** 最近使ったリストを取得する */
@@ -336,14 +362,19 @@ async function reportLoadError(error: unknown): Promise<void> {
   await message(`スライドの読み込みに失敗しました。\n\n${detail}`, { title: 'スライドを開く', kind: 'error' })
 }
 
-/** 指定パスを読み込み、成功時は最近使ったリストに記録する。失敗時はエラーダイアログを表示する（recentPackages は変更なしの null） */
-async function loadAndRecordSlidePackage(selectedPath: string): Promise<SlidePackageLoadResult> {
+/**
+ * 指定パスを読み込み、成功時は最近使ったリストに記録する。失敗時はエラーダイアログを表示する（recentPackages は変更なしの null）。
+ * record / reportError はサンプル取得のように「一覧に残さず、失敗しても呼び出し側でフォールバックする」経路のために切れる
+ */
+async function loadAndRecordSlidePackage(selectedPath: string, options?: { record?: boolean; reportError?: boolean; download?: SlidePackageDownloadOptions }): Promise<SlidePackageLoadResult> {
+  const { record = true, reportError = true, download } = options ?? {}
   try {
-    const result = await loadSlidePackage(selectedPath)
-    const recentPackages = await recordRecentSlidePackage(selectedPath, result.data.meta.title)
+    const result = await loadSlidePackage(selectedPath, download)
+    const recentPackages = record ? await recordRecentSlidePackage(selectedPath, result.data.meta.title) : null
     return { data: result, recentPackages }
   } catch (error) {
-    await reportLoadError(error)
+    if (reportError) await reportLoadError(error)
+    else console.error('[localSlideLoader] スライドパッケージの読み込みに失敗しました', error)
     return { data: null, recentPackages: null }
   }
 }
@@ -372,6 +403,15 @@ export async function loadSlidePackageFromUrl(url: string): Promise<SlidePackage
 /** OS のファイル関連付け（Finder の「このアプリケーションで開く」等）から渡された絶対パスを開く。成功時は最近使ったリストに記録し、失敗時はエラーダイアログを表示する */
 export async function openSlidePackageFromPath(path: string): Promise<SlidePackageLoadResult> {
   return loadAndRecordSlidePackage(path)
+}
+
+/**
+ * ホーム画面の「サンプルを開く」用に、配布サンプルパッケージを URL から読み込む。
+ * サンプルはボタンからいつでも開けるため最近使ったリストには記録せず、
+ * 失敗時も呼び出し側が次の候補 URL・案内スライドへフォールバックするためダイアログを出さない
+ */
+export async function loadSampleSlidePackageFromUrl(url: string, download?: SlidePackageDownloadOptions): Promise<SlidePackageLoadResult> {
+  return loadAndRecordSlidePackage(url, { record: false, reportError: false, download })
 }
 
 /** 最近使ったリストの1件を再読み込みする。成功時はリスト先頭に更新し、失敗時はエラーダイアログを表示してリストから取り除く */

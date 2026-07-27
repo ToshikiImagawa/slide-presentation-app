@@ -19,7 +19,8 @@
       "urlInputLabel": "スライドパッケージのURL",
       "urlSubmit": "開く",
       "urlOpening": "開いています…",
-      "loading": "読み込んでいます…"
+      "loading": "読み込んでいます…",
+      "sampleUnavailable": "サンプルを取得できませんでした。ネットワーク接続を確認してください。"
     },
     "toolbar": {
       "hide": "ツールバーを隠す (T)",

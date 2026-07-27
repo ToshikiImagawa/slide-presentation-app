@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest'
+import { readFileSync } from 'fs'
+import { resolve } from 'path'
 import { ALLOWED_LAYOUTS, getSchemaConformanceErrors } from '../slideContentSchema'
-import defaultSlidesJa from '../default-slides-ja.json'
-import defaultSlidesEn from '../default-slides-en.json'
+import samplesManifest from '../../../samples/manifest.json'
 import type { PresentationData } from '../types'
+
+const projectRoot = resolve(import.meta.dirname, '../../..')
 
 describe('ALLOWED_LAYOUTS', () => {
   it('SlideRendererが対応する5種のlayoutを含む', () => {
@@ -11,9 +14,10 @@ describe('ALLOWED_LAYOUTS', () => {
 })
 
 describe('getSchemaConformanceErrors', () => {
-  it('デフォルトスライド（ja/en）は0エラーである', () => {
-    expect(getSchemaConformanceErrors(defaultSlidesJa as PresentationData)).toEqual([])
-    expect(getSchemaConformanceErrors(defaultSlidesEn as PresentationData)).toEqual([])
+  // manifest 駆動なので、ロケールを増やしたら自動で検証対象になる
+  it.each(samplesManifest.packages)('配布サンプル（$locale）は0エラーである', ({ slides }) => {
+    const data = JSON.parse(readFileSync(resolve(projectRoot, samplesManifest.source, slides), 'utf-8')) as PresentationData
+    expect(getSchemaConformanceErrors(data)).toEqual([])
   })
 
   it('未知のlayoutをエラーにする', () => {

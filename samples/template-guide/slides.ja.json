@@ -95,7 +95,6 @@
         "right": {
           "component": {
             "name": "TerminalAnimation",
-            "props": { "logTextUrl": "/demo-log.txt" },
             "style": { "height": "400px", "width": "90%", "margin": "auto" }
           }
         }
@@ -177,7 +176,6 @@
         "title": "layout: \"content\" — コンポーネント (component)",
         "component": {
           "name": "TerminalAnimation",
-          "props": { "logTextUrl": "/demo-log.txt" },
           "style": { "height": "400px", "width": "90%", "margin": "auto" }
         },
         "footer": "content レイアウトの component はタイトルバー付きのラッパー内に描画されます"
@@ -206,7 +204,6 @@
         ],
         "component": {
           "name": "TerminalAnimation",
-          "props": { "logTextUrl": "/demo-log.txt" },
           "style": { "height": "400px", "width": "90%", "margin": "auto" }
         }
       },
@@ -227,7 +224,6 @@
       "content": {
         "component": {
           "name": "TerminalAnimation",
-          "props": { "logTextUrl": "/demo-log.txt" },
           "style": { "height": "100%", "width": "100%" }
         }
       },
@@ -479,13 +475,20 @@
       }
     },
     {
-      "id": "guide-logo-fonts",
+      "id": "guide-logo",
       "layout": "two-column",
       "content": {
-        "title": "ロゴ・フォント設定",
+        "title": "ロゴ設定",
         "left": {
           "heading": "meta.logo",
           "headingDescription": "プレゼンテーションのロゴを設定",
+          "items": [
+            {"text": "src:", "emphasis": true, "description": " ロゴ画像のパス（デフォルト: /logo.png）"},
+            {"text": "width / height:", "emphasis": true, "description": " サイズ指定（デフォルト: 120 x 40）"},
+            {"text": "省略時:", "emphasis": true, "description": " ロゴは表示されません"}
+          ]
+        },
+        "right": {
           "codeBlock": {
             "header": "> JSON での指定方法",
             "items": [
@@ -497,16 +500,37 @@
               "\u00a0\u00a0}",
               "}"
             ]
-          },
+          }
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "meta.logo でロゴ画像を設定できます。src でパスを、width / height でサイズを指定します。meta.logo を省略するとロゴは表示されません。",
+          "summary": [
+            "meta.logo でロゴ画像を設定",
+            "src / width / height を指定",
+            "省略時はロゴを表示しない"
+          ]
+        }
+      }
+    },
+    {
+      "id": "guide-fonts",
+      "layout": "two-column",
+      "content": {
+        "title": "フォント設定",
+        "left": {
+          "heading": "theme.fonts",
+          "headingDescription": "フォントファミリーをカスタマイズ",
           "items": [
-            {"text": "src:", "emphasis": true, "description": " ロゴ画像のパス（デフォルト: /logo.png）"},
-            {"text": "width / height:", "emphasis": true, "description": " サイズ指定（デフォルト: 120 x 40）"},
-            {"text": "省略時:", "emphasis": true, "description": " ロゴは表示されません"}
+            {"text": "heading:", "emphasis": true, "description": " 見出し用フォント"},
+            {"text": "body:", "emphasis": true, "description": " 本文用フォント"},
+            {"text": "code:", "emphasis": true, "description": " コードブロック用フォント"},
+            {"text": "baseFontSize:", "emphasis": true, "description": " 基本フォントサイズ（デフォルト: 24px）"},
+            {"text": "sources:", "emphasis": true, "description": " Google Fonts 等の外部フォント URL 配列"}
           ]
         },
         "right": {
-          "heading": "theme.fonts",
-          "headingDescription": "フォントファミリーをカスタマイズ",
           "codeBlock": {
             "header": "> JSON での指定方法",
             "items": [
@@ -522,21 +546,13 @@
               "\u00a0\u00a0}",
               "}"
             ]
-          },
-          "items": [
-            {"text": "heading:", "emphasis": true, "description": " 見出し用フォント"},
-            {"text": "body:", "emphasis": true, "description": " 本文用フォント"},
-            {"text": "code:", "emphasis": true, "description": " コードブロック用フォント"},
-            {"text": "baseFontSize:", "emphasis": true, "description": " 基本フォントサイズ（デフォルト: 24px）"},
-            {"text": "sources:", "emphasis": true, "description": " Google Fonts 等の外部フォント URL 配列"}
-          ]
+          }
         }
       },
       "meta": {
         "notes": {
-          "speakerNotes": "meta.logo でロゴ画像を設定し、theme.fonts でフォントファミリーをカスタマイズできます。ロゴは meta.logo を省略すると表示されません。",
+          "speakerNotes": "theme.fonts でフォントファミリーをカスタマイズできます。heading / body / code の3種類を指定でき、baseFontSize で基本サイズ、sources で外部フォントの URL を指定します。",
           "summary": [
-            "meta.logo でロゴ画像を設定",
             "theme.fonts でフォントをカスタマイズ",
             "heading / body / code の3種類を指定可能",
             "baseFontSize と sources も設定可能"
@@ -554,7 +570,9 @@
           "paragraphs": [
             "画面右上の「発表者ビュー」ボタンをクリックすると、別ウィンドウで発表者専用の画面が開きます。",
             "メインウィンドウと発表者ビューは双方向に同期されます。どちらからでもスライドを操作できます。"
-          ],
+          ]
+        },
+        "right": {
           "codeBlock": {
             "header": "> notes の設定例",
             "items": [
@@ -565,33 +583,49 @@
               "\u00a0\u00a0}",
               "}"
             ]
-          }
-        },
-        "right": {
-          "heading": "4つのパネル",
-          "items": [
-            {"text": "スピーカーノート:", "emphasis": true, "description": " 現在のスライドの発表者メモ（speakerNotes）を表示"},
-            {"text": "前スライドプレビュー:", "emphasis": true, "description": " 前のスライドの縮小プレビューを表示"},
-            {"text": "次スライドプレビュー:", "emphasis": true, "description": " 次のスライドの縮小プレビューを表示"},
-            {"text": "要点サマリー:", "emphasis": true, "description": " 現在のスライドの要点（summary）を箇条書き表示"}
-          ],
-          "titledBulletList": {
-            "title": "キーボード操作",
-            "items": [
-              "<strong>← / →</strong>: 前後のスライドへ移動",
-              "<strong>Space</strong>: 次のスライドへ移動"
-            ]
           },
           "accentText": "→ meta.notes に speakerNotes と summary を設定して活用しましょう"
         }
       },
       "meta": {
         "notes": {
-          "speakerNotes": "発表者ビューは別ウィンドウで開き、スピーカーノート・前後スライドプレビュー・要点サマリーの4パネルを表示します。メインウィンドウと双方向に同期されます。",
+          "speakerNotes": "発表者ビューは別ウィンドウで開き、メインウィンドウと双方向に同期されます。どちらのウィンドウからでもスライドを操作できます。",
           "summary": [
             "右上ボタンで別ウィンドウに表示",
-            "スピーカーノート・前後プレビュー・要点サマリーの4パネル",
             "メインウィンドウと双方向同期",
+            "meta.notes の speakerNotes / summary を活用"
+          ]
+        }
+      }
+    },
+    {
+      "id": "guide-presenter-view-panels",
+      "layout": "two-column",
+      "content": {
+        "title": "発表者ビュー — 4つのパネル",
+        "left": {
+          "items": [
+            {"text": "スピーカーノート:", "emphasis": true, "description": " 現在のスライドの発表者メモ（speakerNotes）を表示"},
+            {"text": "前スライドプレビュー:", "emphasis": true, "description": " 前のスライドの縮小プレビューを表示"},
+            {"text": "次スライドプレビュー:", "emphasis": true, "description": " 次のスライドの縮小プレビューを表示"},
+            {"text": "要点サマリー:", "emphasis": true, "description": " 現在のスライドの要点（summary）を箇条書き表示"}
+          ]
+        },
+        "right": {
+          "titledBulletList": {
+            "title": "キーボード操作",
+            "items": [
+              "<strong>← / →</strong>: 前後のスライドへ移動",
+              "<strong>Space</strong>: 次のスライドへ移動"
+            ]
+          }
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "発表者ビューはスピーカーノート・前後スライドプレビュー・要点サマリーの4パネルを表示します。キーボードの ←/→/Space でどちらのウィンドウからでも操作できます。",
+          "summary": [
+            "スピーカーノート・前後プレビュー・要点サマリーの4パネル",
             "←/→/Space でスライド操作"
           ]
         }
@@ -638,7 +672,7 @@
             "ツールバーで手動再生・自動再生・自動スライドショーを制御",
             "自動再生 + 自動スライドショーで全自動プレゼンテーション"
           ],
-          "voice": "/assets/voice/guide-audio-ja.wav"
+          "voice": "voice/guide-audio-ja.wav"
         }
       }
     },

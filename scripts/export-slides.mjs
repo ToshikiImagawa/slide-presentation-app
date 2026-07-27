@@ -11,11 +11,15 @@ const projectRoot = resolve(__dirname, '..')
 
 // --- CLI引数パース ---
 export function parseArgs(args) {
-  const result = { name: null, slides: null, version: '1.0.0', addons: false }
+  // source は slides ファイルと参照アセットの共通の基準ディレクトリ（プロジェクトルート相対、または絶対パス）
+  const result = { name: null, slides: null, version: '1.0.0', source: 'public', addons: false, strict: false }
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--name' && args[i + 1]) result.name = args[++i]
     else if (args[i] === '--slides' && args[i + 1]) result.slides = args[++i]
     else if (args[i] === '--version' && args[i + 1]) result.version = args[++i]
+    else if (args[i] === '--source' && args[i + 1]) result.source = args[++i]
+    // 参照アセットが1つでも欠けていたら失敗させる（配布物を作る CI 用。既定は警告のみで続行）
+    else if (args[i] === '--strict') result.strict = true
     else if (args[i] === '--addons') {
       // `--addons` 単独なら全同梱、`--addons a,b` なら name で個別選択（層B・FR-009）
       const next = args[i + 1]
@@ -144,15 +148,18 @@ function main() {
   const args = parseArgs(process.argv.slice(2))
 
   if (!args.name || !args.slides) {
-    console.error('Usage: node scripts/export-slides.mjs --name <name> --slides <slides.json> [--addons]')
+    console.error('Usage: node scripts/export-slides.mjs --name <name> --slides <slides.json> [--source <dir>] [--addons]')
     console.error('  --name     パッケージ名 (例: my-presentation)')
-    console.error('  --slides   public/配下のslidesファイル名 (例: slides.json)')
+    console.error('  --slides   source ディレクトリ配下のslidesファイル名 (例: slides.json)')
+    console.error('  --source   slides とアセットの基準ディレクトリ (デフォルト: public)')
     console.error('  --version  バージョン (デフォルト: 1.0.0)')
     console.error('  --addons   ビルド済みアドオン (addons/dist) を同梱する（`--addons a,b` で name を個別選択）')
+    console.error('  --strict   参照アセットが1つでも欠けていたら失敗させる (配布物のビルド用)')
     process.exit(1)
   }
 
-  const slidesSourcePath = resolve(projectRoot, 'public', args.slides)
+  const sourceDir = resolve(projectRoot, args.source)
+  const slidesSourcePath = resolve(sourceDir, args.slides)
   if (!existsSync(slidesSourcePath)) {
     console.error(`Error: ${slidesSourcePath} が見つかりません`)
     process.exit(1)
@@ -176,18 +183,25 @@ function main() {
 
   // アセットファイルコピー
   let copiedCount = 0
+  const missingAssets = []
   for (const assetPath of assetPaths) {
-    const src = resolve(projectRoot, 'public', assetPath)
+    const src = resolve(sourceDir, assetPath)
     const dest = resolve(outDir, assetPath)
     if (existsSync(src)) {
       mkdirSync(dirname(dest), { recursive: true })
       cpSync(src, dest)
       copiedCount++
     } else {
+      missingAssets.push(src)
       console.warn(`Warning: ${src} が見つかりません（スキップ）`)
     }
   }
   console.log(`Copied ${copiedCount}/${assetPaths.length} assets`)
+  // 参照だけが残ったパッケージは開いた先で無音・画像欠けになるため、配布物を作る場合はここで止める
+  if (args.strict && missingAssets.length > 0) {
+    console.error(`Error: 参照アセット ${missingAssets.length} 件が見つかりません（--strict）`)
+    process.exit(1)
+  }
 
   // アドオン同梱（--addons 指定時のみ。値ありなら name で個別選択）
   let includeAddons = false

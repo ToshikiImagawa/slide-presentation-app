@@ -38,7 +38,7 @@ category: ui-components
 |-----------------------------|-------|----|
 | Image ラッパーコンポーネント           | 🟢    |    |
 | registerDefaults.tsx への登録   | 🟢    |    |
-| default-slides-ja.json / default-slides-en.json への使用例追加 | 🟢 | ロケール別デフォルトスライドの両方に `Image` 使用例スライドを追加済み |
+| テンプレートガイド（samples/template-guide/slides.{ja,en,fr}.json）への使用例追加 | 🟢 | ロケール別サンプルのすべてに `Image` 使用例スライドを追加済み（配布は [slide-package-distribution_design.md](./slide-package-distribution_design.md)） |
 
 ---
 
