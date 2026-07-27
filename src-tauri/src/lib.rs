@@ -1906,11 +1906,8 @@ mod tests {
 
   #[test]
   fn resolve_extracted_package_dir_detects_usable_cache() {
-    let base = std::env::temp_dir().join(format!(
-      "slide-cache-detect-{}-{}",
-      std::process::id(),
-      "a"
-    ));
+    let base =
+      std::env::temp_dir().join(format!("slide-cache-detect-{}-{}", std::process::id(), "a"));
     fs::remove_dir_all(&base).ok();
     fs::create_dir_all(&base).unwrap();
 
