@@ -137,8 +137,12 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
           security list-keychains -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | sed 's/"//g')
 
-          # 自己署名ルート証明書を System keychain の信頼設定に追加する(CSSMERR_TP_NOT_TRUSTED 対策)
-          openssl pkcs12 -in "$CERTIFICATE_PATH" -clcerts -nokeys -passin "pass:$MACOS_SIGNING_P12_PASSWORD" -out "$CERTIFICATE_PEM_PATH"
+          # 自己署名ルート証明書を System keychain の信頼設定に追加する(CSSMERR_TP_NOT_TRUSTED 対策)。
+          # /usr/bin/openssl で明示的にパスを指定すること。PATH 解決に任せると
+          # macOS runner では Homebrew 製の OpenSSL 3.x が先に見つかり、macOS が p12 書き出しに
+          # 使う legacy 暗号方式(RC2-40-CBC 等)をエラーも出さずに復号できず空の PEM を生成する。
+          # macOS 標準の /usr/bin/openssl(LibreSSL)は legacy 形式をそのまま扱えるため確実
+          /usr/bin/openssl pkcs12 -in "$CERTIFICATE_PATH" -clcerts -nokeys -passin "pass:$MACOS_SIGNING_P12_PASSWORD" -out "$CERTIFICATE_PEM_PATH"
           sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain "$CERTIFICATE_PEM_PATH"
 
           rm -f "$CERTIFICATE_PATH" "$CERTIFICATE_PEM_PATH"
