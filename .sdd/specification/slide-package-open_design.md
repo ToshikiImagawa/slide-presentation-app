@@ -39,7 +39,7 @@ category: slide-package
 | モジュール/機能 | ステータス | 備考 |
 |----------|--------|------|
 | ファイル選択ダイアログ経路 | 🟢 | FR_001。`pickAndLoadSlidePackage()`（`src/localSlideLoader.ts:352`）。フィルタは `SLIDE_PACKAGE_ARCHIVE_EXTENSIONS`（`src/slidePackageArchive.ts:6`）から生成 |
-| HTTPS URL 経路 | 🟢 | FR_002。`loadSlidePackageFromUrl()`（`src/localSlideLoader.ts:368`）＋ Rust `download_slide_package`（`src-tauri/src/lib.rs:118`）。https 以外は `validate_download_url`（`:80`）で拒否 |
+| HTTPS URL 経路 | 🟢 | FR_002。`loadSlidePackageFromUrl()`（`src/localSlideLoader.ts:368`）＋ Rust `download_slide_package`（`src-tauri/src/lib.rs:119`）。https 以外は `validate_download_url`（`:80`）で拒否 |
 | 最近開いた一覧経路 | 🟢 | FR_003。`openRecentSlidePackage()`（`src/localSlideLoader.ts:373`）。`LazyStore('slide-package-state.json')` の `recentSlidePackages` キー・上限 8 件 |
 | 共通読み込み手順 | 🟢 | FR_009。`loadSlidePackage()`（`src/localSlideLoader.ts:290`）。`allow_asset_dir` を `readTextFile` より先に呼ぶ順序を保持（`:294`） |
 | `fileAssociations` 宣言 | 🔴 | FR_004 / FR_010。`src-tauri/tauri.conf.json` の `bundle` に未追加 |
@@ -262,6 +262,7 @@ function handleExternalOpenRequest(path: string): Promise<void>
 | NFR_003（編集内容の保護） | 外部起因の遷移を必ずゲート関数に通し、編集モードかつ未保存のときは確認ダイアログを挟む。既存のエディタ内退出確認（`src/edit/SlideEditor.tsx:224`）と同じ判定基準（`text !== source.rawText`）を再利用する |
 | NFR_004（3 OS 同等性） | 到着経路の差（`argv` / `RunEvent::Opened` / 多重起動抑止コールバック）をすべて保留領域へ収束させる。Linux は MIME 型定義 XML の同梱で登録の欠落を補う |
 | NFR_005（リグレッションなし） | 既存3経路の関数・共通読み込み手順に手を入れず、外部要求を「パス1本」に正規化して既存経路へ合流させる。既存プラグイン登録・`invoke_handler`・`setup` の内容は変更しない（追加のみ） |
+| DC_005（アドオンロード順序の不変） | 外部要求を `loadSlidePackage()`（`src/localSlideLoader.ts:290`）の入力である「パス1本」へ正規化することで実現する。展開 → `allow_asset_dir` → `<script>` 注入の順序はこの関数の内部に閉じており、入口の追加では触れない |
 | NFR_006（条件付きコンパイル） | `RunEvent::Opened` の参照箇所を `#[cfg(any(target_os = "macos", target_os = "ios", target_os = "android"))]` で隔離する。他 OS ではバリアント自体が存在しないため、`match` のアームごと消える形にする |
 
 ---
