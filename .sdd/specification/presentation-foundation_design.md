@@ -6,7 +6,7 @@ status: draft
 sdd-phase: plan
 impl-status: implemented
 created: 2026-02-02
-updated: 2026-07-24
+updated: 2026-07-27
 depends-on:
   - spec-presentation-foundation
 tags:
@@ -23,7 +23,7 @@ category: presentation-foundation
 
 **ドキュメント種別:** 技術設計書 (Design Doc)
 **SDDフェーズ:** Plan (計画/設計)
-**最終更新日:** 2026-07-24
+**最終更新日:** 2026-07-27
 **関連 Spec:** [presentation-foundation_spec.md](./presentation-foundation_spec.md)
 **関連 PRD:** [presentation-foundation.md](../requirement/presentation-foundation.md)
 
@@ -75,6 +75,8 @@ category: presentation-foundation
 
 起動フローは「並行初期化 → 常にホーム画面表示 → ユーザー操作で App へ遷移」の 3 段階。`main.tsx` は `Promise.all` で組み込みアドオン・言語リソース・最近開いたパッケージ・テーマを並行ロードしてから `HomeScreen` を描画する。ホーム画面でスライド（サンプルまたはローカルパッケージ）を選択すると、必要に応じてパッケージ同梱アドオンをロードしたうえで `App` をマウントする。
 
+> **OS 起動経路の追加**: 上記に加えて、OS のファイル関連付け（`.spkg` のダブルクリック等）から起動された場合は、並行初期化の完了後に**ネイティブ側の保留領域から開く要求を引き取る**段階が挟まる。要求があればホーム画面を経由せずそのまま `App` をマウントし、無ければ従来どおり `HomeScreen` を描画する。アプリ起動中に要求が届いた場合は、`open-slide-package` シグナルを契機に同じ引き取り処理を再実行する。この経路の詳細（保留領域・take セマンティクス・多重起動抑止・編集モード中の確認）は [slide-package-open_design.md](./slide-package-open_design.md) が所有する。下図では引き取り段階を分岐点として示すが、そこから先の内部構造は同設計書を参照。
+
 ```mermaid
 graph TD
     subgraph "エントリーポイント"
@@ -86,6 +88,11 @@ graph TD
         LoadLocales["loadLocales()"]
         GetRecent["getRecentSlidePackages()"]
         ApplyTheme["applyTheme()"]
+    end
+
+    subgraph "OS 起動経路（slide-package-open が所有）"
+        TakePending["take_pending_open_paths()<br/>保留された開く要求の引き取り"]
+        Signal["listen('open-slide-package')<br/>起動中の到着シグナル"]
     end
 
     subgraph "ビュー層"
@@ -116,10 +123,13 @@ graph TD
     Main --> LoadLocales
     Main --> GetRecent
     Main --> ApplyTheme
-    LoadBuiltin --> Home
-    LoadLocales --> Home
-    GetRecent --> Home
-    ApplyTheme --> Home
+    LoadBuiltin --> TakePending
+    LoadLocales --> TakePending
+    GetRecent --> TakePending
+    ApplyTheme --> TakePending
+    Signal --> TakePending
+    TakePending -->|要求なし| Home
+    TakePending -->|要求あり| LoadPackage
     Home -->|サンプル選択| LoadSample
     Home -->|パッケージ選択| LoadPackage
     LoadPackage --> LoadAddonScripts
@@ -149,6 +159,8 @@ graph TD
 | applyTheme    | CSS変数ベースのテーマ適用                                     | なし（DOM API のみ）                                      | `src/applyTheme.ts`                |
 | global.css    | CSS変数定義、アニメーション、Reveal.js オーバーライド                  | なし                                                  | `src/styles/global.css`            |
 | theme.ts      | MUI テーマ設定                                          | MUI                                                 | `src/theme.ts`                     |
+
+> **OS 起動経路のモジュールは本機能の所有ではない。** 保留領域（`PendingOpenPaths`）・取り出し口（`take_pending_open_paths`）・多重起動抑止・`open-slide-package` シグナルの購読・編集モード中の確認ゲートは [slide-package-open_design.md](./slide-package-open_design.md) の「4.2. モジュール分割」が所有する。本機能側で増える責務は「引き取った要求があればホーム画面を経由せず `App` をマウントする」という `main.tsx` の描画分岐のみ。
 
 ## 4.3. ディレクトリ構造
 

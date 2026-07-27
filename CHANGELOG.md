@@ -8,6 +8,15 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **`.spkg` File Association** — Open a slide package straight from the OS file manager (double-click, or right-click →
+  open with this app) on macOS, Windows, and Linux
+    - When the app is not running it launches directly into the presentation, skipping the home screen; when it is
+      already running the existing window is reused instead of opening a second one
+    - In edit mode with unsaved changes, a confirmation dialog appears first so nothing is discarded silently
+    - Cache extraction, relative asset resolution (`image/`, `voice/`, `theme/`, `font/`), embedded add-on trust
+      prompts, and last-opened reload all behave exactly as they do for packages opened from the home screen
+    - Only `.spkg` is registered with the OS; legacy `.tgz` packages remain openable from the home screen
+- **Open from a URL** — Documented the existing home-screen action for fetching a `.spkg` over HTTPS
 - **Edit Mode** — Author and package slides directly in the app (toggle from the toolbar **Edit** button)
     - Metadata form + full-width `slides.json` editor sharing a single source of truth, with a live preview rendered by
       the production renderer (theme edits reflected live)
