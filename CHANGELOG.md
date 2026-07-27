@@ -47,7 +47,7 @@ All notable changes to this project will be documented in this file.
       version → the `latest` release asset. If none is reachable, a single slide asks you to check your network
       connection (app startup is unaffected)
     - The pinned asset never changes, so its extraction is cached and the sample opens offline from the second time on
-    - The sample audio (~3MB) is no longer shipped in the app bundle, and sample updates are decoupled from app releases
+    - The sample audio is no longer shipped in the app bundle, and sample updates are decoupled from app releases
     - Added a French sample (the UI already supported fr-FR, but the sample fell back to English)
     - `VITE_SAMPLE_PACKAGE_URL` / `VITE_SAMPLE_SOURCE=remote` override where the sample comes from
     - `npm run export:samples` exports every locale; `npm run export:slides` gained `--source` (input directory) and

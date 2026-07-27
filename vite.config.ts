@@ -257,7 +257,10 @@ function devSampleSlidesPlugin(): Plugin {
 
         // サンプルが参照する音声（voice/xxx.wav）。実行時は baseDir 基準で解決されるパス
         if (url.startsWith('/voice/')) {
-          const filePath = resolve(sourceDir, url.replace(/^\//, ''))
+          const relative = url.replace(/^\//, '')
+          // public/ に同名ファイルがあればそちらを優先する（/slides.json と同じ規則）
+          if (existsSync(resolve(__dirname, 'public', relative))) return next()
+          const filePath = resolve(sourceDir, relative)
           if (!filePath.startsWith(sourceDir) || !existsSync(filePath)) return next()
           return send(res, filePath, 'audio/wav')
         }
