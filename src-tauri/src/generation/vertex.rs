@@ -5,7 +5,6 @@
 //! バージョンは body の `anthropic_version: "vertex-2023-10-16"`。`global` リージョンはホスト名を分岐する。
 //! 送出 body はプロンプト構築の純関数（`super::system_prompt` / `super::user_prompt`）に集約し機密最小化（NFR-004）。
 //! `with_retry`（429/529 指数バックオフ）・エラーボディ切詰め・応答タイムアウト 120 秒でコストを境界付ける（NFR-005）。
-//! ticketvc `anthropic_client.rs`（Vertex 実装）を流用。
 
 use super::{gcp_auth, CancelToken, GenerateError, GenerateRequest, SlideGenerator};
 use serde_json::Value;

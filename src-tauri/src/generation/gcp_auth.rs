@@ -1,7 +1,7 @@
 //! GCP ADC によるアクセストークン取得（#14・内蔵 Vertex 生成の認証）。
 //!
 //! GCP 認証クレートは使わず、`gcloud auth application-default login` が生成する ADC ファイルを読み、
-//! `refresh_token` を Google の token エンドポイントへ投げて access_token を得る（ticketvc `gcp_auth.rs` 流用）。
+//! `refresh_token` を Google の token エンドポイントへ投げて access_token を得る（`gcp_auth.rs` 流用）。
 //! トークンは静的キャッシュに 55 分保持し、WebView には一切出さない（Rust 境界に閉じる・NFR-003）。
 
 use std::path::PathBuf;

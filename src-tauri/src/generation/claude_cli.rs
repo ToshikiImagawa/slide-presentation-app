@@ -3,7 +3,7 @@
 //! 外部は完結エージェント。生 Messages を渡さず `claude --print --output-format json --strict-mcp-config
 //! --max-turns 1` を一時 cwd で spawn し、結果 JSON（`result` 文字列）を受け取る。API キー不要。
 //! タイムアウト安全弁（`tokio::time::timeout`）・`kill_on_drop`・`is_error` 判定を備える
-//! （ticketvc `claude_cli/llm_client.rs` 流用）。バイナリ検出は env override → PATH → 代表配置の順。
+//! （`claude_cli/llm_client.rs` 流用）。バイナリ検出は env override → PATH → 代表配置の順。
 
 use super::{CancelToken, GenerateError, GenerateRequest, SlideGenerator};
 use serde_json::Value;

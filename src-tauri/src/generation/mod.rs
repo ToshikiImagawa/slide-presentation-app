@@ -2,7 +2,7 @@
 //!
 //! 「プロンプト → slides.json 候補 1 件」を単一契約とする生成器（内蔵 Vertex AI 直 / 外部 Claude Code CLI）を、
 //! `SlideGenerator` trait ＋ 閉じた `SlideGeneratorKind` enum ＋ `resolve_generator_kind`（純関数）＋
-//! `create_generator`（factory）で差し替え可能にする（ticketvc `llm_backend.rs` パターン）。
+//! `create_generator`（factory）で差し替え可能にする（`llm_backend.rs` パターン）。
 //!
 //! 検証・自動修正ループ・outcome 判定は JS 側（`aiGenerate.ts`）が単一真実源として駆動するため、
 //! Rust は候補 1 件を返す責務に限定する（design §4.1／§9.1）。送出内容（プロンプト構築）は
