@@ -219,10 +219,12 @@ function main() {
   const tgzName = packOutput.split('\n').pop()
   const tgzSource = resolve(outDir, tgzName)
 
-  // npm pack は拡張子を .tgz に固定するため、独自拡張子 .spkg へリネームして dist-slides/ 直下に配置する
+  // npm pack は拡張子を .tgz に固定し、スコープ付きパッケージ名（@slides/xxx）から
+  // `slides-xxx-1.0.0.tgz` のようなファイル名を生成するため、独自拡張子 .spkg かつ
+  // ユーザー指定の name/version から直接ファイル名を組み立てて dist-slides/ 直下に配置する
   // （issue #41: 同形式の tar+gzip だが拡張子のみ変更。npm install でのローカル tarball インストールは
   //  拡張子判定により使えなくなるため、利用はローカルパス指定の VITE_SLIDE_PACKAGE を案内する）
-  const spkgName = tgzName.replace(/\.tgz$/, '.spkg')
+  const spkgName = `${args.name}-${args.version}.spkg`
   const spkgDest = resolve(projectRoot, 'dist-slides', spkgName)
   renameSync(tgzSource, spkgDest)
 

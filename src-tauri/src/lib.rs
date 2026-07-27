@@ -675,10 +675,7 @@ fn build_slide_package_gated(
 
   let out = Path::new(out_dir);
   fs::create_dir_all(out).map_err(|e| e.to_string())?;
-  let pkg_path = out.join(format!(
-    "slides-{}-{}.{}",
-    name, version, SLIDE_PACKAGE_EXTENSION
-  ));
+  let pkg_path = out.join(format!("{}-{}.{}", name, version, SLIDE_PACKAGE_EXTENSION));
   fs::write(&pkg_path, &gz_bytes).map_err(|e| e.to_string())?;
 
   pkg_path
