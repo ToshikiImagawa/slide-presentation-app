@@ -24,7 +24,8 @@ const keyToCssVar: Record<string, string> = {
 
 /**
  * テーマカラー定義（JSON）を取得して CSS 変数へ適用する。
- * path 省略時はデフォルトの `/theme-colors.json` を読む。存在しないのはカスタムテーマ未使用の正常系なので false は返さない。
+ * path 省略時はデフォルトの `/theme-colors.json` を読む。存在しないのはカスタムテーマ未使用の正常系なので false は返さない
+ * （開発サーバー等の SPA フォールバックで 200 + HTML が返り JSON パースに失敗するケースも同様に扱う）。
  * path 指定時は取得・パースに失敗すると false を返す（呼び出し元でユーザーへの通知に使う）。
  * @returns 適用に成功したか（path 未指定でファイルが存在しない場合も true）
  */
@@ -42,7 +43,7 @@ export async function applyTheme(path?: string): Promise<boolean> {
   try {
     theme = await res.json()
   } catch {
-    return false
+    return isDefaultPath
   }
 
   const root = document.documentElement

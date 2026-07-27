@@ -42,7 +42,7 @@ describe('applyTheme', () => {
     await expect(applyTheme('/pkg/theme-colors.json')).resolves.toBe(false)
   })
 
-  it('取得に成功してもJSONパースに失敗した場合は（パス省略時も含め）false を返す', async () => {
+  it('パス省略時に取得は成功したがJSONパースに失敗した場合も失敗とせず true を返す（SPAフォールバック等でHTMLが返るケース）', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
@@ -53,7 +53,21 @@ describe('applyTheme', () => {
       }),
     )
 
-    await expect(applyTheme()).resolves.toBe(false)
+    await expect(applyTheme()).resolves.toBe(true)
+  })
+
+  it('明示的なパス指定時に取得は成功したがJSONパースに失敗した場合は false を返す', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => {
+          throw new SyntaxError('invalid json')
+        },
+      }),
+    )
+
+    await expect(applyTheme('/pkg/theme-colors.json')).resolves.toBe(false)
   })
 })
 
