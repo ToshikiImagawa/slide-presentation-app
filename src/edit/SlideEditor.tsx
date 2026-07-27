@@ -249,9 +249,9 @@ export function SlideEditor({ source, onExit }: { source: EditSource; onExit: ()
 
   return (
     <ThemeProvider theme={editorUiTheme}>
-      <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', backgroundColor: 'var(--theme-background)', color: 'var(--theme-text-body)' }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', backgroundColor: 'var(--fixed-background)', color: 'var(--fixed-text-body)' }}>
         {/* ツールバー */}
-        <Stack direction="row" spacing={1} alignItems="center" sx={{ p: 1, borderBottom: '1px solid var(--theme-border)', flexWrap: 'wrap' }}>
+        <Stack direction="row" spacing={1} alignItems="center" sx={{ p: 1, borderBottom: '1px solid var(--fixed-border)', flexWrap: 'wrap' }}>
           <Button variant="outlined" size="small" onClick={handleExitClick}>
             {t('edit.exit', '編集を終了')}
           </Button>
@@ -267,7 +267,7 @@ export function SlideEditor({ source, onExit }: { source: EditSource; onExit: ()
         </Stack>
 
         {status.kind !== 'idle' && (
-          <Box role="status" sx={{ px: 2, py: 0.5, fontSize: 13, wordBreak: 'break-all', color: status.kind === 'error' ? 'var(--theme-primary)' : 'var(--theme-success)', backgroundColor: 'var(--theme-background-alt)' }}>
+          <Box role="status" sx={{ px: 2, py: 0.5, fontSize: 13, wordBreak: 'break-all', color: status.kind === 'error' ? 'var(--fixed-primary)' : 'var(--fixed-success)', backgroundColor: 'var(--fixed-background-alt)' }}>
             {status.message}
           </Box>
         )}
@@ -311,12 +311,12 @@ export function SlideEditor({ source, onExit }: { source: EditSource; onExit: ()
         {/* 同梱アドオンの個別選択（層B∪層A）。候補が無くても非表示にせず状態を明示する（②）。
             ×ボタンを層A（builtinAddons）と同じ見た目で用意し削除導線を統一する（#36）。
             チェック解除と同じ効果の可逆操作（再チェックで復帰可）のため確認ダイアログは設けない。 */}
-        <Stack direction="row" spacing={1} alignItems="center" role="group" aria-labelledby="include-addons-label" sx={{ px: 1, py: 0.5, borderBottom: '1px solid var(--theme-border)', flexWrap: 'wrap' }}>
-          <Typography id="include-addons-label" variant="body2" sx={{ color: 'var(--theme-text-muted)' }}>
+        <Stack direction="row" spacing={1} alignItems="center" role="group" aria-labelledby="include-addons-label" sx={{ px: 1, py: 0.5, borderBottom: '1px solid var(--fixed-border)', flexWrap: 'wrap' }}>
+          <Typography id="include-addons-label" variant="body2" sx={{ color: 'var(--fixed-text-muted)' }}>
             {t('edit.includeAddons', '同梱アドオン')}:
           </Typography>
           {availableAddons.length === 0 ? (
-            <Typography variant="body2" sx={{ color: 'var(--theme-text-muted)' }}>
+            <Typography variant="body2" sx={{ color: 'var(--fixed-text-muted)' }}>
               {t('edit.noAddons', '同梱できるアドオンがありません')}
             </Typography>
           ) : (
@@ -325,7 +325,7 @@ export function SlideEditor({ source, onExit }: { source: EditSource; onExit: ()
                 const included = selectedAddons.includes(addon)
                 const exclude = () => setSelectedAddons((prev) => prev.filter((a) => a !== addon))
                 return (
-                  <Stack key={addon} direction="row" spacing={0.5} alignItems="center" sx={{ border: '1px solid var(--theme-border)', borderRadius: 1, pl: 1, opacity: included ? 1 : 0.6 }}>
+                  <Stack key={addon} direction="row" spacing={0.5} alignItems="center" sx={{ border: '1px solid var(--fixed-border)', borderRadius: 1, pl: 1, opacity: included ? 1 : 0.6 }}>
                     <FormControlLabel sx={{ mr: 0 }} control={<Checkbox size="small" checked={included} onChange={(e) => (e.target.checked ? setSelectedAddons((prev) => [...prev, addon]) : exclude())} />} label={addon} />
                     <Button size="small" color="inherit" onClick={exclude} disabled={!included} aria-label={t('edit.packageAddonRemoveAria', '{name} をパッケージから除外').replace('{name}', addon)}>
                       ×
@@ -333,7 +333,7 @@ export function SlideEditor({ source, onExit }: { source: EditSource; onExit: ()
                   </Stack>
                 )
               })}
-              <Typography variant="caption" sx={{ color: 'var(--theme-text-muted)' }}>
+              <Typography variant="caption" sx={{ color: 'var(--fixed-text-muted)' }}>
                 {t('edit.packageAddonRemoveNote', '×またはチェック解除でパッケージから除外されます（再チェックで復帰可）。反映には「.spkg 書き出し」が必要です')}
               </Typography>
             </>
@@ -342,12 +342,12 @@ export function SlideEditor({ source, onExit }: { source: EditSource; onExit: ()
 
         {/* 層A: 組み込みアドオンの増減（dev 限定・要再ビルド・DC-004。本番配布では非表示） */}
         {isDev && (
-          <Stack direction="row" spacing={1} alignItems="center" sx={{ px: 1, py: 0.5, borderBottom: '1px solid var(--theme-border)', flexWrap: 'wrap' }}>
-            <Typography variant="body2" sx={{ color: 'var(--theme-text-muted)' }}>
+          <Stack direction="row" spacing={1} alignItems="center" sx={{ px: 1, py: 0.5, borderBottom: '1px solid var(--fixed-border)', flexWrap: 'wrap' }}>
+            <Typography variant="body2" sx={{ color: 'var(--fixed-text-muted)' }}>
               {t('edit.builtinAddons', '組み込みアドオン (dev)')}:
             </Typography>
             {builtinAddons.map((addon) => (
-              <Stack key={addon} direction="row" spacing={0.5} alignItems="center" sx={{ border: '1px solid var(--theme-border)', borderRadius: 1, pl: 1 }}>
+              <Stack key={addon} direction="row" spacing={0.5} alignItems="center" sx={{ border: '1px solid var(--fixed-border)', borderRadius: 1, pl: 1 }}>
                 <Typography variant="body2">{addon}</Typography>
                 <Button size="small" color="inherit" onClick={() => setPendingDeleteBuiltin(addon)} aria-label={t('edit.builtinRemoveAria', '{name} を削除').replace('{name}', addon)}>
                   ×
@@ -361,7 +361,7 @@ export function SlideEditor({ source, onExit }: { source: EditSource; onExit: ()
             <Button size="small" variant="contained" onClick={() => void handleBuildBuiltins()} disabled={buildingAddons}>
               {buildingAddons ? t('edit.builtinBuildingShort', 'ビルド中…') : t('edit.builtinBuild', 'ビルド')}
             </Button>
-            <Typography variant="caption" sx={{ color: 'var(--theme-text-muted)' }}>
+            <Typography variant="caption" sx={{ color: 'var(--fixed-text-muted)' }}>
               {t('edit.builtinRebuildNote', '追加/削除後は「ビルド」で同梱候補に反映されます')}
             </Typography>
           </Stack>
@@ -388,7 +388,7 @@ export function SlideEditor({ source, onExit }: { source: EditSource; onExit: ()
             <Box sx={{ minWidth: 0, minHeight: 0, overflow: 'auto' }}>
               <AiGeneratePanel currentText={text} onApply={applyGeneratedSlides} defaultExpanded={source.aiPanelExpanded} />
               {hasSyntaxError ? (
-                <Typography variant="body2" sx={{ p: 1, color: 'var(--theme-primary)' }}>
+                <Typography variant="body2" sx={{ p: 1, color: 'var(--fixed-primary)' }}>
                   {t('edit.formDisabled', 'JSON に構文エラーがあるためフォーム編集は無効です')}
                 </Typography>
               ) : (
@@ -409,14 +409,14 @@ export function SlideEditor({ source, onExit }: { source: EditSource; onExit: ()
                   </Button>
                 </Stack>
                 <Box sx={{ flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Box sx={{ width: '100%', aspectRatio: '16 / 9', maxHeight: '100%', border: '1px solid var(--theme-border)', borderRadius: 1, overflow: 'hidden', backgroundColor: 'var(--theme-background-alt)' }}>
+                  <Box sx={{ width: '100%', aspectRatio: '16 / 9', maxHeight: '100%', border: '1px solid var(--fixed-border)', borderRadius: 1, overflow: 'hidden', backgroundColor: 'var(--fixed-background-alt)' }}>
                     {currentSlide ? (
                       // プレビューだけはプレゼン用テーマ（スライド本来のフォントサイズ）で描画する。編集 chrome は editorUiTheme のまま
                       <ThemeProvider theme={theme}>
                         <SlidePreview slide={currentSlide} />
                       </ThemeProvider>
                     ) : (
-                      <Box sx={{ p: 2, color: 'var(--theme-text-muted)' }}>{t('edit.noSlides', 'スライドがありません')}</Box>
+                      <Box sx={{ p: 2, color: 'var(--fixed-text-muted)' }}>{t('edit.noSlides', 'スライドがありません')}</Box>
                     )}
                   </Box>
                 </Box>

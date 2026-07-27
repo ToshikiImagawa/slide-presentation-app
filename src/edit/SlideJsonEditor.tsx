@@ -33,7 +33,7 @@ export function SlideJsonEditor({ value, onChange, errors }: SlideJsonEditorProp
         slotProps={{
           htmlInput: {
             'aria-label': t('edit.jsonLabel', 'slides.json'),
-            style: { fontFamily: 'var(--theme-font-code), monospace', fontSize: 13, lineHeight: 1.5, whiteSpace: 'pre', overflowWrap: 'normal' },
+            style: { fontFamily: 'var(--fixed-font-code)', fontSize: 13, lineHeight: 1.5, whiteSpace: 'pre', overflowWrap: 'normal' },
           },
         }}
         sx={{

@@ -28,14 +28,14 @@ export function SlideMetaForm({ value, onChange }: SlideMetaFormProps) {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, p: 1 }}>
-      <Typography variant="subtitle2" sx={{ color: 'var(--theme-text-heading)', fontWeight: 600 }}>
+      <Typography variant="subtitle2" sx={{ color: 'var(--fixed-text-heading)', fontWeight: 600 }}>
         {t('edit.metaSection', 'プレゼンテーション情報')}
       </Typography>
       <TextField label={t('edit.metaTitle', 'タイトル')} value={value.meta.title ?? ''} onChange={(e) => updateMeta({ title: e.target.value })} size="small" fullWidth required />
       <TextField label={t('edit.metaDescription', '説明')} value={value.meta.description ?? ''} onChange={(e) => updateMeta({ description: e.target.value })} size="small" fullWidth />
       <TextField label={t('edit.metaAuthor', '発表者')} value={value.meta.author ?? ''} onChange={(e) => updateMeta({ author: e.target.value })} size="small" fullWidth />
 
-      <Typography variant="subtitle2" sx={{ color: 'var(--theme-text-heading)', fontWeight: 600, mt: 1 }}>
+      <Typography variant="subtitle2" sx={{ color: 'var(--fixed-text-heading)', fontWeight: 600, mt: 1 }}>
         {t('edit.themeSection', 'テーマ')}
       </Typography>
       <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
@@ -52,7 +52,7 @@ export function SlideMetaForm({ value, onChange }: SlideMetaFormProps) {
         minRows={3}
         size="small"
         fullWidth
-        slotProps={{ htmlInput: { style: { fontFamily: 'var(--theme-font-code), monospace', fontSize: 12 } } }}
+        slotProps={{ htmlInput: { style: { fontFamily: 'var(--fixed-font-code)', fontSize: 12 } } }}
       />
     </Box>
   )

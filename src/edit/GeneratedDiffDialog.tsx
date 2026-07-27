@@ -53,30 +53,30 @@ export function GeneratedDiffDialog({ open, beforeText, afterText, validationErr
   const kindLabel = (kind: FieldChange['kind']) => (kind === 'added' ? t('diff.added', '追加') : kind === 'removed' ? t('diff.removed', '削除') : t('diff.changed', '変更'))
 
   const renderSlideDetail = (c: SlideChange) => (
-    <Box component="details" key={c.id} sx={{ border: '1px solid var(--theme-border)', borderRadius: 1, mb: 0.5, overflow: 'hidden' }}>
+    <Box component="details" key={c.id} sx={{ border: '1px solid var(--fixed-border)', borderRadius: 1, mb: 0.5, overflow: 'hidden' }}>
       <Box component="summary" sx={{ px: 1, py: 0.75, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 1, listStyle: 'none', '&::-webkit-details-marker': { display: 'none' } }}>
         <Chip size="small" color={KIND_COLOR[c.kind]} label={kindLabel(c.kind)} />
-        <Typography component="span" sx={{ fontFamily: 'var(--theme-font-code, monospace)' }}>
+        <Typography component="span" sx={{ fontFamily: 'var(--fixed-font-code)' }}>
           {c.id}
         </Typography>
       </Box>
       <Box sx={{ px: 1, pb: 1, display: 'grid', gap: 1, gridTemplateColumns: c.kind === 'changed' ? '1fr 1fr' : '1fr' }}>
         {c.before !== undefined && (
           <Box>
-            <Typography variant="caption" sx={{ color: 'var(--theme-text-muted)' }}>
+            <Typography variant="caption" sx={{ color: 'var(--fixed-text-muted)' }}>
               {t('diff.before', '変更前')}
             </Typography>
-            <Box component="pre" sx={{ m: 0, p: 1, fontSize: 12, overflow: 'auto', maxHeight: 220, backgroundColor: 'var(--theme-background-alt)', borderRadius: 1, fontFamily: 'var(--theme-font-code, monospace)' }}>
+            <Box component="pre" sx={{ m: 0, p: 1, fontSize: 12, overflow: 'auto', maxHeight: 220, backgroundColor: 'var(--fixed-background-alt)', borderRadius: 1, fontFamily: 'var(--fixed-font-code)' }}>
               {jsonBlock(c.before)}
             </Box>
           </Box>
         )}
         {c.after !== undefined && (
           <Box>
-            <Typography variant="caption" sx={{ color: 'var(--theme-text-muted)' }}>
+            <Typography variant="caption" sx={{ color: 'var(--fixed-text-muted)' }}>
               {t('diff.after', '変更後')}
             </Typography>
-            <Box component="pre" sx={{ m: 0, p: 1, fontSize: 12, overflow: 'auto', maxHeight: 220, backgroundColor: 'var(--theme-background-alt)', borderRadius: 1, fontFamily: 'var(--theme-font-code, monospace)' }}>
+            <Box component="pre" sx={{ m: 0, p: 1, fontSize: 12, overflow: 'auto', maxHeight: 220, backgroundColor: 'var(--fixed-background-alt)', borderRadius: 1, fontFamily: 'var(--fixed-font-code)' }}>
               {jsonBlock(c.after)}
             </Box>
           </Box>
@@ -89,7 +89,7 @@ export function GeneratedDiffDialog({ open, beforeText, afterText, validationErr
     <Dialog open={open} onClose={onCancel} maxWidth="md" fullWidth aria-labelledby="generated-diff-title">
       <DialogTitle id="generated-diff-title" sx={{ pb: 0.5 }}>
         {t('diff.title', '生成結果を適用しますか？')}
-        <Typography variant="body2" sx={{ color: 'var(--theme-text-muted)', mt: 0.5 }}>
+        <Typography variant="body2" sx={{ color: 'var(--fixed-text-muted)', mt: 0.5 }}>
           {t('diff.subtitle', 'AI が生成したスライドを現在の内容と比較します')}
         </Typography>
       </DialogTitle>
@@ -99,7 +99,7 @@ export function GeneratedDiffDialog({ open, beforeText, afterText, validationErr
           <Stack spacing={1.5}>
             {/* 集計サマリ */}
             <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-              <Typography variant="body2" sx={{ color: 'var(--theme-text-body)' }}>
+              <Typography variant="body2" sx={{ color: 'var(--fixed-text-body)' }}>
                 {t('diff.slides', 'スライド')} {diff.beforeCount} → {diff.afterCount}
               </Typography>
               <Chip size="small" color="success" variant="outlined" label={`${t('diff.added', '追加')} ${diff.added}`} />
@@ -109,7 +109,7 @@ export function GeneratedDiffDialog({ open, beforeText, afterText, validationErr
             </Stack>
 
             {!hasChanges(diff) && (
-              <Typography variant="body2" sx={{ color: 'var(--theme-text-muted)' }}>
+              <Typography variant="body2" sx={{ color: 'var(--fixed-text-muted)' }}>
                 {t('diff.noChanges', '変更はありません')}
               </Typography>
             )}
@@ -142,10 +142,10 @@ export function GeneratedDiffDialog({ open, beforeText, afterText, validationErr
           // フォールバック（構造解析不能）: 全体置換であることを明示し、整形済みの適用後内容を提示。
           // afterText が空（閉じるトランジション中）のときは何も出さず、空フォールバックのちらつきを防ぐ
           <Stack spacing={1}>
-            <Typography variant="body2" sx={{ color: 'var(--theme-text-muted)' }}>
+            <Typography variant="body2" sx={{ color: 'var(--fixed-text-muted)' }}>
               {t('diff.unparseable', '構造を解析できないため、全体を置換します。以下が適用後の内容です。')}
             </Typography>
-            <Box component="pre" sx={{ m: 0, p: 1, fontSize: 12, overflow: 'auto', maxHeight: 360, backgroundColor: 'var(--theme-background-alt)', borderRadius: 1, fontFamily: 'var(--theme-font-code, monospace)' }}>
+            <Box component="pre" sx={{ m: 0, p: 1, fontSize: 12, overflow: 'auto', maxHeight: 360, backgroundColor: 'var(--fixed-background-alt)', borderRadius: 1, fontFamily: 'var(--fixed-font-code)' }}>
               {prettyPrintJson(afterText)}
             </Box>
           </Stack>

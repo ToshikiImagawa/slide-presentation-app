@@ -13,12 +13,12 @@ export function ValidationErrorList({ errors, sx }: { errors: ValidationError[];
   if (errors.length === 0) return null
 
   return (
-    <Box role="alert" sx={{ p: 1, borderRadius: 1, backgroundColor: 'var(--theme-background-alt)', border: '1px solid var(--theme-border)', maxHeight: 160, overflow: 'auto', ...sx }}>
-      <Typography variant="subtitle2" sx={{ color: 'var(--theme-primary)', fontWeight: 600 }}>
+    <Box role="alert" sx={{ p: 1, borderRadius: 1, backgroundColor: 'var(--fixed-background-alt)', border: '1px solid var(--fixed-border)', maxHeight: 160, overflow: 'auto', ...sx }}>
+      <Typography variant="subtitle2" sx={{ color: 'var(--fixed-primary)', fontWeight: 600 }}>
         {t('edit.validationErrors', '検証エラー')} ({errors.length})
       </Typography>
       {errors.map((err, i) => (
-        <Typography key={`${err.path}-${i}`} variant="body2" sx={{ color: 'var(--theme-text-body)', fontFamily: 'var(--theme-font-code), monospace', fontSize: 12 }}>
+        <Typography key={`${err.path}-${i}`} variant="body2" sx={{ color: 'var(--fixed-text-body)', fontFamily: 'var(--fixed-font-code)', fontSize: 12 }}>
           {err.path ? `${err.path}: ` : ''}
           {err.message}
         </Typography>

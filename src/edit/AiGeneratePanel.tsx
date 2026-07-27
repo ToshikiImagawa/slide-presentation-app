@@ -26,7 +26,7 @@ type PanelStatus = { kind: 'idle' | 'ok' | 'warn' | 'error'; message: string }
  *
  * 内蔵は Vertex AI（GCP）。project/region/model を設定し、`gcloud auth application-default login` で ADC を用意する。
  * マウント時に生成を有効化し、アンマウントで無効化する（capability ゲート・DC-003）。
- * 色は editorUiTheme と `--theme-*` 経由（親 SlideEditor の ThemeProvider を継承・A-002/DC-006）。
+ * 色は editorUiTheme と `--fixed-*`（プレゼンのテーマ変更から独立した固定パレット。§9.1 のテーマ波及対策）経由。
  */
 export function AiGeneratePanel({
   currentText,
@@ -94,8 +94,8 @@ export function AiGeneratePanel({
   // 3 項目すべて入力済みなら保存可能
   const canSaveVertex = projectId.trim() !== '' && region.trim() !== '' && model.trim() !== ''
 
-  // warn は accent 系。--theme-accent は未定義環境があるため --theme-primary へフォールバックし色が消えないようにする
-  const statusColor = status.kind === 'error' ? 'var(--theme-primary)' : status.kind === 'warn' ? 'var(--theme-accent, var(--theme-primary))' : 'var(--theme-success)'
+  // warn は accent 系だが --theme-accent は未定義環境があるため、そもそも primary に統一する
+  const statusColor = status.kind === 'error' || status.kind === 'warn' ? 'var(--fixed-primary)' : 'var(--fixed-success)'
 
   const phaseLabel = (phase: GenerateProgress['phase']): string => {
     if (phase === 'generating') return t('aiGenerate.phaseGenerating', '生成中')
@@ -167,7 +167,7 @@ export function AiGeneratePanel({
   }
 
   return (
-    <Box sx={{ borderBottom: '1px solid var(--theme-border)' }}>
+    <Box sx={{ borderBottom: '1px solid var(--fixed-border)' }}>
       <Stack direction="row" spacing={1} alignItems="center" sx={{ px: 1, py: 0.5 }}>
         <Button size="small" variant={expanded ? 'contained' : 'outlined'} endIcon={expanded ? <ExpandLessIcon /> : <ExpandMoreIcon />} aria-expanded={expanded} onClick={() => setExpanded((v) => !v)}>
           {t('aiGenerate.title', 'AI 生成')}
@@ -195,7 +195,7 @@ export function AiGeneratePanel({
           </ToggleButtonGroup>
 
           {/* 方式別の課金/オンライン依存の注意書き（PRD §5.2・DC-006） */}
-          <Typography variant="caption" sx={{ color: 'var(--theme-text-muted)' }}>
+          <Typography variant="caption" sx={{ color: 'var(--fixed-text-muted)' }}>
             {kind === 'builtin-vertex'
               ? t('aiGenerate.billingNoticeBuiltin', '内蔵生成は GCP Vertex AI を利用します。オンライン接続と GCP プロジェクトの従量課金が発生します。')
               : t('aiGenerate.billingNoticeExternal', '外部生成はローカルの Claude Code を利用します。お使いの Claude の契約・利用条件に従います。')}
@@ -204,7 +204,7 @@ export function AiGeneratePanel({
           {/* 内蔵: Vertex 設定（project/region/model）＋GCP ログイン（事前ゲートの設定導線・FR-006） */}
           {kind === 'builtin-vertex' && (
             <Stack spacing={1}>
-              <Typography variant="body2" sx={{ color: 'var(--theme-text-muted)' }}>
+              <Typography variant="body2" sx={{ color: 'var(--fixed-text-muted)' }}>
                 {t('aiGenerate.vertexLabel', 'Vertex AI 設定')}: {configured ? t('aiGenerate.vertexConfigured', '設定済み') : t('aiGenerate.vertexNotConfigured', '未設定')}
               </Typography>
               <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
@@ -230,12 +230,12 @@ export function AiGeneratePanel({
 
           {/* 事前ゲート未充足のヒント（FR-007） */}
           {kind === 'builtin-vertex' && !configured && (
-            <Typography variant="caption" sx={{ color: 'var(--theme-primary)' }}>
+            <Typography variant="caption" sx={{ color: 'var(--fixed-primary)' }}>
               {t('aiGenerate.gateBuiltinNotConfigured', 'project ID・リージョン・モデルを設定してください（初回は「GCP ログイン」も必要です）。')}
             </Typography>
           )}
           {kind === 'external-claude-code' && !externalAvailable && (
-            <Typography variant="caption" sx={{ color: 'var(--theme-primary)' }}>
+            <Typography variant="caption" sx={{ color: 'var(--fixed-primary)' }}>
               {t('aiGenerate.gateExternalUnavailable', 'Claude Code CLI が見つかりません（インストールと PATH を確認してください）。')}
             </Typography>
           )}
@@ -271,7 +271,7 @@ export function AiGeneratePanel({
               </Button>
             )}
             {running && progress && (
-              <Typography variant="caption" sx={{ color: 'var(--theme-text-muted)' }}>
+              <Typography variant="caption" sx={{ color: 'var(--fixed-text-muted)' }}>
                 {phaseLabel(progress.phase)} · {t('aiGenerate.attempt', '試行 {current}/{max}').replace('{current}', String(progress.attempt)).replace('{max}', String(progress.maxAttempts))}
               </Typography>
             )}
