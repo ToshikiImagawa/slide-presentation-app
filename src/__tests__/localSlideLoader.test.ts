@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { upsertRecentEntry, removeRecentEntry, extractAddonBundlePaths, resolveAddonTrust } from '../localSlideLoader'
+import { upsertRecentEntry, removeRecentEntry, extractAddonBundlePaths, resolveAddonTrust, stripPackageScope, parsePackageIdentity } from '../localSlideLoader'
 import type { RecentSlidePackageEntry } from '../localSlideLoader'
 import { isSlidePackageArchivePath } from '../slidePackageArchive'
 
@@ -106,5 +106,41 @@ describe('resolveAddonTrust', () => {
 
   it('未判断は prompt（既定は呼び出し側で拒否）', () => {
     expect(resolveAddonTrust(false, undefined)).toBe('prompt')
+  })
+})
+
+describe('stripPackageScope', () => {
+  it('スコープ付きは name 部分だけを返す', () => {
+    expect(stripPackageScope('@slides/my-deck')).toBe('my-deck')
+  })
+
+  it('@slides 以外のスコープも同様に除く', () => {
+    expect(stripPackageScope('@acme/my-deck')).toBe('my-deck')
+  })
+
+  it('スコープなしはそのまま返す', () => {
+    expect(stripPackageScope('my-deck')).toBe('my-deck')
+  })
+})
+
+describe('parsePackageIdentity（パッケージ名・バージョンの復元・#88 の続き）', () => {
+  it('name のスコープを除き、version をそのまま取り出す', () => {
+    expect(parsePackageIdentity('{"name":"@slides/my-deck","version":"2.1.0"}')).toEqual({ name: 'my-deck', version: '2.1.0' })
+  })
+
+  it('検証規則に反する name（CLI 書き出しのアンダースコア等）も加工せず返す', () => {
+    expect(parsePackageIdentity('{"name":"@slides/sdd-workflow_af_ja_dena","version":"1.0.0"}')).toEqual({ name: 'sdd-workflow_af_ja_dena', version: '1.0.0' })
+  })
+
+  it('name/version が欠落・空・型不一致なら該当フィールドのみ null', () => {
+    expect(parsePackageIdentity('{}')).toEqual({ name: null, version: null })
+    expect(parsePackageIdentity('{"name":"  ","version":123}')).toEqual({ name: null, version: null })
+    expect(parsePackageIdentity('{"name":"@slides/my-deck"}')).toEqual({ name: 'my-deck', version: null })
+  })
+
+  it('JSON が不正・オブジェクトでない場合は null（呼び出し側は自動生成にフォールバック）', () => {
+    expect(parsePackageIdentity('{ not json')).toBeNull()
+    expect(parsePackageIdentity('null')).toBeNull()
+    expect(parsePackageIdentity('"string"')).toBeNull()
   })
 })

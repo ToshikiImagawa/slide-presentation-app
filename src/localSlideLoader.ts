@@ -164,6 +164,53 @@ export async function getPackageAddonNames(baseDir: string): Promise<string[]> {
   }
 }
 
+/** パッケージの package.json から読み取る書き出し用の識別情報（欠落・型不一致のフィールドは null） */
+export interface SlidePackageIdentity {
+  /** スコープを除いたパッケージ名（@slides/foo → foo） */
+  name: string | null
+  version: string | null
+}
+
+/** npm パッケージ名からスコープを除く（@slides/foo → foo）。UI・書き出しは @slides/{name} 固定表記なので name 部分だけを扱う */
+export function stripPackageScope(name: string): string {
+  return name.startsWith('@') ? name.slice(name.indexOf('/') + 1) : name
+}
+
+/**
+ * package.json テキストから書き出し用の name / version を取り出す（純粋関数）。JSON が不正・オブジェクトでない
+ * 場合は null。値の妥当性は検証しない（CLI 書き出しは name を無検証で通すため、既存パッケージには GUI の検証
+ * 規則に反する name が実在する。そのまま返し、UI 側の検証でユーザーに提示して修正させる）
+ */
+export function parsePackageIdentity(raw: string): SlidePackageIdentity | null {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    return null
+  }
+  if (typeof parsed !== 'object' || parsed === null) return null
+  const { name, version } = parsed as { name?: unknown; version?: unknown }
+  return {
+    name: typeof name === 'string' && name.trim() !== '' ? stripPackageScope(name.trim()) : null,
+    version: typeof version === 'string' && version.trim() !== '' ? version.trim() : null,
+  }
+}
+
+/**
+ * baseDir/package.json から書き出し用の name / version を取得する（編集モードの初期値復元用）。
+ * package.json が無い（slides.json 単体を開いた場合など）・JSON が不正なら null を返し、呼び出し側は
+ * meta.title からの自動生成にフォールバックする。
+ */
+export async function getPackageIdentity(baseDir: string): Promise<SlidePackageIdentity | null> {
+  if (!baseDir) return null
+  try {
+    return parsePackageIdentity(await readTextFile(`${baseDir}/package.json`))
+  } catch {
+    // package.json が存在しない・読めない
+    return null
+  }
+}
+
 /** スライド読み込みの結果と、それに伴う最近使ったリストの更新をまとめて返す（recentPackages が null のときは変更なし＝再設定不要） */
 export interface SlidePackageLoadResult {
   data: LoadedSlidePackage | null
