@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ThemeProvider } from '@mui/material/styles'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -180,13 +180,13 @@ export function SlideEditor({ source, onExit }: { source: EditSource; onExit: ()
   const isDirty = text !== source.rawText
 
   // 未保存の変更があれば確認ダイアログを挟み、無ければ即終了する
-  const handleExitClick = () => {
+  const handleExitClick = useCallback(() => {
     if (isDirty) {
       setPendingExit(true)
       return
     }
     onExit()
-  }
+  }, [isDirty, onExit])
 
   const confirmExit = () => {
     setPendingExit(false)
@@ -197,7 +197,7 @@ export function SlideEditor({ source, onExit }: { source: EditSource; onExit: ()
     setPendingExit(false)
   }
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     if (!canWrite) {
       setStatus({ kind: 'error', message: t('edit.saveBlocked', '検証エラーがあるため保存できません') })
       return
@@ -210,7 +210,28 @@ export function SlideEditor({ source, onExit }: { source: EditSource; onExit: ()
     } catch (e) {
       setStatus({ kind: 'error', message: `${t('edit.saveFailed', '保存に失敗しました')}: ${e instanceof Error ? e.message : String(e)}` })
     }
-  }
+  }, [canWrite, source.sourcePath, text, t])
+
+  // Cmd/Ctrl+S で保存。修飾キー付きのため通常の文字入力と衝突せず、フォーカス対象を問わず発火させる。
+  // Esc で編集終了（未保存時は既存の ConfirmDialog 導線を維持）。T（App.tsx）と同様にフォーカス対象を
+  // 確認し、テキスト入力中は無視する（ダイアログ表示中も MUI Dialog 自身の Escape 処理に委ねる）
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault()
+        void handleSave()
+        return
+      }
+      if (e.key === 'Escape') {
+        if (pendingExit || pendingGenerated !== null || pendingDeleteBuiltin !== null) return
+        const target = e.target as HTMLElement | null
+        if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return
+        handleExitClick()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [handleSave, handleExitClick, pendingExit, pendingGenerated, pendingDeleteBuiltin])
 
   // AI 生成結果の受け口（#14・FR-004/DC-005）。即時置換せず、まず差分確認ダイアログへ候補を渡す（①）。
   const applyGeneratedSlides = (candidate: GeneratedCandidate) => {
