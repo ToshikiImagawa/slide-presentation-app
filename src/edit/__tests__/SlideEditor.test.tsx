@@ -329,6 +329,76 @@ describe('SlideEditor 未保存変更の終了確認（編集モード終了時�
   })
 })
 
+describe('SlideEditor 外部からのオープン要求（OS のファイル関連付け・#105）', () => {
+  const REQUESTED_PATH = '/Users/me/Documents/other.spkg'
+  const OPEN_CONFIRM_TITLE = '未保存の変更を破棄して開きますか？'
+
+  beforeEach(() => {
+    h.saveSlidesJson.mockReset()
+    h.exportSlidePackage.mockReset()
+    h.chooseSlidesSavePath.mockReset().mockResolvedValue('/tmp/slides.json')
+    h.chooseExportDir.mockReset()
+    h.listBuiltinAddons.mockReset().mockResolvedValue([])
+    h.listBuiltinDistAddons.mockReset().mockResolvedValue([])
+    h.getPackageAddonNames.mockReset().mockResolvedValue([])
+  })
+
+  /** 未保存の変更を作ってから外部のオープン要求が届いた状態まで進める（＝確認ダイアログ表示済み） */
+  async function renderWithPendingOpen(handlers: { onExit?: () => void; onResolveOpen?: (confirmed: boolean) => void } = {}) {
+    const editor = (openRequestPath: string | null) => (
+      <Wrapper>
+        <SlideEditor source={{ rawText: validJson, baseDir: '' }} onExit={handlers.onExit ?? (() => {})} openRequestPath={openRequestPath} onResolveOpen={handlers.onResolveOpen ?? (() => {})} />
+      </Wrapper>
+    )
+    const { rerender } = render(editor(null))
+    await waitFor(() => expect(screen.getByText('同梱できるアドオンがありません')).toBeTruthy())
+    await userEvent.type(screen.getByLabelText('slides.json'), ' ')
+    // 編集中に外部からオープン要求が届く
+    rerender(editor(REQUESTED_PATH))
+    await screen.findByText(OPEN_CONFIRM_TITLE)
+  }
+
+  it('未保存の変更がなければ確認なしで即 onResolveOpen(true) が呼ばれる', async () => {
+    const onResolveOpen = vi.fn()
+    render(
+      <Wrapper>
+        <SlideEditor source={{ rawText: validJson, baseDir: '' }} onExit={() => {}} openRequestPath={REQUESTED_PATH} onResolveOpen={onResolveOpen} />
+      </Wrapper>,
+    )
+    await waitFor(() => expect(onResolveOpen).toHaveBeenCalledWith(true))
+    expect(screen.queryByText(OPEN_CONFIRM_TITLE)).toBeNull()
+  })
+
+  it('未保存の変更があると確認ダイアログを開き、まだ onResolveOpen は呼ばれない', async () => {
+    const onResolveOpen = vi.fn()
+    await renderWithPendingOpen({ onResolveOpen })
+    expect(onResolveOpen).not.toHaveBeenCalled()
+  })
+
+  it('確認ダイアログで [破棄して開く] を選ぶと onResolveOpen(true) が呼ばれる', async () => {
+    const onResolveOpen = vi.fn()
+    await renderWithPendingOpen({ onResolveOpen })
+    fireEvent.click(screen.getByRole('button', { name: '破棄して開く' }))
+    expect(onResolveOpen).toHaveBeenCalledWith(true)
+  })
+
+  it('確認ダイアログで [キャンセル] を選ぶと編集画面に留まり onResolveOpen(false) が呼ばれる', async () => {
+    const onResolveOpen = vi.fn()
+    await renderWithPendingOpen({ onResolveOpen })
+    fireEvent.click(screen.getByRole('button', { name: 'キャンセル' }))
+    expect(onResolveOpen).toHaveBeenCalledWith(false)
+    await waitFor(() => expect(screen.queryByText(OPEN_CONFIRM_TITLE)).toBeNull())
+  })
+
+  it('オープン確認ダイアログ表示中の Esc は編集終了を発火させない（二重発火ガード）', async () => {
+    const onExit = vi.fn()
+    await renderWithPendingOpen({ onExit })
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(onExit).not.toHaveBeenCalled()
+    expect(screen.queryByText('未保存の変更を破棄しますか？')).toBeNull()
+  })
+})
+
 describe('SlideEditor 組み込みアドオンのアプリ内ビルド（ターミナル不要）', () => {
   beforeEach(() => {
     h.saveSlidesJson.mockReset()

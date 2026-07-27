@@ -108,7 +108,10 @@
       "builtinBuildingShort": "Compilation…",
       "builtinBuilding": "Compilation des addons intégrés…",
       "builtinBuilt": "Addons intégrés compilés (candidats de bundle mis à jour)",
-      "builtinBuildFailed": "Échec de la compilation"
+      "builtinBuildFailed": "Échec de la compilation",
+      "openConfirmTitle": "Abandonner les modifications non enregistrées et ouvrir ?",
+      "openConfirmMessage": "Vos modifications ne sont pas enregistrées. Les abandonner et ouvrir les diapositives sélectionnées ?",
+      "openConfirmDiscard": "Abandonner et ouvrir"
     },
     "presenterView": {
       "open": "Vue présentateur",

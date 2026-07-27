@@ -13,8 +13,9 @@ import type { PresentationData, ThemeData } from './data'
 import { I18nProvider, loadLocales, useI18n } from './i18n'
 import type { LocaleResource } from './i18n'
 import { ToastProvider, useToast } from './toast'
-import { clearAddonTrustDecision, getRecentSlidePackages, isAddonAllowed, loadSlidePackageFromUrl, openRecentSlidePackage, pickAndLoadSlidePackage, removeRecentSlidePackage } from './localSlideLoader'
+import { clearAddonTrustDecision, getRecentSlidePackages, isAddonAllowed, loadSlidePackageFromUrl, openRecentSlidePackage, openSlidePackageFromPath, pickAndLoadSlidePackage, removeRecentSlidePackage } from './localSlideLoader'
 import type { LoadedSlidePackage, RecentSlidePackageEntry, SlidePackageLoadResult } from './localSlideLoader'
+import { useOpenSlideRequest } from './hooks/useOpenSlideRequest'
 import { SlideEditor } from './edit/SlideEditor'
 import type { EditSource } from './edit/SlideEditor'
 import { serializeSlides } from './edit/slidesSerialize'
@@ -50,6 +51,8 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
   const currentOwnerRef = useRef<string | undefined>(undefined)
   // 編集モードの供給元（現在表示中プレゼンの生 JSON / baseDir / 読込元パス）。編集は相対パスの生 JSON を対象にする
   const [editSource, setEditSource] = useState<EditSource | null>(null)
+  // OS のファイル関連付けから届いたオープン要求のうち、編集中のため確認待ちのパス（#105）
+  const [pendingOpenPath, setPendingOpenPath] = useState<string | null>(null)
 
   // 表示中プレゼンデータを更新する（App を再マウントするための key 更新を含む）。
   // showPresentation・handleCreateWithAi の両方から使う共通処理
@@ -108,15 +111,16 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
     setAddonInfo({ owner: '', scripts: [] })
   }, [])
 
-  /** スライドパッケージの読み込み結果を受けて、最近使ったリストの更新・アドオン適用・プレゼン表示までを行う（各読み込み口の共通後処理） */
+  /** スライドパッケージの読み込み結果を受けて、最近使ったリストの更新・アドオン適用・プレゼン表示までを行う（各読み込み口の共通後処理）。プレゼンを表示できたかを返す */
   const applyLoadResult = useCallback(
-    async ({ data, recentPackages }: SlidePackageLoadResult) => {
+    async ({ data, recentPackages }: SlidePackageLoadResult): Promise<boolean> => {
       if (recentPackages) setRecentPackages(recentPackages)
-      if (!data) return
+      if (!data) return false
       await applyPackageAddons(data)
       // 編集は書換前の生 JSON（相対パス）を対象にする
       setEditSource({ rawText: data.rawText, baseDir: data.baseDir, sourcePath: data.sourcePath, packageName: data.identity.name, packageVersion: data.identity.version })
       await showPresentation(data.data)
+      return true
     },
     [applyPackageAddons, showPresentation],
   )
@@ -179,15 +183,53 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
     handleStartEdit()
   }, [applyPresentationData, clearPackageAddons, handleStartEdit, locale])
 
-  const handleExitEdit = useCallback(() => {
+  /** Rust 側の編集モードフラグ（書き込みゲート）を閉じる。失敗しても UI 遷移はブロックしない（A-005） */
+  const closeEditGate = useCallback(() => {
     void exitEditMode().catch((error) => console.error('[main] 編集モードの無効化に失敗しました', error))
+  }, [])
+
+  const handleExitEdit = useCallback(() => {
+    closeEditGate()
     // 編集中に適用したテーマを、表示中プレゼンのテーマへ戻す
     void applyThemeAndNotify(presentationData?.meta?.themeColors, presentationData?.theme)
     setView('presentation')
-  }, [presentationData, applyThemeAndNotify])
+  }, [closeEditGate, presentationData, applyThemeAndNotify])
+
+  const handleOpenAssociated = useCallback(
+    async (path: string) => {
+      return applyLoadResult(await openSlidePackageFromPath(path))
+    },
+    [applyLoadResult],
+  )
+
+  // OS のファイル関連付け（Finder の「このアプリケーションで開く」等）から届いたオープン要求の受け口（#105・4番目の読み込み導線）。
+  // 編集中は未保存の変更を勝手に破棄しないよう、SlideEditor へ降ろして確認ダイアログを任せる
+  const handleOpenRequest = useCallback(
+    (path: string) => {
+      if (view === 'edit') {
+        setPendingOpenPath(path)
+        return
+      }
+      void handleOpenAssociated(path)
+    },
+    [view, handleOpenAssociated],
+  )
+  useOpenSlideRequest(handleOpenRequest)
+
+  // 編集中のオープン要求に対する SlideEditor からの回答（確認ダイアログの確定／取消、未保存でなければ即確定）
+  const handleResolveOpen = useCallback(
+    async (confirmed: boolean) => {
+      const path = pendingOpenPath
+      setPendingOpenPath(null)
+      if (!confirmed || path === null) return
+      // 読み込みに失敗したときは編集画面に留まるため、書き込みゲートは閉じない（保存できなくしない）
+      if (await handleOpenAssociated(path)) closeEditGate()
+    },
+    [pendingOpenPath, handleOpenAssociated, closeEditGate],
+  )
 
   if (view === 'edit' && editSource) {
-    return <SlideEditor source={editSource} onExit={handleExitEdit} />
+    return <SlideEditor source={editSource} onExit={handleExitEdit} openRequestPath={pendingOpenPath} onResolveOpen={handleResolveOpen} />
   }
 
   if (view === 'home') {

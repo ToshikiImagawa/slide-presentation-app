@@ -75,7 +75,19 @@ const JSON_SYNTAX_ERROR_MARK = 'JSON 構文エラー'
  * 保存 / .spkg 書き出しを行う。編集対象は相対パスの生 JSON（source.rawText）で、プレビュー表示のみ
  * baseDir 基準でアセット解決する（保存・書き出しは相対パスのまま＝可搬・無損失）。
  */
-export function SlideEditor({ source, onExit }: { source: EditSource; onExit: () => void }) {
+export function SlideEditor({
+  source,
+  onExit,
+  openRequestPath = null,
+  onResolveOpen,
+}: {
+  source: EditSource
+  onExit: () => void
+  /** OS のファイル関連付けから届いたオープン要求のパス（要求なしは null）。未保存の変更があれば確認ダイアログを挟む */
+  openRequestPath?: string | null
+  /** オープン要求への回答。未保存の変更がなければ確認なしで true、確認ダイアログの確定で true・取消で false を必ず一度返す */
+  onResolveOpen?: (confirmed: boolean) => void
+}) {
   const { t } = useTranslation()
   const [text, setText] = useState(source.rawText)
   const [selectedIndex, setSelectedIndex] = useState(0)
@@ -104,6 +116,9 @@ export function SlideEditor({ source, onExit }: { source: EditSource; onExit: ()
   const [buildingAddons, setBuildingAddons] = useState(false)
   // 編集終了確認待ち（未保存の変更があるときのみ表示。破棄によるデータ損失を防ぐ・#44）
   const [pendingExit, setPendingExit] = useState(false)
+  // 外部からのオープン要求の破棄確認待ち（#105）。要求受信時点の dirty 判定をここに確定させ、
+  // ダイアログの開閉を props と dirty の積から導出しない（onResolveOpen が必ず一度だけ返る形にする）
+  const [confirmingOpen, setConfirmingOpen] = useState(false)
 
   const { data, errors } = useMemo(() => parseSlides(text), [text])
   const hasSyntaxError = errors.some((e) => e.message.includes(JSON_SYNTAX_ERROR_MARK))
@@ -218,7 +233,21 @@ export function SlideEditor({ source, onExit }: { source: EditSource; onExit: ()
   // 未保存の変更があるか（保存済みの元テキストとの比較。#44: データ損失防止）
   const isDirty = text !== source.rawText
   // 既に開いているダイアログがあるか（Escape ガード用。MUI Dialog 自身の Escape 処理に委ね、二重発火を避ける）
-  const hasOpenDialog = pendingExit || pendingGenerated !== null || pendingDeleteBuiltin !== null
+  const hasOpenDialog = pendingExit || pendingGenerated !== null || pendingDeleteBuiltin !== null || confirmingOpen
+
+  // 外部（OS のファイル関連付け）からのオープン要求。未保存の変更があれば確認を挟み、なければ即開く。
+  // 要求を受けた時点の dirty で判断する（以降の編集で再発火させないため openRequestPath のみを依存にする）
+  useEffect(() => {
+    if (openRequestPath === null) return
+    if (isDirty) setConfirmingOpen(true)
+    else onResolveOpen?.(true)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openRequestPath])
+
+  const resolveOpen = (confirmed: boolean) => {
+    setConfirmingOpen(false)
+    onResolveOpen?.(confirmed)
+  }
 
   // 未保存の変更があれば確認ダイアログを挟み、無ければ即終了する
   const handleExitClick = () => {
@@ -372,6 +401,17 @@ export function SlideEditor({ source, onExit }: { source: EditSource; onExit: ()
           cancelLabel={t('edit.cancel', 'キャンセル')}
           onConfirm={confirmExit}
           onCancel={cancelExit}
+        />
+
+        {/* 外部（OS のファイル関連付け）から開く要求が来たとき、未保存の変更を破棄する前の確認（#105） */}
+        <ConfirmDialog
+          open={confirmingOpen}
+          title={t('edit.openConfirmTitle', '未保存の変更を破棄して開きますか？')}
+          message={t('edit.openConfirmMessage', '編集内容は保存されていません。破棄して選択されたスライドを開きますか？')}
+          confirmLabel={t('edit.openConfirmDiscard', '破棄して開く')}
+          cancelLabel={t('edit.cancel', 'キャンセル')}
+          onConfirm={() => resolveOpen(true)}
+          onCancel={() => resolveOpen(false)}
         />
 
         {/* 組み込みアドオン削除の確認（× は確認経由。addons/src を完全削除し git 管理外＝復元不可のため誤クリック防止） */}

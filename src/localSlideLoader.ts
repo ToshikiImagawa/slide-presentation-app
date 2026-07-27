@@ -369,6 +369,11 @@ export async function loadSlidePackageFromUrl(url: string): Promise<SlidePackage
   return loadAndRecordSlidePackage(url)
 }
 
+/** OS のファイル関連付け（Finder の「このアプリケーションで開く」等）から渡された絶対パスを開く。成功時は最近使ったリストに記録し、失敗時はエラーダイアログを表示する */
+export async function openSlidePackageFromPath(path: string): Promise<SlidePackageLoadResult> {
+  return loadAndRecordSlidePackage(path)
+}
+
 /** 最近使ったリストの1件を再読み込みする。成功時はリスト先頭に更新し、失敗時はエラーダイアログを表示してリストから取り除く */
 export async function openRecentSlidePackage(path: string): Promise<SlidePackageLoadResult> {
   try {
