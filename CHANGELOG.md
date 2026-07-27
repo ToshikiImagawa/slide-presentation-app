@@ -62,6 +62,10 @@ All notable changes to this project will be documented in this file.
       the code block)
 - **Clipped content in the French sample** — Shortened the two lines on "Theme Configuration Details" that wrapped only
   in French, so its right column no longer overflows by 43px at 1280x720 (`slides.fr.json` only; ja / en already fit)
+- **Timeline overflowing the slide** — The `steps` timeline bled 100px past each side of its parent, but `.content-area`
+  only pads 40px, so it stuck out 60px beyond the 1280x720 slide and clipped the text of the outermost steps. The bleed
+  is now derived from the same `--content-area-padding-x` variable as the padding, so the timeline spans exactly the
+  slide width
 - **Broken references in the sample** — Removed references to a non-existent audio file (English) and log file
   (`/demo-log.txt`)
 

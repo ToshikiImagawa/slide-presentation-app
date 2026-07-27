@@ -41,6 +41,10 @@
   --fixed-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --fixed-success: #4ade80;
   --fixed-font-code: 'Roboto Mono', monospace;
+
+  /* レイアウト変数（applyTheme の対象外）。.content-area の左右 padding。
+     Timeline のようにスライド端まで広げたい子要素が、この値を負マージンで打ち消して使う */
+  --content-area-padding-x: 40px;
 }
 
 /* 0. KEYFRAMES */
@@ -203,7 +207,7 @@ code {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 0 40px;
+  padding: 0 var(--content-area-padding-x);
 }
 
 /* Title Slide */

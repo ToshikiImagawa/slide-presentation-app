@@ -1,9 +1,11 @@
+/* 親（.content-area）の左右 padding を負マージンで打ち消し、スライド端まで広げる。
+   固定値にすると padding と食い違ってスライド外へはみ出すため、必ず同じ変数から導出する */
 .layout {
   display: flex;
   justify-content: space-between;
   position: relative;
-  width: calc(100% + 200px);
-  margin: 40px -100px 0;
+  width: calc(100% + var(--content-area-padding-x) * 2);
+  margin: 40px calc(var(--content-area-padding-x) * -1) 0;
 }
 
 .line {
