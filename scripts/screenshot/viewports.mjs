@@ -20,6 +20,7 @@ export const VIEWPORTS = {
   presentation: { ...MAIN },
   settings: { ...MAIN },
   toolbar: { ...MAIN },
+  edit: { ...MAIN },
   'presenter-view': { ...PRESENTER },
 
   // レイアウト・ギャラリー / ロゴ

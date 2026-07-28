@@ -6,8 +6,33 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-07-28
+
+Slide Presentation App is now a desktop app. Beyond viewing, you can author, generate, and package slides inside the app
+itself.
+
+### Breaking Changes
+
+- **Now a desktop app** — The browser-based viewer is replaced by a Tauri 2 (Rust) desktop app for macOS, Windows, and
+  Linux, distributed as installers from GitHub Releases (`.dmg`, `.msi` / `-setup.exe`, `.deb` / `.rpm` / `.AppImage`)
+    - The app starts on a **home screen** where you choose what to present, instead of rendering a bundled deck right
+      away
+    - The presenter view is a native window synced over Tauri events, replacing the browser popup and
+      `BroadcastChannel`
+    - Build-time bundling (`public/slides.json`, `VITE_SLIDE_PACKAGE`) still works unchanged
+- **Slide package extension** — Exported slide packages now use a project-specific `.spkg` extension instead of `.tgz`
+  (same tar+gzip format under the hood). Opening a package still accepts legacy `.tgz` files for backward
+  compatibility. The CLI export (`npm run export:slides`) renames the `npm pack` output accordingly; as a result,
+  installing a freshly exported package as a local npm tarball (`npm install ./dist-slides/xxx.tgz`) is no longer
+  supported — use the `VITE_SLIDE_PACKAGE` local-path method instead (see [Slide Packages](README.md#slide-packages))
+
 ### Added
 
+- **Home Screen** — Choose what to present on launch, and come back any time with the toolbar **Home** button
+    - **Create with AI** (generate a deck from scratch), **Open a File** (`slides.json` / `.spkg`), **Open from a URL**
+      (fetch a `.spkg` over HTTPS, cached locally), **Open Sample**, and **Recently Opened** — the recent list is
+      persisted across launches and entries can be removed individually
+    - The last opened file is remembered and reloaded automatically on the next launch
 - **`.spkg` File Association** — Open a slide package straight from the OS file manager (double-click, or right-click →
   open with this app) on macOS, Windows, and Linux
     - When the app is not running it launches directly into the presentation, skipping the home screen; when it is
@@ -20,27 +45,28 @@ All notable changes to this project will be documented in this file.
 - **Edit Mode** — Author and package slides directly in the app (toggle from the toolbar **Edit** button)
     - Metadata form + full-width `slides.json` editor sharing a single source of truth, with a live preview rendered by
       the production renderer (theme edits reflected live)
+    - The JSON editor has line numbers, syntax highlighting, and search / replace (`Ctrl`/`Cmd` + `F`)
     - Save the edited `slides.json` locally, and export a `.spkg` slide package (name / version, referenced assets bundled)
     - Validation gating: save / export disabled and preview hidden while the JSON has a syntax or schema error
+    - Leaving edit mode with unsaved changes asks for confirmation first
     - Filesystem writes happen only in edit mode, performed at the Rust boundary (least privilege)
-
-### Changed
-
-- **Slide package extension** — Exported slide packages now use a project-specific `.spkg` extension instead of `.tgz`
-  (same tar+gzip format under the hood). Opening a package still accepts legacy `.tgz` files for backward
-  compatibility. The CLI export (`npm run export:slides`) renames the `npm pack` output accordingly; as a result,
-  installing a freshly exported package as a local npm tarball (`npm install ./dist-slides/xxx.tgz`) is no longer
-  supported — use the `VITE_SLIDE_PACKAGE` local-path method instead (see [Slide Packages](README.md#slide-packages))
-- **Addon Detachment (3 layers)** — Control over bundled executable addons
-    - Runtime trust per package (confirmation prompt on open + Settings, default denied; global disable takes precedence)
-    - Export bundling selection (in-app **Bundled add-ons** checkboxes and `npm run export:slides --addons a,b`); the choices union package add-ons with dev built-in add-ons, and the list stays visible with an empty-state note even when none are available
-    - Dev-only built-in add/remove of `addons/src/<name>/entry.ts` (delete now asks for confirmation first — it permanently removes the source and is outside git, so it cannot be undone), plus an in-app **Build** button that runs `npm run build:addons` so a newly added/removed addon is reflected in the bundle candidates without a terminal
-- **AI Slide Generation** — Generate `slides.json` from a prompt via the **AI Generate** panel in edit mode, applied to the editor via a diff-confirmation dialog
+- **AI Slide Generation** — Generate `slides.json` from a prompt via the **AI Generate** panel in edit mode (or **Create with AI** on the home screen), applied to the editor via a diff-confirmation dialog
     - Switch between built-in (Vertex AI via GCP ADC; project / region / model configured) and external (local `claude` CLI) under a single contract
     - Auth uses GCP ADC (`gcloud auth application-default login`); the access token is obtained at the Rust boundary (cached ~55 min) and never exposed to the web layer (least privilege)
     - Import-time validation with an auto-repair loop (up to 3 attempts; best candidate retained at the limit), progress display, cancellation, and safe fallback to manual editing on failure
     - Before applying, a diff-confirmation dialog previews the structural changes (added / changed / removed slides and meta changes) for **Apply** / **Cancel** (Cancel leaves the editor untouched); on apply the JSON is normalized to 2-space indentation
     - Generation, GCP settings/login, and networking are enabled only in edit mode with generation active (pre-gate disables when the Vertex settings are incomplete or the CLI is not found)
+- **Addon Detachment (3 layers)** — Control over bundled executable addons
+    - Runtime trust per package (confirmation prompt on open + Settings, default denied; global disable takes precedence)
+    - Export bundling selection (in-app **Bundled add-ons** checkboxes and `npm run export:slides --addons a,b`); the choices union package add-ons with dev built-in add-ons, and the list stays visible with an empty-state note even when none are available
+    - Dev-only built-in add/remove of `addons/src/<name>/entry.ts` (delete asks for confirmation first — it permanently removes the source and is outside git, so it cannot be undone), plus an in-app **Build** button that runs `npm run build:addons` so a newly added/removed addon is reflected in the bundle candidates without a terminal
+- **Keyboard Shortcuts & Toolbar Visibility** — Press `?` (or **Settings → Keyboard shortcuts**) for the full list of
+  viewer and edit-mode shortcuts, and hide the toolbar entirely with the toolbar button or `T`
+- **Progress and Failure Feedback** — Loading indicators while opening files and packages, plus toast notifications for
+  failures that used to pass silently (theme apply, presenter-view launch, sample fetch)
+
+### Changed
+
 - **Sample deck distributed externally** — The template guide is no longer bundled into the app. It ships as a `.spkg`
   package attached to GitHub Releases and is fetched by **Open Sample** (see [Distributed Sample](README.md#distributed-sample))
     - Three sources are tried in order: a `slides.json` bundled at build time → the release asset pinned to the app
@@ -52,6 +78,10 @@ All notable changes to this project will be documented in this file.
     - `VITE_SAMPLE_PACKAGE_URL` / `VITE_SAMPLE_SOURCE=remote` override where the sample comes from
     - `npm run export:samples` exports every locale; `npm run export:slides` gained `--source` (input directory) and
       `--strict` (fail on missing referenced assets)
+- **Settings and edit chrome** — The settings window is a real modal dialog (`Esc` to close, focus management,
+  `role="dialog"`), and both the settings and the edit chrome use a fixed palette so they no longer inherit the colors
+  of the deck you have open
+- **Accessibility** — Icon buttons, toggles, and checkboxes expose consistent labels and pressed state
 
 ### Fixed
 
@@ -68,6 +98,19 @@ All notable changes to this project will be documented in this file.
   slide width
 - **Broken references in the sample** — Removed references to a non-existent audio file (English) and log file
   (`/demo-log.txt`)
+- **Presenter view reliability** — Window close is detected via `onCloseRequested`, a failure to open the window is
+  reported with a toast instead of passing silently, and the theme of a locally opened package is propagated to the
+  presenter view
+- **Validation errors no longer vanish when AI auto-repair gives up** — On reaching the retry limit, the remaining
+  validation errors are shown in the diff-confirmation dialog
+- **Built-in add-ons no longer leak into release builds** — Development-only built-in add-ons are gated to dev builds
+  instead of being baked into a release
+- **Exported packages keep the name you type** — A `slides-` prefix was being prepended to `.spkg` file names
+- **Presentations start from the first slide** — The URL hash is reset before opening a deck, so it no longer jumps to
+  the position left over from the previously viewed one
+- **Theme, dialog, and list fixes** — A missing or unparsable `theme-colors.json` is treated as "no overrides" rather
+  than an error, the recently-opened list scrolls with readable paths, and the per-package add-on trust list is limited
+  to packages that actually have a trust decision (and scrolls when long)
 
 ## [1.0.0] - 2026-02-02
 
