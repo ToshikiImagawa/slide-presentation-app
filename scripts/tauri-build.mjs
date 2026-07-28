@@ -14,6 +14,7 @@
  * として --config に反映する（#25）。
  */
 import { execFileSync } from 'node:child_process'
+import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 
 // pathname は Windows で先頭スラッシュ付き（/D:/...）になり cwd として不正なため fileURLToPath を使う
@@ -32,12 +33,14 @@ if (windowsCertThumbprint) {
   config.bundle.windows = { certificateThumbprint: windowsCertThumbprint }
 }
 
-const args = ['tauri', 'build']
+const args = ['build']
 if (Object.keys(config.bundle).length > 0) {
   args.push('--config', JSON.stringify(config))
 }
 
-// Windows の npx は npx.cmd のため、shell を介さない execFileSync では名前解決できない
-const npx = process.platform === 'win32' ? 'npx.cmd' : 'npx'
+// npx は使わず CLI の JS エントリを node で直接実行する。
+// Windows の npx は npx.cmd で、Node は CVE-2024-27980 の修正以降 shell を介さない
+// spawn での .cmd 実行を拒否する（npx なら ENOENT、npx.cmd なら EINVAL）。
+const tauriCli = createRequire(import.meta.url).resolve('@tauri-apps/cli/tauri.js')
 
-execFileSync(npx, args, { cwd: ROOT, stdio: 'inherit' })
+execFileSync(process.execPath, [tauriCli, ...args], { cwd: ROOT, stdio: 'inherit' })
