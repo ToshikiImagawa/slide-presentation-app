@@ -14,8 +14,10 @@
  * として --config に反映する（#25）。
  */
 import { execFileSync } from 'node:child_process'
+import { fileURLToPath } from 'node:url'
 
-const ROOT = new URL('..', import.meta.url).pathname
+// pathname は Windows で先頭スラッシュ付き（/D:/...）になり cwd として不正なため fileURLToPath を使う
+const ROOT = fileURLToPath(new URL('..', import.meta.url))
 
 const hasSigningKey = Boolean(process.env.TAURI_SIGNING_PRIVATE_KEY)
 const windowsCertThumbprint = process.env.WINDOWS_CERT_THUMBPRINT
@@ -35,4 +37,7 @@ if (Object.keys(config.bundle).length > 0) {
   args.push('--config', JSON.stringify(config))
 }
 
-execFileSync('npx', args, { cwd: ROOT, stdio: 'inherit' })
+// Windows の npx は npx.cmd のため、shell を介さない execFileSync では名前解決できない
+const npx = process.platform === 'win32' ? 'npx.cmd' : 'npx'
+
+execFileSync(npx, args, { cwd: ROOT, stdio: 'inherit' })
