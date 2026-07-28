@@ -2,10 +2,12 @@
 
 [English](README.md) | **日本語**
 
-![version](https://img.shields.io/badge/version-1.0.0-blue)
+![version](https://img.shields.io/badge/version-2.0.0-blue)
 
 React + Reveal.js で構築し、Tauri でローカルデスクトップアプリとしてパッケージ化したスライドプレゼンテーションツールです。
 スライドの内容とテーマを JSON ファイルで定義し、ネイティブウィンドウでプレゼンテーションとして表示します。
+
+![プレゼンテーション表示](resources/screenshots/ja/presentation.png)
 
 ## Slide Presentation App とは
 
@@ -26,17 +28,6 @@ AI 支援ワークフローに特に適しています。
 内部的には React と Reveal.js の上に構築されており、滑らかなトランジション、スピーカーノート付きの発表者ビュー、
 キーボードナビゲーション、カスタムコンポーネントのためのプラグインシステムを提供します。データ駆動型アプローチの
 シンプルさと自動化の利点を備えた、洗練されたプレゼンテーションツールです。
-
-## スクリーンショット
-
-|                                                                |                                                            |
-|:--------------------------------------------------------------:|:----------------------------------------------------------:|
-|                          **ホーム**                            |                     **プレゼンテーション**                 |
-|       ![ホーム画面](resources/screenshots/ja/home.png)         | ![プレゼンテーション](resources/screenshots/ja/presentation.png) |
-|                       **発表者ビュー**                         |                          **設定**                          |
-| ![発表者ビュー](resources/screenshots/ja/presenter-view.png)   |         ![設定](resources/screenshots/ja/settings.png)     |
-
-> これらの画像は自動生成されます。[スクリーンショットと E2E](#スクリーンショットと-e2e) を参照してください。
 
 ## ダウンロード / インストール
 
@@ -71,40 +62,11 @@ AI 支援ワークフローに特に適しています。
 [Releases](https://github.com/ToshikiImagawa/slide-presentation-app/releases) から最新のインストーラをダウンロードし、
 既存のアプリに上書きインストールしてください。
 
-## セットアップ
-
-```bash
-npm install
-```
-
-アプリの実行には Tauri のための Rust ツールチェーン（`cargo`/`rustc`）が必要です。未導入の場合は
-[Tauri の前提条件ガイド](https://v2.tauri.app/start/prerequisites/) を参照してください。
-
-## コマンド
-
-| コマンド                        | 説明                                                                          |
-|--------------------------------|-------------------------------------------------------------------------------|
-| `npm run tauri:dev`            | デスクトップアプリ起動（Tauri + アドオンビルド + Vite HMR）                    |
-| `npm run tauri:build`          | デスクトップアプリのバンドルをビルド                                          |
-| `npm run dev`                  | フロントエンドのみ開発サーバー起動（アドオンビルド + Vite HMR）               |
-| `npm run build`                | フロントエンドのみプロダクションビルド（アドオンビルド + `dist/` に出力）      |
-| `npm run build:addons`         | アドオンのみビルド                                                            |
-| `npm run preview`              | ビルド済みファイルのプレビュー                                                |
-| `npm run format`               | Prettier でコード整形（`src/**/*.{ts,tsx,css}`）                              |
-| `npm run typecheck`            | TypeScript 型チェック                                                         |
-| `npm run test`                 | テスト実行（Vitest）                                                          |
-| `npm run test:watch`           | テスト監視モード                                                              |
-| `npm run export:slides`        | スライド内容を配布用パッケージ（.spkg）としてエクスポート                      |
-| `npm run export:samples`       | `samples/` の配布サンプルを全ロケール分 `.spkg` として書き出す（リリース時に Releases へ添付） |
-| `npm run format:check`         | Prettier の整形チェック（書き換えなし。CI 用）                                |
-| `npm run generate-icons`       | `resources/icon.svg` から `src-tauri/icons/` を再生成（macOS 専用）           |
-| `npm run generate-screenshots` | Playwright WebKit で README 用スクリーンショットを撮影（macOS 専用・e2e スモーク兼用） |
-| `npm run screenshots:compare`  | 実アプリ画像とモック画像を比較（pixelmatch）                                  |
-| `npm run generate-docs`        | `README.md` / `CHANGELOG.md` を PDF 化（`docs/` に出力）                      |
-
 ## ホーム画面
 
 起動すると、まず何を表示するかを選ぶホーム画面が開きます。
+
+![ホーム画面 — AIで新規作成 / ファイルを開く / サンプルを開く / URLから開く と、最近開いたスライドの一覧](resources/screenshots/ja/home.png)
 
 | アクション                      | 説明                                                                          |
 |---------------------------------|-------------------------------------------------------------------------------|
@@ -174,6 +136,10 @@ npm install
 閲覧モードから編集モードに切り替わり、**編集を終了** でプレゼンテーションに戻ります。
 
 編集画面は、上段にメタ情報フォームとプレビュー、下段に全幅の `slides.json` エディタを配置します。
+
+![編集モード — 上段: メタ情報フォームとライブプレビュー、下段: slides.json エディタ。最上段のツールバーに 編集を終了 / パッケージ名 / バージョン / 保存 / .spkg 書き出し が並ぶ](resources/screenshots/ja/edit.png)
+
+上のスクリーンショットには **組み込みアドオン (dev)** パネルが写っていますが、これは開発ビルドのみで表示されます（配布ビルドには出ません）。
 
 - **フォーム** — 型が確定したフィールド（タイトル・説明・発表者・テーマ色・カスタム CSS）を編集します。部分更新なので、
   未知フィールドや自由記述はそのまま保持されます。
@@ -310,7 +276,7 @@ npm install
 |               `bleed` — 全幅2カラム                                 |              `custom` — 全画面コンポーネント                       |
 |          ![bleed](resources/screenshots/ja/layout-bleed.png)        |         ![custom](resources/screenshots/ja/layout-custom.png)       |
 
-> `center` の表紙 / タイトルレイアウトは上部の [スクリーンショット](#スクリーンショット) セクションに掲載しています。
+> `center` の表紙 / タイトルレイアウトは、この README 冒頭のヒーロー画像がその例です。
 
 ### two-column レイアウトの詳細
 
@@ -547,6 +513,11 @@ UI の表示言語を切り替えます。初期言語はブラウザ設定か�
 右上の歯車アイコン（設定ボタン）をクリックすると設定ウィンドウが開き、言語を選択できます。同じ言語設定が発表者ビューに
 も適用されます。
 
+![設定ウィンドウ — 言語 / スクロールスピード / キーボードショートカットの表示 / 同梱アドオンの扱い](resources/screenshots/ja/settings.png)
+
+設定ウィンドウでは言語のほかに、自動スライドショーのスクロールスピード（秒）、キーボードショートカット一覧の表示、
+同梱アドオンの扱い（**同梱アドオンを常に無効化する** と **アドオンの許可履歴をリセット**）を操作できます。
+
 ### 言語リソースの構造
 
 言語リソースは `assets/locales/` ディレクトリに配置されています。
@@ -607,7 +578,7 @@ assets/locales/
 プレゼンテーション画面の右上にある「発表者ビュー」ボタンをクリックすると、別ウィンドウで発表者ビューが開きます。発表者
 ビューの UI ラベルは、国際化セクションで説明した言語設定に従います。
 
-![発表者ビュー](resources/screenshots/ja/presenter-view.png)
+![発表者ビュー — 上部: コントロールバー（前へ / 進捗 / 次へ、音声コントロール）、左: スピーカーノート、右: 次のスライド / 前のスライドのプレビュー、下部: 要点サマリー](resources/screenshots/ja/presenter-view.png)
 
 ### パネルレイアウト
 
@@ -621,16 +592,6 @@ assets/locales/
 | 右   | 再生 / 自動再生 / 自動スライドショー | 音声コントロール（音声再生セクションを参照）           |
 
 **メインエリア（中央）:**
-
-```
-┌──────────────────┬──────────────────┐
-│                  │ 次のスライド     │
-│ スピーカーノート │ プレビュー       │
-│                  ├──────────────────┤
-│                  │ 前のスライド     │
-│                  │ プレビュー       │
-└──────────────────┴──────────────────┘
-```
 
 | パネル           | 内容                                                       |
 |------------------|------------------------------------------------------------|
@@ -728,103 +689,15 @@ assets/locales/
 
 発表者ビューには独自のナビゲーションキーがあります（[キーボードナビゲーション](#キーボードナビゲーション) 参照）。
 
-## アドオンの追加
-
-カスタムコンポーネントをアドオンとして追加し、スライド内で使用します。
-
-### 1. アドオンディレクトリを作成する
-
-```
-addons/src/{addon-name}/
-├── entry.ts         # コンポーネントの登録
-└── MyComponent.tsx  # コンポーネントの実装
-```
-
-### 2. コンポーネントを実装する
-
-```tsx
-// addons/src/my-addon/MyComponent.tsx
-const React = window.React;
-
-export function MyComponent({ message }: { message: string }) {
-  return React.createElement('div', null, message);
-}
-```
-
-### 3. エントリファイルでコンポーネントを登録する
-
-```ts
-// addons/src/my-addon/entry.ts
-import { MyComponent } from './MyComponent';
-
-window.__ADDON_REGISTER__('my-addon', [
-  { name: 'MyComponent', component: MyComponent },
-]);
-```
-
-### 4. ビルドする
-
-```bash
-npm run build:addons
-```
-
-### 5. スライドで使用する
-
-```json
-{
-  "id": "custom-slide",
-  "layout": "custom",
-  "content": {
-    "component": {
-      "name": "MyComponent",
-      "props": {
-        "message": "Hello!"
-      }
-    }
-  }
-}
-```
-
-## 静的アセット
-
-`public/` ディレクトリに配置したファイルは、ビルド後にルートパスからアクセスできます。
-
-| ファイル                              | URL                             |
-|---------------------------------------|---------------------------------|
-| `public/slides.json`                  | `/slides.json`                  |
-| `public/theme-colors.json`            | `/theme-colors.json`            |
-| `public/images/logo.png`              | `/images/logo.png`              |
-| `public/voice/slide-01.wav`           | `/voice/slide-01.wav`           |
-| `public/assets/locales/manifest.json` | `/assets/locales/manifest.json` |
-| `public/assets/locales/en-US.json`    | `/assets/locales/en-US.json`    |
-
 ## スライドパッケージ
 
-スライド内容（slides.json + 画像・音声・テーマ・フォントなど）を npm パッケージとしてエクスポート・配布します。
+スライド内容（slides.json + 画像・音声・テーマ・フォントなど）を 1 つの `.spkg` パッケージにまとめて配布できます。
+
+パッケージの作り方は 2 通りあります。アプリだけで完結させるなら [編集モード](#編集モード) の **.spkg 書き出し** を使い、
+CLI で自動化するなら [CONTRIBUTING.ja.md](CONTRIBUTING.ja.md) を参照してください。
 
 配布した `.spkg` は、受け手が OS のファイルマネージャからそのままダブルクリックして開けます（[OS から `.spkg` を開く](#os-から-spkg-を開く)
-を参照）。ビルド手順も `VITE_SLIDE_PACKAGE` の指定も不要で、「このファイルをダブルクリックしてください」以上の説明が
-いりません。
-
-### エクスポート（パッケージ作成）
-
-```bash
-npm run export:slides -- --name my-presentation --slides slides.json
-```
-
-| オプション  | 必須 | 説明                                                    |
-|-------------|:----:|---------------------------------------------------------|
-| `--name`    | はい | パッケージ名（`@slides/{name}` として生成）             |
-| `--slides`  | はい | source ディレクトリ配下のスライド JSON ファイル名       |
-| `--source`  |      | スライド JSON と参照アセットの基準ディレクトリ（既定: `public`） |
-| `--version` |      | バージョン（既定: `1.0.0`）                             |
-| `--addons`  |      | ビルド済みアドオン（`addons/dist`）をパッケージに同梱   |
-| `--strict`  |      | 参照アセットが1つでも欠けていたら失敗させる（配布物のビルド用。既定は警告のみ） |
-
-これにより `dist-slides/` に `.spkg` ファイルが生成されます（`.tgz` と同じ tar+gzip 形式で、`npm pack` の出力を独自拡張子へ
-リネームしたものです）。slides.json で参照されるアセットパス（`image/`・`voice/`・`theme/`・`font/`）は自動検出され
-パッケージに含まれます。`--addons` を指定すると、ビルド済みアドオンが `addons/` 配下に同梱され、パッケージを開いた後に
-動的に読み込まれます（Tauri ランタイムのみ。下記参照）。
+を参照）。受け手の側にビルド環境は不要で、「このファイルをダブルクリックしてください」以上の説明がいりません。
 
 ### 同梱アドオン（ランタイムロード）
 
@@ -844,73 +717,10 @@ npm run export:slides -- --name my-presentation --slides slides.json
 >
 > パッケージの `addons/manifest.json` で宣言され、かつ `addons/` 配下にあるアドオンのみが読み込まれます。
 
-### インポート（パッケージの使用）
+## 開発
 
-`VITE_SLIDE_PACKAGE` 環境変数でスライドパッケージを指定します。
-
-#### ローカルパスで使用する（npm install 不要）
-
-`.env.local` に `.spkg` ファイル（または旧 `.tgz`）または展開済みディレクトリのパスを指定します。
-
-```bash
-# .spkg を直接指定
-VITE_SLIDE_PACKAGE=./dist-slides/slides-my-presentation-1.0.0.spkg
-
-# 展開済みディレクトリを指定
-VITE_SLIDE_PACKAGE=./dist-slides/my-presentation
-```
-
-#### インストール済みの npm パッケージとして使用する
-
-すでに npm の依存パッケージとして利用可能な場合（例: レジストリに公開し `npm install @slides/my-presentation` で
-インストール済み）は、パッケージ名を直接指定します。
-
-```bash
-VITE_SLIDE_PACKAGE=@slides/my-presentation
-```
-
-> **注意:** `npm run export:slides` の出力は `.spkg` ファイルです。npm は `.tgz`/`.tar.gz`/`.tar` と異なりこの拡張子を
-> インストール可能なローカル tarball として認識しないため、`npm install ./dist-slides/xxx.spkg` は動作しません。
-> エクスポート直後のパッケージを使う場合は、上記のローカルパス指定を使ってください。
-
-#### `VITE_SLIDE_PACKAGE` の値リファレンス
-
-| 値                             | 挙動                                                        |
-|--------------------------------|--------------------------------------------------------------|
-| `./dist-slides/xxx-1.0.0.spkg` | `.spkg`（または旧 `.tgz`）を自動展開してローカルで使用（npm install 不要） |
-| `./dist-slides/xxx/`           | 展開済みディレクトリから直接読み込み（npm install 不要）      |
-| `@slides/xxx`                  | インストール済みの npm パッケージから読み込み                 |
-| (未指定)                       | `@slides/*` パッケージを自動検出                              |
-
-### 挙動
-
-- `public/` に同名ファイルが存在する場合は `public/` のファイルが優先される（パッケージはフォールバック）
-- `npm run build` 時、パッケージのアセットは `dist/` にコピーされる（既存ファイルは上書きしない）
-
-## スクリーンショットと E2E
-
-この README のスクリーンショットは、エンドツーエンドのスモークテストも兼ねる Playwright（WebKit）スクリプトで生成
-されます。
-
-```bash
-npm run generate-screenshots            # 全シナリオを撮影
-npm run generate-screenshots -- home    # 単一シナリオを撮影
-```
-
-- `vite --mode screenshot` でアプリを起動し、Tauri IPC 層をインメモリのモック（`src/__screenshot__/`）に差し替えて、
-  素のブラウザで UI を起動します。ブラウザのロケールに応じて、ロケール別の fixture デッキ
-  （`scripts/screenshot/fixtures/slides.{en,ja}.json`）が `/slides.json` として配信されます。
-- 全シナリオ（`home`・`presentation`・`toolbar`・`settings`・`presenter-view`・`layout-*` ギャラリー・`logo`）を両方の
-  ロケールで撮影し、macOS ウィンドウ枠を合成します。英語のショットは `resources/screenshots/en/`、日本語は
-  `resources/screenshots/ja/` に出力されます。いずれかのシナリオの待受が失敗すると非ゼロ終了するため、e2e スモークを
-  兼ねます。
-- **macOS 専用**（日本語フォントと WebKit の描画が Linux とは異なるため）。CI では `.github/workflows/screenshots.yml`
-  （手動 dispatch）の macOS ランナーで実行し、`resources/screenshots/` の差分をコミットします。
-- **アサーション付き E2E**: `npm run test:e2e` は Playwright Test スイート（`e2e/*.spec.ts`）を実行します。撮影と同じ
-  screenshot モードのサーバー・IPC モック・fixture を再利用しつつ、`en` / `ja` 両ロケールで明示的な `expect()` 検証を
-  行います。ピクセルではなく DOM テキストを検証するため、CI では Linux 上でヘッドレス実行します
-  （`.github/workflows/ci.yml`）。詳細は [`e2e/README.md`](e2e/README.md)。
-- 実 Tauri WebView 上での受け入れテスト（WebdriverIO + `tauri-driver`）の任意の雛形が `e2e/` にあります。
+ソースからのビルド、カスタムコンポーネント（アドオン）の実装、CLI でのスライドパッケージ書き出しについては
+[CONTRIBUTING.ja.md](CONTRIBUTING.ja.md) を参照してください。
 
 ## ライセンス
 

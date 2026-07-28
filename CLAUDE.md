@@ -41,10 +41,12 @@ npm run generate-docs        # README.md / CHANGELOG.md を PDF 化（docs/ に�
 - `vite --mode screenshot` を起動し、Tauri IPC を `src/__screenshot__/`（`tauri-store` / `tauri-event` / `tauri-webview`）へ **Vite alias で差し替え**て素のブラウザで boot させる（本番ビルドには非混入。`@tauri-apps/api/core` は実物の plugin-fs/dialog が依存するため alias しない）。
 - スライド内容はロケール別 fixture `scripts/screenshot/fixtures/slides.{ja,en}.json` を `/slides.json` として配信する（`Accept-Language` で出し分け）。
 - Playwright **WebKit** で撮影し、`scripts/screenshot/chrome.mjs` が macOS ウィンドウ枠を合成。**en / ja の 2 ロケール**で撮影し、`resources/screenshots/en/`・`resources/screenshots/ja/` に出力する（Playwright の context `locale` で UI 言語と fixture を切り替え）。
-- シナリオは `scripts/screenshot/scenarios.mjs`（`home` / `presentation` / `toolbar` / `settings` / `presenter-view` / `layout-*` / `logo`）。回帰検知は **git 差分ベース**（閾値自動判定はしない）。
+- シナリオは `scripts/screenshot/scenarios.mjs`（`home` / `presentation` / `toolbar` / `settings` / `edit` / `presenter-view` / `layout-*` / `logo`）。撮影キーは `VIEWPORTS`（`viewports.mjs`）にも同名で登録が必要。待受は `data-testid` で行うため、新シナリオが UI に到達できないときはコンポーネント側に testid を足す。回帰検知は **git 差分ベース**（閾値自動判定はしない）。
 - **日本語フォント・WebKit 描画差のため macOS で実行する**（CI は `.github/workflows/screenshots.yml` の macOS ランナー・手動 dispatch）。
 - E2E は `e2e/` にある: Playwright（`*.spec.ts`・配線済み・上記）と、実機 Tauri WebView 用の WebdriverIO 雛形（`*.e2e.ts.sample`・未配線）。詳細は `e2e/README.md`。
-- ドキュメントは英日 2 言語: `README.md` / `CHANGELOG.md`（英語）と `README.ja.md` / `CHANGELOG.ja.md`（日本語）。英語版は `en/`、日本語版は `ja/` のスクリーンショットを参照する。`npm run generate-docs` は全 4 ファイルを PDF 化する。
+- ドキュメントは英日 2 言語: `README.md` / `CHANGELOG.md` / `CONTRIBUTING.md`（英語）と `README.ja.md` / `CHANGELOG.ja.md` / `CONTRIBUTING.ja.md`（日本語）。英語版は `en/`、日本語版は `ja/` のスクリーンショットを参照する。`npm run generate-docs` が PDF 化するのは README / CHANGELOG の 4 ファイルのみ（CONTRIBUTING は対象外）。
+- **README は利用者向け・CONTRIBUTING は開発者向け**に分ける。セットアップ・npm コマンド・アドオンの実装方法・`public/` の扱い・CLI でのパッケージ書き出し（`export:slides`）と `VITE_SLIDE_PACKAGE` は CONTRIBUTING に置く。テスト・E2E・CI / リリースの手順はどちらにも書かない（`CLAUDE.md` と各ワークフローが真実源）。
+- README のスクリーンショットは **冒頭のヒーロー 1 枚（`presentation.png`）＋各機能節にインライン 1 枚**で、同じ画像を 2 度使わない。`resources/screenshots/{en,ja}/` の 13 枚すべてがちょうど 1 回参照される状態を保つ。
 
 ## アーキテクチャ
 
@@ -113,7 +115,7 @@ main.tsx
 
 - **発表者ビュー（別ウィンドウ）**: `usePresenterView`（`src/hooks/usePresenterView.ts`）が `@tauri-apps/api/webviewWindow` の `WebviewWindow` でネイティブウィンドウを生成し、`@tauri-apps/api/event` の `emit`/`listen`（イベント名 `presenter-view`）でメインウィンドウと相互通信する。メッセージ型 `PresenterViewMessage`（`src/data/types.ts`）はブラウザ版当時の設計を維持
 - **ローカルスライド選択**: `src/localSlideLoader.ts` が `@tauri-apps/plugin-dialog` でファイル選択（`slides.json` または `.spkg` パッケージ。旧 `.tgz` も後方互換で開ける）、`@tauri-apps/plugin-fs` で読み込み、Rust コマンド `allow_asset_dir`（`src-tauri/src/lib.rs`）で asset プロトコルの読み取りスコープを動的に許可し、`convertFileSrc` で `image/`・`voice/`・`theme/`・`font/` の相対参照をローカル asset URL に書き換える（`scripts/export-slides.mjs` の `extractAssetPaths` と同じ規則）。`.spkg`/`.tgz` は Rust コマンド `extract_slide_package`（`flate2`/`tar` クレート。バイト列は同一の tar+gzip 形式で拡張子に依存しない）でアプリのキャッシュディレクトリに展開し、`npm pack` の慣習に従って `package/` サブディレクトリを優先的に探す。最後に開いたパスは `@tauri-apps/plugin-store` で永続化し、次回起動時に自動復元する
-- ビルド時同梱（`public/slides.json`、`VITE_SLIDE_PACKAGE` 経由の npm パッケージ／`.spkg` 配布）は変更なし。ローカル選択はあくまで起動後の上書きとして追加された機能。CLI 書き出し（`scripts/export-slides.mjs`）は `npm pack` 出力を `.spkg` へリネームするため、書き出し直後のパッケージをローカル tarball として `npm install` する運用は非対応（詳細は README.md の Slide Packages 節）
+- ビルド時同梱（`public/slides.json`、`VITE_SLIDE_PACKAGE` 経由の npm パッケージ／`.spkg` 配布）は変更なし。ローカル選択はあくまで起動後の上書きとして追加された機能。CLI 書き出し（`scripts/export-slides.mjs`）は `npm pack` 出力を `.spkg` へリネームするため、書き出し直後のパッケージをローカル tarball として `npm install` する運用は非対応（詳細は CONTRIBUTING.md の Slide Packages 節）
 
 ### テーマシステム
 

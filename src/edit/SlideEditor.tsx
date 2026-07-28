@@ -348,7 +348,7 @@ export function SlideEditor({
 
   return (
     <ThemeProvider theme={editorUiTheme}>
-      <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', backgroundColor: 'var(--fixed-background)', color: 'var(--fixed-text-body)' }}>
+      <Box data-testid="slide-editor" sx={{ display: 'flex', flexDirection: 'column', height: '100vh', backgroundColor: 'var(--fixed-background)', color: 'var(--fixed-text-body)' }}>
         {/* ツールバー */}
         <Stack direction="row" spacing={1} alignItems="center" sx={{ p: 1, borderBottom: '1px solid var(--fixed-border)', flexWrap: 'wrap' }}>
           <Button variant="outlined" size="small" onClick={handleExitClick}>

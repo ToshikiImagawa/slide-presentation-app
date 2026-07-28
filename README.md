@@ -2,10 +2,12 @@
 
 **English** | [日本語](README.ja.md)
 
-![version](https://img.shields.io/badge/version-1.0.0-blue)
+![version](https://img.shields.io/badge/version-2.0.0-blue)
 
 A slide presentation tool built with React + Reveal.js, packaged as a local desktop app with Tauri.
 Define slide content and themes using JSON files and display them as presentations in a native window.
+
+![Presentation view](resources/screenshots/en/presentation.png)
 
 ## What is Slide Presentation App
 
@@ -26,17 +28,6 @@ Translated decks can be distributed as slide packages for easy sharing across te
 Under the hood, the app is built on React and Reveal.js, providing smooth transitions, a presenter view with speaker
 notes, keyboard navigation, and a plugin system for custom components. The result is a polished presentation tool with
 the simplicity and automation benefits of a data-driven approach.
-
-## Screenshots
-
-|                                                             |                                                         |
-|:-----------------------------------------------------------:|:-------------------------------------------------------:|
-|                          **Home**                           |                    **Presentation**                     |
-|       ![Home screen](resources/screenshots/en/home.png)        | ![Presentation](resources/screenshots/en/presentation.png) |
-|                     **Presenter View**                      |                      **Settings**                       |
-| ![Presenter view](resources/screenshots/en/presenter-view.png) |     ![Settings](resources/screenshots/en/settings.png)     |
-
-> These images are generated automatically — see [Screenshots & E2E](#screenshots--e2e).
 
 ## Download / Installation
 
@@ -71,40 +62,11 @@ This app does not currently check for updates automatically. Update by downloadi
 [Releases](https://github.com/ToshikiImagawa/slide-presentation-app/releases) and installing it over the existing
 copy.
 
-## Setup
-
-```bash
-npm install
-```
-
-Running the app requires a Rust toolchain (`cargo`/`rustc`) for Tauri. See the
-[Tauri prerequisites guide](https://v2.tauri.app/start/prerequisites/) if you don't have one yet.
-
-## Commands
-
-| Command                        | Description                                                                             |
-|--------------------------------|-----------------------------------------------------------------------------------------|
-| `npm run tauri:dev`            | Start the desktop app (Tauri + addon build + Vite HMR)                                  |
-| `npm run tauri:build`          | Build the desktop app bundle                                                            |
-| `npm run dev`                  | Start frontend-only dev server (addon build + Vite HMR)                                 |
-| `npm run build`                | Frontend-only production build (addon build + output to `dist/`)                        |
-| `npm run build:addons`         | Build addons only                                                                       |
-| `npm run preview`              | Preview built files                                                                     |
-| `npm run format`               | Format code with Prettier (`src/**/*.{ts,tsx,css}`)                                     |
-| `npm run typecheck`            | TypeScript type check                                                                   |
-| `npm run test`                 | Run tests (Vitest)                                                                      |
-| `npm run test:watch`           | Run tests in watch mode                                                                 |
-| `npm run export:slides`        | Export slide content as a distributable package (.spkg)                                 |
-| `npm run export:samples`       | Export the `samples/` decks as `.spkg` packages for every locale (attached to Releases) |
-| `npm run format:check`         | Check formatting with Prettier (no writes; used in CI)                                  |
-| `npm run generate-icons`       | Regenerate `src-tauri/icons/` from `resources/icon.svg` (macOS only)                    |
-| `npm run generate-screenshots` | Capture README screenshots with Playwright WebKit (macOS only; doubles as an e2e smoke) |
-| `npm run screenshots:compare`  | Diff a real-app screenshot against a mock one (pixelmatch)                              |
-| `npm run generate-docs`        | Render `README.md` / `CHANGELOG.md` to PDF under `docs/`                                |
-
 ## Home Screen
 
 On launch, the app opens on a home screen where you choose what to present.
+
+![Home screen — Create with AI / Open a File / Open Sample / Open from a URL, plus the list of recently opened slides](resources/screenshots/en/home.png)
 
 | Action                     | Description                                                                                 |
 |----------------------------|---------------------------------------------------------------------------------------------|
@@ -176,6 +138,10 @@ Beyond viewing, you can author and package slides directly inside the app. Click
 toolbar (next to **Home**) to switch from view to edit mode; **Exit editing** returns to the presentation.
 
 The editor puts the metadata form and preview on top and a full-width `slides.json` editor below:
+
+![Edit mode — top: metadata form and live preview, bottom: the slides.json editor. The toolbar along the top holds Exit editing / package name / version / Save / Export .spkg](resources/screenshots/en/edit.png)
+
+The screenshot above includes the **Built-in add-ons (dev)** panel, which only appears in development builds (never in a distributed build).
 
 - **Form** — Edit confirmed fields (title, description, author, theme colors, custom CSS). Updates are partial, so any
   unknown or free-form fields are preserved untouched.
@@ -319,7 +285,7 @@ The `content` layout determines rendering based on child element fields.
 |              `bleed` — full-width two-column                       |             `custom` — full-screen component                     |
 |         ![bleed](resources/screenshots/en/layout-bleed.png)          |        ![custom](resources/screenshots/en/layout-custom.png)        |
 
-> The `center` cover/title layout is shown in the [Screenshots](#screenshots) section above.
+> The hero image at the top of this README is an example of the `center` cover/title layout.
 
 ### Two-Column Layout Details
 
@@ -557,6 +523,11 @@ from the settings window. The selected language is saved to `localStorage` and p
 Click the gear icon (settings button) in the upper right corner to open the settings window and select a language. The
 same language setting is applied to the presenter view.
 
+![Settings window — Language / Scroll Speed / showing the keyboard shortcuts / how embedded add-ons are handled](resources/screenshots/en/settings.png)
+
+Besides the language, the settings window lets you set the auto-slideshow **Scroll Speed (sec)**, **Show** the keyboard
+shortcut list, and control embedded add-ons (**Always disable embedded add-ons** and **Reset add-on trust history**).
+
 ### Language Resource Structure
 
 Language resources are located in the `assets/locales/` directory.
@@ -617,7 +588,7 @@ Keys within `ui` support up to two levels of nesting (`section.key`).
 Click the "Presenter View" button in the upper right of the presentation screen to open the presenter view in a separate
 window. UI labels in the presenter view follow the language setting described in the Internationalization section.
 
-![Presenter view](resources/screenshots/en/presenter-view.png)
+![Presenter view — top: control bar (previous / progress / next, audio controls), left: speaker notes, right: next / previous slide previews, bottom: key summary](resources/screenshots/en/presenter-view.png)
 
 ### Panel Layout
 
@@ -631,16 +602,6 @@ The presenter view consists of the following areas.
 | Right    | Play / Auto-play / Auto-slideshow | Audio controls (see the Audio Playback section)       |
 
 **Main Area (center):**
-
-```
-┌──────────────────┬──────────────────┐
-│                  │ Next Slide       │
-│ Speaker Notes    │ Preview          │
-│                  ├──────────────────┤
-│                  │ Previous Slide   │
-│                  │ Preview          │
-└──────────────────┴──────────────────┘
-```
 
 | Panel          | Content                                                    |
 |----------------|------------------------------------------------------------|
@@ -740,103 +701,17 @@ Press `?` during a presentation to show the list inside the app — the same lis
 
 The presenter view has its own navigation keys — see [Keyboard Navigation](#keyboard-navigation).
 
-## Adding Addons
-
-Add custom components as addons for use within slides.
-
-### 1. Create the addon directory
-
-```
-addons/src/{addon-name}/
-├── entry.ts         # Component registration
-└── MyComponent.tsx  # Component implementation
-```
-
-### 2. Implement the component
-
-```tsx
-// addons/src/my-addon/MyComponent.tsx
-const React = window.React;
-
-export function MyComponent({ message }: { message: string }) {
-  return React.createElement('div', null, message);
-}
-```
-
-### 3. Register the component in the entry file
-
-```ts
-// addons/src/my-addon/entry.ts
-import { MyComponent } from './MyComponent';
-
-window.__ADDON_REGISTER__('my-addon', [
-  { name: 'MyComponent', component: MyComponent },
-]);
-```
-
-### 4. Build
-
-```bash
-npm run build:addons
-```
-
-### 5. Use in slides
-
-```json
-{
-  "id": "custom-slide",
-  "layout": "custom",
-  "content": {
-    "component": {
-      "name": "MyComponent",
-      "props": {
-        "message": "Hello!"
-      }
-    }
-  }
-}
-```
-
-## Static Assets
-
-Files placed in the `public/` directory are accessible at the root path after building.
-
-| File                                  | URL                             |
-|---------------------------------------|---------------------------------|
-| `public/slides.json`                  | `/slides.json`                  |
-| `public/theme-colors.json`            | `/theme-colors.json`            |
-| `public/images/logo.png`              | `/images/logo.png`              |
-| `public/voice/slide-01.wav`           | `/voice/slide-01.wav`           |
-| `public/assets/locales/manifest.json` | `/assets/locales/manifest.json` |
-| `public/assets/locales/en-US.json`    | `/assets/locales/en-US.json`    |
-
 ## Slide Packages
 
-Export and distribute slide content (slides.json + images, audio, themes, fonts, etc.) as npm packages.
+Slide content (slides.json plus images, audio, themes, fonts, and so on) can be bundled into a single `.spkg` package
+for distribution.
+
+There are two ways to produce one: use **Export .spkg** in [edit mode](#edit-mode) to stay entirely within the app, or
+see [CONTRIBUTING.md](CONTRIBUTING.md) to automate it from the CLI.
 
 A distributed `.spkg` can be opened by the recipient with a plain double-click from their OS file manager — see
-[Opening a `.spkg` from the OS](#opening-a-spkg-from-the-os). No build step, no `VITE_SLIDE_PACKAGE`, no instructions
-beyond "double-click this file."
-
-### Export (Create Package)
-
-```bash
-npm run export:slides -- --name my-presentation --slides slides.json
-```
-
-| Option      | Required | Description                                           |
-|-------------|:--------:|-------------------------------------------------------|
-| `--name`    |   Yes    | Package name (generated as `@slides/{name}`)          |
-| `--slides`  |   Yes    | Slide JSON filename under the source directory        |
-| `--source`  |          | Base directory for the slide JSON and its assets (default: `public`) |
-| `--version` |          | Version (default: `1.0.0`)                            |
-| `--addons`  |          | Bundle built add-ons (`addons/dist`) into the package |
-| `--strict`  |          | Fail if any referenced asset is missing (used when building distributables; the default only warns) |
-
-This generates a `.spkg` file in `dist-slides/` (same tar+gzip format as `.tgz`, produced via `npm pack` and renamed
-to a project-specific extension). Asset paths referenced in slides.json (`image/`, `voice/`, `theme/`, `font/`) are
-auto-detected and included in the package. When `--addons` is passed, the built add-ons are bundled under `addons/`
-and are dynamically loaded after the package is opened (Tauri runtime only — see below).
+[Opening a `.spkg` from the OS](#opening-a-spkg-from-the-os). The recipient needs no build environment, and no
+instructions beyond "double-click this file."
 
 ### Embedded Add-ons (Runtime Loading)
 
@@ -857,73 +732,10 @@ switching between packages unloads the previous package's add-ons and prevents n
 >
 > Only add-ons declared in the package's `addons/manifest.json` and located under `addons/` are ever loaded.
 
-### Import (Use Package)
+## Development
 
-Specify a slide package via the `VITE_SLIDE_PACKAGE` environment variable.
-
-#### Use with local path (no npm install required)
-
-Specify the `.spkg` file (or a legacy `.tgz`) or extracted directory path in `.env.local`.
-
-```bash
-# Specify .spkg directly
-VITE_SLIDE_PACKAGE=./dist-slides/slides-my-presentation-1.0.0.spkg
-
-# Specify extracted directory
-VITE_SLIDE_PACKAGE=./dist-slides/my-presentation
-```
-
-#### Use an installed npm package
-
-If the package is already available as an npm dependency (e.g. published to a registry and installed with
-`npm install @slides/my-presentation`), specify its package name directly.
-
-```bash
-VITE_SLIDE_PACKAGE=@slides/my-presentation
-```
-
-> **Note:** `npm run export:slides` outputs a `.spkg` file, and npm does not recognize that extension as an
-> installable local tarball (unlike `.tgz`/`.tar.gz`/`.tar`), so `npm install ./dist-slides/xxx.spkg` does not work.
-> To use a freshly exported package, use the local-path method above instead.
-
-#### `VITE_SLIDE_PACKAGE` Value Reference
-
-| Value                          | Behavior                                                               |
-|--------------------------------|-------------------------------------------------------------------------|
-| `./dist-slides/xxx-1.0.0.spkg` | Auto-extract `.spkg` (or legacy `.tgz`) for local use (no npm install) |
-| `./dist-slides/xxx/`           | Read directly from extracted directory (no npm install)               |
-| `@slides/xxx`                  | Read from an installed npm package                                    |
-| (unset)                        | Auto-detect `@slides/*` packages                                      |
-
-### Behavior
-
-- If a file with the same name exists in `public/`, the `public/` file takes priority (package serves as fallback)
-- During `npm run build`, package assets are copied to `dist/` (existing files are not overwritten)
-
-## Screenshots & E2E
-
-The screenshots in this README are produced by a Playwright (WebKit) script that also serves as an end-to-end smoke
-test.
-
-```bash
-npm run generate-screenshots            # capture all scenarios
-npm run generate-screenshots -- home    # capture a single scenario
-```
-
-- Runs the app via `vite --mode screenshot`, replacing the Tauri IPC layer with in-memory mocks (`src/__screenshot__/`)
-  so the UI boots in a plain browser. A locale-specific fixture deck (`scripts/screenshot/fixtures/slides.{en,ja}.json`)
-  is served as `/slides.json` based on the browser locale.
-- Captures every scenario (`home`, `presentation`, `toolbar`, `settings`, `presenter-view`, the `layout-*` gallery, and
-  `logo`) for both locales, compositing a macOS window frame. English shots go to `resources/screenshots/en/` and
-  Japanese to `resources/screenshots/ja/`. If any scenario's wait fails, the run exits non-zero — so it doubles as an
-  e2e smoke test.
-- **macOS only** (Japanese fonts and WebKit rendering differ on Linux). CI runs it on a macOS runner via
-  `.github/workflows/screenshots.yml` (manual dispatch) and commits any diff under `resources/screenshots/`.
-- **Assertion-based E2E**: `npm run test:e2e` runs a Playwright Test suite (`e2e/*.spec.ts`) that reuses the same
-  screenshot-mode server, IPC mocks, and fixtures, but adds explicit `expect()` assertions across the `en` and `ja`
-  locales. Because it checks DOM text (not pixels), it runs headless on Linux in CI (`.github/workflows/ci.yml`). See
-  [`e2e/README.md`](e2e/README.md).
-- Real-Tauri-WebView acceptance testing (WebdriverIO + `tauri-driver`) has an optional scaffold under `e2e/`.
+For building from source, implementing custom components (add-ons), and exporting slide packages from the CLI, see
+[CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 

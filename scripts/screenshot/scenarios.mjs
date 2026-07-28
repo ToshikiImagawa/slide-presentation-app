@@ -3,7 +3,7 @@
  *
  * 各シナリオは「どのパスを開き」「何を待って」「どの操作をして」撮影するかを宣言的に記述する。
  * Tauri IPC は `vite --mode screenshot` の alias で src/__screenshot__/ のモックに差し替わる。
- * スライド内容は fixture（scripts/screenshot/fixtures/slides.json）が /slides.json として配信される。
+ * スライド内容はロケール別 fixture（scripts/screenshot/fixtures/slides.{ja,en}.json）が /slides.json として配信される。
  *
  * フィールド:
  *   key      出力ファイル名（<key>.png）兼 VIEWPORTS のキー
@@ -55,6 +55,15 @@ export const scenarios = [
     key: 'settings',
     waitFor: '[data-testid="home-sample"]',
     steps: [...OPEN_SAMPLE, { click: '[data-testid="settings-open"]' }, { waitFor: '[data-testid="settings-dialog"]' }, { wait: 400 }],
+  },
+
+  // 編集モード（プレゼン画面の左ツールバーの編集ボタンから入る）。
+  // enterEditMode() は Tauri IPC 不在で失敗するが catch して遷移は続くため（A-005）、screenshot モードでも到達できる。
+  // dev サーバー上の撮影なので「組み込みアドオン (dev)」パネルも写る（配布ビルドには出ない）。
+  {
+    key: 'edit',
+    waitFor: '[data-testid="home-sample"]',
+    steps: [...OPEN_SAMPLE, { click: '[data-testid="edit-open"]' }, { waitFor: '[data-testid="slide-editor"]' }, { wait: 800 }],
   },
 
   // 発表者ビュー（別エントリを単独で開く。モックの event responder が /slides.json を注入する）
