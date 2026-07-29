@@ -25,7 +25,9 @@
     "toolbar": {
       "hide": "Masquer la barre d'outils (T)",
       "show": "Afficher la barre d'outils (T)",
-      "pdfExport": "Enregistrer en PDF"
+      "pdfExport": "Enregistrer en PDF",
+      "pdfExporting": "Génération du PDF…",
+      "pdfExportError": "Échec de l'export PDF"
     },
     "theme": {
       "applyFailed": "Échec de l'application du thème"

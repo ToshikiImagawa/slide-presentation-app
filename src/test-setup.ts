@@ -19,6 +19,9 @@ globalThis.IntersectionObserver = MockIntersectionObserver as unknown as typeof 
 Range.prototype.getBoundingClientRect = () => ({ x: 0, y: 0, width: 0, height: 0, top: 0, left: 0, right: 0, bottom: 0, toJSON: () => '' })
 Range.prototype.getClientRects = () => Object.assign([], { item: () => null }) as unknown as DOMRectList
 
+// jsdom はレンダリングループを持たないため requestAnimationFrame を実装しない（pdfExport のペイント待ちで使用）
+globalThis.requestAnimationFrame = (callback: FrameRequestCallback): number => setTimeout(() => callback(performance.now()), 0) as unknown as number
+
 // jsdom は isContentEditable を実装しない（常に undefined）ため、contenteditable 属性から祖先方向に解決する
 Object.defineProperty(HTMLElement.prototype, 'isContentEditable', {
   configurable: true,

@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useRef } from 'react'
 import Reveal from 'reveal.js'
 
+/** Reveal.js の設計解像度（スライドの基準サイズ）。pdfExport.ts もPDFページサイズをこれに合わせる */
+export const SLIDE_WIDTH = 1280
+export const SLIDE_HEIGHT = 720
+
 export interface UseRevealOptions {
   onSlideChanged?: (event: { indexh: number; indexv: number }) => void
 }
@@ -10,12 +14,15 @@ export interface UseRevealReturn {
   getCurrentSlide: () => { indexh: number; indexv: number } | null
   goToNext: () => void
   goToPrev: () => void
+  /** PDF書き出し中（src/pdfExport.ts が .present を直接操作する間）はナビゲーションを止める */
+  setNavigationLocked: (locked: boolean) => void
 }
 
 export function useReveal(options?: UseRevealOptions): UseRevealReturn {
   const deckRef = useRef<HTMLDivElement>(null)
   const deckInstanceRef = useRef<InstanceType<typeof Reveal> | null>(null)
   const onSlideChangedRef = useRef(options?.onSlideChanged)
+  const navigationLockedRef = useRef(false)
 
   // コールバックの最新値を ref に保持（stale closure 回避）
   useEffect(() => {
@@ -33,8 +40,8 @@ export function useReveal(options?: UseRevealOptions): UseRevealReturn {
     }
 
     const deck = new Reveal(deckRef.current, {
-      width: 1280,
-      height: 720,
+      width: SLIDE_WIDTH,
+      height: SLIDE_HEIGHT,
       margin: 0,
       minScale: 0.2,
       maxScale: 2.0,
@@ -79,12 +86,22 @@ export function useReveal(options?: UseRevealOptions): UseRevealReturn {
   }, [])
 
   const goToNext = useCallback(() => {
+    if (navigationLockedRef.current) return
     deckInstanceRef.current?.next()
   }, [])
 
   const goToPrev = useCallback(() => {
+    if (navigationLockedRef.current) return
     deckInstanceRef.current?.prev()
   }, [])
 
-  return { deckRef, getCurrentSlide, goToNext, goToPrev }
+  // goToNext/goToPrev（発表者ビュー経由等）と、Reveal.js 組み込みのキーボード操作（矢印キー等、
+  // Reveal内部が直接処理しこのフックの外を通る）の両方をロックする必要がある。
+  // keyboardCondition は Reveal.js がキー入力ごとに動的評価する唯一の公式フックのため、これで塞ぐ
+  const setNavigationLocked = useCallback((locked: boolean) => {
+    navigationLockedRef.current = locked
+    deckInstanceRef.current?.configure({ keyboardCondition: locked ? () => false : undefined })
+  }, [])
+
+  return { deckRef, getCurrentSlide, goToNext, goToPrev, setNavigationLocked }
 }

@@ -50,3 +50,14 @@
   background-color: var(--theme-text-muted);
   cursor: default;
 }
+
+/* 処理中（PdfExportButton の書き出し中等）で共有する汎用の busy 表示 */
+.buttonBusy {
+  background-color: var(--theme-text-muted);
+  cursor: default;
+}
+
+/* エラー発生時（PdfExportButton 等）で共有する汎用のエラー表示 */
+.buttonError {
+  background-color: #d32f2f;
+}
