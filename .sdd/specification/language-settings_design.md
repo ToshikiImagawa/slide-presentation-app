@@ -325,7 +325,7 @@ interface HomeScreenProps {
 |------------------------|----------------------------------------------------------------------------------------------|
 | NFR-001: 言語切り替え500ms以内 | React Context の状態更新により即座に再レンダリング。言語リソースはアプリ起動時にすべてメモリに読み込み済みのため、切り替え時のI/Oなし                  |
 | Reveal.js非干渉           | 設定ウィンドウのオーバーレイ要素に `onKeyDown` ハンドラで `stopPropagation()` を設定し、キーボードイベントがReveal.jsに伝播するのを防止 |
-| `?` キーと Reveal の衝突     | Reveal は keyCode 191（`/`）を一時停止に割り当てており、`?` は `Shift` + `/` のため一覧を開くたびにスライドがブラックアウトしていた。`useReveal` の `keyboard: { 191: null }` で当該バインドのみ外して解消（一時停止は `B` / `.` で従来どおり可能）。回帰は `e2e/shortcuts.spec.ts` で検証する |
+| `?` キーと Reveal の衝突     | Reveal は `?`（keyCode 191 + Shift）と `F1` で**英語固定の組み込みヘルプ**を開く（`keyboard.js` の `toggleHelp()`）。アプリ独自キーを含まない一覧が出てしまうため、`useReveal` に `help: false` を渡して抑止する。キーバインド自体は潰さないので `/`（Shift なし）による Reveal 既定の一時停止は残る。回帰は `e2e/shortcuts.spec.ts` で検証する |
 
 ---
 
@@ -343,7 +343,7 @@ interface HomeScreenProps {
 | コンポーネントテスト | ShortcutsDialog（ビューア・編集モード・発表者ビューの全節と各キーが表示されること） | 主要パス    |
 | 統合テスト      | 言語切り替え → localStorage保存 → 再読み込み復元      | ハッピーパス  |
 | E2E（Playwright） | `e2e/settings.spec.ts` — 設定ダイアログの開閉と各コントロール、ホーム画面から開くとグローバル設定のみ表示（FR-011）、ホーム画面での言語切り替えで UI 文言が即座に変わる（FR-004 / UR-LANG-001） | ハッピーパス |
-| E2E（Playwright） | `e2e/shortcuts.spec.ts` — `?` で全節が開く / `?` でスライドが一時停止しない（Reveal の keyCode 191 との衝突の回帰） / `B` の一時停止は維持 / ホーム画面でも `?` で開く | ハッピーパス＋回帰 |
+| E2E（Playwright） | `e2e/shortcuts.spec.ts` — `?` で全節が開く / Reveal 組み込みヘルプが `?`・`F1` のどちらでも開かない（`help: false` の回帰） / `B` と `/` による Reveal 既定の一時停止は維持 / ホーム画面でも `?` で開く | ハッピーパス＋回帰 |
 
 ---
 
@@ -409,7 +409,8 @@ interface HomeScreenProps {
 
 - `?` キーの `keydown` 購読を `App` から `RootContent` へ移動。ダイアログの所有者と同じ層に置き、ホーム・プレゼンテーション・編集のどの画面からでも開けるようにした（`App` の `onOpenShortcuts` prop は削除。`T` キーは `toolbarHidden` がローカル状態のため `App` に残す）
 - `ShortcutsDialog` に「発表者ビュー」節（`→` / `Space` / `←`）を追加し、3 節を 2 カラム配置にして 1280x720 でスクロールなしに収まるようにした（`assets/locales/*.json` に `shortcuts.presenterSection` を追加）
-- **既存バグの修正**: Reveal は keyCode 191（`/`）を一時停止に割り当てており、`?` は `Shift` + `/` のため一覧を開くたびにスライドがブラックアウトしていた。`useReveal` の `keyboard: { 191: null }` で当該バインドのみ外した（`B` / `.` での一時停止は維持。`src/reveal.d.ts` の `keyboard` 型も実仕様へ拡張）
+- **既存バグの修正**: Reveal は `?`（keyCode 191 + Shift）と `F1` で英語固定の組み込みヘルプを開くため、アプリ独自キーを含まない一覧が重なって出ていた。`useReveal` に `help: false` を渡して抑止した（`src/reveal.d.ts` に `help?: boolean` を追加）。当初 `keyboard: { 191: null }` でキーバインドごと潰す実装にしたが、`F1` 経路が残り `/` の一時停止まで失う誤った層だったため、機能フラグで切る形に改めた
+- 入力中ガード（`INPUT` / `TEXTAREA` / `contentEditable`）を `src/keyboardTarget.ts` の `isTypingTarget()` に集約（Root・`App`・`SlideEditor` の 3 箇所が共有）
 - README 英日からキーマップの表（プレゼンビューア / 編集モード / 発表者ビュー）を削除し、`?` で開ける旨と `shortcuts.png` のみを残した。キーマップの真実源をダイアログ 1 つに統一して実装との乖離を防ぐ
 - 回帰テストを `e2e/shortcuts.spec.ts` に追加（全節の表示 / `?` で一時停止しない / `B` は一時停止する / ホーム画面でも開く）
 

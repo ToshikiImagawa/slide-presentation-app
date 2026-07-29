@@ -25,7 +25,8 @@ npx playwright test e2e/home.spec.ts   # 単一 spec
 |---|---|
 | `home.spec.ts` | ホーム画面のタイトル・「ファイルを開く」「サンプルを開く」・空の最近一覧、サンプル起動でデッキ描画 |
 | `presentation.spec.ts` | 全 fixture スライドが section 描画される / 表紙のタイトル・サブタイトル / 矢印キーでの遷移 / ロゴ表示 |
-| `settings.spec.ts` | 設定ダイアログの開閉、言語セレクト・スクロール速度入力の存在 |
+| `settings.spec.ts` | 設定ダイアログの開閉、言語セレクト・スクロール速度入力の存在、ホーム画面から開くとグローバル設定のみ表示・言語切り替えの即時反映 |
+| `shortcuts.spec.ts` | `?` でショートカット一覧が全節表示される / Reveal 組み込みヘルプが `?`・`F1` で開かない / `B`・`/` の一時停止は維持 / ホーム画面でも `?` で開く |
 | `presenter-view.spec.ts` | スピーカーノート本文・要点サマリー全項目・次スライドプレビュー・前スライド境界メッセージ |
 | `layouts.spec.ts` | section / content(steps) / content(tiles) / two-column / bleed / custom の各レイアウトが期待内容を描画 |
 

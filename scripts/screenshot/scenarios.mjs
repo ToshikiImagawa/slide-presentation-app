@@ -57,11 +57,20 @@ export const scenarios = [
     steps: [...OPEN_SAMPLE, { click: '[data-testid="settings-open"]' }, { waitFor: '[data-testid="settings-dialog"]' }, { wait: 400 }],
   },
 
-  // キーボードショートカット一覧（? キーで開く。README に表を持たない代わりの唯一の一覧）
+  // キーボードショートカット一覧（README に表を持たない代わりの唯一の一覧）。
+  // 実機では ? キーでも開けるが、Playwright の press('?') は shiftKey なしで keyCode 191 を送るため
+  // Reveal が「/」= 一時停止と解釈して pause オーバーレイが写り込む。撮影は設定ダイアログ経由で行う
   {
     key: 'shortcuts',
     waitFor: '[data-testid="home-sample"]',
-    steps: [...OPEN_SAMPLE, { press: '?' }, { waitFor: '[data-testid="shortcuts-dialog"]' }, { wait: 400 }],
+    steps: [
+      ...OPEN_SAMPLE,
+      { click: '[data-testid="settings-open"]' },
+      { waitFor: '[data-testid="settings-dialog"]' },
+      { click: '[data-testid="shortcuts-open"]' },
+      { waitFor: '[data-testid="shortcuts-dialog"]' },
+      { wait: 400 },
+    ],
   },
 
   // 編集モード（プレゼン画面の左ツールバーの編集ボタンから入る）。
