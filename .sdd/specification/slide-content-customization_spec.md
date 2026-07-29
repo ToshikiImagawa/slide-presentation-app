@@ -245,7 +245,7 @@ interface ValidationError {
 
 | アクター     | ユースケース                       | 主なフロー                                                                                     |
 |----------|------------------------------|-------------------------------------------------------------------------------------------|
-| コンテンツ編集者 | スライド内容をJSONで差し替える            | `slides.json`（または `.tgz` パッケージ）を編集・選択 → アプリが読み込みバリデーション → 反映（不正時はデフォルトへフォールバック）             |
+| コンテンツ編集者 | スライド内容をJSONで差し替える            | `slides.json`（または `.spkg`（旧 `.tgz`）パッケージ）を編集・選択 → アプリが読み込みバリデーション → 反映（不正時は最小フォールバックへ）             |
 | 開発者      | カスタムコンポーネントを登録して利用する         | `registerComponent(name, component, owner?)` で登録 → JSONの `component.name` から参照             |
 | 開発者      | テーマ（色・フォント・カスタムCSS）を切り替える    | `slides.json` の `theme` フィールド、または `meta.themeColors` が指す外部JSONで定義 → `applyThemeData` がCSS変数を適用 |
 | システム     | データ不正時に最小フォールバックを表示する        | `getFallbackPresentationData(locale)` の1枚を `loadPresentationData` 経由で表示                       |

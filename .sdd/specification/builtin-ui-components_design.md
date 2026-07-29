@@ -52,7 +52,7 @@ category: ui-components
 1. **テーマ連動**: すべてのコンポーネントが CSS 変数（`--theme-*`）を通じてテーマと連動し、ハードコードされた色値を排除する
 2. **合成可能性**: 各コンポーネントが独立して動作し、任意の組み合わせで使用できる
 3. **型安全性**: TypeScript strict モードで完全な型チェックが通る Props インターフェースを提供する
-4. **名前解決**: ComponentRegistry による二層構造（default/custom）で、アドオンによる上書きを実現する
+4. **名前解決**: ComponentRegistry による custom → default → fallback の3層優先解決で、アドオンによる上書きを実現する
 5. **Reveal.js 互換性**: `.reveal > .slides > section` 内で正しく描画される
 
 ---
@@ -270,7 +270,7 @@ const RESTART_DELAY = 2000;       // 全行表示完了後のリスタート待�
 | 決定事項                     | 選択肢                              | 決定内容                       | 理由                                          |
 |:-------------------------|:----------------------------------|:--------------------------|:--------------------------------------------|
 | コンポーネント解決の戻り値            | null を返す / FallbackComponent を返す  | FallbackComponent を返す      | 呼び出し側での null チェック不要、NFR_303 準拠               |
-| レジストリの二層構造               | 単一 Map / default+custom の二層 Map  | 二層 Map                    | アドオンによる上書きとデフォルトの分離を実現（FR_1801）              |
+| レジストリの解決構造               | 単一 Map / default+custom の2つの Map + fallback  | default+custom の2つの Map + fallback（custom → default → fallback の3層優先解決） | アドオンによる上書きとデフォルトの分離、未登録時の安全な表示を実現（FR_1801/A-004）              |
 | TerminalAnimation のアニメーション方式 | CSS アニメーション / setTimeout + state | setTimeout + React state  | 行ごとの逐次制御が必要、行分類に基づく動的なスタイリングが可能             |
 | TerminalAnimation の表示トリガー   | 即座に開始 / IntersectionObserver      | IntersectionObserver      | スライドが表示された時にのみアニメーション開始、パフォーマンスに配慮（NFR_302） |
 | スタイリング方式の混合              | CSS Modules 統一 / MUI sx 統一 / 混合 | 混合                        | 静的スタイルは CSS Modules、動的な微調整は MUI sx prop（A-002 準拠） |

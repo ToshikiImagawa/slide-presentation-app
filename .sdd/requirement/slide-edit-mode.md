@@ -216,7 +216,7 @@ requirementDiagram
 
     functionalRequirement ExportPackage {
         id: FR_007
-        text: "アセット収集とパッケージ生成を行い tgz を書き出し既存の開くで読み込めること"
+        text: "アセット収集とパッケージ生成を行い spkg を書き出し既存の開くで読み込めること"
         risk: high
         verifymethod: demonstration
     }
@@ -230,7 +230,7 @@ requirementDiagram
 
     functionalRequirement AddonBundleSelection {
         id: FR_009
-        text: "tgz export 時に同梱アドオンを個別選択できること 層B"
+        text: "spkg export 時に同梱アドオンを個別選択できること 層B"
         risk: medium
         verifymethod: test
     }
