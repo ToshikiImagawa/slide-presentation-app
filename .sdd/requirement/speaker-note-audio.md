@@ -60,7 +60,7 @@ graph TB
     subgraph "プレゼンテーションシステム"
         Presenter((発表者))
         PlayAudio[音声を手動再生する]
-        StopAudio[音声を停止する]
+        PauseResumeAudio[音声を一時停止・再開する]
         ToggleAutoPlay[自動再生をON/OFFする]
         ToggleAutoSlideshow[自動スライドショーをON/OFFする]
         WatchAutoPresentation[自動プレゼンテーションを視聴する]
@@ -70,7 +70,7 @@ graph TB
     end
 
     Presenter --> PlayAudio
-    Presenter --> StopAudio
+    Presenter --> PauseResumeAudio
     Presenter --> ToggleAutoPlay
     Presenter --> ToggleAutoSlideshow
     Presenter --> WatchAutoPresentation
@@ -82,7 +82,7 @@ graph TB
 
 - 音声再生
     - スピーカーアイコンによる手動再生
-    - 音声ファイルの再生・停止
+    - 再生中の音声の一時停止・同じ位置からの再開
 - 自動再生
     - スライド表示時に自動で音声再生を開始
     - 自動再生のON/OFF切り替え
@@ -114,9 +114,9 @@ requirementDiagram
         verifymethod: test
     }
 
-    functionalRequirement AudioStopControl {
+    functionalRequirement AudioPauseResumeControl {
         id: FR_SNA_002
-        text: "再生中の音声を停止できること"
+        text: "再生中の音声を一時停止し、同じ位置から再開できること"
         risk: high
         verifymethod: test
     }
@@ -185,7 +185,7 @@ requirementDiagram
     }
 
     SpeakerNoteAudio - contains -> ManualAudioPlayback
-    SpeakerNoteAudio - contains -> AudioStopControl
+    SpeakerNoteAudio - contains -> AudioPauseResumeControl
     SpeakerNoteAudio - contains -> AutoPlayOnSlideDisplay
     SpeakerNoteAudio - contains -> AutoPlayToggle
     SpeakerNoteAudio - contains -> AutoSlideshowOnAudioEnd
@@ -237,9 +237,9 @@ slides.json の notes に voice フィールドが定義されているスライ
 
 **検証方法:** テストによる検証
 
-### FR-SNA-002: 音声停止
+### FR-SNA-002: 音声一時停止・再開
 
-再生中の音声を停止する操作が可能であること。再生中にスピーカーアイコンを再度クリックするか、停止用のUI操作により音声を停止できる。
+再生中の音声を一時停止し、同じ位置から再開する操作が可能であること。既存のスピーカーアイコンを play ⇄ pause ⇄ resume の単一ボタントグルとして扱い、再生中にクリックすると一時停止（現在位置を保持）、一時停止中にクリックすると同じ位置から再開する。頭出し（停止）操作はUIから削除し、スライド切替時の内部リセット処理のみに残す。
 
 **優先度:** Must
 
@@ -357,7 +357,7 @@ voice フィールドが定義されていないスライドでは、スピー�
 
 | 用語 | 定義 |
 |------|------|
-| スピーカーアイコン（Speaker Icon） | 音声再生が可能なスライドに表示されるUI要素。クリックで音声の再生/停止を行う |
+| スピーカーアイコン（Speaker Icon） | 音声再生が可能なスライドに表示されるUI要素。クリックで音声の再生・一時停止・再開（play ⇄ pause ⇄ resume）を行う |
 | 自動再生（Auto Play） | スライド表示時に自動で音声再生を開始する機能 |
 | 自動スライドショー（Auto Slideshow） | 音声再生終了時に自動で次のスライドへ遷移する機能 |
 | voice フィールド | slides.json の notes オブジェクト内で音声ファイルパスを指定するプロパティ |

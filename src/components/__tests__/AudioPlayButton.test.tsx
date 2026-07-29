@@ -9,7 +9,7 @@ const jaJP: LocaleResource = {
   languageCode: 'ja-JP',
   languageName: '日本語',
   ui: {
-    audio: { play: '音声を再生', stop: '音声を停止' },
+    audio: { play: '音声を再生', stop: '音声を停止', pause: '音声を一時停止', resume: '音声を再開' },
   },
 }
 
@@ -28,9 +28,15 @@ describe('AudioPlayButton', () => {
     expect(button).toBeDefined()
   })
 
-  it('playing 状態でタイトルが「音声を停止」になる', () => {
+  it('playing 状態でタイトルが「音声を一時停止」になる', () => {
     render(<AudioPlayButton playbackState="playing" onToggle={() => {}} />, { wrapper: Wrapper })
-    const button = screen.getByRole('button', { name: '音声を停止' })
+    const button = screen.getByRole('button', { name: '音声を一時停止' })
+    expect(button).toBeDefined()
+  })
+
+  it('paused 状態でタイトルが「音声を再開」になる', () => {
+    render(<AudioPlayButton playbackState="paused" onToggle={() => {}} />, { wrapper: Wrapper })
+    const button = screen.getByRole('button', { name: '音声を再開' })
     expect(button).toBeDefined()
   })
 

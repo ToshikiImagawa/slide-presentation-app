@@ -192,6 +192,120 @@ describe('useAudioPlayer', () => {
     expect(result.current.duration).toBe(60)
   })
 
+  it('pause() で paused 状態になり currentTime が保持される', () => {
+    const { result } = renderHook(() => useAudioPlayer())
+
+    act(() => {
+      result.current.play('/audio/test.mp3')
+    })
+
+    act(() => {
+      mockAudioInstance.currentTime = 12.3
+      fireEvent('timeupdate')
+    })
+
+    act(() => {
+      result.current.pause()
+    })
+
+    expect(mockAudioInstance.pause).toHaveBeenCalled()
+    expect(result.current.playbackState).toBe('paused')
+    expect(result.current.isPlaying).toBe(false)
+    expect(result.current.currentTime).toBe(12.3)
+  })
+
+  it('resume() で playing 状態に戻り同じ位置から再生される', () => {
+    const { result } = renderHook(() => useAudioPlayer())
+
+    act(() => {
+      result.current.play('/audio/test.mp3')
+    })
+
+    act(() => {
+      mockAudioInstance.currentTime = 12.3
+      fireEvent('timeupdate')
+    })
+
+    act(() => {
+      result.current.pause()
+    })
+
+    act(() => {
+      result.current.resume()
+    })
+
+    expect(mockAudioInstance.play).toHaveBeenCalledTimes(2)
+    expect(mockAudioInstance.src).toBe('/audio/test.mp3')
+    expect(result.current.playbackState).toBe('playing')
+    expect(result.current.isPlaying).toBe(true)
+    expect(result.current.currentTime).toBe(12.3)
+  })
+
+  it('resume() の Promise rejection で paused 状態に戻る', async () => {
+    const { result } = renderHook(() => useAudioPlayer())
+
+    act(() => {
+      result.current.play('/audio/test.mp3')
+    })
+
+    act(() => {
+      result.current.pause()
+    })
+
+    mockAudioInstance.play = vi.fn().mockRejectedValue(new Error('NotAllowedError'))
+
+    await act(async () => {
+      result.current.resume()
+    })
+
+    expect(result.current.playbackState).toBe('paused')
+  })
+
+  it('toggle() は idle 時に play する', () => {
+    const { result } = renderHook(() => useAudioPlayer())
+
+    act(() => {
+      result.current.toggle('/audio/test.mp3')
+    })
+
+    expect(mockAudioInstance.play).toHaveBeenCalled()
+    expect(result.current.playbackState).toBe('playing')
+  })
+
+  it('toggle() は playing 時に pause する', () => {
+    const { result } = renderHook(() => useAudioPlayer())
+
+    act(() => {
+      result.current.play('/audio/test.mp3')
+    })
+
+    act(() => {
+      result.current.toggle('/audio/test.mp3')
+    })
+
+    expect(mockAudioInstance.pause).toHaveBeenCalled()
+    expect(result.current.playbackState).toBe('paused')
+  })
+
+  it('toggle() は paused 時に resume する', () => {
+    const { result } = renderHook(() => useAudioPlayer())
+
+    act(() => {
+      result.current.play('/audio/test.mp3')
+    })
+
+    act(() => {
+      result.current.pause()
+    })
+
+    act(() => {
+      result.current.toggle('/audio/test.mp3')
+    })
+
+    expect(mockAudioInstance.play).toHaveBeenCalledTimes(2)
+    expect(result.current.playbackState).toBe('playing')
+  })
+
   it('stop() 後に currentTime=0, duration=0 にリセットされる', () => {
     const { result } = renderHook(() => useAudioPlayer())
 
