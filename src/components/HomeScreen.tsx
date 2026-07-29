@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { useTranslation } from '../i18n'
 import type { RecentSlidePackageEntry } from '../localSlideLoader'
+import { SettingsButton } from './SettingsButton'
 import styles from './HomeScreen.module.css'
 
 type HomeScreenProps = {
@@ -12,6 +13,7 @@ type HomeScreenProps = {
   onBrowse: () => Promise<void>
   onCreateWithAi: () => void
   onOpenUrl: (url: string) => Promise<void>
+  onOpenSettings: () => void
 }
 
 /** 読み込み中の操作。同時に複数の読み込みが走らないよう単一の状態で管理する */
@@ -88,7 +90,7 @@ function Spinner({ className }: { className: string }) {
   )
 }
 
-export function HomeScreen({ recentPackages, onOpenRecent, onRemoveRecent, onOpenSample, onBrowse, onCreateWithAi, onOpenUrl }: HomeScreenProps) {
+export function HomeScreen({ recentPackages, onOpenRecent, onRemoveRecent, onOpenSample, onBrowse, onCreateWithAi, onOpenUrl, onOpenSettings }: HomeScreenProps) {
   const { t } = useTranslation()
   const [isUrlFormOpen, setIsUrlFormOpen] = useState(false)
   const [url, setUrl] = useState('')
@@ -121,6 +123,11 @@ export function HomeScreen({ recentPackages, onOpenRecent, onRemoveRecent, onOpe
 
   return (
     <div className={styles.container} data-testid="home-screen">
+      {/* 初回起動時に言語を変更できるようにするための導線。プレゼンテーション画面のツールバーと同じ左上に置く。
+          読み込み中でも言語は変えられるよう disabled にしない */}
+      <div className={styles.settingsCorner}>
+        <SettingsButton onClick={onOpenSettings} />
+      </div>
       <div className={styles.content}>
         <header className={styles.hero}>
           <h1 className={styles.title}>{t('home.appTitle', 'Slide Presentation App')}</h1>

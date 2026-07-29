@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
-import { useAutoSlideshow, DEFAULT_SCROLL_SPEED } from '../useAutoSlideshow'
+import { useAutoSlideshow } from '../useAutoSlideshow'
 import type { UseAudioPlayerReturn } from '../useAudioPlayer'
 import type { SlideData } from '../../data'
 
@@ -43,6 +43,7 @@ describe('useAutoSlideshow', () => {
         currentIndex: 0,
         audioPlayer: mockPlayer,
         goToNext: mockGoToNext,
+        scrollSpeed: 20,
       }),
     )
 
@@ -58,6 +59,7 @@ describe('useAutoSlideshow', () => {
         currentIndex: 0,
         audioPlayer: mockPlayer,
         goToNext: mockGoToNext,
+        scrollSpeed: 20,
       }),
     )
 
@@ -76,6 +78,7 @@ describe('useAutoSlideshow', () => {
         currentIndex: 0,
         audioPlayer: mockPlayer,
         goToNext: mockGoToNext,
+        scrollSpeed: 20,
       }),
     )
 
@@ -94,6 +97,7 @@ describe('useAutoSlideshow', () => {
         currentIndex: 0,
         audioPlayer: mockPlayer,
         goToNext: mockGoToNext,
+        scrollSpeed: 20,
       }),
     )
 
@@ -108,6 +112,7 @@ describe('useAutoSlideshow', () => {
         currentIndex: 0,
         audioPlayer: mockPlayer,
         goToNext: mockGoToNext,
+        scrollSpeed: 20,
       }),
     )
 
@@ -131,6 +136,7 @@ describe('useAutoSlideshow', () => {
         currentIndex: 0,
         audioPlayer: mockPlayer,
         goToNext: mockGoToNext,
+        scrollSpeed: 20,
       }),
     )
 
@@ -153,6 +159,7 @@ describe('useAutoSlideshow', () => {
         currentIndex: 0,
         audioPlayer: mockPlayer,
         goToNext: mockGoToNext,
+        scrollSpeed: 20,
       }),
     )
 
@@ -172,36 +179,6 @@ describe('useAutoSlideshow', () => {
       vi.useRealTimers()
     })
 
-    it('scrollSpeed のデフォルト値が 20 である', () => {
-      const slides = [makeSlide('s1'), makeSlide('s2')]
-      const { result } = renderHook(() =>
-        useAutoSlideshow({
-          slides,
-          currentIndex: 0,
-          audioPlayer: mockPlayer,
-          goToNext: mockGoToNext,
-        }),
-      )
-
-      expect(result.current.scrollSpeed).toBe(DEFAULT_SCROLL_SPEED)
-      expect(result.current.scrollSpeed).toBe(20)
-    })
-
-    it('initialScrollSpeed を指定するとその値が使われる', () => {
-      const slides = [makeSlide('s1'), makeSlide('s2')]
-      const { result } = renderHook(() =>
-        useAutoSlideshow({
-          slides,
-          currentIndex: 0,
-          audioPlayer: mockPlayer,
-          goToNext: mockGoToNext,
-          initialScrollSpeed: 10,
-        }),
-      )
-
-      expect(result.current.scrollSpeed).toBe(10)
-    })
-
     it('voice 未定義時に scrollSpeed 秒後に goToNext が呼ばれる', () => {
       const slides = [makeSlide('s1'), makeSlide('s2')]
       const { result } = renderHook(() =>
@@ -210,7 +187,7 @@ describe('useAutoSlideshow', () => {
           currentIndex: 0,
           audioPlayer: mockPlayer,
           goToNext: mockGoToNext,
-          initialScrollSpeed: 5,
+          scrollSpeed: 5,
         }),
       )
 
@@ -235,7 +212,7 @@ describe('useAutoSlideshow', () => {
           currentIndex: 0,
           audioPlayer: mockPlayer,
           goToNext: mockGoToNext,
-          initialScrollSpeed: 5,
+          scrollSpeed: 5,
         }),
       )
 
@@ -258,7 +235,7 @@ describe('useAutoSlideshow', () => {
           currentIndex: 0,
           audioPlayer: mockPlayer,
           goToNext: mockGoToNext,
-          initialScrollSpeed: 5,
+          scrollSpeed: 5,
         }),
       )
 
@@ -281,7 +258,7 @@ describe('useAutoSlideshow', () => {
           currentIndex: 0,
           audioPlayer: mockPlayer,
           goToNext: mockGoToNext,
-          initialScrollSpeed: 5,
+          scrollSpeed: 5,
         }),
       )
 
@@ -301,7 +278,7 @@ describe('useAutoSlideshow', () => {
           currentIndex,
           audioPlayer: mockPlayer,
           goToNext: mockGoToNext,
-          initialScrollSpeed: 5,
+          scrollSpeed: 5,
         }),
       )
 
@@ -340,7 +317,7 @@ describe('useAutoSlideshow', () => {
           currentIndex: 0,
           audioPlayer: mockPlayer,
           goToNext: mockGoToNext,
-          initialScrollSpeed: 5,
+          scrollSpeed: 5,
         }),
       )
 
@@ -361,7 +338,7 @@ describe('useAutoSlideshow', () => {
           currentIndex: 0,
           audioPlayer: mockPlayer,
           goToNext: mockGoToNext,
-          initialScrollSpeed: 5,
+          scrollSpeed: 5,
         }),
       )
 
@@ -380,7 +357,7 @@ describe('useAutoSlideshow', () => {
           currentIndex: 0,
           audioPlayer: mockPlayer,
           goToNext: mockGoToNext,
-          initialScrollSpeed: 5,
+          scrollSpeed: 5,
         }),
       )
 
@@ -389,13 +366,14 @@ describe('useAutoSlideshow', () => {
 
     it('scrollSpeed 変更時にタイマーが再設定される', () => {
       const slides = [makeSlide('s1'), makeSlide('s2')]
-      const { result } = renderHook(() =>
+      let scrollSpeed = 10
+      const { result, rerender } = renderHook(() =>
         useAutoSlideshow({
           slides,
           currentIndex: 0,
           audioPlayer: mockPlayer,
           goToNext: mockGoToNext,
-          initialScrollSpeed: 10,
+          scrollSpeed,
         }),
       )
 
@@ -409,10 +387,9 @@ describe('useAutoSlideshow', () => {
       })
       expect(mockGoToNext).not.toHaveBeenCalled()
 
-      // scrollSpeed を 3 秒に変更（タイマー再設定）
-      act(() => {
-        result.current.setScrollSpeed(3)
-      })
+      // scrollSpeed を 3 秒に変更（所有者は Root 側なので props 経由で変わる。タイマー再設定）
+      scrollSpeed = 3
+      rerender()
 
       // 3秒後に発火
       act(() => {

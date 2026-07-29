@@ -24,6 +24,9 @@ const enUS: LocaleResource = {
       urlSubmit: 'Open',
       urlOpening: 'Opening…',
     },
+    settings: {
+      open: 'Settings',
+    },
   },
 }
 
@@ -51,6 +54,7 @@ const defaultProps = {
   onBrowse: async () => {},
   onCreateWithAi: () => {},
   onOpenUrl: async () => {},
+  onOpenSettings: () => {},
 }
 
 describe('HomeScreen', () => {
@@ -65,6 +69,18 @@ describe('HomeScreen', () => {
       </Wrapper>,
     )
     expect(screen.getByText("You haven't opened any slides yet")).toBeDefined()
+  })
+
+  // 初回起動時に言語を変更するための導線（スライドを開かなくても設定を開けること）
+  it('設定ボタンをクリックすると onOpenSettings が呼ばれる', () => {
+    const onOpenSettings = vi.fn()
+    render(
+      <Wrapper>
+        <HomeScreen {...defaultProps} onOpenSettings={onOpenSettings} />
+      </Wrapper>,
+    )
+    fireEvent.click(screen.getByTestId('settings-open'))
+    expect(onOpenSettings).toHaveBeenCalledTimes(1)
   })
 
   it('最近開いたスライドが一覧表示される', () => {
