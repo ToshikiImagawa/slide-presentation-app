@@ -4,9 +4,13 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Checkbox from '@mui/material/Checkbox'
 import FormControlLabel from '@mui/material/FormControlLabel'
+import InputAdornment from '@mui/material/InputAdornment'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
+import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
+import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline'
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import { editorUiTheme, theme } from '../theme'
 import { useTranslation } from '../i18n'
 import { applyTheme, applyThemeData, resetThemeOverrides } from '../applyTheme'
@@ -56,11 +60,12 @@ function slugify(title: string): string {
 }
 
 /** パッケージ名（@slides/{name} の name 部分）を検証する。npm パッケージ名の規則
- * （小文字英数字とハイフンのみ・先頭は英数字）に合わせる（src-tauri/src/lib.rs の validate_package_name と同一規則・#88） */
+ * （小文字英数字・ハイフン・アンダースコアのみ・先頭は英数字。先頭の `_`/`.` は npm で予約的な意味を持つため不可）
+ * に合わせる（src-tauri/src/lib.rs の validate_package_name と同一規則・#88） */
 function validatePackageName(value: string): 'required' | 'invalid' | null {
   const trimmed = value.trim()
   if (!trimmed) return 'required'
-  return /^[a-z0-9][a-z0-9-]*$/.test(trimmed) ? null : 'invalid'
+  return /^[a-z0-9][a-z0-9_-]*$/.test(trimmed) ? null : 'invalid'
 }
 
 /** バージョンを検証する（semver の major.minor.patch。prerelease/build metadata も許可・#88） */
@@ -233,7 +238,7 @@ export function SlideEditor({
     nameErrorCode === 'required'
       ? t('edit.packageNameRequired', 'パッケージ名を入力してください')
       : nameErrorCode === 'invalid'
-        ? t('edit.packageNameInvalid', 'パッケージ名は小文字英数字とハイフンのみ使用でき、先頭は英数字にしてください')
+        ? t('edit.packageNameInvalid', 'パッケージ名は小文字英数字・ハイフン・アンダースコアのみ使用でき、先頭は英数字にしてください')
         : null
   const versionErrorCode = validateVersion(version)
   const versionErrorMessage =
@@ -363,6 +368,9 @@ export function SlideEditor({
             {t('edit.exit', '編集を終了')}
           </Button>
           <Box sx={{ flex: 1 }} />
+          {/* 注意事項（エラー/自動生成ヒント）は helperText ではなくアイコン+Tooltip で出す。
+              helperText はフィールド分だけツールバーの高さを伸ばし、下段の固定高さレイアウト（42%指定）と
+              予算が合わず画面全体の崩れを招くため（ツールバーの高さは常に一定に保つ） */}
           <TextField
             label={t('edit.packageName', 'パッケージ名')}
             value={name}
@@ -373,7 +381,22 @@ export function SlideEditor({
             size="small"
             sx={{ width: 180 }}
             error={nameErrorMessage !== null}
-            helperText={nameErrorMessage ?? (nameIsAuto ? t('edit.packageNameHint', 'スライドタイトルから自動生成された値です。書き出し前に確認・修正してください') : '')}
+            slotProps={{
+              input: {
+                endAdornment:
+                  nameErrorMessage || nameIsAuto ? (
+                    <InputAdornment position="end">
+                      <Tooltip title={nameErrorMessage ?? t('edit.packageNameHint', 'スライドタイトルから自動生成された値です。書き出し前に確認・修正してください')}>
+                        {nameErrorMessage ? (
+                          <ErrorOutlineIcon fontSize="small" color="error" titleAccess={nameErrorMessage} />
+                        ) : (
+                          <InfoOutlinedIcon fontSize="small" sx={{ color: 'var(--fixed-text-muted)' }} titleAccess={t('edit.packageNameHint', 'スライドタイトルから自動生成された値です。書き出し前に確認・修正してください')} />
+                        )}
+                      </Tooltip>
+                    </InputAdornment>
+                  ) : undefined,
+              },
+            }}
           />
           <TextField label={t('edit.version', 'バージョン')} value={version} onChange={(e) => setVersion(e.target.value)} size="small" sx={{ width: 110 }} error={versionErrorMessage !== null} helperText={versionErrorMessage ?? ''} />
           <Button variant="outlined" size="small" onClick={handleSave} disabled={!canWrite}>

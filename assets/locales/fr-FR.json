@@ -56,7 +56,7 @@
       "export": "Exporter .spkg",
       "packageName": "Nom du paquet",
       "packageNameRequired": "Saisissez un nom de paquet",
-      "packageNameInvalid": "Le nom du paquet ne peut contenir que des lettres minuscules, des chiffres et des tirets, et doit commencer par une lettre ou un chiffre",
+      "packageNameInvalid": "Le nom du paquet ne peut contenir que des lettres minuscules, des chiffres, des tirets et des underscores, et doit commencer par une lettre ou un chiffre",
       "packageNameHint": "Valeur générée automatiquement à partir du titre. Vérifiez et modifiez-la avant l'export.",
       "version": "Version",
       "versionRequired": "Saisissez une version",

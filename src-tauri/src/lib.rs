@@ -630,8 +630,9 @@ fn filter_addon_manifest(
 }
 
 /// export 用パッケージ名（package.json の `@slides/{name}` に埋め込む name 部分）を検証する。
-/// npm パッケージ名の規則（小文字英数字とハイフンのみ・先頭は英数字）に合わせる
-/// （sanitize_addon_name と防御方針は同じだが、npm パッケージ名として埋め込むため大文字・アンダースコアは許可しない・#88）
+/// npm パッケージ名の規則（小文字英数字・ハイフン・アンダースコアのみ・先頭は英数字）に合わせる。
+/// 先頭の `_`/`.` は npm で予約的な意味を持つため不可（sanitize_addon_name と防御方針は同じだが、
+/// npm パッケージ名として埋め込むため大文字は許可しない・#88）
 fn validate_package_name(name: &str) -> Result<(), String> {
   let trimmed = name.trim();
   if trimmed.is_empty() {
@@ -640,10 +641,11 @@ fn validate_package_name(name: &str) -> Result<(), String> {
   let valid = trimmed
     .chars()
     .enumerate()
-    .all(|(i, c)| c.is_ascii_lowercase() || c.is_ascii_digit() || (i > 0 && c == '-'));
+    .all(|(i, c)| c.is_ascii_lowercase() || c.is_ascii_digit() || (i > 0 && (c == '-' || c == '_')));
   if !valid {
     return Err(
-      "パッケージ名は小文字英数字とハイフンのみ使用でき、先頭は英数字にしてください".to_string(),
+      "パッケージ名は小文字英数字・ハイフン・アンダースコアのみ使用でき、先頭は英数字にしてください"
+        .to_string(),
     );
   }
   Ok(())
@@ -1299,6 +1301,22 @@ mod tests {
   fn validate_package_name_accepts_lowercase_alnum_and_hyphens() {
     assert!(validate_package_name("demo").is_ok());
     assert!(validate_package_name("my-slides-2").is_ok());
+  }
+
+  #[test]
+  fn validate_package_name_accepts_underscore_except_leading() {
+    assert!(
+      validate_package_name("my_slides").is_ok(),
+      "先頭以外のアンダースコアは可"
+    );
+    assert!(
+      validate_package_name("my_slides_2").is_ok(),
+      "末尾のアンダースコアも可"
+    );
+    assert!(
+      validate_package_name("_slides").is_err(),
+      "先頭のアンダースコアは npm で予約的な意味を持つため不可"
+    );
   }
 
   #[test]

@@ -456,7 +456,7 @@ describe('SlideEditor パッケージ名・バージョンの入力検証（#88�
         <SlideEditor source={{ rawText: validJson, baseDir: '' }} onExit={() => {}} />
       </Wrapper>,
     )
-    expect(await screen.findByText(PACKAGE_NAME_HINT)).toBeTruthy()
+    expect(await screen.findByTitle(PACKAGE_NAME_HINT)).toBeTruthy()
   })
 
   it('パッケージ名に不正な文字（大文字・空白）を入力すると検証エラーが表示され、書き出せない', async () => {
@@ -466,7 +466,7 @@ describe('SlideEditor パッケージ名・バージョンの入力検証（#88�
       </Wrapper>,
     )
     fireEvent.change(screen.getByLabelText('パッケージ名'), { target: { value: 'My Slides' } })
-    expect(await screen.findByText('パッケージ名は小文字英数字とハイフンのみ使用でき、先頭は英数字にしてください')).toBeTruthy()
+    expect(await screen.findByTitle('パッケージ名は小文字英数字・ハイフン・アンダースコアのみ使用でき、先頭は英数字にしてください')).toBeTruthy()
     expect(exportButton().disabled).toBe(true)
     fireEvent.click(exportButton())
     expect(h.exportSlidePackage).not.toHaveBeenCalled()
@@ -479,7 +479,7 @@ describe('SlideEditor パッケージ名・バージョンの入力検証（#88�
       </Wrapper>,
     )
     fireEvent.change(screen.getByLabelText('パッケージ名'), { target: { value: '' } })
-    expect(await screen.findByText('パッケージ名を入力してください')).toBeTruthy()
+    expect(await screen.findByTitle('パッケージ名を入力してください')).toBeTruthy()
     expect(exportButton().disabled).toBe(true)
   })
 
@@ -503,7 +503,7 @@ describe('SlideEditor パッケージ名・バージョンの入力検証（#88�
     fireEvent.change(screen.getByLabelText('パッケージ名'), { target: { value: 'my-deck' } })
     fireEvent.change(screen.getByLabelText('バージョン'), { target: { value: '2.1.0' } })
     // 手動編集後はヒントが消える
-    expect(screen.queryByText(PACKAGE_NAME_HINT)).toBeNull()
+    expect(screen.queryByTitle(PACKAGE_NAME_HINT)).toBeNull()
 
     fireEvent.click(exportButton())
     await waitFor(() => expect(h.exportSlidePackage).toHaveBeenCalled())
@@ -534,7 +534,7 @@ describe('SlideEditor パッケージ名・バージョンの package.json 復�
     expect((screen.getByLabelText('パッケージ名') as HTMLInputElement).value).toBe('restored-deck')
     expect((screen.getByLabelText('バージョン') as HTMLInputElement).value).toBe('3.2.1')
     // package.json 由来の値は自動生成ではないのでヒントは出さない
-    expect(screen.queryByText(PACKAGE_NAME_HINT)).toBeNull()
+    expect(screen.queryByTitle(PACKAGE_NAME_HINT)).toBeNull()
 
     fireEvent.click(exportButton())
     await waitFor(() => expect(h.exportSlidePackage).toHaveBeenCalled())
@@ -550,12 +550,12 @@ describe('SlideEditor パッケージ名・バージョンの package.json 復�
       </Wrapper>,
     )
 
-    expect(await screen.findByText(PACKAGE_NAME_HINT)).toBeTruthy()
+    expect(await screen.findByTitle(PACKAGE_NAME_HINT)).toBeTruthy()
     expect((screen.getByLabelText('パッケージ名') as HTMLInputElement).value).toBe('t')
     expect((screen.getByLabelText('バージョン') as HTMLInputElement).value).toBe('1.0.0')
   })
 
-  it('検証に通らない name（CLI 書き出しのアンダースコア等）もそのまま初期値になり、検証エラーで修正を促す', async () => {
+  it('パッケージ名の中間・末尾のアンダースコアは有効な値として扱われる', async () => {
     render(
       <Wrapper>
         <SlideEditor source={{ rawText: validJson, baseDir: '/pkg', packageName: 'sdd-workflow_af_ja_dena', packageVersion: '1.0.0' }} onExit={() => {}} />
@@ -563,7 +563,18 @@ describe('SlideEditor パッケージ名・バージョンの package.json 復�
     )
 
     expect((screen.getByLabelText('パッケージ名') as HTMLInputElement).value).toBe('sdd-workflow_af_ja_dena')
-    expect(screen.getByText('パッケージ名は小文字英数字とハイフンのみ使用でき、先頭は英数字にしてください')).toBeTruthy()
+    await waitFor(() => expect(exportButton().disabled).toBe(false))
+  })
+
+  it('検証に通らない name（CLI 書き出しのドット等）もそのまま初期値になり、検証エラーで修正を促す', async () => {
+    render(
+      <Wrapper>
+        <SlideEditor source={{ rawText: validJson, baseDir: '/pkg', packageName: 'sdd-workflow.af.ja.dena', packageVersion: '1.0.0' }} onExit={() => {}} />
+      </Wrapper>,
+    )
+
+    expect((screen.getByLabelText('パッケージ名') as HTMLInputElement).value).toBe('sdd-workflow.af.ja.dena')
+    expect(screen.getByTitle('パッケージ名は小文字英数字・ハイフン・アンダースコアのみ使用でき、先頭は英数字にしてください')).toBeTruthy()
     expect(exportButton().disabled).toBe(true)
   })
 })

@@ -56,7 +56,7 @@
       "export": "Export .spkg",
       "packageName": "Package name",
       "packageNameRequired": "Enter a package name",
-      "packageNameInvalid": "Package name may only contain lowercase letters, numbers, and hyphens, and must start with a letter or number",
+      "packageNameInvalid": "Package name may only contain lowercase letters, numbers, hyphens, and underscores, and must start with a letter or number",
       "packageNameHint": "Auto-generated from the slide title. Review and edit it before exporting.",
       "version": "Version",
       "versionRequired": "Enter a version",
