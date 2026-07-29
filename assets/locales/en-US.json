@@ -24,7 +24,8 @@
     },
     "toolbar": {
       "hide": "Hide toolbar (T)",
-      "show": "Show toolbar (T)"
+      "show": "Show toolbar (T)",
+      "pdfExport": "Save as PDF"
     },
     "theme": {
       "applyFailed": "Failed to apply the theme"
