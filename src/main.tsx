@@ -8,6 +8,7 @@ import { App } from './App'
 import { HomeScreen } from './components/HomeScreen'
 import { SettingsWindow } from './components/SettingsWindow'
 import { ShortcutsDialog } from './components/ShortcutsDialog'
+import { UpdateDialog } from './components/UpdateDialog'
 import { applyPresentationTheme, applyTheme, resetThemeOverrides } from './applyTheme'
 import { loadAddonScripts, loadBuiltinAddons } from './addonLoader'
 import { unregisterOwner } from './components/ComponentRegistry'
@@ -33,6 +34,7 @@ import { isTypingTarget } from './keyboardTarget'
 import { useAddonSettings } from './hooks/useAddonSettings'
 import { useOpenSlideRequest } from './hooks/useOpenSlideRequest'
 import { useScrollSpeed } from './hooks/useScrollSpeed'
+import { useUpdateCheck } from './hooks/useUpdateCheck'
 import { theme } from './theme'
 import { SlideEditor } from './edit/SlideEditor'
 import type { EditSource } from './edit/SlideEditor'
@@ -64,6 +66,8 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
   // スクロール速度はプレゼンテーション専用の設定だが、値の所有者は設定 UI と揃えてこの層に置く
   const [scrollSpeed, setScrollSpeed] = useScrollSpeed()
   const { addonsDisabled, addonTrustList, handleToggleAddonsDisabled, handleResetAddonTrust, handleSetAddonTrust } = useAddonSettings({ active: settingsOpen, recentPackages })
+  // 自動アップデート（#121）。view が変わったら（発表・編集開始）ダイアログを閉じ、発表・編集中に割り込まない
+  const { updateInfo, updateDialogOpen, installingUpdate, closeUpdateDialog, handleInstallUpdate } = useUpdateCheck(view)
 
   const openSettings = () => setSettingsOpen(true)
   const closeSettings = () => setSettingsOpen(false)
@@ -333,6 +337,7 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
         presentation={view === 'presentation' ? { scrollSpeed, setScrollSpeed } : undefined}
       />
       <ShortcutsDialog open={shortcutsOpen} onClose={closeShortcuts} />
+      {updateInfo && <UpdateDialog open={updateDialogOpen} onClose={closeUpdateDialog} onInstall={handleInstallUpdate} installing={installingUpdate} version={updateInfo.version} body={updateInfo.body} />}
     </>
   )
 }

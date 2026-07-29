@@ -7,6 +7,7 @@ use tauri_plugin_fs::FsExt;
 
 mod bin_resolve;
 mod generation;
+mod update_check;
 mod vertex_config;
 
 /// スライドパッケージの書き出し拡張子（issue #41: 独自拡張子への変更）。展開側は拡張子に依存しないため
@@ -1104,7 +1105,9 @@ pub fn run() {
       get_vertex_status,
       gcloud_login,
       check_claude_cli,
-      take_pending_open_paths
+      take_pending_open_paths,
+      update_check::check_for_update,
+      update_check::install_update
     ])
     .setup(|app| {
       if cfg!(debug_assertions) {
