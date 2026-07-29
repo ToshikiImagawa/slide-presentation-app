@@ -7,7 +7,8 @@ type ShortcutEntry = { keys: string; descKey: string; fallback: string }
 // navigationMode: 'linear'（useReveal.ts）時の Reveal.js デフォルトキーバインド（node_modules/reveal.js/js/controllers/keyboard.js の configure() を根拠とする）
 const VIEWER_SHORTCUTS: ShortcutEntry[] = [
   { keys: 'T', descKey: 'shortcuts.toggleToolbar', fallback: 'ツールバーの表示/非表示' },
-  { keys: '?', descKey: 'shortcuts.openHelp', fallback: 'このショートカット一覧を表示' },
+  // ? の購読は Root（main.tsx）にあり全画面で効く。節の分類はビューアだが、その旨を説明文で示す
+  { keys: '?', descKey: 'shortcuts.openHelp', fallback: 'この一覧を表示（どの画面でも有効）' },
   { keys: '→ / ↓ / Space / N / L / J', descKey: 'shortcuts.nextSlide', fallback: '次のスライド' },
   { keys: '← / ↑ / P / H / K', descKey: 'shortcuts.prevSlide', fallback: '前のスライド' },
   { keys: 'Shift + ← / →', descKey: 'shortcuts.jumpFirstLast', fallback: '最初 / 最後のスライドへ移動' },

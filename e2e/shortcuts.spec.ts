@@ -1,8 +1,17 @@
 import { expect, test } from '@playwright/test'
 import { expected, openSample } from './fixtures'
 
+/**
+ * ショートカット一覧の唯一の真実源はアプリ内ダイアログ（README には表を置かない）。
+ *
+ * Reveal は `?`（Shift + /）と `F1` で英語固定の組み込みヘルプを開くため、`useReveal` で
+ * `help: false` にして抑止している。この spec はその抑止と一覧の内容を固定する。
+ *
+ * 注意: Playwright の `press('?')` は実機と違い `shiftKey: false` で keyCode 191 を送るため、
+ * Reveal 側では `/`（一時停止）として解釈される。そのため「? で一時停止しないこと」は
+ * この環境では検証できない。Reveal 側の条件（keyCode 191 + Shift）は `press('Shift+/')` で再現する。
+ */
 test.describe('キーボードショートカット', () => {
-  // キーマップの一覧はこのダイアログだけが持つ（README には表を置かない）ため、全セクションが揃うことを検証する
   test('? キーで一覧が開き、ビューア・編集モード・発表者ビューの全セクションを表示する', async ({ page }, testInfo) => {
     const { ui } = expected(testInfo.project.name)
     await openSample(page)
@@ -16,25 +25,29 @@ test.describe('キーボードショートカット', () => {
     await expect(dialog.getByText(ui.shortcuts.presenterSection)).toBeVisible()
   })
 
-  // Reveal は keyCode 191（/）を一時停止に割り当てており、? は Shift + / のため
-  // useReveal でバインドを外さないと一覧を開くたびにスライドがブラックアウトする
-  test('? キーで一覧を開いてもスライドは一時停止しない', async ({ page }) => {
+  test('Reveal 組み込みのヘルプは ? でも F1 でも開かない', async ({ page }) => {
     await openSample(page)
 
-    await page.keyboard.press('?')
-    await expect(page.getByTestId('shortcuts-dialog')).toBeVisible()
+    // 実機の ? に相当する Reveal 側の条件（keyCode 191 + Shift）
+    await page.keyboard.press('Shift+/')
+    await expect(page.locator('.r-overlay-help')).toHaveCount(0)
 
-    await expect(page.locator('.reveal')).not.toHaveClass(/paused/)
+    await page.keyboard.press('F1')
+    await expect(page.locator('.r-overlay-help')).toHaveCount(0)
+    await expect(page.locator('.r-overlay')).toHaveCount(0)
   })
 
-  test('B キーによる一時停止は従来どおり動作する', async ({ page }) => {
+  test('Reveal 既定の一時停止（B / スラッシュ）は維持される', async ({ page }) => {
     await openSample(page)
 
     await page.keyboard.press('b')
     await expect(page.locator('.reveal')).toHaveClass(/paused/)
-
     await page.keyboard.press('b')
     await expect(page.locator('.reveal')).not.toHaveClass(/paused/)
+
+    // help: false はヘルプだけを止め、キーバインド自体は潰していない
+    await page.keyboard.press('/')
+    await expect(page.locator('.reveal')).toHaveClass(/paused/)
   })
 
   // ダイアログの所有者が Root になったため、スライドを開いていなくても同じキーで開ける

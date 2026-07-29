@@ -11,11 +11,9 @@ declare module 'reveal.js' {
     hash?: boolean
     transition?: string
     progress?: boolean
-    /**
-     * true で既定のキーバインドを有効化する。オブジェクトを渡すとキーコード単位で上書きでき、
-     * 値に null を指定するとそのキーのバインドだけを無効化できる（Reveal の keyboard オプション）
-     */
-    keyboard?: boolean | Record<number, string | ((event: KeyboardEvent) => void) | null>
+    keyboard?: boolean
+    /** ? / F1 で Reveal 組み込みのヘルプオーバーレイを表示するか（既定 true） */
+    help?: boolean
     touch?: boolean
     navigationMode?: string
   }

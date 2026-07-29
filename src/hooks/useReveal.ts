@@ -44,10 +44,11 @@ export function useReveal(options?: UseRevealOptions): UseRevealReturn {
       hash: true,
       transition: 'slide',
       progress: true,
-      // ? キー（Shift + /）でショートカット一覧を開く（main.tsx）が、Reveal は keyCode 191（/）を
-      // 一時停止に割り当てているため、そのままだと一覧を開くたびにスライドがブラックアウトする。
-      // 191 のバインドだけ外す（一時停止は B / . で従来どおり行える）
-      keyboard: { 191: null },
+      keyboard: true,
+      // Reveal 組み込みのヘルプオーバーレイを無効化する。ショートカット一覧はアプリ側の
+      // ShortcutsDialog を唯一の真実源にしているため（英語固定・アプリ独自キーを含まない
+      // Reveal の一覧が ? や F1 で開くのを防ぐ）。/ による一時停止は Reveal 既定のまま残す
+      help: false,
       touch: true,
       navigationMode: 'linear',
     })
