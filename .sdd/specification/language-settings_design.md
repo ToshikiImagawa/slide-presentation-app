@@ -195,15 +195,15 @@ main.tsx
                   │   ├── <HomeScreen onOpenSettings={openSettings}>   # view === 'home'
                   │   └── <App onOpenSettings={openSettings} scrollSpeed onScrollSpeedChange />
                   ├── <SettingsWindow open={settingsOpen}
-                  │     scrollSpeed={view === 'presentation' ? scrollSpeed : undefined}   # FR-011
-                  │     setScrollSpeed={setScrollSpeed}
-                  │     embeddedAddonsDisabled / onToggleEmbeddedAddons / onResetAddonTrust
-                  │     addonTrust / onSetAddonTrust / onOpenShortcuts />
+                  │     global={{ embeddedAddonsDisabled, onToggleEmbeddedAddons, onResetAddonTrust,
+                  │               addonTrust, onSetAddonTrust, onOpenShortcuts }}
+                  │     presentation={view === 'presentation' ? { scrollSpeed, setScrollSpeed } : undefined}   # FR-011
+                  │   />
                   └── <ShortcutsDialog open={shortcutsOpen} />
 ```
 
 - 開閉状態（`settingsOpen` / `shortcutsOpen`）は `RootContent` が所有し、`HomeScreen` / `App` へは `onOpenSettings` のコールバックだけを渡す
-- 出し分けの条件は「値の有無」1 本に寄せる。`scrollSpeed` だけを `view` で切り替え、`setScrollSpeed` は常に渡す（受け側の判定も `scrollSpeed !== undefined` の 1 つで済む）
+- FR-011 のスコープ分離は `global`（必須） / `presentation`（任意）の 2 グループに props を分けることで型で強制する（#127）。`presentation` を渡すときは `scrollSpeed` / `setScrollSpeed` が両方揃うことを型が保証し、`view` と渡す設定の対応関係を型検査で守る。`global` 内部の各項目は既存通り optional の有無で表示を切り替える規約を維持する
 - `view` の変化を監視する `useEffect` で両ダイアログを閉じる。従来は `App` 全体の再マウントで閉じていた挙動を、Root 保持へ移した後も維持するため
 - `?` キーの `keydown` 購読は `RootContent` が持つ。ダイアログの所有者と同じ層に置くことで、ホーム・プレゼンテーション・編集のどの画面からでも同じキーで開ける（`App` への `onOpenShortcuts` prop は不要になった）
 - 一方 `T` キー（ツールバートグル）の購読は `App` に残す。`toolbarHidden` はプレゼンテーション画面固有のローカル状態であり、ホーム画面の URL 入力中に `T` でツールバー状態が動くような無関係な結合を避けるため
@@ -278,18 +278,28 @@ interface LocaleValidationResult {
 function validateLocaleResource(resource: LocaleResource): LocaleValidationResult
 
 // SettingsWindow の props（FR-010: 言語以外の設定項目を追加できる拡張構造を具現化）
-// 言語セレクト以外の行はすべて「対応する props が揃っているときだけ描画する」規約で表示を切り替える
-interface SettingsWindowProps {
-  open: boolean
-  onClose: () => void
-  scrollSpeed?: number                    // 自動スライドショーのスクロール速度（秒）。未指定時はスクロール速度行を非表示（FR-011）
-  setScrollSpeed?: (speed: number) => void  // 呼び出し側は常に渡す。行の表示判定は scrollSpeed の有無のみで行う
+// FR-011（グローバル / プレゼンテーション専用のスコープ分離）を global（必須） / presentation（任意）の
+// 2 グループへの分割で型として強制する（#127）。global 内部の各行は既存通り「対応する props が
+// 揃っているときだけ描画する」規約で表示を切り替える
+interface GlobalSettingsProps {
   embeddedAddonsDisabled?: boolean        // 同梱アドオンの一律無効化フラグ
   onToggleEmbeddedAddons?: (disabled: boolean) => void  // 未指定時はアドオン設定セクション全体を非表示
   onResetAddonTrust?: () => void          // アドオン許可履歴のリセット
   addonTrust?: AddonTrustEntry[]          // パッケージ単位の許可/拒否の一覧（未指定/空なら非表示）
   onSetAddonTrust?: (path: string, decision: AddonTrustDecision | undefined) => void
   onOpenShortcuts?: () => void            // ショートカット一覧を開く（未指定時はボタンを非表示）
+}
+
+interface PresentationSettingsProps {
+  scrollSpeed: number                     // 自動スライドショーのスクロール速度（秒）
+  setScrollSpeed: (speed: number) => void
+}
+
+interface SettingsWindowProps {
+  open: boolean
+  onClose: () => void
+  global: GlobalSettingsProps                   // どの画面でも渡す
+  presentation?: PresentationSettingsProps      // プレゼンテーション画面でのみ渡す（未指定時はスクロール速度行を非表示・FR-011）
 }
 
 // スクロール速度の状態フック（既定値 20 秒 / localStorage キー `slide-app-scroll-speed`）
@@ -338,7 +348,7 @@ interface HomeScreenProps {
 | ユニットテスト    | 言語検出ロジック（navigator.language → 対応言語マッチ） | 主要パス    |
 | ユニットテスト    | useScrollSpeed（既定値・localStorage 読み書き）`src/hooks/__tests__/useScrollSpeed.test.ts` | 主要パス |
 | ユニットテスト    | useAddonSettings（無効化フラグ復元・信頼一覧の構築・保存失敗時のロールバック）`src/hooks/__tests__/useAddonSettings.test.ts` | 主要パス |
-| コンポーネントテスト | SettingsWindow（言語切り替え操作、`scrollSpeed` 未指定でスクロール速度行が出ないこと・FR-011） | 主要パス    |
+| コンポーネントテスト | SettingsWindow（言語切り替え操作、`presentation` 未指定でスクロール速度行が出ないこと・FR-011） | 主要パス    |
 | コンポーネントテスト | HomeScreen（設定ボタン押下で `onOpenSettings` が呼ばれること・FR-001） | 主要パス    |
 | コンポーネントテスト | ShortcutsDialog（ビューア・編集モード・発表者ビューの全節と各キーが表示されること） | 主要パス    |
 | 統合テスト      | 言語切り替え → localStorage保存 → 再読み込み復元      | ハッピーパス  |
@@ -359,7 +369,8 @@ interface HomeScreenProps {
 | 翻訳関数の実装    | A) 自前実装 B) react-i18next C) react-intl                   | **A) 自前実装**                   | このアプリのUI翻訳は限定的（設定ウィンドウ、発表者ビューボタン等の少数テキスト）であり、ライブラリ追加のオーバーヘッドに見合わない。ドット記法のキー解決（`t('settings.title')`）程度の簡易実装で十分                                       |
 | 設定ウィンドウの実装 | A) MUI Dialog B) カスタムモーダル                                | **A) MUI Dialog（`DialogFrame` で共通化）**  | 初版は B) カスタムモーダルだったが、ショートカット一覧・アドオン許可などダイアログが増えたため、フォーカストラップ・Esc 閉じ・外部クリック閉じを MUI Dialog に委ね、ヘッダー／フッターと配色（`DialogFrame.module.css` の `.window` で `--fixed-*` パレットに固定）を `DialogFrame` へ共通化する方式に移行した |
 | 設定ダイアログの所有者 | A) `App`（プレゼンテーション画面）が持つ B) `RootContent`（Root 直下）が持つ C) 画面ごとに別インスタンスを持つ | **B) `RootContent` が持つ** | 言語設定を持つ `I18nProvider` は Root 直下にあるのに、変更 UI が `App` のライフサイクル内に閉じ込められていたことが「ホーム画面で言語を変更できない」原因だった。データ（開閉状態）の所有は使用側の共通祖先に置くという原則に従い、ホーム画面・プレゼンテーション画面・編集画面の共通祖先へ引き上げた。C) は同じダイアログの実装が複数箇所に散り、状態の同期が必要になるため却下 |
-| プレゼンテーション専用設定の出し分け | A) props 未指定で行を非表示 B) `variant`/`mode` prop で表示セットを切り替え C) 画面ごとに別のウィンドウコンポーネント | **A) props 未指定で行を非表示** | `SettingsWindow` は既に `onOpenShortcuts` / `onToggleEmbeddedAddons` を「渡されたときだけ行を描画する」規約で拡張してきた（FR-010）。`scrollSpeed` / `setScrollSpeed` を optional にするだけで FR-011 を満たせ、新しい概念（variant）を導入しないで済む |
+| プレゼンテーション専用設定の出し分け（初版・#128） | A) props 未指定で行を非表示 B) `variant`/`mode` prop で表示セットを切り替え C) 画面ごとに別のウィンドウコンポーネント | **A) props 未指定で行を非表示** | `SettingsWindow` は既に `onOpenShortcuts` / `onToggleEmbeddedAddons` を「渡されたときだけ行を描画する」規約で拡張してきた（FR-010）。`scrollSpeed` / `setScrollSpeed` を optional にするだけで FR-011 を満たせ、新しい概念（variant）を導入しないで済む。**#127 で下記の型分離へ移行**（プレゼン専用設定が増えたときの着手トリガーに到達したため） |
+| プレゼンテーション専用設定のスコープ分離を型で表現するか（#127） | A) 現状維持（optional props + テストで担保） B) props を `global` / `presentation` の2グループに分ける C) 判別可能合併（`kind: 'global' \| 'presentation'`）でスコープを明示 | **B) `global`（必須） / `presentation`（任意）の2グループに分割** | `view` と「渡す props」の対応関係が型で強制されない問題を解消する。`global` は必須にしてどの画面でも同じ形で渡し、`presentation` を渡すときは `scrollSpeed` / `setScrollSpeed` が両方揃うことを型で保証する。C) は厳密だがプレゼン専用設定が1項目のみの現状では `kind` の分岐が冗長になるため見送り。`global` 内部の各項目（`onOpenShortcuts` 等）は出し分けに使っていないため既存の optional 規約を維持 |
 | 編集画面（SlideEditor）への設定導線 | A) 今回追加する B) スコープ外とする | **B) スコープ外とする** | 現状 `SlideEditor.tsx` に設定導線が存在せず、追加は新機能になる。加えて編集画面は `editorUiTheme`（コンパクトな固定サイズ）で描画されるため、設定ダイアログを重ねるにはテーマ境界の設計が別途必要。ダイアログ自体は Root にあるので、将来 `onOpenSettings` を1つ渡すだけで対応できる状態にしてある |
 
 ## 9.2. 永続化ストレージ詳細比較
@@ -403,6 +414,16 @@ interface HomeScreenProps {
 ---
 
 # 10. 変更履歴
+
+## v1.6.0 (2026-07-29)
+
+**設定項目のグローバル / プレゼン専用の区別を型で表現（#127）:**
+
+- `SettingsWindowProps` を `global`（必須・`GlobalSettingsProps`） / `presentation`（任意・`PresentationSettingsProps`）の2グループに分割。`view` と「渡す props」の対応関係が型で強制されていなかった問題を解消（§4.4・§6・§9.1）
+- `PresentationSettingsProps` は `scrollSpeed` / `setScrollSpeed` を両方必須にし、渡すなら両方揃うことを型で保証する（従来は `setScrollSpeed` を常に渡し `scrollSpeed` の有無だけで判定していた）
+- `global` 内部の各項目（`onOpenShortcuts` / `onToggleEmbeddedAddons` 等）は出し分けに使っていないため、既存の optional 規約（未指定なら非表示）をそのまま維持した
+- `main.tsx` の呼び出し側を `global={{ ... }}` / `presentation={view === 'presentation' ? { scrollSpeed, setScrollSpeed } : undefined}` に更新
+- `SettingsWindow.test.tsx` の全ケースを新 props 形状へ移行
 
 ## v1.5.0 (2026-07-29)
 
