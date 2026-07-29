@@ -155,6 +155,16 @@ requirementDiagram
 
 ---
 
+# 9. 原則との関連 `<RECOMMENDED>`
+
+本PRDの設計制約（`designConstraint`）が [CONSTITUTION.md](./CONSTITUTION.md) のどの原則に基づくかを明記します。
+
+| 制約ID  | 関連する原則 | 説明   |
+|-------|--------|------|
+| [DC_001] | [A-005] | [原則に基づく制約の説明] |
+
+---
+
 # セクション必須度の凡例
 
 | マーク             | 意味 | 説明                 |
@@ -175,6 +185,7 @@ requirementDiagram
 - 制約事項・前提条件
 - スコープ外の明示
 - 用語集
+- 設計制約と CONSTITUTION.md の原則との関連
 
 ## 含めないべき内容（→ Spec / Design Doc へ）
 
