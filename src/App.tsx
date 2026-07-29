@@ -71,8 +71,11 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
   const handleAudioToggle = useCallback(() => {
     const voicePath = getVoicePath(data.slides[currentIndexRef.current])
     if (!voicePath) return
-    if (audioPlayerRef.current.isPlaying) {
-      audioPlayerRef.current.stop()
+    const state = audioPlayerRef.current.playbackState
+    if (state === 'playing') {
+      audioPlayerRef.current.pause()
+    } else if (state === 'paused') {
+      audioPlayerRef.current.resume()
     } else {
       audioPlayerRef.current.play(voicePath)
     }
@@ -162,12 +165,14 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
 
   const handleAudioToggleLocal = useCallback(() => {
     if (!currentVoicePath) return
-    if (audioPlayer.isPlaying) {
-      audioPlayer.stop()
+    if (audioPlayer.playbackState === 'playing') {
+      audioPlayer.pause()
+    } else if (audioPlayer.playbackState === 'paused') {
+      audioPlayer.resume()
     } else {
       audioPlayer.play(currentVoicePath)
     }
-  }, [currentVoicePath, audioPlayer.isPlaying, audioPlayer.stop, audioPlayer.play])
+  }, [currentVoicePath, audioPlayer.playbackState, audioPlayer.pause, audioPlayer.resume, audioPlayer.play])
 
   useEffect(() => {
     if (data.theme) {

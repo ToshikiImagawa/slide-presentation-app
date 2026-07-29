@@ -136,6 +136,8 @@
     "audio": {
       "play": "音声を再生",
       "stop": "音声を停止",
+      "pause": "音声を一時停止",
+      "resume": "音声を再開",
       "error": "音声ファイルの読み込みに失敗しました",
       "autoPlayOn": "自動再生をOFFにする",
       "autoPlayOff": "自動再生をONにする",

@@ -136,6 +136,8 @@
     "audio": {
       "play": "Lire l'audio",
       "stop": "Arrêter l'audio",
+      "pause": "Mettre l'audio en pause",
+      "resume": "Reprendre l'audio",
       "error": "Échec du chargement du fichier audio",
       "autoPlayOn": "Désactiver la lecture automatique",
       "autoPlayOff": "Activer la lecture automatique",

@@ -4,6 +4,8 @@ import type { AudioPlaybackState } from '../data/types'
 export interface UseAudioPlayerReturn {
   playbackState: AudioPlaybackState
   play: (src: string) => void
+  pause: () => void
+  resume: () => void
   stop: () => void
   isPlaying: boolean
   /** 音声読み込みに失敗した場合 true */
@@ -43,6 +45,20 @@ export function useAudioPlayer(): UseAudioPlayerReturn {
     },
     [getAudio],
   )
+
+  const pause = useCallback(() => {
+    audioRef.current?.pause()
+    setPlaybackState('paused')
+  }, [])
+
+  const resume = useCallback(() => {
+    const audio = audioRef.current
+    if (!audio) return
+    audio.play().catch(() => {
+      setPlaybackState('paused')
+    })
+    setPlaybackState('playing')
+  }, [])
 
   const stop = useCallback(() => {
     const audio = audioRef.current
@@ -106,6 +122,8 @@ export function useAudioPlayer(): UseAudioPlayerReturn {
   return {
     playbackState,
     play,
+    pause,
+    resume,
     stop,
     isPlaying: playbackState === 'playing',
     hasError,

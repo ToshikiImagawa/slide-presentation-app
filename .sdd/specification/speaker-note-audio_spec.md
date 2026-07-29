@@ -34,7 +34,7 @@ category: presentation
 
 # 2. 概要
 
-スライドの notes オブジェクトに `voice` フィールドとして音声ファイルパスを指定すると、そのスライドにスピーカーアイコンが表示される。ユーザーはアイコンをクリックして音声を手動再生・停止できる。
+スライドの notes オブジェクトに `voice` フィールドとして音声ファイルパスを指定すると、そのスライドにスピーカーアイコンが表示される。ユーザーはアイコンをクリックして音声を手動再生でき、再生中に再度クリックすると一時停止、一時停止中に再度クリックすると同じ位置から再開する（play ⇄ pause ⇄ resume の単一ボタントグル）。
 
 さらに、自動再生モードをONにするとスライド表示時に自動で音声が再生され、自動スライドショーモードをONにすると音声終了時に次のスライドへ自動遷移する。これにより、ハンズフリーでのプレゼンテーション進行を実現する。
 
@@ -47,7 +47,7 @@ voice フィールドが未定義のスライドではスピーカーアイコ�
 | ID | 要件 | 優先度 | PRD参照 |
 |--------|------|-----|------|
 | FR-001 | notes.voice が定義されたスライドでスピーカーアイコンをクリックすると音声が再生される | 必須 | FR_SNA_001 |
-| FR-002 | 再生中の音声をクリック操作で停止できる | 必須 | FR_SNA_002 |
+| FR-002 | 再生中の音声をクリック操作で一時停止し、同じ位置から再開できる | 必須 | FR_SNA_002 |
 | FR-003 | 自動再生ON時、スライド表示時に notes.voice の音声を自動再生する | 必須 | FR_SNA_003 |
 | FR-004 | 自動再生のON/OFFをUIで切り替えられる（デフォルト: OFF） | 推奨 | FR_SNA_004 |
 | FR-005 | 自動スライドショーON時、音声終了時に次スライドへ自動遷移する | 必須 | FR_SNA_005 |
@@ -64,9 +64,9 @@ voice フィールドが未定義のスライドではスピーカーアイコ�
 |--------|-------|--------|------|
 | `src/data/` | `types.ts` | `SlideNotes` (型拡張) | notes に voice フィールドを追加 |
 | `src/data/` | `noteHelpers.ts` | `getVoicePath()` | スライドから音声ファイルパスを抽出 |
-| `src/hooks/` | `useAudioPlayer.ts` | `useAudioPlayer()` | 音声再生・停止・状態管理フック |
+| `src/hooks/` | `useAudioPlayer.ts` | `useAudioPlayer()` | 音声再生・一時停止・再開・停止・状態管理フック |
 | `src/hooks/` | `useAutoSlideshow.ts` | `useAutoSlideshow()` | 自動再生・自動スライドショー管理フック |
-| `src/components/` | `AudioPlayButton.tsx` | `AudioPlayButton` | スピーカーアイコン（再生/停止ボタン）コンポーネント |
+| `src/components/` | `AudioPlayButton.tsx` | `AudioPlayButton` | スピーカーアイコン（再生/一時停止/再開ボタン）コンポーネント |
 | `src/components/` | `AudioControlBar.tsx` | `AudioControlBar` | 自動再生・自動スライドショーのトグルUIコンポーネント |
 
 ## 4.2. 型定義
@@ -79,13 +79,15 @@ interface SlideNotes {
   voice?: string  // 音声ファイルへの相対パス
 }
 
-/** 音声再生の状態（'paused' は型として予約されているが、現行実装では未使用・到達不能） */
+/** 音声再生の状態 */
 type AudioPlaybackState = 'idle' | 'playing' | 'paused'
 
 /** useAudioPlayer の戻り値 */
 interface UseAudioPlayerReturn {
   playbackState: AudioPlaybackState
   play: (src: string) => void
+  pause: () => void // 現在位置を保持したまま一時停止する
+  resume: () => void // 一時停止した位置から再生を再開する
   stop: () => void
   isPlaying: boolean
   hasError: boolean // 音声読み込みに失敗した場合 true
@@ -107,7 +109,7 @@ interface UseAutoSlideshowReturn {
 interface AudioPlayButtonProps {
   playbackState: AudioPlaybackState
   hasError?: boolean // 音声読み込み失敗時はボタンを無効化しエラー表示にする
-  onToggle: () => void // クリック時に再生/停止をトグルする
+  onToggle: () => void // クリック時に play ⇄ pause ⇄ resume をトグルする
 }
 
 /** AudioControlBar のプロパティ */
@@ -128,10 +130,10 @@ interface AudioControlBarProps {
 | 用語 | 説明 |
 |------|------|
 | voice フィールド | slides.json の notes オブジェクト内で音声ファイルパスを指定するプロパティ |
-| スピーカーアイコン | 音声再生可能なスライドに表示されるボタンUI。再生/停止のトグル操作を行う |
+| スピーカーアイコン | 音声再生可能なスライドに表示されるボタンUI。play ⇄ pause ⇄ resume のトグル操作を行う |
 | 自動再生 | スライド表示時に自動で notes.voice の音声を再生開始する機能 |
 | 自動スライドショー | 音声再生終了時に自動で次のスライドへ遷移する機能 |
-| AudioPlaybackState | 音声の再生状態を表す型（idle / playing / paused）。'paused' は将来用に予約され、現行実装では未使用・到達不能 |
+| AudioPlaybackState | 音声の再生状態を表す型（idle / playing / paused） |
 
 # 6. 使用例
 
@@ -175,11 +177,13 @@ import { AudioPlayButton } from './components/AudioPlayButton'
 import { useAudioPlayer } from './hooks/useAudioPlayer'
 
 function SlideAudioControl({ voicePath }: { voicePath: string }) {
-  const { playbackState, hasError, isPlaying, play, stop } = useAudioPlayer()
+  const { playbackState, hasError, play, pause, resume } = useAudioPlayer()
 
   const handleToggle = () => {
-    if (isPlaying) {
-      stop()
+    if (playbackState === 'playing') {
+      pause()
+    } else if (playbackState === 'paused') {
+      resume()
     } else {
       play(voicePath)
     }
@@ -191,7 +195,7 @@ function SlideAudioControl({ voicePath }: { voicePath: string }) {
 
 # 7. 振る舞い図
 
-## 7.1. 手動再生フロー
+## 7.1. 手動再生フロー（play ⇄ pause ⇄ resume）
 
 ```mermaid
 sequenceDiagram
@@ -207,11 +211,16 @@ sequenceDiagram
     useAudioPlayer -->> AudioPlayButton: playbackState = 'playing'
     AudioPlayButton -->> User: アイコン表示更新（再生中）
 
-    User ->> AudioPlayButton: クリック（停止）
-    AudioPlayButton ->> useAudioPlayer: stop()
-    useAudioPlayer ->> HTMLAudio: audio.pause() / reset
-    HTMLAudio -->> useAudioPlayer: 停止
-    useAudioPlayer -->> AudioPlayButton: playbackState = 'idle'
+    User ->> AudioPlayButton: クリック（一時停止）
+    AudioPlayButton ->> useAudioPlayer: pause()
+    useAudioPlayer ->> HTMLAudio: audio.pause()（currentTime は保持）
+    useAudioPlayer -->> AudioPlayButton: playbackState = 'paused'
+    AudioPlayButton -->> User: アイコン表示更新（一時停止中）
+
+    User ->> AudioPlayButton: クリック（再開）
+    AudioPlayButton ->> useAudioPlayer: resume()
+    useAudioPlayer ->> HTMLAudio: audio.play()（同じ位置から）
+    useAudioPlayer -->> AudioPlayButton: playbackState = 'playing'
 ```
 
 ## 7.2. 自動再生 + 自動スライドショーフロー

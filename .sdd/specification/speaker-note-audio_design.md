@@ -6,7 +6,7 @@ status: draft
 sdd-phase: plan
 impl-status: implemented
 created: 2026-02-02
-updated: 2026-07-28
+updated: 2026-07-29
 depends-on:
   - spec-speaker-note-audio
 tags:
@@ -21,7 +21,7 @@ category: presentation
 
 **ドキュメント種別:** 技術設計書 (Design Doc)
 **SDDフェーズ:** Plan (計画/設計)
-**最終更新日:** 2026-07-28
+**最終更新日:** 2026-07-29
 **関連 Spec:** [speaker-note-audio_spec.md](./speaker-note-audio_spec.md)
 **関連 PRD:** [speaker-note-audio.md](../requirement/speaker-note-audio.md)
 
@@ -38,7 +38,7 @@ category: presentation
 | SlideNotes 型拡張（voice フィールド）  | 🟢    | types.ts に voice を追加           |
 | noteHelpers 拡張（getVoicePath） | 🟢    | noteHelpers.ts に追加             |
 | バリデーション拡張                    | 🟢    | loader.ts の voice フィールドバリデーション |
-| useAudioPlayer フック           | 🟢    | 音声再生・停止・状態管理                   |
+| useAudioPlayer フック           | 🟢    | 音声再生・一時停止・再開・停止・状態管理           |
 | useAutoSlideshow フック         | 🟢    | 自動再生・自動スライドショー管理               |
 | AudioPlayButton コンポーネント      | 🟢    | SVGアイコン + CSS Modules          |
 | AudioControlBar コンポーネント      | 🟢    | トグルUI + aria-pressed           |
@@ -64,10 +64,10 @@ category: presentation
 
 | 領域      | 採用技術                             | 選定理由                                           |
 |---------|----------------------------------|------------------------------------------------|
-| 音声再生    | HTML5 Audio API                  | ブラウザ標準API。外部ライブラリ不要でシンプル。再生・停止・ended イベントが利用可能 |
+| 音声再生    | HTML5 Audio API                  | ブラウザ標準API。外部ライブラリ不要でシンプル。再生・一時停止・再開・停止・ended イベントが利用可能 |
 | 状態管理    | React useState / useRef          | 既存パターンに従う。音声再生状態はローカルステートで管理可能                 |
 | ライフサイクル | React useEffect                  | T-003 準拠。Audio オブジェクトの生成・破棄を管理                 |
-| アイコン    | インライン SVG アイコン                    | 外部アイコン依存を避け、再生/停止/エラー/自動再生/自動スライドショーの各状態を SVG パスで直接描画する |
+| アイコン    | インライン SVG アイコン                    | 外部アイコン依存を避け、再生/一時停止/再開/エラー/自動再生/自動スライドショーの各状態を SVG パスで直接描画する |
 | スタイリング  | CSS 変数 + CSS Modules             | A-002 準拠。ボタンスタイルは CSS Modules（AudioPlayButton.module.css / AudioControlBar.module.css）で定義し、テーマカラーは CSS 変数経由で参照。トグルは素の button 要素 + aria-pressed でアクセシビリティを確保 |
 | スライド遷移  | Reveal.js API（`Reveal.next()`）   | 既存の useReveal フック経由。T-002 準拠                   |
 
@@ -103,9 +103,9 @@ graph TD
 | `SlideNotes` 型拡張   | notes に voice フィールドを追加             | なし                              | `src/data/types.ts`                  |
 | `getVoicePath()`   | スライドから voice パスを抽出                 | `types.ts`, `noteHelpers.ts`    | `src/data/noteHelpers.ts`            |
 | バリデーション拡張          | voice フィールドの型検証                    | `loader.ts`                     | `src/data/loader.ts`                 |
-| `useAudioPlayer`   | Audio オブジェクトの生成・再生・停止・状態管理・クリーンアップ | HTML5 Audio API                 | `src/hooks/useAudioPlayer.ts`        |
+| `useAudioPlayer`   | Audio オブジェクトの生成・再生・一時停止・再開・停止・状態管理・クリーンアップ | HTML5 Audio API                 | `src/hooks/useAudioPlayer.ts`        |
 | `useAutoSlideshow` | 自動再生・自動スライドショーの状態管理とイベント連携         | `useAudioPlayer`, Reveal.js API | `src/hooks/useAutoSlideshow.ts`      |
-| `AudioPlayButton`  | スピーカーアイコンUI（再生/停止/エラー表示のトグル）        | インライン SVG + CSS Modules             | `src/components/AudioPlayButton.tsx` |
+| `AudioPlayButton`  | スピーカーアイコンUI（再生/一時停止/再開/エラー表示のトグル）        | インライン SVG + CSS Modules             | `src/components/AudioPlayButton.tsx` |
 | `AudioControlBar`  | 自動再生・自動スライドショーのトグルUI＋自動進行プログレスリング表示 | 素の button + aria-pressed + `CircularProgress` | `src/components/AudioControlBar.tsx` |
 | `CircularProgress` | メインウィンドウの自動進行プログレス（SVG リング）         | CSS Modules                     | `src/components/CircularProgress.tsx` |
 
@@ -136,6 +136,8 @@ type AudioPlaybackState = 'idle' | 'playing' | 'paused'
 function useAudioPlayer(): {
     playbackState: AudioPlaybackState
     play: (src: string) => void
+    pause: () => void // 現在位置を保持したまま一時停止する
+    resume: () => void // 一時停止した位置から再生を再開する
     stop: () => void
     isPlaying: boolean
     hasError: boolean // 音声読み込みに失敗した場合 true
@@ -187,10 +189,10 @@ function getVoicePath(slide: SlideData): string | undefined {
 | テストレベル     | 対象                                      | カバレッジ目標                                                       |
 |------------|-----------------------------------------|---------------------------------------------------------------|
 | ユニットテスト    | `getVoicePath()`, `normalizeNotes()` 拡張 | voice あり/なし/string型 notes のすべてのパターン                           |
-| ユニットテスト    | `useAudioPlayer` フック                    | play/stop/ended/error の状態遷移。ended 時に onEndedRef コールバックが呼ばれること、error 時に hasError が true になること |
+| ユニットテスト    | `useAudioPlayer` フック                    | play/pause/resume/stop/ended/error の状態遷移。pause 時に currentTime が保持されること、resume 時に同じ位置から再生されること、ended 時に onEndedRef コールバックが呼ばれること、error 時に hasError が true になること |
 | ユニットテスト    | `useAutoSlideshow` フック                  | autoPlay ON/OFF × autoSlideshow ON/OFF の組み合わせ                 |
 | ユニットテスト    | バリデーション拡張                               | voice フィールドの型検証（string/undefined/不正値）                         |
-| コンポーネントテスト | `AudioPlayButton`                       | voice あり/なし時の表示・クリック動作                                        |
+| コンポーネントテスト | `AudioPlayButton`                       | idle/playing/paused 各状態の表示・クリック動作                                        |
 | コンポーネントテスト | `AudioControlBar`                       | トグル操作・状態反映                                                    |
 
 ---
@@ -219,6 +221,15 @@ function getVoicePath(slide: SlideData): string | undefined {
 ---
 
 # 10. 変更履歴
+
+## v1.1.0 (2026-07-29)
+
+**音声の一時停止・再開機能を追加:**
+
+- `useAudioPlayer` に `pause()`（currentTime を保持したまま一時停止）・`resume()`（同じ位置から再生再開）を追加
+- `AudioPlayButton` を play ⇄ pause ⇄ resume の単一ボタントグルとして3状態（idle/playing/paused）表示に対応
+- 「停止（頭出し）」操作はUIから削除し、スライド切替時の内部リセット処理（`stop()`）のみに残す
+- `AudioPlaybackState` の `paused` を未使用・到達不能から実装済みに更新（Issue #2）
 
 ## v1.0.0 (2026-02-01)
 

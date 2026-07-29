@@ -11,9 +11,10 @@ type AudioPlayButtonProps = {
 export function AudioPlayButton({ playbackState, hasError, onToggle }: AudioPlayButtonProps) {
   const { t } = useTranslation()
   const isPlaying = playbackState === 'playing'
+  const isPaused = playbackState === 'paused'
 
-  const title = hasError ? t('audio.error') : isPlaying ? t('audio.stop') : t('audio.play')
-  const className = `${styles.button} ${isPlaying ? styles.playing : ''} ${hasError ? styles.error : ''}`
+  const title = hasError ? t('audio.error') : isPlaying ? t('audio.pause') : isPaused ? t('audio.resume') : t('audio.play')
+  const className = `${styles.button} ${isPlaying ? styles.playing : ''} ${isPaused ? styles.paused : ''} ${hasError ? styles.error : ''}`
 
   return (
     <button onClick={onToggle} title={title} className={className} aria-label={title} disabled={hasError}>
@@ -22,6 +23,11 @@ export function AudioPlayButton({ playbackState, hasError, onToggle }: AudioPlay
           <>
             <path d="M3 9v6h4l5 5V4L7 9H3z" />
             <path d="M16.5 12l3.5-3.5-1.4-1.4L15.1 10.6 11.6 7.1 10.2 8.5l3.5 3.5-3.5 3.5 1.4 1.4 3.5-3.5 3.5 3.5 1.4-1.4z" />
+          </>
+        ) : isPaused ? (
+          <>
+            <path d="M3 9v6h4l5 5V4L7 9H3z" />
+            <path d="M13 8h2v8h-2zM17 8h2v8h-2z" />
           </>
         ) : isPlaying ? (
           <>

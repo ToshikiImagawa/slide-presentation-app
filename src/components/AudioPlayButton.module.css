@@ -20,6 +20,10 @@
   animation: pulse 1.5s ease-in-out infinite;
 }
 
+.paused {
+  background-color: var(--theme-text-muted, #666);
+}
+
 .error {
   background-color: #d32f2f;
   cursor: default;
