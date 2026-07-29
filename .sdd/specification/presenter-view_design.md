@@ -6,7 +6,7 @@ status: draft
 sdd-phase: plan
 impl-status: implemented
 created: 2026-02-02
-updated: 2026-07-24
+updated: 2026-07-29
 depends-on:
   - spec-presenter-view
 tags:
@@ -22,7 +22,7 @@ category: presenter-view
 
 **ドキュメント種別:** 技術設計書 (Design Doc)
 **SDDフェーズ:** Plan (計画/設計)
-**最終更新日:** 2026-07-24
+**最終更新日:** 2026-07-29
 **関連 Spec:** [presenter-view_spec.md](./presenter-view_spec.md)
 **関連 PRD:** [presenter-view.md](../requirement/presenter-view.md)
 
@@ -140,7 +140,7 @@ graph TD
     usePresenterView -->|onAudioToggle| useAudioPlayer
     usePresenterView -->|onAutoPlayToggle| useAutoSlideshow
     usePresenterView -->|onAutoSlideshowToggle| useAutoSlideshow
-    usePresenterView -->|onScrollSpeedChange| useAutoSlideshow
+    usePresenterView -->|onScrollSpeedChange| RootScrollSpeed["App props（Root の setScrollSpeed）"]
 
     Button -->|openPresenterView| usePresenterView
 ```
@@ -150,7 +150,7 @@ graph TD
 | モジュール名 | 責務 | 依存関係 | 配置場所 |
 |---|---|---|---|
 | `useReveal` (拡張) | Reveal.js 初期化、スライド変更イベントのコールバック通知、`goToNext`/`goToPrev` | Reveal.js | `src/hooks/useReveal.ts` |
-| `usePresenterView` (拡張) | 発表者ビューウィンドウの生成（`WebviewWindow`）、Tauri Event による双方向同期、コマンド受信コールバック、`sendSlideState`/`sendControlState`/`sendProgressState` | `@tauri-apps/api/event`, `@tauri-apps/api/webviewWindow` | `src/hooks/usePresenterView.ts` |
+| `usePresenterView` (拡張) | 発表者ビューウィンドウの生成（`WebviewWindow`）、Tauri Event による双方向同期、コマンド受信コールバック、`sendSlideState`/`sendControlState`/`sendProgressState`。`onScrollSpeedChange` は `App` の同名 props をそのまま受け取り中継する（値の所有者は Root の `useScrollSpeed`。`useAutoSlideshow` は controlled で setter を持たない） | `@tauri-apps/api/event`, `@tauri-apps/api/webviewWindow` | `src/hooks/usePresenterView.ts` |
 | `PresenterViewButton` | 発表者ビューを開くUIボタン（CSS Modules、ホバー展開） | usePresenterView | `src/components/PresenterViewButton.tsx` |
 | `PresenterViewWindow` (拡張) | 発表者ビューウィンドウのルートコンポーネント（前後スライドプレビュー、ナビゲーション、音声制御、進捗表示） | SlideRenderer, FillProgress, noteHelpers, i18n | `src/components/PresenterViewWindow.tsx` |
 | `FillProgress` | 自動スライドショー進捗を下から塗りつぶすオーバーレイ表示 | - | `src/components/FillProgress.tsx` |
@@ -409,6 +409,13 @@ interface PresenterViewWindowProps {
 ---
 
 # 10. 変更履歴
+
+## 2026-07-29
+
+**変更内容（ドキュメント修正。実装の変更はなし）:**
+
+- §4.1 構成図の実在しない依存エッジ `usePresenterView -->|onScrollSpeedChange| useAutoSlideshow` を修正。`scrollSpeed` の所有権は Root の `useScrollSpeed` へ移り（`useAutoSlideshow` は controlled で setter を持たない）、`onScrollSpeedChange` は `App` の同名 props をそのまま中継する
+- §4.2 の `usePresenterView` 行に上記の中継関係を明記
 
 ## 2026-07-24
 

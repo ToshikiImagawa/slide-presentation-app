@@ -123,7 +123,7 @@ graph TD
 | `addon-bridge` | `__ADDON_REGISTER__` に owner を伝搬 | `ComponentRegistry` | `src/addon-bridge.ts`（改修） |
 | `localSlideLoader` | `addons/manifest.json` 読取・asset URL 化、`owner`/`addonScripts` 返却、信頼判定 | Rust コマンド, `plugin-store`, `plugin-dialog` | `src/localSlideLoader.ts`（改修） |
 | `main.tsx`（`RootContent`） | 切替順序制御（破棄→await→再マウント）、`owner`/`addonScripts` 受領。設定・ショートカットのダイアログ開閉 state（`settingsOpen`/`shortcutsOpen`）とダイアログ本体を保持し、`useAddonSettings` の返り値を `SettingsWindow` へ渡す | `addonLoader`, `ComponentRegistry`, `localSlideLoader`, `useAddonSettings`, `SettingsWindow` | `src/main.tsx`（改修） |
-| `useAddonSettings` | アドオン信頼設定の state・復元・永続化（一律無効化フラグ／層C の個別付け外し／失効）。`settingsOpen` が true になるたび `getAddonTrustMap()` 基点で信頼一覧を再構築し、更新は楽観更新＋失敗時ロールバック | `localSlideLoader`, `SettingsWindow`（`AddonTrustEntry` 型のみ） | `src/hooks/useAddonSettings.ts`（新規） |
+| `useAddonSettings` | アドオン信頼設定の state・復元・永続化（一律無効化フラグ／層C の個別付け外し／失効）。`{ active, recentPackages }` を受け取り、`active` が true になるたび `getAddonTrustMap()` 基点で信頼一覧を再構築（title は `recentPackages` から補完・store 再読なし）し、更新は楽観更新＋失敗時ロールバック。`AddonTrustEntry` 型もこのファイルが定義する | `localSlideLoader` | `src/hooks/useAddonSettings.ts`（新規） |
 | `usePresenterView` | 切替時・ready 受信時に `addonsChanged` を emit | `types` | `src/hooks/usePresenterView.ts`（改修） |
 | `presenterViewEntry` | 受信アドオンを描画前にロード・登録、切替時 unregister | `addonLoader`, `ComponentRegistry` | `src/presenterViewEntry.tsx`（改修） |
 | `App` | `addonOwner`/`addonScripts` を props で受け取り `usePresenterView` へ中継。アドオン信頼設定は保持せず、ツールバーの `SettingsButton` は props の `onOpenSettings` を呼ぶだけ（ダイアログ本体は Root が持つ） | `usePresenterView` | `src/App.tsx`（改修） |
@@ -199,7 +199,9 @@ export async function resetAddonTrust(): Promise<void>                          
 // ※ hasAddons 判定は isAddonAllowed に含めず、呼び出し側 main.tsx（applyPackageAddons）で
 //   `pkg.addonScripts.length > 0 && (await isAddonAllowed(pkg.sourcePath))` として合成する
 
-// hooks/useAddonSettings.ts（新規）— アドオン信頼設定の state / 永続化を Root 側に集約
+// hooks/useAddonSettings.ts（新規）— アドオン信頼設定の state / 永続化を Root 側に集約。
+// AddonTrustEntry の定義もこのファイルが持つ（hooks → components の依存方向の逆流を避けるため）
+export type AddonTrustEntry = { path: string; title: string; decision: AddonTrustDecision | undefined }
 export interface UseAddonSettingsReturn {
   addonsDisabled: boolean                 // 一律無効化フラグ（FR-009）
   addonTrustList: AddonTrustEntry[]        // 層C の個別付け外し対象（FR-008）
@@ -207,9 +209,10 @@ export interface UseAddonSettingsReturn {
   handleResetAddonTrust: () => void
   handleSetAddonTrust: (path: string, decision: AddonTrustDecision | undefined) => void
 }
-export function useAddonSettings(settingsOpen: boolean): UseAddonSettingsReturn
-// settingsOpen が true になるたび getRecentSlidePackages() + getAddonTrustMap() で信頼一覧を再構築する
-// （trustMap 全キーを基点にし、title は recent から補完。§9.1「層C 信頼一覧の生成元」）
+export function useAddonSettings(options: { active: boolean; recentPackages: RecentSlidePackageEntry[] }): UseAddonSettingsReturn
+// active が true になるたび getAddonTrustMap() で信頼一覧を再構築する（trustMap 全キーを基点にし、
+// title は options.recentPackages から補完。所有者の Root が既に持つ写しを使うため、
+// getRecentSlidePackages() での store 再読は行わない。§9.1「層C 信頼一覧の生成元」）
 
 // usePresenterView.ts
 export function usePresenterView(options: { slides; addonOwner?; addonScripts?; ... }): UsePresenterViewReturn
@@ -271,6 +274,13 @@ export function usePresenterView(options: { slides; addonOwner?; addonScripts?; 
 ---
 
 # 10. 変更履歴
+
+## v0.4（2026-07-29・useAddonSettings の契約を実装へ同期）
+
+**変更内容（ドキュメント修正。実装の変更はなし）:**
+
+- `useAddonSettings` のシグネチャを `useAddonSettings(settingsOpen: boolean)` から実際の `useAddonSettings({ active, recentPackages }: { active: boolean; recentPackages: RecentSlidePackageEntry[] })` へ修正（§4.2 / §6）。`recentPackages` を呼び出し側の Root から受け取ることで、`getRecentSlidePackages()` による store 再読を行わない実装に合わせた。
+- `AddonTrustEntry` の定義がフック側（`src/hooks/useAddonSettings.ts`）にあることを明記（v0.3 時点では `SettingsWindow` 側の型として記述していた）。
 
 ## v0.3（2026-07-28・設定ダイアログの Root 引き上げ）
 
