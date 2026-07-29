@@ -24,7 +24,8 @@
     },
     "toolbar": {
       "hide": "Masquer la barre d'outils (T)",
-      "show": "Afficher la barre d'outils (T)"
+      "show": "Afficher la barre d'outils (T)",
+      "pdfExport": "Enregistrer en PDF"
     },
     "theme": {
       "applyFailed": "Échec de l'application du thème"

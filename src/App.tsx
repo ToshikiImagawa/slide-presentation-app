@@ -3,6 +3,7 @@ import { AudioPlayButton } from './components/AudioPlayButton'
 import { FallbackImage } from './components/FallbackImage'
 import { EditButton } from './components/EditButton'
 import { HomeButton } from './components/HomeButton'
+import { PdfExportButton } from './components/PdfExportButton'
 import { PresenterViewButton } from './components/PresenterViewButton'
 import { SettingsButton } from './components/SettingsButton'
 import { SlideRenderer } from './components/SlideRenderer'
@@ -222,6 +223,7 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
           animationDuration={animationDuration}
           progressResetKey={currentIndex}
         />
+        <PdfExportButton onClick={() => window.print()} />
         <PresenterViewButton onClick={openPresenterView} isOpen={isOpen} />
       </div>
     </>

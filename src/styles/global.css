@@ -317,3 +317,11 @@ code {
 .reveal .progress span {
   background: var(--theme-primary);
 }
+
+/* PDF 書き出し（window.print()）時、position: fixed のオーバーレイ UI が全ページに重複表示されるのを防ぐ */
+@media print {
+  .toolbar,
+  .slide-logo {
+    display: none !important;
+  }
+}
