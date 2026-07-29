@@ -66,6 +66,13 @@ export async function openSample(page: Page): Promise<void> {
   await page.waitForSelector('.reveal .slides section')
 }
 
+/** サンプルデッキを開き、続けて編集ボタンから編集画面（SlideEditor）へ入る */
+export async function openEditor(page: Page): Promise<void> {
+  await openSample(page)
+  await page.getByTestId('edit-open').click()
+  await page.getByTestId('slide-editor').waitFor({ state: 'visible' })
+}
+
 /** Reveal のハッシュナビで指定インデックスのスライドへ移動する */
 export async function gotoSlide(page: Page, index: number): Promise<void> {
   await page.evaluate((i) => {
