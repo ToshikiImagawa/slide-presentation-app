@@ -174,7 +174,7 @@ test.describe('編集画面 (SlideEditor)', () => {
     await editor.getByRole('textbox', { name: ui.edit.metaTitle }).fill('未保存タイトル')
     await editor.getByRole('button', { name: ui.edit.exit, exact: true }).click()
 
-    const dialog = page.getByRole('dialog')
+    const dialog = page.getByRole('dialog', { name: ui.edit.exitConfirmTitle })
     await expect(dialog).toBeVisible()
     await dialog.getByRole('button', { name: ui.edit.cancel, exact: true }).click()
 
@@ -190,10 +190,9 @@ test.describe('編集画面 (SlideEditor)', () => {
     await editor.getByRole('textbox', { name: ui.edit.metaTitle }).fill('未保存タイトル')
     await editor.getByRole('button', { name: ui.edit.exit, exact: true }).click()
 
-    const dialog = page.getByRole('dialog')
+    const dialog = page.getByRole('dialog', { name: ui.edit.exitConfirmTitle })
     await expect(dialog).toBeVisible()
-    // 破棄ボタンは ConfirmDialog の並び順（キャンセル→確定）で最後に置かれる（i18n 未整備のため文言参照はしない）
-    await dialog.getByRole('button').last().click()
+    await dialog.getByRole('button', { name: ui.edit.exitConfirmDiscard, exact: true }).click()
 
     await expect(page.getByTestId('slide-editor')).toHaveCount(0)
     await expect(page.locator('.reveal .slides section')).toHaveCount(8)
@@ -232,7 +231,7 @@ test.describe('編集画面 (SlideEditor)', () => {
     await editor.getByText(ui.edit.includeAddons, { exact: false }).click()
     await page.keyboard.press('Escape')
 
-    const dialog = page.getByRole('dialog')
+    const dialog = page.getByRole('dialog', { name: ui.edit.exitConfirmTitle })
     await expect(dialog).toBeVisible()
     await dialog.getByRole('button', { name: ui.edit.cancel, exact: true }).click()
     await expect(editor).toBeVisible()
