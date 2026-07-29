@@ -37,7 +37,7 @@ category: ui-components
 
 `Image` コンポーネントは、スライドJSON の `component` フィールドから画像を表示するためのラッパーコンポーネントである。
 `FallbackImage` に画像表示とエラーハンドリングを委譲し、`ComponentRegistry` のデフォルトコンポーネントとして登録される（PRD の機能要求 FR_IMG_001）。
-本仕様は PRD のユーザ要求 UR_IMG_001（スライドJSON の `component` フィールドから画像を表示できるコンポーネントを提供し、デフォルトスライドに使用例を含める）を実現する。
+本仕様は PRD のユーザ要求 UR_IMG_001（スライドJSON の `component` フィールドから画像を表示できるコンポーネントを提供し、テンプレートガイドに使用例を含める）を実現する。
 
 # 3. 要求定義
 
@@ -49,7 +49,7 @@ category: ui-components
 | FR-002 | alt を props で受け取り代替テキストを設定する（省略時は空文字 `''`）    | Must   | FR_IMG_002 |
 | FR-003 | ComponentRegistry に `Image` としてデフォルト登録される    | Must   | FR_IMG_003 |
 | FR-004 | 画像読み込み失敗時に FallbackImage のエラーフォールバックを表示する    | Should | FR_IMG_004 |
-| FR-005 | デフォルトスライドに `Image` コンポーネントの使用例スライドを追加する      | Should | FR_IMG_005 |
+| FR-005 | テンプレートガイドに `Image` コンポーネントの使用例スライドを追加する      | Should | FR_IMG_005 |
 
 ## 3.2. 非機能要件 (Non-Functional Requirements)
 

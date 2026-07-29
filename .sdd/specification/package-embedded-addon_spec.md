@@ -31,7 +31,7 @@ category: addon-system
 
 現状アドオン（ビジュアルコンポーネント群の IIFE バンドル）は、起動時に一度だけ `/addons/manifest.json` から読み込まれ、ビルド時に固定される。そのため、スライド（パッケージ）ごとにアドオンを差し替えることができない。
 
-一方で `.tgz` スライドパッケージは「ローカルスライド選択」機能により起動後に開いて内容を丸ごと差し替えられる。ここにアドオンを同梱し、パッケージを開いたときに動的ロードできれば、スライド作成者が必要なビジュアルコンポーネントを配布物に含めて配れるようになる。
+一方で `.spkg`（旧 `.tgz`）スライドパッケージは「ローカルスライド選択」機能により起動後に開いて内容を丸ごと差し替えられる。ここにアドオンを同梱し、パッケージを開いたときに動的ロードできれば、スライド作成者が必要なビジュアルコンポーネントを配布物に含めて配れるようになる。
 
 ただし `ComponentRegistry` の `customComponents` はモジュール singleton の Map であり、`App` が `presentationKey` で再マウントされても中身が残る。パッケージ切替時に**古いアドオンの残留・同名の silent 上書き（last-write-wins）・戻り時の混線**が構造的に発生する。また同梱 JS はサンドボックスなしでアプリと同一権限で実行される（RCE 相当）ため、利用者が実行を止められる制御が必須となる。
 
@@ -39,10 +39,10 @@ category: addon-system
 
 # 2. 概要
 
-`.tgz` パッケージに同梱したアドオンを、パッケージを開いた時点で起動後に動的ロードし、スライドの `{ "component": { "name": ... } }` 参照を解決できるようにする。本仕様は PRD の **UR-001**（パッケージ同梱アドオンのランタイムロード）と **UR-002**（同梱アドオンの実行制御）を満たすことを目的とする。設計原則は以下のとおり。
+`.spkg` パッケージに同梱したアドオンを、パッケージを開いた時点で起動後に動的ロードし、スライドの `{ "component": { "name": ... } }` 参照を解決できるようにする。本仕様は PRD の **UR-001**（パッケージ同梱アドオンのランタイムロード）と **UR-002**（同梱アドオンの実行制御）を満たすことを目的とする。設計原則は以下のとおり。
 
 - **オーナースコープ型レジストリ**: 登録されたコンポーネントを「所有者（owner）」単位で管理し、パッケージ切替時に旧 owner のアドオンだけを安全に破棄してから新アドオンをロードする。`resolveComponent` の解決順（custom → default → fallback）は不変とし、owner 管理は追加 API として実現する。
-- **ロード方式の固定**: 実機（macOS/WKWebView）で確認済みの「IIFE + `convertFileSrc` の asset URL を `<script src>` 注入」を採る。ロードは「`.tgz` 展開 → `allow_asset_dir` → `<script>` 注入」の順序を厳守する（**DC-004**: `allow` 前に asset URL を読むと 403）。
+- **ロード方式の固定**: 実機（macOS/WKWebView）で確認済みの「IIFE + `convertFileSrc` の asset URL を `<script src>` 注入」を採る。ロードは「`.spkg` 展開 → `allow_asset_dir` → `<script>` 注入」の順序を厳守する（**DC-004**: `allow` 前に asset URL を読むと 403）。
 - **フォールバックファースト**: アドオンが拒否・失敗してもスライド自体は開け、未解決コンポーネントは fallback で描画する。
 - **セキュリティは分離ではなくオプトアウトで緩和**（**DC-003**）: 別 origin / iframe による分離は React 単一インスタンス共有要件と両立しないため採らず、利用者が実行可否を制御できるようにする。既定挙動は「確認して拒否」。
 
@@ -90,7 +90,7 @@ category: addon-system
 | `src` | `localSlideLoader.ts` | `resolveAddonTrust(disabled, decision)` | 一律無効化フラグと path 単位の判断から `allow`/`deny`/`prompt` を返す純粋関数（FR-008/009） |
 | `src` | `localSlideLoader.ts` | `isEmbeddedAddonsDisabled()` / `setEmbeddedAddonsDisabled(disabled)` | 同梱アドオンの一律無効化フラグの取得・設定（FR-009） |
 | `src` | `localSlideLoader.ts` | `resetAddonTrust()` | 許可/拒否済みの信頼判断をすべて失効（リセット）する（FR-009） |
-| `src` | `localSlideLoader.ts` | （内部）`resolvePackageEntry(selectedPath)` | 選択パスから `slides.json` 実パスと `baseDir` を求める（`.tgz` は Rust 側で展開） |
+| `src` | `localSlideLoader.ts` | （内部）`resolvePackageEntry(selectedPath)` | 選択パスから `slides.json` 実パスと `baseDir` を求める（`.spkg` は Rust 側で展開） |
 | `src/data` | `types.ts` | `PresenterViewMessage`（型拡張） | `addonsChanged` メッセージを追加 |
 | `scripts` | `export-slides.mjs` | `--addons` フラグ | ビルド済みアドオンをパッケージに同梱するオプション |
 
@@ -105,7 +105,7 @@ export function unregisterOwner(owner: string): void
 export interface LoadedSlidePackage {
   data: PresentationData
   baseDir: string
-  /** 利用者が選択した元パス（.tgz または slides.json）。信頼判断の永続化キーに使う */
+  /** 利用者が選択した元パス（.spkg または slides.json）。信頼判断の永続化キーに使う */
   sourcePath: string
   /** convertFileSrc で asset URL 化済みのアドオンバンドル URL（manifest 宣言かつ addons/ 配下のみ） */
   addonScripts: string[]
@@ -131,7 +131,7 @@ type PresenterViewMessage =
 | asset URL | `convertFileSrc` が返す `asset://localhost/<絶対パス>` 形式のローカルリソース URL |
 | 冪等ロード | 同一 bundle を複数回ロードしても二重注入されないこと（CSS は現行アドオン非出力） |
 | 組み込みアドオン | 起動時に `/addons/manifest.json` から読まれる従来のビルド時同梱アドオン |
-| 同梱アドオン | `.tgz` パッケージ内 `addons/` に含めて配布されるアドオン |
+| 同梱アドオン | `.spkg` パッケージ内 `addons/` に含めて配布されるアドオン |
 
 # 6. 使用例
 
@@ -160,7 +160,7 @@ sequenceDiagram
     participant Reg as ComponentRegistry
     participant PV as 発表者ビュー
 
-    U->>Main: パッケージを開く(.tgz)
+    U->>Main: パッケージを開く(.spkg)
     Main->>Rust: extract_slide_package
     Main->>Rust: allow_asset_dir(baseDir)
     Main->>Main: addons/manifest.json 読取 → asset URL 化

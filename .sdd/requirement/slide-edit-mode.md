@@ -21,9 +21,9 @@ category: authoring
 
 ## 概要
 
-既存のスライドビューワーに **「編集モード」を同梱**し、スライドの作成・調整・書き出しを**アプリ内で完結**できる基盤（＝器）を提供する。現状、スライド資料の作成は「`slides.json` を手書き」→「`npm run export:slides` で `.tgz` にパッケージ化」という CLI ベースのフローに依存しており、ビューワーは Tauri デスクトップアプリ化済みだが**作成（オーサリング）は依然として npm コマンド頼み**である。
+既存のスライドビューワーに **「編集モード」を同梱**し、スライドの作成・調整・書き出しを**アプリ内で完結**できる基盤（＝器）を提供する。現状、スライド資料の作成は「`slides.json` を手書き」→「`npm run export:slides` で `.spkg`（旧 `.tgz`）にパッケージ化」という CLI ベースのフローに依存しており、ビューワーは Tauri デスクトップアプリ化済みだが**作成（オーサリング）は依然として npm コマンド頼み**である。
 
-本 PRD は、この作成フローをアプリに取り込む。具体的には (1) View / Edit のモード切替、(2) `slides.json`（`PresentationData` / `SlideData` / `SlideContent`）のアプリ内編集とライブプレビュー、(3) 同梱アドオンの参照・付け外し、(4) `.tgz` パッケージの書き出し、(5) 編集モードでのみ書き込みを有効化する capability 分離、を定義する。
+本 PRD は、この作成フローをアプリに取り込む。具体的には (1) View / Edit のモード切替、(2) `slides.json`（`PresentationData` / `SlideData` / `SlideContent`）のアプリ内編集とライブプレビュー、(3) 同梱アドオンの参照・付け外し、(4) `.spkg` パッケージの書き出し、(5) 編集モードでのみ書き込みを有効化する capability 分離、を定義する。
 
 本 PRD は [Epic #12](https://github.com/ToshikiImagawa/slide-presentation-app/issues/12)「スライド作成機能のアプリ化」配下の第1 Feature（[Issue #13](https://github.com/ToshikiImagawa/slide-presentation-app/issues/13)）である。**スライド生成機能（Claude）は本 Feature に含めず**、後続 Feature（[Issue #14](https://github.com/ToshikiImagawa/slide-presentation-app/issues/14)）で追加する。本 Feature はあくまで「あとから生成機能を差し込める器」を作ることを目的とする。
 
@@ -95,7 +95,7 @@ flowchart LR
         UC2[スライド JSON を編集しライブプレビューで確認する]
         UC3[確定フィールドをフォームで編集する]
         UC4[編集内容をローカルに保存する]
-        UC5[.tgz パッケージへ書き出す]
+        UC5[.spkg パッケージへ書き出す]
         UC6[同梱アドオンを参照・付け外しする]
     end
 
@@ -124,7 +124,7 @@ flowchart LR
 | スライド JSON 編集＋ライブプレビュー      | `slides.json` を編集し、本番と同一レンダラのプレビューへ即時反映する                          |
 | 確定フィールドをフォームで編集           | 型が確定したメタ・テーマ・レイアウト・id をフォームで編集する（自由記述は生テキストのまま保持）                 |
 | 編集内容をローカルに保存               | 編集した `slides.json` をローカルに保存する（保存前にバリデーション）                        |
-| `.tgz` パッケージへ書き出し           | アセット収集 → パッケージ生成を行い `.tgz` を出力する（既存の「開く」で読み込める）                    |
+| `.spkg` パッケージへ書き出し           | アセット収集 → パッケージ生成を行い `.spkg` を出力する（既存の「開く」で読み込める）                    |
 | 同梱アドオンを参照・付け外し             | スライドで使うアドオンを実行時信頼・export 同梱・組み込みの各層で参照・付け外しする                      |
 
 ## 2.2. 機能一覧（テキスト形式）
@@ -141,10 +141,10 @@ flowchart LR
     - 保存前バリデーションと、破損時に既存の全体フォールバックへ流さない安全な保存
 - 書き出し・保存（#13）
     - `slides.json` のローカル保存
-    - `.tgz` パッケージの書き出し（アセット収集 → パッケージ生成）
+    - `.spkg` パッケージの書き出し（アセット収集 → パッケージ生成）
 - Addon 参照・付け外し（#13）
     - 層C: 実行時信頼（`addonTrust`）の個別 on/off
-    - 層B: `.tgz` export 時の同梱アドオンの個別選択
+    - 層B: `.spkg` export 時の同梱アドオンの個別選択
     - 層A: 組み込みアドオン（`addons/src/{name}/entry.ts`）の増減（dev 環境限定・要再ビルド）
 - capability 分離（#13）
     - 編集モードでのみ fs 書き込みを有効化する
@@ -216,7 +216,7 @@ requirementDiagram
 
     functionalRequirement ExportPackage {
         id: FR_007
-        text: "アセット収集とパッケージ生成を行い tgz を書き出し既存の開くで読み込めること"
+        text: "アセット収集とパッケージ生成を行い spkg を書き出し既存の開くで読み込めること"
         risk: high
         verifymethod: demonstration
     }
@@ -230,7 +230,7 @@ requirementDiagram
 
     functionalRequirement AddonBundleSelection {
         id: FR_009
-        text: "tgz export 時に同梱アドオンを個別選択できること 層B"
+        text: "spkg export 時に同梱アドオンを個別選択できること 層B"
         risk: medium
         verifymethod: test
     }
@@ -341,7 +341,7 @@ requirementDiagram
     StructuredForm - traces -> NoFullWysiwyg
 ```
 
-> **既存要求の再利用**: 本 PRD の FR-002（ライブプレビュー）は [presentation-foundation.md](./presentation-foundation.md) のレンダラ・Reveal 初期化と [slide-content-customization.md](./slide-content-customization.md) の `SlideRenderer` レイアウト分岐・`ComponentRegistry` 解決を前提として派生する（DC-001）。FR-007（export）と FR-009（層B 同梱選択）は [package-embedded-addon.md](./package-embedded-addon.md) の `export-slides --addons`・`.tgz` 同梱を、FR-008（層C 信頼）は同じく package-embedded-addon.md の FR-008/FR-009（`addonTrust` の許可/失効）を上流に持ち、それらを編集操作として拡張する。
+> **既存要求の再利用**: 本 PRD の FR-002（ライブプレビュー）は [presentation-foundation.md](./presentation-foundation.md) のレンダラ・Reveal 初期化と [slide-content-customization.md](./slide-content-customization.md) の `SlideRenderer` レイアウト分岐・`ComponentRegistry` 解決を前提として派生する（DC-001）。FR-007（export）と FR-009（層B 同梱選択）は [package-embedded-addon.md](./package-embedded-addon.md) の `export-slides --addons`・`.spkg` 同梱を、FR-008（層C 信頼）は同じく package-embedded-addon.md の FR-008/FR-009（`addonTrust` の許可/失効）を上流に持ち、それらを編集操作として拡張する。
 
 ---
 
@@ -351,7 +351,7 @@ requirementDiagram
 
 ### UR-001: 編集モードの同梱（器の提供）
 
-スライド作成者が、既存ビューワーと同一アプリ内でスライドを編集・調整し、その場でライブプレビューで確認し、ローカル保存および `.tgz` パッケージへの書き出しまでを完結できること。編集プレビューは本番ビューと同一のレンダラで描画され、見た目が一致すること。
+スライド作成者が、既存ビューワーと同一アプリ内でスライドを編集・調整し、その場でライブプレビューで確認し、ローカル保存および `.spkg` パッケージへの書き出しまでを完結できること。編集プレビューは本番ビューと同一のレンダラで描画され、見た目が一致すること。
 
 **検証方法:** デモンストレーションによる検証
 
@@ -411,13 +411,13 @@ GUI で表現しきれない自由記述を、編集・保存の往復で破壊�
 
 **検証方法:** テストによる検証
 
-### FR-007: `.tgz` パッケージの書き出し
+### FR-007: `.spkg` パッケージの書き出し
 
 **優先度**: Must ／ **派生元**: UR-001（[package-embedded-addon.md](./package-embedded-addon.md) を再利用）
 
-編集中のスライドから、アセット収集（`image/` `voice/` `theme/` `font/` の相対参照）→ パッケージ生成を行い `.tgz` を書き出す。書き出した `.tgz` は既存の「スライドを開く」機能でそのまま読み込めること。アセット収集規則は既存の `extractAssetPaths` を単一の真実源とする（DC-003）。
+編集中のスライドから、アセット収集（`image/` `voice/` `theme/` `font/` の相対参照）→ パッケージ生成を行い `.spkg` を書き出す。書き出した `.spkg` は既存の「スライドを開く」機能でそのまま読み込めること。アセット収集規則は既存の `extractAssetPaths` を単一の真実源とする（DC-003）。
 
-**検証方法:** デモンストレーション（書き出した `.tgz` を「開く」で読み込める）による検証
+**検証方法:** デモンストレーション（書き出した `.spkg` を「開く」で読み込める）による検証
 
 ### FR-008: 同梱アドオンの参照・付け外し（層C: 実行時信頼）
 
@@ -431,7 +431,7 @@ GUI で表現しきれない自由記述を、編集・保存の往復で破壊�
 
 **優先度**: Should ／ **派生元**: UR-001（[package-embedded-addon.md](./package-embedded-addon.md) FR-007 を再利用）
 
-`.tgz` export 時に、パッケージへ同梱するアドオンを個別に選択できるようにする。既存の `export-slides --addons` の all-or-nothing 同梱を、個別選択できる粒度へ拡張する。
+`.spkg` export 時に、パッケージへ同梱するアドオンを個別に選択できるようにする。既存の `export-slides --addons` の all-or-nothing 同梱を、個別選択できる粒度へ拡張する。
 
 **検証方法:** テストによる検証
 
@@ -447,7 +447,7 @@ GUI で表現しきれない自由記述を、編集・保存の往復で破壊�
 
 **優先度**: Must ／ **派生元**: UR-002
 
-fs 書き込み（`slides.json` 保存・`.tgz` export）は Rust コマンド境界に集約し、編集モード状態でゲートする。編集モードが有効でないときは書き込みコマンドを拒否する。`@tauri-apps/plugin-fs` の write 系権限をフロントエンド（JS）へ開放しない（DC-002）。
+fs 書き込み（`slides.json` 保存・`.spkg` export）は Rust コマンド境界に集約し、編集モード状態でゲートする。編集モードが有効でないときは書き込みコマンドを拒否する。`@tauri-apps/plugin-fs` の write 系権限をフロントエンド（JS）へ開放しない（DC-002）。
 
 **検証方法:** インスペクション（設計・権限レビュー）による検証
 
@@ -457,7 +457,7 @@ fs 書き込み（`slides.json` 保存・`.tgz` export）は Rust コマンド�
 
 **優先度**: Must ／ **カテゴリ**: 互換性
 
-既存の表示・「開く」・発表者ビュー・ビルド時同梱／`.tgz` 配布が従来どおり動作すること。`npm run typecheck` / `npm run test` が通ること。編集モードの追加が View（発表本番）の描画・挙動を変えないこと。
+既存の表示・「開く」・発表者ビュー・ビルド時同梱／`.spkg` 配布が従来どおり動作すること。`npm run typecheck` / `npm run test` が通ること。編集モードの追加が View（発表本番）の描画・挙動を変えないこと。
 
 **検証方法:** テストによる検証
 
@@ -501,7 +501,7 @@ fs 書き込みは Rust コマンド境界に集約し、`@tauri-apps/plugin-fs`
 
 ### DC-003: アセット収集規則の単一真実源
 
-`.tgz` export のアセット収集規則は、既存 `scripts/export-slides.mjs` の `extractAssetPaths` を単一の真実源とする。ビルド時スクリプトとアプリ内 export で規則を二重管理しない。
+`.spkg` export のアセット収集規則は、既存 `scripts/export-slides.mjs` の `extractAssetPaths` を単一の真実源とする。ビルド時スクリプトとアプリ内 export で規則を二重管理しない。
 
 **検証方法:** インスペクションによる検証
 
@@ -524,7 +524,7 @@ fs 書き込みは Rust コマンド境界に集約し、`@tauri-apps/plugin-fs`
 ## 5.1. 技術的制約
 
 - レンダラ・Reveal.js・`ComponentRegistry`・`applyTheme` の既存実装を流用する（A-001 / A-003 / A-004）。
-- 書き込みは Rust（`flate2` / `tar` は依存済み）で行い、`.tgz` 生成は既存の `extract_slide_package` と同系のクレートで実現する（DC-002）。
+- 書き込みは Rust（`flate2` / `tar` は依存済み）で行い、`.spkg` 生成は既存の `extract_slide_package` と同系のクレートで実現する（DC-002）。
 - TypeScript strict mode での型安全性を確保する（T-001）。
 - バリデーションは既存 `loader.ts` の構造化 `ValidationError` を踏襲する（D-002）。
 - ライブプレビューの差分反映は Reveal.js の DOM 構造（`.reveal > .slides > section`）を維持し、既存 `useReveal.ts` のライフサイクル管理（`useEffect` + クリーンアップ）に従う（T-002 / T-003）。
@@ -539,7 +539,7 @@ fs 書き込みは Rust コマンド境界に集約し、`@tauri-apps/plugin-fs`
 # 6. 前提条件
 
 - レンダラ一式（`SlideRenderer` / `ComponentRegistry` / `applyTheme` / レイアウト / `useReveal`）が動作していること（[presentation-foundation.md](./presentation-foundation.md)）。
-- ローカルスライド選択・`.tgz` 展開（`extract_slide_package`）・asset スコープ動的許可（`allow_asset_dir`）が Rust 側に存在すること（[package-embedded-addon.md](./package-embedded-addon.md)）。
+- ローカルスライド選択・`.spkg` 展開（`extract_slide_package`）・asset スコープ動的許可（`allow_asset_dir`）が Rust 側に存在すること（[package-embedded-addon.md](./package-embedded-addon.md)）。
 - `@tauri-apps/plugin-store`（永続化）・`@tauri-apps/plugin-dialog`（ファイル選択・保存）が利用可能であること。
 - 同梱アドオンの実行時信頼制御（`addonTrust`）とパッケージ同梱（`export-slides --addons`）が存在すること（[package-embedded-addon.md](./package-embedded-addon.md)）。
 
@@ -567,6 +567,6 @@ fs 書き込みは Rust コマンド境界に集約し、`@tauri-apps/plugin-fs`
 | ラウンドトリップ             | 編集器が JSON を「パース → 編集 → 再シリアライズ」する往復。無損失であることが要件                        |
 | 自由記述フィールド            | 型が確定しておらず GUI で構造化しづらい内容（`SlideContent` の未定義キー・文字列内 HTML・`customCSS` 等）  |
 | capability 分離         | 編集モード時のみ fs 書き込みを有効化し、権限を最小化する設計                                        |
-| 層A / 層B / 層C（アドオン）    | 付け外しの対象層。A=組み込み `entry.ts`（要再ビルド）／B=`.tgz` export 同梱選択／C=実行時信頼 `addonTrust` |
-| extractAssetPaths     | `export-slides.mjs` のアセット収集関数。`.tgz` に含める相対参照アセットを抽出する                    |
+| 層A / 層B / 層C（アドオン）    | 付け外しの対象層。A=組み込み `entry.ts`（要再ビルド）／B=`.spkg` export 同梱選択／C=実行時信頼 `addonTrust` |
+| extractAssetPaths     | `export-slides.mjs` のアセット収集関数。`.spkg` に含める相対参照アセットを抽出する                    |
 | 器（うつわ）               | あとから生成機能（#14）を差し込める、編集・保存・書き出しの基盤                                        |

@@ -430,7 +430,7 @@ function getVoicePath(slide: SlideData): string | undefined {
 
 ## 6.6. ローカルスライド読み込み（別機能）
 
-ローカルファイル選択・`.tgz` パッケージ展開・asset プロトコル解決（`localSlideLoader.ts`、Rust コマンド `allow_asset_dir` / `extract_slide_package`、`@tauri-apps/plugin-dialog` / `plugin-fs` / `plugin-store`）は本機能のスコープ外であり、[package-embedded-addon_design.md](./package-embedded-addon_design.md) 側で定義する。本機能はこれらが返した `PresentationData` を受け取ってレンダリングする関係にある。
+ローカルファイル選択・`.spkg`（旧 `.tgz`）パッケージ展開・asset プロトコル解決（`localSlideLoader.ts`、Rust コマンド `allow_asset_dir` / `extract_slide_package`、`@tauri-apps/plugin-dialog` / `plugin-fs` / `plugin-store`）は本機能のスコープ外であり、[package-embedded-addon_design.md](./package-embedded-addon_design.md) 側で定義する。本機能はこれらが返した `PresentationData` を受け取ってレンダリングする関係にある。
 
 ---
 
@@ -453,8 +453,8 @@ function getVoicePath(slide: SlideData): string | undefined {
 | 型チェック    | 全TypeScriptファイル              | ビルドエラーゼロ                  |
 | ユニットテスト  | loader.ts（バリデーション、フォールバック）   | 主要パス100%                  |
 | ユニットテスト  | ComponentRegistry（登録、解決、上書き） | 主要パス100%                  |
-| 統合テスト    | SlideRenderer + レイアウト        | デフォルトデータで10枚全スライド正常レンダリング |
-| ビジュアルテスト | デフォルトデータでのプレゼン表示             | 既存プレゼンとの差異ゼロ（NFR-003）     |
+| 統合テスト    | SlideRenderer + レイアウト        | 最小フォールバック（1枚）とカスタムデータでの正常レンダリング |
+| ビジュアルテスト | 最小フォールバック表示             | 本編と同一レンダラでの描画・差異ゼロ（NFR-003）     |
 
 **テスト環境の注意点:**
 - jsdom環境にはIntersectionObserverが存在しないため、`test-setup.ts`でグローバルモックを設定。TerminalAnimationコンポーネントを含むSlideRendererテストで必要
@@ -472,7 +472,7 @@ function getVoicePath(slide: SlideData): string | undefined {
 | コンポーネント解決方式 | 文字列ベースレジストリ / React.lazy動的import | 文字列ベースレジストリ                | シンプルで理解しやすい。プレゼンアプリの規模では動的importは過剰              |
 | テーマ適用方式     | CSS変数 / CSS-in-JS / インラインスタイル    | CSS変数                      | Reveal.jsとの親和性が高い。`global.css` の CSS 変数を `applyTheme` / `applyThemeData` が上書きして対応（A-002準拠）  |
 | デフォルトデータ形式  | JSON静的ファイル / TypeScriptオブジェクト    | JSON静的ファイル                 | データとコードの分離原則に合致。実際の利用イメージと一致する                   |
-| 既存スライドの移行   | 一括移行 / 段階的移行                     | 完全データ駆動化（一括移行） | ユーザー選択。全10枚のスライドをJSON化し、SlideRendererで統一レンダリング |
+| 既存スライドの移行   | 一括移行 / 段階的移行                     | 完全データ駆動化（一括移行） | ユーザー選択。当初は既存10枚のスライドを一括でJSON化したが、v0.7.0でデモ用サンプルは `samples/template-guide/` へ移設し `.spkg` 配布に変更（アプリには同梱せず、`src/data/` に残るのはコード生成の最小フォールバック1枚のみ） |
 | レイアウト実装方式 | 個別レイアウトファイル / SlideRenderer集約 | SlideRenderer集約 | 既存の4レイアウト（Title/Content/Bleed/Section）をSlideRenderer内で活用。レイアウト種別ごとのレンダリングロジックをSlideRenderer.tsxに集約 |
 | アイコン解決方式 | コンポーネント直接指定 / 名前ベースレジストリ | 名前ベースレジストリ（Icon:プレフィックス） | JSONから文字列でアイコンを指定可能にするため。registerDefaultsでMUIアイコンを名前登録 |
 | TerminalAnimation注入方式 | props直接指定 / ラッパーコンポーネント | ラッパーコンポーネント（registerDefaults.tsx） | TerminalAnimationはlogText propsが必須だが、デフォルトデータからはコンポーネント参照のみでpropsを渡さないため、`?raw`インポートしたlogTextを事前注入するラッパーが必要 |

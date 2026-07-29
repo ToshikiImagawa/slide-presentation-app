@@ -2,11 +2,11 @@
 id: prd-builtin-ui-components
 title: 組み込みUIコンポーネント群 要求仕様書
 type: prd
-status: draft
+status: approved
 priority: high
 risk: medium
 created: 2026-02-02
-updated: 2026-07-24
+updated: 2026-07-29
 tags:
   - ui-components
   - component-registry
@@ -117,7 +117,7 @@ graph TB
     - GitHubリポジトリリンク
     - フォールバック付き画像表示
 - コンポーネントインフラ
-    - 名前によるコンポーネント解決（default/custom 二層構造）
+    - 名前によるコンポーネント解決（custom → default → fallback の3層優先解決）
     - 未登録コンポーネントのフォールバック表示
     - デフォルトコンポーネントの一括登録
 
@@ -606,7 +606,7 @@ TerminalAnimation 等のインタラクティブコンポーネントが60fpsで
 | 用語                    | 定義                                                                 |
 |:----------------------|:-------------------------------------------------------------------|
 | 組み込みコンポーネント           | アプリケーションにデフォルトで含まれるUIパーツ。アドオンによる上書きが可能                             |
-| ComponentRegistry     | コンポーネント名から実コンポーネントを解決する名前解決システム。default/custom の二層構造を持つ            |
+| ComponentRegistry     | コンポーネント名から実コンポーネントを解決する名前解決システム。custom → default → fallback の3層優先解決を持つ |
 | デフォルト登録               | `registerDefaultComponent` によるコンポーネント登録。custom 登録で上書き可能            |
 | フォールバック               | コンポーネントが見つからない場合や画像読み込みに失敗した場合に、代替のUIを表示する仕組み                      |
 | CSS変数                 | `--theme-primary` 等のCSS カスタムプロパティ。テーマシステムにより動的に値が設定される             |

@@ -2,11 +2,11 @@
 id: prd-image-component
 title: 画像表示コンポーネント 要求仕様書
 type: prd
-status: draft
+status: approved
 priority: medium
 risk: medium
 created: 2026-02-02
-updated: 2026-07-24
+updated: 2026-07-29
 tags:
   - image
   - component-registry
@@ -32,7 +32,7 @@ category: ui-components
 
 - スライドJSONの `component` フィールドから画像を表示できるようにする
 - 既存の `FallbackImage` を活用し、エラー時のフォールバック表示を維持する
-- デフォルトスライドに画像表示の使用例を追加し、利用方法を示す
+- テンプレートガイドに画像表示の使用例を追加し、利用方法を示す
 
 ---
 
@@ -71,13 +71,13 @@ graph TB
         Author((コンテンツ作成者))
         SlideRenderer[スライドレンダラー]
         ImageComponent[画像表示コンポーネント]
-        DefaultSlides[デフォルトスライド]
+        TemplateGuide[テンプレートガイド]
     end
 
     Author --> SlideRenderer
     SlideRenderer --> ImageComponent
-    Author --> DefaultSlides
-    DefaultSlides --> ImageComponent
+    Author --> TemplateGuide
+    TemplateGuide --> ImageComponent
 ```
 
 ## 2.2. 機能一覧（テキスト形式）
@@ -88,7 +88,7 @@ graph TB
     - FallbackImage による読み込みエラー時のフォールバック
 - ComponentRegistry への登録
     - デフォルトコンポーネントとして `Image` を登録
-- デフォルトスライドへの使用例追加
+- テンプレートガイドへの使用例追加
     - 画像表示コンポーネントの利用方法を示すスライド
 
 ---
@@ -113,15 +113,15 @@ requirementDiagram
         verifymethod: test
     }
 
-    functionalRequirement DefaultSlideExample {
+    functionalRequirement TemplateGuideExample {
         id: FR_IMG_005
-        text: "デフォルトスライドに画像表示コンポーネントの使用例を含むスライドを追加すること"
+        text: "テンプレートガイドに画像表示コンポーネントの使用例を含むスライドを追加すること"
         risk: low
         verifymethod: demonstration
     }
 
     ImageComponentReq - contains -> ImageDisplay
-    ImageComponentReq - contains -> DefaultSlideExample
+    ImageComponentReq - contains -> TemplateGuideExample
 ```
 
 ## 3.2. 画像表示コンポーネント要求図
@@ -188,7 +188,7 @@ requirementDiagram
 
 ### UR_IMG_001: 画像表示コンポーネント
 
-スライドJSON の `component` フィールドから画像を表示できるコンポーネントを提供し、デフォルトスライドに使用例を含めること。
+スライドJSON の `component` フィールドから画像を表示できるコンポーネントを提供し、テンプレートガイドに使用例を含めること。
 
 **優先度:** Must
 

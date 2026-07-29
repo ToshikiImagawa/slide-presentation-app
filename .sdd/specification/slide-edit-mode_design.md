@@ -43,7 +43,7 @@ category: authoring
 | 無損失シリアライズ（`slidesSerialize.ts`） | 🟢 | FR-004/NFR-002。`JSON.parse`/`stringify(2sp)` ベース。往復・冪等をテスト |
 | 保存前バリデーション | 🟢 | FR-005。`parseSlides` の errors で保存/書出をゲート。エラー時はプレビュー非表示 |
 | Rust 書き込みコマンド（`save_slides_json`/`export_slide_package`/`set_edit_mode`） | 🟢 | FR-006/007/011。`lib.rs` に新設・`EditMode(Mutex<bool>)` ゲート・純粋関数を切出しテスト |
-| `.tgz` 生成（Rust・`flate2`/`tar`） | 🟢 | FR-007/DC-003。`extract_asset_paths` 移植・`package/` 規約・`extract_slide_package` と往復 |
+| `.spkg` 生成（Rust・`flate2`/`tar`） | 🟢 | FR-007/DC-003。`extract_asset_paths` 移植・`package/` 規約・`extract_slide_package` と往復 |
 | Addon 付け外し 層C（実行時信頼 UI） | 🟢 | FR-008。`getAddonTrustMap`/`setAddonTrustDecision`/`clearAddonTrustDecision`＋書込直列化、`SettingsWindow` UI、信頼一覧は trustMap 全キー基点。**（後続 2026-07-28）** UI の所有者は Root（`main.tsx` の `RootContent`）へ移り、state / 永続化は `src/hooks/useAddonSettings.ts` が持つ。設定ダイアログはホーム画面・プレゼンテーション画面から開ける（編集画面からの導線は §9.2 のスコープ外） |
 | Addon 付け外し 層B（export 同梱選択） | 🟢 | FR-009。Rust `filter_addon_manifest`（bundle 正規化＋同梱）、`export-slides.mjs --addons`、編集 UI チェックボックス。**（後続 feature/edit-apply-ux）** 同梱候補を層B∪層A（組み込み `addons/dist`）の和集合に拡張し、0 件時も UI を消さず明示表示。`build_slide_package_gated` に `builtin_dist_dir` を追加し層Aを補完同梱（dest 衝突は層B優先） |
 | Addon 付け外し 層A（組み込み entry.ts・dev 限定） | 🟢 | FR-010/DC-004。Rust `list/add/remove_builtin_addon`（`cfg!(debug_assertions)`＋ゲート＋`sanitize_addon_name`）、編集 UI dev パネル |
@@ -56,7 +56,7 @@ category: authoring
 1. **編集プレビュー＝本番ビューの保証** — レンダラ一式を再実装せず再利用し、編集結果が本番と一致することを構造的に担保する（DC-001）。
 2. **ラウンドトリップの無損失** — GUI で扱えない自由記述（未知キー・HTML・空白・`customCSS`・props・`fragment`）を、編集の往復で一切失わない（FR-004/NFR-002）。これが本 Feature 最大の設計難所。
 3. **書き込みの単一境界と編集モードゲート** — fs 書き込みを Rust コマンドの単一チョークポイントに集約し、編集モード state でゲートすることで、発表本番での書き込みを構造的に不可能にする（DC-002/FR-011/NFR-003）。
-4. **アセット収集規則の一元化** — `.tgz` export のアセット収集を既存 `extractAssetPaths` と同一規則で実装し、二重管理を避ける（DC-003）。
+4. **アセット収集規則の一元化** — `.spkg` export のアセット収集を既存 `extractAssetPaths` と同一規則で実装し、二重管理を避ける（DC-003）。
 5. **リグレッションゼロ** — View（発表本番）・「開く」・発表者ビュー・既存パッケージ配布の挙動を変えない（NFR-001）。
 
 ---
@@ -70,7 +70,7 @@ category: authoring
 | 無損失往復 | `JSON.parse`/`JSON.stringify` ベースの明示シリアライザ（`slidesSerialize.ts`） | 未知キーは `[key: string]: unknown` としてそのまま JS オブジェクトに載るため、パース→再シリアライズで保持できる。キー順・インデントを固定し差分を最小化 |
 | 保存前検証 | 既存 `loader.ts` の `getValidationErrors`（構造化 `ValidationError`） | D-002（バリデーション駆動）に準拠。既存の検証資産を再利用 |
 | 書き込み | Rust コマンド（`std::fs`）＋編集モード state（`tauri::State<Mutex<bool>>`） | 既存 `allow_asset_dir`/`extract_slide_package` と同じく fs 実務を Rust 境界に集約。`plugin-fs` write を JS へ開放しない（DC-002/NFR-003） |
-| `.tgz` 生成 | Rust `flate2` + `tar`（依存済み） | `lib.rs` のテストに `tar::Builder`+`GzEncoder` の生成雛形が既存。`extract_slide_package` の展開と対になる |
+| `.spkg` 生成 | Rust `flate2` + `tar`（依存済み） | `lib.rs` のテストに `tar::Builder`+`GzEncoder` の生成雛形が既存。`extract_slide_package` の展開と対になる |
 | ファイル選択・保存先 | `@tauri-apps/plugin-dialog`（`save`/`open`） | 既存の「開く」と同じ機構。`dialog:default` 権限セットが save を含む |
 | 永続化 | `@tauri-apps/plugin-store` | 最近使ったパス・アドオン信頼（`addonTrust`）の既存機構を流用（層C） |
 | スタイリング | 既存3層モデル（グローバル CSS → CSS Modules → MUI sx prop）・色は `--theme-*` 経由 | 新規 UI（`SlideEditor` 等）も A-002 に従い、色をハードコードせず CSS 変数で参照する |
@@ -139,7 +139,7 @@ graph TD
 | `useAddonSettings` | 層C の state・復元・永続化（一律無効化／個別付け外し／失効）を Root 側に集約。詳細は [package-embedded-addon_design.md](./package-embedded-addon_design.md) §4.2 | `localSlideLoader` | `src/hooks/useAddonSettings.ts`（新規・2026-07-28） |
 | `SettingsWindow` | 層C の付け外し UI（既存の一律無効化・失効に個別トグルを追加）。props 経由で受け取るだけの表示コンポーネントで、マウント元は Root | なし | `src/components/SettingsWindow.tsx`（改修） |
 | `export-slides` | 層B: 同梱アドオンの個別選択（`extractAssetPaths` は Rust 移植の真実源） | なし | `scripts/export-slides.mjs`（改修） |
-| `lib.rs` | `EditMode` state・`set_edit_mode`・`save_slides_json`・`export_slide_package`（`.tgz` 生成） | `flate2`, `tar` | `src-tauri/src/lib.rs`（改修） |
+| `lib.rs` | `EditMode` state・`set_edit_mode`・`save_slides_json`・`export_slide_package`（`.spkg` 生成） | `flate2`, `tar` | `src-tauri/src/lib.rs`（改修） |
 
 ---
 
@@ -231,7 +231,7 @@ fn export_slide_package(
     included_addons: Vec<String>, state: tauri::State<EditMode>,
 ) -> Result<String, String>
 // 1. extract_asset_paths でアセット収集（base_dir 基準） → 2. filter_addon_manifest で層B 同梱
-//    （bundle を addons/<basename> に正規化） → 3. package.json 生成 → 4. flate2+tar で package/ 配下に .tgz
+//    （bundle を addons/<basename> に正規化） → 3. package.json 生成 → 4. flate2+tar で package/ 配下に .spkg
 
 // 層A（dev 限定・cfg!(debug_assertions)＋編集モードゲート＋sanitize_addon_name）
 #[tauri::command] fn list_builtin_addons(...) -> Result<Vec<String>, String>
@@ -261,9 +261,9 @@ fn export_slide_package(
 | 単体（Vitest） | `slidesSerialize`: 未知キー・文字列内 HTML・`\n`・` `・`customCSS`・`fragment` の往復保持、キー順・インデント固定 | 分岐網羅（無損失の核心） |
 | 単体（Vitest） | 保存前バリデーション: 破損 JSON で保存を止める・正常時は通す | 分岐網羅（FR-005） |
 | 単体（Vitest） | 層C 信頼: `setAddonTrustDecision` の allow/deny 個別設定・永続化 | 主要分岐（FR-008） |
-| 単体（Rust） | `export_slide_package`: アセット収集規則が `extractAssetPaths` と一致・`.tgz` 展開で `extract_slide_package` と往復 | 正常系（FR-007/DC-003） |
+| 単体（Rust） | `export_slide_package`: アセット収集規則が `extractAssetPaths` と一致・`.spkg` 展開で `extract_slide_package` と往復 | 正常系（FR-007/DC-003） |
 | 単体（Rust） | 編集モードゲート: `set_edit_mode(false)` 時に `save_slides_json`/`export_slide_package` が拒否される | 分岐網羅（FR-011/NFR-003） |
-| 結合（手動/デモ） | 編集→ライブプレビュー即時反映／保存→再読込で同一／`.tgz` を「開く」で読める／層B/C 付け外しが反映される | AC 全項目 |
+| 結合（手動/デモ） | 編集→ライブプレビュー即時反映／保存→再読込で同一／`.spkg` を「開く」で読める／層B/C 付け外しが反映される | AC 全項目 |
 | リグレッション | `npm run typecheck`/`npm run test`、View・「開く」・発表者ビューの既存挙動 | 全通過（NFR-001） |
 
 ---
@@ -297,7 +297,7 @@ fn export_slide_package(
 | Edit 画面内でエディタ chrome UI とプレビューが同一 CSS 変数スコープを共有 | 中 | ✅ **解消**。エディタ chrome を固定サイズの `editorUiTheme` に分離し、プレゼンテーマは `ThemeProvider` でプレビュー配下にのみ適用（§9.1）。`applyThemeData` のグローバル CSS 変数書込は残るが、フォントサイズの波及は MUI テーマ層で遮断した |
 | 型未定義フィールドの検証強度 | 中 | 保存前検証は既存 `getValidationErrors`（id/layout/title 等）レベルに留め、深い検証は段階導入。無損失往復（FR-004）を優先し過度な検証で自由記述を弾かない（実装は本方針どおり） |
 | 層A の dev 検出手段 | 低 | ✅ **確定**。UI は `import.meta.env.DEV`、Rust は `cfg!(debug_assertions)` で出し分け。増減後は `npm run build:addons` が必要な旨を UI に明示 |
-| `.tgz` の `package/` サブディレクトリ規約 | 低 | ✅ **確定**。`extract_slide_package` の `package/` 優先探索に合わせ、`build_slide_package_gated` も `package/` 配下へ格納して往復を保証 |
+| `.spkg` の `package/` サブディレクトリ規約 | 低 | ✅ **確定**。`extract_slide_package` の `package/` 優先探索に合わせ、`build_slide_package_gated` も `package/` 配下へ格納して往復を保証 |
 | 編集画面（`SlideEditor`）から設定ダイアログを開く導線 | 低 | **スコープ外（2026-07-28）**。設定ダイアログを Root へ引き上げた際もあえて追加しなかった: ①現状 `SlideEditor` に設定への導線が一切なく、追加は「既存導線の引き上げ」ではなく新機能追加になる ②編集画面は `editorUiTheme`（コンパクトな独自 MUI テーマ）で描画され、`theme` 前提の `DialogFrame` を重ねるとテーマ境界の設計判断が別途必要（§9.1「プレビューのテーマ適用スコープ」と同種の問題） ③`Esc`（編集終了）や独自ツールバーがあり、設定ボタンの置き場所自体が別途 UI 設計を要する。ダイアログ本体は Root にあるため、将来必要になれば `SlideEditor` に `onOpenSettings` prop を1つ渡すだけで対応できる（拡張点は用意済み）。なお `view === 'edit'` でも `SettingsWindow` は Root にマウントされているが、開く導線がないため実際には開かれない |
 | 書き込みパスのスコープ限定（DC-002） | 低 | 未対応（要件外）。`save_slides_json`/`export_slide_package` は任意絶対パスを受理するが、DC-002 は「Rust 境界＋編集モードゲート」を規定するのみでパス限定は要件外。JS に fs 書込権限を渡さない主要防御は実装済みで、パスは OS ダイアログ経由で確定する。多層防御としてスコープ限定を将来検討 |
 

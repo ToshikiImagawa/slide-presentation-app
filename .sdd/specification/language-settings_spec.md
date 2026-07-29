@@ -144,12 +144,13 @@ interface SettingsWindowProps {
 # 6. 使用例
 
 ```tsx
-import { I18nProvider, useTranslation } from './i18n/i18nProvider'
+import { I18nProvider, loadLocales, useTranslation } from './i18n'
 
-// アプリのルートでプロバイダーをラップ
-function App() {
+// アプリのルートでプロバイダーをラップ（locales は起動時に loadLocales() で取得した必須 prop）
+async function bootstrap() {
+  const locales = await loadLocales()
   return (
-    <I18nProvider>
+    <I18nProvider locales={locales}>
       <MainContent />
     </I18nProvider>
   )

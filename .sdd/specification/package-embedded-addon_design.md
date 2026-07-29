@@ -132,7 +132,7 @@ graph TD
 | `types` | `PresenterViewMessage` に `addonsChanged` 追加 | なし | `src/data/types.ts`（改修） |
 | `export-slides` | `--addons` でアドオン同梱、manifest 相対パス化 | なし | `scripts/export-slides.mjs`（改修） |
 
-`src-tauri/src/lib.rs` は**変更不要**（`extract_tgz` が `package/` ごと展開、`allow_asset_dir` の再帰許可が `addons/` を包含）。任意で `addons/` 展開の検証テストを追加してよい。
+`src-tauri/src/lib.rs` は**変更不要**（`extract_slide_package` が `package/` ごと展開、`allow_asset_dir` の再帰許可が `addons/` を包含）。任意で `addons/` 展開の検証テストを追加してよい。
 
 ---
 
@@ -143,7 +143,7 @@ graph TD
 export interface LoadedSlidePackage {
   data: PresentationData
   baseDir: string
-  sourcePath: string      // 利用者が選択した元パス（.tgz または slides.json）。信頼判断の永続化キー
+  sourcePath: string      // 利用者が選択した元パス（.spkg または slides.json）。信頼判断の永続化キー
   addonScripts: string[]  // convertFileSrc 済み・manifest 宣言かつ addons/ 配下のみ
   owner: string           // = baseDir（owner 単位アンロードのスコープ識別子）
 }
@@ -186,7 +186,7 @@ export function setCurrentAddonOwner(owner: string | undefined): void
 
 // localSlideLoader.ts
 async function resolvePackageEntry(selectedPath: string): Promise<{ slidesJsonPath: string; baseDir: string }>
-// .tgz は extract_slide_package で展開、slides.json はその dirname を baseDir とする
+// .spkg は extract_slide_package で展開、slides.json はその dirname を baseDir とする
 async function resolvePackageAddons(baseDir: string): Promise<string[]>
 // allow_asset_dir 後に baseDir/addons/manifest.json を読み、bundle を convertFileSrc で URL 化
 export function resolveAddonTrust(disabled: boolean, decision: AddonTrustDecision | undefined): 'allow' | 'deny' | 'prompt'
@@ -260,9 +260,9 @@ export function usePresenterView(options: { slides; addonOwner?; addonScripts?; 
 | 切替順序 | 状態更新と並行ロード / 逐次 | **逐次（破棄→await→再マウント）** | `customComponents` は React 状態でないため、描画前に登録完了が必須 |
 | セキュリティ緩和 | origin/iframe 分離 / オプトアウト | **オプトアウト** | 分離は React 単一インスタンス共有要件と両立しない |
 | 初回既定挙動 | 確認して拒否 / 確認して許可待ち / 一律無効 | **確認して既定拒否** | RCE 相当リスクに対し安全側に倒す（ユーザー確認済み） |
-| Rust 側 | 変更 / 変更不要 | **変更不要** | `extract_tgz` の `package/` 展開と `allow_asset_dir` の再帰許可で `addons/` を包含 |
+| Rust 側 | 変更 / 変更不要 | **変更不要** | `extract_slide_package` の `package/` 展開と `allow_asset_dir` の再帰許可で `addons/` を包含 |
 | アドオン信頼設定 state の所有者 | `App` が保持 / Root（`main.tsx`）に直書き / Root から専用フックへ抽出 | **Root から専用フック `useAddonSettings` へ抽出**（2026-07-28） | 設定ダイアログをホーム画面からも開けるようにするため、ダイアログ本体の所有者を `App` から共通祖先の Root（`RootContent`）へ引き上げた。それに伴い設定に紐づくアドオン信頼ロジック（2 state・2 effect・4 callback）も移動するが、これらは「アドオン信頼設定の読み書き」という単一の関心事で閉じており、外部依存は `localSlideLoader` と `settingsOpen` のみ。`main.tsx` に直書きすると「スライドを開く／アドオンをロードする／編集モード」という Root 本来の関心事に設定永続化が混入するため、`src/hooks/` へ薄い境界で切り出した。振る舞いは移設前と同一（`console.error` のプレフィックスのみ `[App]` → `[useAddonSettings]`） |
-| `owner` と `sourcePath` の分離 | 単一キー兼用 / `owner`=baseDir と `sourcePath` を分離 | **分離（2 つのキーを持つ）** | `owner`（= 展開先 `baseDir`）はレジストリの owner 単位アンロードのスコープ識別子で、`.tgz` 展開のたびに変わりうる。信頼判断は利用者が選んだ元パス `sourcePath`（`.tgz`／`slides.json` の選択パス）を安定キーにする。両者を混同すると、展開先が変わるたびに信頼判断が失効する／別パッケージの判断を誤って再利用する恐れがあるため分離する |
+| `owner` と `sourcePath` の分離 | 単一キー兼用 / `owner`=baseDir と `sourcePath` を分離 | **分離（2 つのキーを持つ）** | `owner`（= 展開先 `baseDir`）はレジストリの owner 単位アンロードのスコープ識別子で、`.spkg` 展開のたびに変わりうる。信頼判断は利用者が選んだ元パス `sourcePath`（`.spkg`／`slides.json` の選択パス）を安定キーにする。両者を混同すると、展開先が変わるたびに信頼判断が失効する／別パッケージの判断を誤って再利用する恐れがあるため分離する |
 
 ## 9.2. 未解決の課題
 

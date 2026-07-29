@@ -2,11 +2,11 @@
 id: prd-language-settings
 title: 言語設定機能 要求仕様書
 type: prd
-status: draft
+status: approved
 priority: medium
 risk: medium
 created: 2026-02-02
-updated: 2026-07-28
+updated: 2026-07-29
 tags:
   - i18n
   - localization
