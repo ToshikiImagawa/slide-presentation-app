@@ -3,14 +3,14 @@ import { createTheme } from '@mui/material/styles'
 export const theme = createTheme({
   palette: {
     mode: 'dark',
-    primary: { main: '#e07a5f' },
+    primary: { main: '#2dd4bf' },
     background: {
-      default: '#1c1917',
-      paper: '#292524',
+      default: '#181a20',
+      paper: '#23262e',
     },
     text: {
-      primary: '#faf8f5',
-      secondary: '#a8a29e',
+      primary: '#f8fafc',
+      secondary: '#a3b0c7',
     },
   },
   typography: {
@@ -96,14 +96,14 @@ export const theme = createTheme({
 export const editorUiTheme = createTheme({
   palette: {
     mode: 'dark',
-    primary: { main: '#e07a5f' },
+    primary: { main: '#2dd4bf' },
     background: {
-      default: '#1c1917',
-      paper: '#292524',
+      default: '#181a20',
+      paper: '#23262e',
     },
     text: {
-      primary: '#faf8f5',
-      secondary: '#a8a29e',
+      primary: '#f8fafc',
+      secondary: '#a3b0c7',
     },
   },
   typography: {
