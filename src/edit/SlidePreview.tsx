@@ -31,7 +31,7 @@ export function SlidePreview({ slide }: { slide: SlideData }) {
   }, [])
 
   return (
-    <div ref={containerRef} className={styles.previewScaler} style={{ transform: `scale(${scale})` }}>
+    <div ref={containerRef} className={styles.previewScaler} style={{ transform: `translate(-50%, -50%) scale(${scale})` }}>
       <div className={`reveal ${styles.previewReveal}`}>
         <div className="slides">
           <SlideRenderer.Slide slide={slide} />

@@ -538,7 +538,18 @@ export function SlideEditor({
                   </Button>
                 </Stack>
                 <Box sx={{ flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Box sx={{ width: '100%', aspectRatio: '16 / 9', maxHeight: '100%', border: '1px solid var(--fixed-border)', borderRadius: 1, overflow: 'hidden', backgroundColor: 'var(--fixed-background-alt)' }}>
+                  <Box
+                    sx={{
+                      width: '100%',
+                      aspectRatio: '16 / 9',
+                      maxHeight: '100%',
+                      position: 'relative',
+                      border: '1px solid var(--fixed-border)',
+                      borderRadius: 1,
+                      overflow: 'hidden',
+                      backgroundColor: 'var(--fixed-background-alt)',
+                    }}
+                  >
                     {currentSlide ? (
                       // プレビューだけはプレゼン用テーマ（スライド本来のフォントサイズ）で描画する。編集 chrome は editorUiTheme のまま
                       <ThemeProvider theme={theme}>
