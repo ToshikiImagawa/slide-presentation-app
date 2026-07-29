@@ -58,4 +58,19 @@ test.describe('キーボードショートカット', () => {
     await page.keyboard.press('?')
     await expect(page.getByTestId('shortcuts-dialog')).toBeVisible()
   })
+
+  // #126: 編集画面の Esc（編集終了）は SlideEditor 自身の window keydown 購読によるため、
+  // Root 所有の他ダイアログ（ここではショートカット一覧）が開いている間も同様に止まる必要がある
+  test('編集画面で ? キーの一覧を開いた状態の Esc は一覧のみ閉じて編集画面から抜けない', async ({ page }) => {
+    await openSample(page)
+    await page.getByTestId('edit-open').click()
+    await expect(page.getByTestId('slide-editor')).toBeVisible()
+
+    await page.keyboard.press('?')
+    await expect(page.getByTestId('shortcuts-dialog')).toBeVisible()
+
+    await page.keyboard.press('Escape')
+    await expect(page.getByTestId('shortcuts-dialog')).toHaveCount(0)
+    await expect(page.getByTestId('slide-editor')).toBeVisible()
+  })
 })

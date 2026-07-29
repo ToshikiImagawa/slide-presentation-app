@@ -191,7 +191,7 @@ main.tsx
       └── <ToastProvider>
             └── <RootContent>
                   ├── renderScreen()（排他）
-                  │   ├── <SlideEditor>   # view === 'edit' かつ editSource あり
+                  │   ├── <SlideEditor onOpenSettings={openSettings} rootDialogOpen={settingsOpen || shortcutsOpen}>   # view === 'edit' かつ editSource あり（#126）
                   │   ├── <HomeScreen onOpenSettings={openSettings}>   # view === 'home'
                   │   └── <App onOpenSettings={openSettings} scrollSpeed onScrollSpeedChange />
                   ├── <SettingsWindow open={settingsOpen}
@@ -202,7 +202,7 @@ main.tsx
                   └── <ShortcutsDialog open={shortcutsOpen} />
 ```
 
-- 開閉状態（`settingsOpen` / `shortcutsOpen`）は `RootContent` が所有し、`HomeScreen` / `App` へは `onOpenSettings` のコールバックだけを渡す
+- 開閉状態（`settingsOpen` / `shortcutsOpen`）は `RootContent` が所有し、`HomeScreen` / `App` へは `onOpenSettings` のコールバックだけを渡す。`SlideEditor` には `onOpenSettings` に加え、両方の開閉状態を束ねた `rootDialogOpen={settingsOpen || shortcutsOpen}` も渡す（`SlideEditor` 自身が持つ Esc＝編集終了のキー購読が、Root が持つどちらのダイアログの Esc＝閉じるとも二重発火しないようにするため。#126）
 - FR-011 のスコープ分離は `global`（必須） / `presentation`（任意）の 2 グループに props を分けることで型で強制する（#127）。`presentation` を渡すときは `scrollSpeed` / `setScrollSpeed` が両方揃うことを型が保証し、`view` と渡す設定の対応関係を型検査で守る。`global` 内部の各項目は既存通り optional の有無で表示を切り替える規約を維持する
 - `view` の変化を監視する `useEffect` で両ダイアログを閉じる。従来は `App` 全体の再マウントで閉じていた挙動を、Root 保持へ移した後も維持するため
 - `?` キーの `keydown` 購読は `RootContent` が持つ。ダイアログの所有者と同じ層に置くことで、ホーム・プレゼンテーション・編集のどの画面からでも同じキーで開ける（`App` への `onOpenShortcuts` prop は不要になった）
@@ -350,10 +350,11 @@ interface HomeScreenProps {
 | ユニットテスト    | useAddonSettings（無効化フラグ復元・信頼一覧の構築・保存失敗時のロールバック）`src/hooks/__tests__/useAddonSettings.test.ts` | 主要パス |
 | コンポーネントテスト | SettingsWindow（言語切り替え操作、`presentation` 未指定でスクロール速度行が出ないこと・FR-011） | 主要パス    |
 | コンポーネントテスト | HomeScreen（設定ボタン押下で `onOpenSettings` が呼ばれること・FR-001） | 主要パス    |
+| コンポーネントテスト | SlideEditor（設定ボタン押下で `onOpenSettings` が呼ばれること・FR-001。`rootDialogOpen` 中は Esc で編集終了が発火しないこと・二重発火ガード） | 主要パス    |
 | コンポーネントテスト | ShortcutsDialog（ビューア・編集モード・発表者ビューの全節と各キーが表示されること） | 主要パス    |
 | 統合テスト      | 言語切り替え → localStorage保存 → 再読み込み復元      | ハッピーパス  |
-| E2E（Playwright） | `e2e/settings.spec.ts` — 設定ダイアログの開閉と各コントロール、ホーム画面から開くとグローバル設定のみ表示（FR-011）、ホーム画面での言語切り替えで UI 文言が即座に変わる（FR-004 / UR-LANG-001） | ハッピーパス |
-| E2E（Playwright） | `e2e/shortcuts.spec.ts` — `?` で全節が開く / Reveal 組み込みヘルプが `?`・`F1` のどちらでも開かない（`help: false` の回帰） / `B` と `/` による Reveal 既定の一時停止は維持 / ホーム画面でも `?` で開く | ハッピーパス＋回帰 |
+| E2E（Playwright） | `e2e/settings.spec.ts` — 設定ダイアログの開閉と各コントロール、ホーム画面から開くとグローバル設定のみ表示（FR-011）、ホーム画面での言語切り替えで UI 文言が即座に変わる（FR-004 / UR-LANG-001）、編集画面から開け Esc はダイアログのみ閉じて編集画面から抜けない（FR-001・#126） | ハッピーパス |
+| E2E（Playwright） | `e2e/shortcuts.spec.ts` — `?` で全節が開く / Reveal 組み込みヘルプが `?`・`F1` のどちらでも開かない（`help: false` の回帰） / `B` と `/` による Reveal 既定の一時停止は維持 / ホーム画面でも `?` で開く / 編集画面で一覧を開いた状態の Esc は一覧のみ閉じて編集画面から抜けない（`rootDialogOpen` の回帰・#126） | ハッピーパス＋回帰 |
 
 ---
 
@@ -371,7 +372,8 @@ interface HomeScreenProps {
 | 設定ダイアログの所有者 | A) `App`（プレゼンテーション画面）が持つ B) `RootContent`（Root 直下）が持つ C) 画面ごとに別インスタンスを持つ | **B) `RootContent` が持つ** | 言語設定を持つ `I18nProvider` は Root 直下にあるのに、変更 UI が `App` のライフサイクル内に閉じ込められていたことが「ホーム画面で言語を変更できない」原因だった。データ（開閉状態）の所有は使用側の共通祖先に置くという原則に従い、ホーム画面・プレゼンテーション画面・編集画面の共通祖先へ引き上げた。C) は同じダイアログの実装が複数箇所に散り、状態の同期が必要になるため却下 |
 | プレゼンテーション専用設定の出し分け（初版・#128） | A) props 未指定で行を非表示 B) `variant`/`mode` prop で表示セットを切り替え C) 画面ごとに別のウィンドウコンポーネント | **A) props 未指定で行を非表示** | `SettingsWindow` は既に `onOpenShortcuts` / `onToggleEmbeddedAddons` を「渡されたときだけ行を描画する」規約で拡張してきた（FR-010）。`scrollSpeed` / `setScrollSpeed` を optional にするだけで FR-011 を満たせ、新しい概念（variant）を導入しないで済む。**#127 で下記の型分離へ移行**（プレゼン専用設定が増えたときの着手トリガーに到達したため） |
 | プレゼンテーション専用設定のスコープ分離を型で表現するか（#127） | A) 現状維持（optional props + テストで担保） B) props を `global` / `presentation` の2グループに分ける C) 判別可能合併（`kind: 'global' \| 'presentation'`）でスコープを明示 | **B) `global`（必須） / `presentation`（任意）の2グループに分割** | `view` と「渡す props」の対応関係が型で強制されない問題を解消する。`global` は必須にしてどの画面でも同じ形で渡し、`presentation` を渡すときは `scrollSpeed` / `setScrollSpeed` が両方揃うことを型で保証する。C) は厳密だがプレゼン専用設定が1項目のみの現状では `kind` の分岐が冗長になるため見送り。`global` 内部の各項目（`onOpenShortcuts` 等）は出し分けに使っていないため既存の optional 規約を維持 |
-| 編集画面（SlideEditor）への設定導線 | A) 今回追加する B) スコープ外とする | **B) スコープ外とする** | 現状 `SlideEditor.tsx` に設定導線が存在せず、追加は新機能になる。加えて編集画面は `editorUiTheme`（コンパクトな固定サイズ）で描画されるため、設定ダイアログを重ねるにはテーマ境界の設計が別途必要。ダイアログ自体は Root にあるので、将来 `onOpenSettings` を1つ渡すだけで対応できる状態にしてある |
+| 編集画面（SlideEditor）への設定導線 | A) 今回追加する B) スコープ外とする | v1.5.0 までは **B) スコープ外**。**#126（2026-07-29）で A) 追加**に変更 | ダイアログ本体は Root にあり `onOpenSettings` を1つ渡すだけで接続できる状態が用意済みだったため、編集画面向けの UI 設計（ボタン配置・Esc 競合）を解決した上で追加した。詳細は [slide-edit-mode_design.md](./slide-edit-mode_design.md) §9.2 |
+| 編集画面の設定ボタン配置 | A) 独自ツールバーへインライン配置 B) 他画面と同じ `position: fixed` コーナー配置 | **A) 独自ツールバーへインライン配置**（ユーザー確認済み） | 編集画面のツールバーは通常フロー要素（`編集を終了` ボタン等）であり、他画面の fixed コーナー配置をそのまま重ねると座標が重なる。ツールバー最左に置くことで「左上」という視覚的位置の一貫性は保ちつつ、既存要素との衝突を避けた |
 
 ## 9.2. 永続化ストレージ詳細比較
 
@@ -414,6 +416,15 @@ interface HomeScreenProps {
 ---
 
 # 10. 変更履歴
+
+## v1.7.0 (2026-07-29・#126 編集画面から設定ダイアログを開く導線)
+
+**v1.3.0（§9.1）でスコープ外とした「編集画面（SlideEditor）への設定導線」を追加:**
+
+- `SlideEditor` に `onOpenSettings: () => void` と `rootDialogOpen: boolean` の 2 prop を追加。`RootContent` から `onOpenSettings={openSettings} rootDialogOpen={settingsOpen || shortcutsOpen}` を渡して接続する（§4.4）。ダイアログ本体・state は既存の Root 実装から変更なし
+- 設定ボタン（`SettingsButton`）の配置は、他画面と同じ `position: fixed` コーナーではなく編集画面の既存ツールバー（Stack）内の最左に置く。編集画面のツールバーは通常フロー要素であり、fixed コーナーを重ねると `編集を終了` ボタンと座標が重なるため（§9.1 決定事項）
+- `SlideEditor` 自身が持つ Esc（未保存確認 → `onExit`）のキー購読は、`rootDialogOpen` を既存の `hasOpenDialog` 判定に加えることで、Root が持つダイアログ（設定・ショートカット一覧のいずれか）が表示中は編集終了を発火させないようにした。当初は `settingsOpen` のみを渡す実装だったが、レビューで `shortcutsOpen`（既存の `?` キーの一覧）が同じ穴を持っていたことが判明したため、両方を束ねる `rootDialogOpen` に一般化した。ダイアログの見た目（`editorUiTheme` が漏れないこと）は Root で `<ThemeProvider theme={theme}>` に包まれている既存構造のまま変わらない
+- `.sdd/requirement/language-settings.md` FR-LANG-001・`.sdd/specification/slide-edit-mode_design.md` §9.2 の「スコープ外」記述を本対応で更新
 
 ## v1.6.0 (2026-07-29)
 

@@ -6,7 +6,7 @@ status: approved
 sdd-phase: plan
 impl-status: implemented
 created: 2026-07-24
-updated: 2026-07-28
+updated: 2026-07-29
 depends-on:
   - spec-slide-edit-mode
 tags:
@@ -23,7 +23,7 @@ category: authoring
 
 **ドキュメント種別:** 技術設計書 (Design Doc)
 **SDDフェーズ:** Plan (計画/設計)
-**最終更新日:** 2026-07-28
+**最終更新日:** 2026-07-29
 **関連 Spec:** [slide-edit-mode_spec.md](./slide-edit-mode_spec.md)
 **関連 PRD:** [slide-edit-mode.md](../requirement/slide-edit-mode.md)
 
@@ -44,7 +44,7 @@ category: authoring
 | 保存前バリデーション | 🟢 | FR-005。`parseSlides` の errors で保存/書出をゲート。エラー時はプレビュー非表示 |
 | Rust 書き込みコマンド（`save_slides_json`/`export_slide_package`/`set_edit_mode`） | 🟢 | FR-006/007/011。`lib.rs` に新設・`EditMode(Mutex<bool>)` ゲート・純粋関数を切出しテスト |
 | `.spkg` 生成（Rust・`flate2`/`tar`） | 🟢 | FR-007/DC-003。`extract_asset_paths` 移植・`package/` 規約・`extract_slide_package` と往復 |
-| Addon 付け外し 層C（実行時信頼 UI） | 🟢 | FR-008。`getAddonTrustMap`/`setAddonTrustDecision`/`clearAddonTrustDecision`＋書込直列化、`SettingsWindow` UI、信頼一覧は trustMap 全キー基点。**（後続 2026-07-28）** UI の所有者は Root（`main.tsx` の `RootContent`）へ移り、state / 永続化は `src/hooks/useAddonSettings.ts` が持つ。設定ダイアログはホーム画面・プレゼンテーション画面から開ける（編集画面からの導線は §9.2 のスコープ外） |
+| Addon 付け外し 層C（実行時信頼 UI） | 🟢 | FR-008。`getAddonTrustMap`/`setAddonTrustDecision`/`clearAddonTrustDecision`＋書込直列化、`SettingsWindow` UI、信頼一覧は trustMap 全キー基点。**（後続 2026-07-28）** UI の所有者は Root（`main.tsx` の `RootContent`）へ移り、state / 永続化は `src/hooks/useAddonSettings.ts` が持つ。設定ダイアログはホーム画面・プレゼンテーション画面・編集画面のいずれからも開ける（**後続 2026-07-29・#126** で編集画面の導線を追加。§9.2） |
 | Addon 付け外し 層B（export 同梱選択） | 🟢 | FR-009。Rust `filter_addon_manifest`（bundle 正規化＋同梱）、`export-slides.mjs --addons`、編集 UI チェックボックス。**（後続 feature/edit-apply-ux）** 同梱候補を層B∪層A（組み込み `addons/dist`）の和集合に拡張し、0 件時も UI を消さず明示表示。`build_slide_package_gated` に `builtin_dist_dir` を追加し層Aを補完同梱（dest 衝突は層B優先） |
 | Addon 付け外し 層A（組み込み entry.ts・dev 限定） | 🟢 | FR-010/DC-004。Rust `list/add/remove_builtin_addon`（`cfg!(debug_assertions)`＋ゲート＋`sanitize_addon_name`）、編集 UI dev パネル |
 | i18n / エディタ UI テーマ分離 | 🟢 | ja/en/fr の `edit.*`/`settings.addonTrust*` を追加。編集 chrome は `editorUiTheme`（固定 UI サイズ）、プレビューのみプレゼンテーマ（§9.1） |
@@ -121,7 +121,7 @@ graph TD
     HOOK --> LSL
 ```
 
-層C（実行時信頼）の UI は設定ダイアログ（`SettingsWindow`）で提供する。ダイアログ本体はホーム画面・プレゼンテーション画面の共通祖先である Root（`main.tsx` の `RootContent`）が保持し、state / 永続化は `src/hooks/useAddonSettings.ts` が担う。**編集画面（`SlideEditor`）から設定を開く導線は設けていない**（§9.2）。
+層C（実行時信頼）の UI は設定ダイアログ（`SettingsWindow`）で提供する。ダイアログ本体はホーム画面・プレゼンテーション画面・編集画面の共通祖先である Root（`main.tsx` の `RootContent`）が保持し、state / 永続化は `src/hooks/useAddonSettings.ts` が担う。**編集画面（`SlideEditor`）からも設定ボタン（ツールバー最左）で開ける**（#126・§9.2）。
 
 ## 4.2. モジュール分割
 
@@ -298,12 +298,21 @@ fn export_slide_package(
 | 型未定義フィールドの検証強度 | 中 | 保存前検証は既存 `getValidationErrors`（id/layout/title 等）レベルに留め、深い検証は段階導入。無損失往復（FR-004）を優先し過度な検証で自由記述を弾かない（実装は本方針どおり） |
 | 層A の dev 検出手段 | 低 | ✅ **確定**。UI は `import.meta.env.DEV`、Rust は `cfg!(debug_assertions)` で出し分け。増減後は `npm run build:addons` が必要な旨を UI に明示 |
 | `.spkg` の `package/` サブディレクトリ規約 | 低 | ✅ **確定**。`extract_slide_package` の `package/` 優先探索に合わせ、`build_slide_package_gated` も `package/` 配下へ格納して往復を保証 |
-| 編集画面（`SlideEditor`）から設定ダイアログを開く導線 | 低 | **スコープ外（2026-07-28）**。設定ダイアログを Root へ引き上げた際もあえて追加しなかった: ①現状 `SlideEditor` に設定への導線が一切なく、追加は「既存導線の引き上げ」ではなく新機能追加になる ②編集画面は `editorUiTheme`（コンパクトな独自 MUI テーマ）で描画され、`theme` 前提の `DialogFrame` を重ねるとテーマ境界の設計判断が別途必要（§9.1「プレビューのテーマ適用スコープ」と同種の問題） ③`Esc`（編集終了）や独自ツールバーがあり、設定ボタンの置き場所自体が別途 UI 設計を要する。ダイアログ本体は Root にあるため、将来必要になれば `SlideEditor` に `onOpenSettings` prop を1つ渡すだけで対応できる（拡張点は用意済み）。なお `view === 'edit'` でも `SettingsWindow` は Root にマウントされているが、開く導線がないため実際には開かれない |
+| 編集画面（`SlideEditor`）から設定ダイアログを開く導線 | 低 | ✅ **解消（2026-07-29・#126）**。`SlideEditor` に `onOpenSettings` / `rootDialogOpen` prop を追加して接続した。設定ボタンは編集画面の既存ツールバー最左に配置（`editorUiTheme` の通常フロー要素。他画面の `position: fixed` コーナー配置は既存の `編集を終了` ボタンと座標が重なるため採用せず）。ダイアログ本体自体は Root の `<ThemeProvider theme={theme}>` 配下のまま変更なしのため `editorUiTheme` は漏れない。`rootDialogOpen`（`settingsOpen || shortcutsOpen`）を `SlideEditor` の既存 `hasOpenDialog` 判定に加え、Root が持つダイアログ（設定・ショートカット一覧）のいずれかの表示中も Esc で編集終了が誤発火しないようにした。詳細は [language-settings_design.md](./language-settings_design.md) v1.7.0 |
 | 書き込みパスのスコープ限定（DC-002） | 低 | 未対応（要件外）。`save_slides_json`/`export_slide_package` は任意絶対パスを受理するが、DC-002 は「Rust 境界＋編集モードゲート」を規定するのみでパス限定は要件外。JS に fs 書込権限を渡さない主要防御は実装済みで、パスは OS ダイアログ経由で確定する。多層防御としてスコープ限定を将来検討 |
 
 ---
 
 # 10. 変更履歴
+
+## v0.5（2026-07-29・#126 編集画面から設定ダイアログを開けるようにする）
+
+**変更内容（v0.4 でスコープ外とした導線を追加）:**
+
+- `SlideEditor` に `onOpenSettings: () => void` / `rootDialogOpen: boolean` prop を追加し、Root（`RootContent`）から接続した。ダイアログ本体・state の所有者は変更なし
+- 設定ボタンは編集画面の既存ツールバー（Stack）最左に配置。他画面と同じ `position: fixed` コーナー配置は編集画面の通常フロー要素（`編集を終了` ボタン）と座標が重なるため採用せず
+- `rootDialogOpen`（`settingsOpen || shortcutsOpen`）を `SlideEditor` の既存 `hasOpenDialog` 判定（Escape ガード）に加え、Root が持つダイアログのいずれかの表示中も Esc で編集終了が誤発火しないようにした。設定ダイアログ単独ではなく `shortcutsOpen`（既存の `?` キー一覧）も束ねたのは、同じ二重発火の穴が既存の `?` キー導線にも既にあったため（本 PR の範囲内で一般化して解消）
+- §9.2 の該当行を「解消」に更新。詳細は [language-settings_design.md](./language-settings_design.md) v1.7.0
 
 ## v0.4（2026-07-28・設定ダイアログの Root 引き上げ）
 

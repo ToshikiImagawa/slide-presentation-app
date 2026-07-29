@@ -640,4 +640,44 @@ describe('SlideEditor キーボードショートカット（#91: Cmd/Ctrl+S 保
     expect(onExit).not.toHaveBeenCalled()
     expect(screen.queryByText('未保存の変更を破棄しますか？')).toBeNull()
   })
+
+  it('rootDialogOpen 中の Esc は編集終了を発火させない（Root のダイアログのみ閉じる想定・#126 二重発火ガード）', async () => {
+    const onExit = vi.fn()
+    render(
+      <Wrapper>
+        <SlideEditor source={{ rawText: validJson, baseDir: '' }} onExit={onExit} rootDialogOpen />
+      </Wrapper>,
+    )
+    await waitFor(() => expect(screen.getByText('同梱できるアドオンがありません')).toBeTruthy())
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(onExit).not.toHaveBeenCalled()
+  })
+})
+
+describe('SlideEditor 設定ボタン（#126: 編集画面から設定ダイアログを開く）', () => {
+  beforeEach(() => {
+    h.listBuiltinAddons.mockReset().mockResolvedValue([])
+    h.listBuiltinDistAddons.mockReset().mockResolvedValue([])
+    h.getPackageAddonNames.mockReset().mockResolvedValue([])
+  })
+
+  it('ツールバーに設定ボタンが表示され、クリックで onOpenSettings が呼ばれる', async () => {
+    const onOpenSettings = vi.fn()
+    render(
+      <Wrapper>
+        <SlideEditor source={{ rawText: validJson, baseDir: '' }} onExit={() => {}} onOpenSettings={onOpenSettings} />
+      </Wrapper>,
+    )
+    fireEvent.click(screen.getByTestId('settings-open'))
+    expect(onOpenSettings).toHaveBeenCalledTimes(1)
+  })
+
+  it('onOpenSettings 未指定でもクリックが落ちない', async () => {
+    render(
+      <Wrapper>
+        <SlideEditor source={{ rawText: validJson, baseDir: '' }} onExit={() => {}} />
+      </Wrapper>,
+    )
+    expect(() => fireEvent.click(screen.getByTestId('settings-open'))).not.toThrow()
+  })
 })
