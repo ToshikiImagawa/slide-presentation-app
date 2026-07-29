@@ -25,7 +25,9 @@
     "toolbar": {
       "hide": "ツールバーを隠す (T)",
       "show": "ツールバーを表示 (T)",
-      "pdfExport": "PDFで保存"
+      "pdfExport": "PDFで保存",
+      "pdfExporting": "PDFを生成中…",
+      "pdfExportError": "PDFの書き出しに失敗しました"
     },
     "theme": {
       "applyFailed": "テーマの適用に失敗しました"

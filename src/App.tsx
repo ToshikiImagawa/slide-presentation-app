@@ -13,6 +13,7 @@ import { getFallbackPresentationData, loadPresentationData } from './data'
 import type { PresentationData } from './data'
 import { getVoicePath } from './data/noteHelpers'
 import { isTypingTarget } from './keyboardTarget'
+import { exportSlidesToPdf } from './pdfExport'
 import { useAudioPlayer } from './hooks/useAudioPlayer'
 import { useAutoSlideshow } from './hooks/useAutoSlideshow'
 import { usePresenterView } from './hooks/usePresenterView'
@@ -48,6 +49,7 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
   const data = loadPresentationData(presentationData, defaultData)
   const [currentIndex, setCurrentIndex] = useState(0)
   const [toolbarHidden, setToolbarHidden] = useState(false)
+  const [pdfExportState, setPdfExportState] = useState<'idle' | 'exporting' | 'error'>('idle')
 
   const audioPlayer = useAudioPlayer()
 
@@ -172,6 +174,18 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
 
   const handleToggleToolbar = useCallback(() => setToolbarHidden((prev) => !prev), [])
 
+  const handlePdfExport = useCallback(async () => {
+    if (pdfExportState === 'exporting' || !deckRef.current) return
+    setPdfExportState('exporting')
+    try {
+      await exportSlidesToPdf(deckRef.current, data.meta?.title ?? 'slides')
+      setPdfExportState('idle')
+    } catch (e) {
+      console.error(e)
+      setPdfExportState('error')
+    }
+  }, [pdfExportState, data.meta?.title, deckRef])
+
   // T キーでツールバーの表示・非表示をトグルする（入力中は無視）。ツールバーはプレゼンテーション画面固有の
   // ローカル状態なので、この購読も App が持つ（Root 所有ダイアログを開く ? キーは main.tsx 側）。
   // T は Reveal.js のデフォルトキーバインド（H/L/K/J/N/P/B/F/G/O 等）と衝突しないキーとして選定した
@@ -218,7 +232,7 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
           progressResetKey={currentIndex}
           progressPaused={progressPaused}
         />
-        <PdfExportButton onClick={() => window.print()} />
+        <PdfExportButton onClick={handlePdfExport} state={pdfExportState} />
         <PresenterViewButton onClick={openPresenterView} isOpen={isOpen} />
       </div>
     </>

@@ -25,7 +25,9 @@
     "toolbar": {
       "hide": "Hide toolbar (T)",
       "show": "Show toolbar (T)",
-      "pdfExport": "Save as PDF"
+      "pdfExport": "Save as PDF",
+      "pdfExporting": "Generating PDF…",
+      "pdfExportError": "Failed to export PDF"
     },
     "theme": {
       "applyFailed": "Failed to apply the theme"
