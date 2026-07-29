@@ -1084,7 +1084,6 @@ pub fn run() {
     .manage(GenerationEnabled(Mutex::new(false)))
     .manage(ActiveGeneration(Mutex::new(None)))
     .manage(PendingOpenPaths(Mutex::new(Vec::new())))
-    .manage(update_check::PendingUpdate(Mutex::new(None)))
     .invoke_handler(tauri::generate_handler![
       allow_asset_dir,
       extract_slide_package,

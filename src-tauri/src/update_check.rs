@@ -1,5 +1,5 @@
 use serde::Serialize;
-use std::sync::Mutex;
+use std::sync::OnceLock;
 use tauri_plugin_updater::{Update, UpdaterExt};
 use url::Url;
 
@@ -10,8 +10,13 @@ use url::Url;
 const REPO: &str = "ToshikiImagawa/slide-presentation-app";
 const LATEST_JSON_ASSET_NAME: &str = "latest.json";
 
-/// check_for_update が確認済みの更新を保持し、install_update が再チェックなしに使い回す
-pub struct PendingUpdate(pub Mutex<Option<Update>>);
+/// GitHub API 呼び出し用共有 reqwest クライアント（lib.rs の download_http_client と同パターン）。
+/// 起動時に1回・更新実行時に1回程度の低頻度アクセスのため、既定タイムアウトで十分
+static GITHUB_API_CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
+
+fn github_api_client() -> reqwest::Client {
+  GITHUB_API_CLIENT.get_or_init(reqwest::Client::new).clone()
+}
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -59,15 +64,11 @@ async fn resolve_latest_json_asset_url(client: &reqwest::Client) -> Result<Strin
   ))
 }
 
-/// 更新の有無を確認する。GitHub API 解決の失敗・latest.json 未添付・オフライン・レート制限などは
-/// すべて Err にする。呼び出し側（フロント）はこれを無言で諦める（利用を妨げない・issue #121 の受け入れ基準）
-#[tauri::command]
-pub async fn check_for_update(
-  app: tauri::AppHandle,
-  state: tauri::State<'_, PendingUpdate>,
-) -> Result<Option<UpdateInfo>, String> {
-  let client = reqwest::Client::new();
-  let asset_url = resolve_latest_json_asset_url(&client).await?;
+/// GitHub API 経由で解決したアセット URL を updater の endpoints に設定し、check() する。
+/// check_for_update・install_update の双方が使う共通処理（install 時に再度呼ぶことで、
+/// 確認済みの更新をまたぐ状態を持たずに済む）
+async fn resolve_update(app: &tauri::AppHandle) -> Result<Option<Update>, String> {
+  let asset_url = resolve_latest_json_asset_url(&github_api_client()).await?;
   let endpoint = Url::parse(&asset_url).map_err(|e| e.to_string())?;
 
   let updater = app
@@ -79,29 +80,27 @@ pub async fn check_for_update(
     .build()
     .map_err(|e| e.to_string())?;
 
-  let update = updater.check().await.map_err(|e| e.to_string())?;
-
-  let info = update.as_ref().map(|u| UpdateInfo {
-    version: u.version.clone(),
-    current_version: u.current_version.clone(),
-    body: u.body.clone(),
-  });
-  *state.0.lock().map_err(|e| e.to_string())? = update;
-  Ok(info)
+  updater.check().await.map_err(|e| e.to_string())
 }
 
-/// check_for_update が確認済みの更新をダウンロード・インストールし、アプリを再起動する
+/// 更新の有無を確認する。GitHub API 解決の失敗・latest.json 未添付・オフライン・レート制限などは
+/// すべて Err にする。呼び出し側（フロント）はこれを無言で諦める（利用を妨げない・issue #121 の受け入れ基準）
 #[tauri::command]
-pub async fn install_update(
-  app: tauri::AppHandle,
-  state: tauri::State<'_, PendingUpdate>,
-) -> Result<(), String> {
-  let update = state
-    .0
-    .lock()
-    .map_err(|e| e.to_string())?
-    .take()
-    .ok_or_else(|| "確認済みの更新がありません（先に check_for_update が必要です）".to_string())?;
+pub async fn check_for_update(app: tauri::AppHandle) -> Result<Option<UpdateInfo>, String> {
+  let update = resolve_update(&app).await?;
+  Ok(update.map(|u| UpdateInfo {
+    version: u.version,
+    current_version: u.current_version,
+    body: u.body,
+  }))
+}
+
+/// 更新を（再確認の上）ダウンロード・インストールし、アプリを再起動する
+#[tauri::command]
+pub async fn install_update(app: tauri::AppHandle) -> Result<(), String> {
+  let update = resolve_update(&app)
+    .await?
+    .ok_or_else(|| "確認できる更新がありません".to_string())?;
 
   update
     .download_and_install(|_, _| {}, || {})
