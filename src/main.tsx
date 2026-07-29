@@ -283,7 +283,9 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
 
   // 画面本体は排他（いずれか1つだけ描画される）
   const renderScreen = () => {
-    if (view === 'edit' && editSource) return <SlideEditor source={editSource} onExit={handleExitEdit} openRequestPath={pendingOpenPath} onResolveOpen={handleResolveOpen} />
+    // 設定・ショートカットのどちらかが開いている間は編集画面の Esc（編集終了）を止める（#126）
+    if (view === 'edit' && editSource)
+      return <SlideEditor source={editSource} onExit={handleExitEdit} openRequestPath={pendingOpenPath} onResolveOpen={handleResolveOpen} onOpenSettings={openSettings} rootDialogOpen={settingsOpen || shortcutsOpen} />
     if (view === 'home')
       return (
         <HomeScreen

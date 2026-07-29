@@ -22,6 +22,7 @@ import { SlideMetaForm } from './SlideMetaForm'
 import { SlidePreview } from './SlidePreview'
 import { addBuiltinAddon, buildBuiltinAddons, chooseExportDir, chooseSlidesSavePath, exportSlidePackage, listBuiltinAddons, listBuiltinDistAddons, removeBuiltinAddon, saveSlidesJson } from '../editModeSave'
 import { isTypingTarget } from '../keyboardTarget'
+import { SettingsButton } from '../components/SettingsButton'
 
 /** 編集対象データの供給元。相対パスの生 JSON を土台にし、プレビューだけ baseDir 基準でアセット解決する */
 export interface EditSource {
@@ -81,6 +82,8 @@ export function SlideEditor({
   onExit,
   openRequestPath = null,
   onResolveOpen,
+  onOpenSettings,
+  rootDialogOpen,
 }: {
   source: EditSource
   onExit: () => void
@@ -88,6 +91,11 @@ export function SlideEditor({
   openRequestPath?: string | null
   /** オープン要求への回答。未保存の変更がなければ確認なしで true、確認ダイアログの確定で true・取消で false を必ず一度返す */
   onResolveOpen?: (confirmed: boolean) => void
+  /** 設定ダイアログを開く（所有者は Root。#126） */
+  onOpenSettings?: () => void
+  /** Root が持つダイアログ（設定・ショートカット一覧）のいずれかが開いているか。所有は Root だが、
+   * 開いている間は編集画面の Esc＝編集終了を止める必要があるため hasOpenDialog に加える（#126） */
+  rootDialogOpen?: boolean
 }) {
   const { t } = useTranslation()
   const [text, setText] = useState(source.rawText)
@@ -234,7 +242,7 @@ export function SlideEditor({
   // 未保存の変更があるか（保存済みの元テキストとの比較。#44: データ損失防止）
   const isDirty = text !== source.rawText
   // 既に開いているダイアログがあるか（Escape ガード用。MUI Dialog 自身の Escape 処理に委ね、二重発火を避ける）
-  const hasOpenDialog = pendingExit || pendingGenerated !== null || pendingDeleteBuiltin !== null || confirmingOpen
+  const hasOpenDialog = pendingExit || pendingGenerated !== null || pendingDeleteBuiltin !== null || confirmingOpen || rootDialogOpen
 
   // 外部（OS のファイル関連付け）からのオープン要求。未保存の変更があれば確認を挟み、なければ即開く。
   // 要求を受けた時点の dirty で判断する（以降の編集で再発火させないため openRequestPath のみを依存にする）
@@ -348,8 +356,9 @@ export function SlideEditor({
   return (
     <ThemeProvider theme={editorUiTheme}>
       <Box data-testid="slide-editor" sx={{ display: 'flex', flexDirection: 'column', height: '100vh', backgroundColor: 'var(--fixed-background)', color: 'var(--fixed-text-body)' }}>
-        {/* ツールバー */}
+        {/* ツールバー。設定ボタンは他画面と同じ「左上」の視覚的位置を保つため最左に置く（#126） */}
         <Stack direction="row" spacing={1} alignItems="center" sx={{ p: 1, borderBottom: '1px solid var(--fixed-border)', flexWrap: 'wrap' }}>
+          <SettingsButton onClick={() => onOpenSettings?.()} />
           <Button variant="outlined" size="small" onClick={handleExitClick}>
             {t('edit.exit', '編集を終了')}
           </Button>
