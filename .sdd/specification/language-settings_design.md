@@ -6,7 +6,7 @@ status: draft
 sdd-phase: plan
 impl-status: implemented
 created: 2026-02-02
-updated: 2026-07-24
+updated: 2026-07-28
 depends-on:
   - spec-language-settings
 tags:
@@ -21,7 +21,7 @@ category: internationalization
 
 **ドキュメント種別:** 技術設計書 (Design Doc)
 **SDDフェーズ:** Plan (計画/設計)
-**最終更新日:** 2026-07-24
+**最終更新日:** 2026-07-28
 **関連 Spec:** [language-settings_spec.md](./language-settings_spec.md)
 **関連 PRD:** [language-settings.md](../requirement/language-settings.md)
 
@@ -38,8 +38,11 @@ category: internationalization
 | 言語リソースJSONファイル（en-US, ja-JP, fr-FR）      | 🟢 実装完了 | `assets/locales/`（プロジェクトルート）に配置、manifest.json による自動検出       |
 | 言語リソースローダー（loadLocales）                 | 🟢 実装完了 | `src/i18n/loader.ts` — バリデーション付きローダー                         |
 | I18nProvider / useI18n / useTranslation | 🟢 実装完了 | `src/i18n/i18nProvider.tsx` — React Context ベース              |
-| SettingsButton コンポーネント                  | 🟢 実装完了 | `src/components/SettingsButton.tsx` — 歯車アイコン、左上配置            |
-| SettingsWindow コンポーネント                  | 🟢 実装完了 | `src/components/SettingsWindow.tsx` — オーバーレイモーダル、言語セレクト・スクロール速度・同梱アドオン設定 |
+| SettingsButton コンポーネント                  | 🟢 実装完了 | `src/components/SettingsButton.tsx` — 歯車アイコン。プレゼンテーション画面（`toolbar toolbar-left`）とホーム画面（`HomeScreen.module.css` の `.settingsCorner`）の左上に配置 |
+| SettingsWindow コンポーネント                  | 🟢 実装完了 | `src/components/SettingsWindow.tsx` — `DialogFrame`（MUI Dialog）ベース。言語セレクト・ショートカット一覧・同梱アドオン設定＋（プレゼンテーション画面のみ）スクロール速度 |
+| 設定ダイアログの Root 層保持                       | 🟢 実装完了 | `src/main.tsx` の `RootContent` が `settingsOpen` / `shortcutsOpen` と実体を1インスタンスだけ保持（FR-011） |
+| アドオン信頼設定フック（useAddonSettings）            | 🟢 実装完了 | `src/hooks/useAddonSettings.ts` — `App.tsx` から抽出。`RootContent` が呼ぶ         |
+| スクロール速度フック（useScrollSpeed）                | 🟢 実装完了 | `src/hooks/useScrollSpeed.ts` — `slide-app-scroll-speed` の読み書きを `useAutoSlideshow` から移設 |
 | ブラウザ言語検出                                | 🟢 実装完了 | 完全一致 → プレフィックス一致 → en-US フォールバック                             |
 | localStorage 永続化                        | 🟢 実装完了 | キー `slide-app-locale` で保存・復元                                 |
 | 既存UIテキストの翻訳キー化                          | 🟢 実装完了 | PresenterViewButton, AudioPlayButton, AudioControlBar を翻訳キー化 |
@@ -55,6 +58,7 @@ category: internationalization
 5. **バリデーション駆動** — 言語リソースJSONの構造検証を実装（D-002準拠）
 6. **Reveal.js非干渉** — 設定UIがReveal.jsのキーボードショートカット・スライド操作を妨げない（T-002準拠）
 7. **拡張性** — 設定ウィンドウに将来的に他の設定項目を追加可能な構造とする
+8. **設定 UI の到達性** — スライドを開く前（ホーム画面）でも言語を変更できるよう、設定ダイアログを画面本体から独立させて Root 層で保持する（FR-001 / FR-011）
 
 ---
 
@@ -65,7 +69,7 @@ category: internationalization
 | 状態管理      | React Context API                | アプリ全体で言語状態を共有する必要があり、既存プロジェクトに外部状態管理ライブラリがないため、Contextが最適。言語切り替え時の再レンダリングも許容範囲 |
 | 永続化       | localStorage                     | 後述の設計判断（9.1）参照。シンプルなキー・バリュー保存に適しており、セッション跨ぎの永続性がある                             |
 | 言語リソース形式  | JSON                             | PRDの制約に準拠。`manifest.json` による動的検出でビルド不要の言語追加を実現                                |
-| UIコンポーネント | カスタムHTML + CSS Modules            | 既存UIコンポーネント（PresenterViewButton, AudioPlayButton等）がMUIコンポーネントを使わずカスタムHTML + CSS Modulesで実装されており、一貫性を維持 |
+| UIコンポーネント | カスタムHTML + CSS Modules（ダイアログ枠のみ MUI Dialog） | ボタン類は既存UIコンポーネント（PresenterViewButton, AudioPlayButton等）と揃えてカスタムHTML + CSS Modulesで実装。ダイアログ枠はフォーカストラップ・Esc 閉じを自前実装せずに済むよう `DialogFrame`（MUI Dialog）へ共通化した（§9.1） |
 | スタイリング    | CSS Modules                      | 原則A-002に準拠し、CSS変数（`--theme-*`）を使用してテーマシステムと統合。ただしオーバーレイ背景やボタン前景色など一部にハードコード色が残存（§9.3 参照）             |
 
 ---
@@ -78,12 +82,20 @@ category: internationalization
 graph TD
     subgraph "アプリケーション"
         Main[main.tsx]
+        RootContent["RootContent<br/>(画面切替＋ダイアログ所有)"]
+        HomeScreen[HomeScreen]
         App[App.tsx]
         I18nProvider[I18nProvider]
         SettingsButton[SettingsButton]
         SettingsWindow[SettingsWindow]
+        ShortcutsDialog[ShortcutsDialog]
         SlideRenderer[SlideRenderer]
         PresenterViewButton[PresenterViewButton]
+    end
+
+    subgraph "設定状態フック"
+        UseScrollSpeed[useScrollSpeed]
+        UseAddonSettings[useAddonSettings]
     end
 
     subgraph "i18nモジュール"
@@ -110,17 +122,28 @@ graph TD
     Loader --> JaJP
     Loader --> FrFR
     Loader --> OtherLocales
-    Main --> App
-    App --> I18nProvider
+    Main --> I18nProvider
     I18nProvider --> Provider
     Provider --> UseI18n
     Provider --> UseTranslation
-    I18nProvider --> SettingsButton
-    I18nProvider --> SettingsWindow
-    I18nProvider --> SlideRenderer
+    I18nProvider --> RootContent
+    RootContent --> HomeScreen
+    RootContent --> App
+    RootContent --> SettingsWindow
+    RootContent --> ShortcutsDialog
+    RootContent --> UseScrollSpeed
+    RootContent --> UseAddonSettings
+    HomeScreen -- onOpenSettings --> RootContent
+    App -- "onOpenSettings / onOpenShortcuts" --> RootContent
+    HomeScreen --> SettingsButton
+    App --> SettingsButton
+    App --> SlideRenderer
+    App --> PresenterViewButton
+    SettingsButton --> UseTranslation
     SettingsWindow --> UseI18n
     Provider --> LocalStorage
     Provider --> NavLang
+    UseScrollSpeed --> LocalStorage
 ```
 
 ## 4.2. モジュール分割
@@ -131,8 +154,11 @@ graph TD
 | I18nProvider   | 言語状態管理、Context提供   | loadLocales  | `src/i18n/i18nProvider.tsx`         |
 | useI18n        | 言語コンテキストへのアクセスフック  | I18nProvider | `src/i18n/i18nProvider.tsx`         |
 | useTranslation | 翻訳関数（t）の提供         | I18nProvider | `src/i18n/i18nProvider.tsx`         |
-| SettingsButton | 設定ボタンUI（左上オーバーレイ）  | なし           | `src/components/SettingsButton.tsx` |
-| SettingsWindow | 設定ウィンドウUI（モーダル。言語・スクロール速度・同梱アドオン設定） | useI18n      | `src/components/SettingsWindow.tsx` |
+| SettingsButton | 設定ボタンUI（左上オーバーレイ。ホーム画面・プレゼンテーション画面の双方から使用） | useTranslation | `src/components/SettingsButton.tsx` |
+| SettingsWindow | 設定ウィンドウUI（モーダル。言語・ショートカット・同梱アドオン設定＋任意でスクロール速度） | useI18n, DialogFrame | `src/components/SettingsWindow.tsx` |
+| RootContent    | 画面（ホーム / プレゼンテーション / 編集）の切り替えと設定・ショートカットダイアログの開閉状態の所有 | useI18n, useScrollSpeed, useAddonSettings | `src/main.tsx`（同ファイル内の内部コンポーネント） |
+| useScrollSpeed | スクロール速度の状態保持と localStorage 永続化 | なし | `src/hooks/useScrollSpeed.ts` |
+| useAddonSettings | 同梱アドオンの信頼設定（一律無効化・許可履歴・個別許可）の読み書き | localSlideLoader | `src/hooks/useAddonSettings.ts` |
 | en-US.json     | 英語リソース（フォールバック兼用）  | なし           | `assets/locales/en-US.json`         |
 | ja-JP.json     | 日本語リソース            | なし           | `assets/locales/ja-JP.json`         |
 | fr-FR.json     | フランス語リソース          | なし           | `assets/locales/fr-FR.json`         |
@@ -149,9 +175,35 @@ main.tsx
 │       └── LocaleResource[] を返却
 └── <Root locales={locales} initialRecentPackages={...}>
       └── <I18nProvider locales={locales}>
-            <RootContent />   # ホーム画面 / <App> を切り替え
+            <ToastProvider>
+              <RootContent />
+            </ToastProvider>
           </I18nProvider>
 ```
+
+## 4.4. 設定ダイアログの配置
+
+`RootContent` は「画面本体」と「ダイアログ」を兄弟として描画する。画面本体は排他（いずれか1つだけ）だが、ダイアログはどの画面と組み合わせても開ける。
+
+```
+<RootContent>
+├── screen（排他）
+│   ├── <SlideEditor>   # view === 'edit' かつ editSource あり
+│   ├── <HomeScreen onOpenSettings={openSettings}>            # view === 'home'
+│   └── <App onOpenSettings={...} onOpenShortcuts={...}>      # view === 'presentation'
+└── <ThemeProvider theme={theme}>   # MUI サブツリーには必ずテーマを与える（§9.4）
+      ├── <SettingsWindow open={settingsOpen}
+      │     scrollSpeed={view === 'presentation' ? scrollSpeed : undefined}      # FR-011
+      │     setScrollSpeed={view === 'presentation' ? setScrollSpeed : undefined}
+      │     embeddedAddonsDisabled / onToggleEmbeddedAddons / onResetAddonTrust
+      │     addonTrust / onSetAddonTrust / onOpenShortcuts />
+      └── <ShortcutsDialog open={shortcutsOpen} />
+    </ThemeProvider>
+```
+
+- 開閉状態（`settingsOpen` / `shortcutsOpen`）は `RootContent` が所有し、`HomeScreen` / `App` へは `onOpenSettings` / `onOpenShortcuts` のコールバックだけを渡す
+- `view` の変化を監視する `useEffect` で両ダイアログを閉じる。従来は `App` 全体の再マウントで閉じていた挙動を、Root 保持へ移した後も維持するため
+- `?` キーによるショートカット一覧表示と `T` キーによるツールバートグルはプレゼンテーション画面固有のため、キーハンドラは `App` に残し、`onOpenShortcuts()` を呼ぶだけにしている
 
 ---
 
@@ -222,14 +274,38 @@ interface LocaleValidationResult {
 function validateLocaleResource(resource: LocaleResource): LocaleValidationResult
 
 // SettingsWindow の props（FR-010: 言語以外の設定項目を追加できる拡張構造を具現化）
+// 言語セレクト以外の行はすべて「対応する props が揃っているときだけ描画する」規約で表示を切り替える
 interface SettingsWindowProps {
   open: boolean
   onClose: () => void
-  scrollSpeed: number                     // 自動スライドショーのスクロール速度（秒）
-  setScrollSpeed: (speed: number) => void
-  embeddedAddonsDisabled?: boolean        // 同梱アドオンの一律無効化フラグ（未指定時はアドオン設定セクションを非表示）
-  onToggleEmbeddedAddons?: (disabled: boolean) => void
+  scrollSpeed?: number                    // 自動スライドショーのスクロール速度（秒）。未指定時はスクロール速度行を非表示（FR-011）
+  setScrollSpeed?: (speed: number) => void  // scrollSpeed と対。両方揃ったときのみ行を描画
+  embeddedAddonsDisabled?: boolean        // 同梱アドオンの一律無効化フラグ
+  onToggleEmbeddedAddons?: (disabled: boolean) => void  // 未指定時はアドオン設定セクション全体を非表示
   onResetAddonTrust?: () => void          // アドオン許可履歴のリセット
+  addonTrust?: AddonTrustEntry[]          // パッケージ単位の許可/拒否の一覧（未指定/空なら非表示）
+  onSetAddonTrust?: (path: string, decision: AddonTrustDecision | undefined) => void
+  onOpenShortcuts?: () => void            // ショートカット一覧を開く（未指定時はボタンを非表示）
+}
+
+// スクロール速度の状態フック（既定値 20 秒 / localStorage キー `slide-app-scroll-speed`）
+function useScrollSpeed(): [number, (speed: number) => void]
+
+// 同梱アドオンの信頼設定フック（settingsOpen が true になるたび信頼一覧を作り直す）
+function useAddonSettings(settingsOpen: boolean): UseAddonSettingsReturn
+
+interface UseAddonSettingsReturn {
+  addonsDisabled: boolean
+  addonTrustList: AddonTrustEntry[]
+  handleToggleAddonsDisabled: (disabled: boolean) => void
+  handleResetAddonTrust: () => void
+  handleSetAddonTrust: (path: string, decision: AddonTrustDecision | undefined) => void
+}
+
+// HomeScreen は設定ダイアログを所有せず、開く要求だけを Root へ通知する（必須 prop）
+interface HomeScreenProps {
+  // ...（スライド読み込み系の props は省略）
+  onOpenSettings: () => void
 }
 ```
 
@@ -251,8 +327,12 @@ interface SettingsWindowProps {
 | ユニットテスト    | loadLocales（バリデーション・フォールバック）           | 主要パス    |
 | ユニットテスト    | t() 翻訳関数（キー解決、フォールバック）                 | 主要パス    |
 | ユニットテスト    | 言語検出ロジック（navigator.language → 対応言語マッチ） | 主要パス    |
-| コンポーネントテスト | SettingsWindow（言語切り替え操作）               | 主要パス    |
+| ユニットテスト    | useScrollSpeed（既定値・localStorage 読み書き）`src/hooks/__tests__/useScrollSpeed.test.ts` | 主要パス |
+| ユニットテスト    | useAddonSettings（無効化フラグ復元・信頼一覧の構築・保存失敗時のロールバック）`src/hooks/__tests__/useAddonSettings.test.ts` | 主要パス |
+| コンポーネントテスト | SettingsWindow（言語切り替え操作、`scrollSpeed` 未指定でスクロール速度行が出ないこと・FR-011） | 主要パス    |
+| コンポーネントテスト | HomeScreen（設定ボタン押下で `onOpenSettings` が呼ばれること・FR-001） | 主要パス    |
 | 統合テスト      | 言語切り替え → localStorage保存 → 再読み込み復元      | ハッピーパス  |
+| E2E（Playwright） | `e2e/settings.spec.ts` — 設定ダイアログの開閉と各コントロール、ホーム画面から開くとグローバル設定のみ表示（FR-011）、ホーム画面での言語切り替えで UI 文言が即座に変わる（FR-004 / UR-LANG-001） | ハッピーパス |
 
 ---
 
@@ -266,7 +346,10 @@ interface SettingsWindowProps {
 | 言語リソース配置場所 | A) プロジェクトルート assets/locales/ B) public/assets/locales/ C) src/i18n/locales/ | **A) プロジェクトルート assets/locales/** | PRDの要求（FR-LANG-008）でコード変更なしの言語追加が必須。`vite.config.ts` の assetsPlugin が `/assets` を dev サーバーで配信し、ビルド時に `dist/assets` へコピーするため、`public/` を経由せずプロジェクトルート直下の `assets/` に配置する独自規約を採用。フォント・テーマ等の他アセットと配置規約を統一でき、`manifest.json` にファイル一覧を記載してランタイムで `fetch` により動的に読み込む方式を採用 |
 | 状態管理方式     | A) React Context B) Zustand C) グローバル変数                   | **A) React Context**          | 既存プロジェクトに外部状態管理ライブラリがなく、言語状態はアプリ全体で共有するためContextが適切。Zustandは新規依存の追加になる。グローバル変数はReactの再レンダリングと統合できない                                                  |
 | 翻訳関数の実装    | A) 自前実装 B) react-i18next C) react-intl                   | **A) 自前実装**                   | このアプリのUI翻訳は限定的（設定ウィンドウ、発表者ビューボタン等の少数テキスト）であり、ライブラリ追加のオーバーヘッドに見合わない。ドット記法のキー解決（`t('settings.title')`）程度の簡易実装で十分                                       |
-| 設定ウィンドウの実装 | A) MUI Dialog B) カスタムモーダル                                | **B) カスタムモーダル**               | 既存UIコンポーネント（PresenterViewButton, AudioPlayButton, AudioControlBar）がMUIコンポーネントを使わずカスタムHTML + CSS Modulesで実装されているため、一貫性を維持。オーバーレイ、閉じるボタン、外部クリック閉じをCSS Modulesで実装 |
+| 設定ウィンドウの実装 | A) MUI Dialog B) カスタムモーダル                                | **A) MUI Dialog（`DialogFrame` で共通化）**  | 初版は B) カスタムモーダルだったが、ショートカット一覧・アドオン許可などダイアログが増えたため、フォーカストラップ・Esc 閉じ・外部クリック閉じを MUI Dialog に委ね、ヘッダー／フッターと配色（`DialogFrame.module.css` の `.window` で `--fixed-*` パレットに固定）を `DialogFrame` へ共通化する方式に移行した |
+| 設定ダイアログの所有者 | A) `App`（プレゼンテーション画面）が持つ B) `RootContent`（Root 直下）が持つ C) 画面ごとに別インスタンスを持つ | **B) `RootContent` が持つ** | 言語設定を持つ `I18nProvider` は Root 直下にあるのに、変更 UI が `App` のライフサイクル内に閉じ込められていたことが「ホーム画面で言語を変更できない」原因だった。データ（開閉状態）の所有は使用側の共通祖先に置くという原則に従い、ホーム画面・プレゼンテーション画面・編集画面の共通祖先へ引き上げた。C) は同じダイアログの実装が複数箇所に散り、状態の同期が必要になるため却下 |
+| プレゼンテーション専用設定の出し分け | A) props 未指定で行を非表示 B) `variant`/`mode` prop で表示セットを切り替え C) 画面ごとに別のウィンドウコンポーネント | **A) props 未指定で行を非表示** | `SettingsWindow` は既に `onOpenShortcuts` / `onToggleEmbeddedAddons` を「渡されたときだけ行を描画する」規約で拡張してきた（FR-010）。`scrollSpeed` / `setScrollSpeed` を optional にするだけで FR-011 を満たせ、新しい概念（variant）を導入しないで済む |
+| 編集画面（SlideEditor）への設定導線 | A) 今回追加する B) スコープ外とする | **B) スコープ外とする** | 現状 `SlideEditor.tsx` に設定導線が存在せず、追加は新機能になる。加えて編集画面は `editorUiTheme`（コンパクトな固定サイズ）で描画されるため、設定ダイアログを重ねるにはテーマ境界の設計が別途必要。ダイアログ自体は Root にあるので、将来 `onOpenSettings` を1つ渡すだけで対応できる状態にしてある |
 
 ## 9.2. 永続化ストレージ詳細比較
 
@@ -291,11 +374,37 @@ interface SettingsWindowProps {
 
 | 課題                                                                                                                                                                                                 | 影響度 | 対応方針                                                                                                                                    |
 |----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----|-----------------------------------------------------------------------------------------------------------------------------------------|
-| 設定UIのCSSに一部ハードコード色が残存しており、A-002（色値ハードコード禁止）に完全準拠していない。具体的には `SettingsButton.module.css` の前景色 `color: #fff`、`SettingsWindow.module.css` のオーバーレイ背景 `rgba(0, 0, 0, 0.5)` と box-shadow `rgba(0, 0, 0, 0.4)` | 低   | 前景色・オーバーレイ用の `--theme-*` CSS変数を追加して置き換える。視認性確保のための黒半透明オーバーレイはテーマ非依存の妥当値だが、変数化することで一貫性を高める余地がある。CSSはコード側の変更となるため本設計書では課題として記録するにとどめる |
+| 設定UIのCSSに一部ハードコード色が残存しており、A-002（色値ハードコード禁止）に完全準拠していない。具体的には `SettingsButton.module.css` の前景色 `color: #fff`、`DialogFrame.module.css` の box-shadow `rgba(0, 0, 0, 0.4)`（オーバーレイ背景は MUI Dialog の backdrop に委譲済み） | 低   | 前景色・影用の `--theme-*` CSS変数を追加して置き換える。視認性確保のための黒半透明の影・バックドロップはテーマ非依存の妥当値だが、変数化することで一貫性を高める余地がある。CSSはコード側の変更となるため本設計書では課題として記録するにとどめる |
+
+## 9.4. ダイアログを ThemeProvider で包む理由
+
+`RootContent` の `SettingsWindow` / `ShortcutsDialog` は `<ThemeProvider theme={theme}>`（`src/theme.ts`）で包む。App / presenterViewEntry / SlideEditor と同じく「MUI を使うサブツリーには必ずテーマを与える」という慣習に従うためで、外すと配色が崩れる。
+
+理由は CSS の詳細度にある。
+
+- `DialogFrame` は MUI `Dialog` の paper スロットへ `DialogFrame.module.css` の `.window` を渡し、`background: var(--theme-background-alt)` で背景色を決めている
+- MUI が paper に付ける `.MuiPaper-root` も単一クラスセレクタであり、`.window` と詳細度が同等になる。したがって勝敗は宣言順に依存し、`.MuiPaper-root` 側の `background-color` が後勝ちすると背景が上書きされる
+- `theme` は `MuiPaper.styleOverrides.root` で `backgroundImage: 'none'` を指定し、パレットを `mode: 'dark'` / `background.paper: '#292524'` に固定している。ThemeProvider を外すと MUI 既定（ライトテーマ）の paper 色とエレベーション用グラデーションが適用され、暗色前提の設定ダイアログの配色が破綻する
+
+そのため、ダイアログを Root へ引き上げる際もテーマ境界を必ず一緒に持ち上げる。
 
 ---
 
 # 10. 変更履歴
+
+## v1.3.0 (2026-07-28)
+
+**設定ダイアログの Root 層への引き上げ（FR-LANG-011 追加）:**
+
+- 設定・ショートカットダイアログの所有者を `App` から `main.tsx` の `RootContent` へ移動（開閉 state と実体の描画。画面本体の兄弟として1インスタンスのみ）。`view` 変化時に `useEffect` で閉じることで、従来の「App 再マウントで閉じる」挙動を維持（§4.4・§9.1）
+- `HomeScreen` に必須 prop `onOpenSettings` と左上の `SettingsButton` を追加（`.settingsCorner` は `position: fixed`。`.container` が `overflow-y: auto` のスクロール領域のため）。読み込み中も無効化しない（FR-001）
+- `SettingsWindow` の `scrollSpeed` / `setScrollSpeed` を optional 化し、両方揃ったときのみスクロール速度行を描画。ホーム画面ではグローバル設定のみを提示する（FR-011）
+- アドオン信頼設定を `src/hooks/useAddonSettings.ts` に、スクロール速度の永続化を `src/hooks/useScrollSpeed.ts` に抽出（`useAutoSlideshow` は controlled 化し `scrollSpeed` を必須オプションで受け取る）
+- `App` に `scrollSpeed` / `onScrollSpeedChange` / `onOpenSettings` / `onOpenShortcuts` を追加し、読み出しのない `scrollSpeedRef` 系を削除
+- ダイアログを `ThemeProvider` で包む理由（`.window` と `.MuiPaper-root` の詳細度が同等）を §9.4 に記録
+- 編集画面（`SlideEditor`）への設定導線をスコープ外とした判断を §9.1 に記録
+- 技術スタック・§9.1「設定ウィンドウの実装」を実態（`DialogFrame` = MUI Dialog）へ訂正し、§9.3 のハードコード色の所在も実態（`DialogFrame.module.css` の box-shadow。オーバーレイ背景は MUI backdrop へ移行済み）へ更新
+- テスト戦略に `useScrollSpeed` / `useAddonSettings` / `HomeScreen` / `e2e/settings.spec.ts` を追記
 
 ## v1.2.0 (2026-07-24)
 

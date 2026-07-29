@@ -520,13 +520,15 @@ from the settings window. The selected language is saved to `localStorage` and p
 
 ### Settings Window
 
-Click the gear icon (settings button) in the upper right corner to open the settings window and select a language. The
-same language setting is applied to the presenter view.
+Click the gear icon (settings button) in the upper left corner to open the settings window and select a language. It is
+available both on the home screen and during a presentation, so you can switch languages right after the first launch
+without opening a deck. The same language setting is applied to the presenter view.
 
 ![Settings window — Language / Scroll Speed / showing the keyboard shortcuts / how embedded add-ons are handled](resources/screenshots/en/settings.png)
 
 Besides the language, the settings window lets you set the auto-slideshow **Scroll Speed (sec)**, **Show** the keyboard
 shortcut list, and control embedded add-ons (**Always disable embedded add-ons** and **Reset add-on trust history**).
+**Scroll Speed (sec)** only applies while presenting, so it is hidden when you open the settings from the home screen.
 
 ### Language Resource Structure
 

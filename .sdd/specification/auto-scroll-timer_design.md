@@ -6,7 +6,7 @@ status: draft
 sdd-phase: plan
 impl-status: implemented
 created: 2026-02-02
-updated: 2026-07-24
+updated: 2026-07-28
 depends-on:
   - spec-auto-scroll-timer
 tags:
@@ -22,7 +22,7 @@ category: presentation-playback
 
 **ドキュメント種別:** 技術設計書 (Design Doc)
 **SDDフェーズ:** Plan (計画/設計)
-**最終更新日:** 2026-07-24
+**最終更新日:** 2026-07-28
 **関連 Spec:** [auto-scroll-timer_spec.md](./auto-scroll-timer_spec.md)
 **関連 PRD:** [auto-scroll-timer.md](../requirement/auto-scroll-timer.md)
 
@@ -36,8 +36,8 @@ category: presentation-playback
 
 | モジュール/機能                     | ステータス    | 備考                      |
 |------------------------------|----------|-------------------------|
-| useAutoSlideshow タイマーロジック追加  | 🟢 実装済み  | 既存フックの拡張                |
-| scrollSpeed 状態管理             | 🟢 実装済み  |                         |
+| useAutoSlideshow タイマーロジック追加  | 🟢 実装済み  | 既存フックの拡張。scrollSpeed は controlled（引数で受け取る） |
+| scrollSpeed 状態管理             | 🟢 実装済み  | `useScrollSpeed`（Root 層で所有・localStorage 永続化） |
 | SettingsWindow スクロールスピード設定UI | 🟢 実装済み  |                         |
 | Tauri Event スクロールスピード同期    | 🟢 実装済み  | 発表者ビューとの同期              |
 
@@ -58,7 +58,7 @@ category: presentation-playback
 | 領域       | 採用技術                   | 選定理由                                                                |
 |----------|------------------------|---------------------------------------------------------------------|
 | タイマー     | setTimeout             | 一定時間後の1回実行に適しており、setInterval より制御が容易。スライド遷移ごとにリセットするためワンショットタイマーが自然 |
-| 状態管理     | React useState         | scrollSpeed は既存の useAutoSlideshow フック内でローカル状態として管理。新たなContext追加は不要  |
+| 状態管理     | React useState（専用フック `useScrollSpeed`） | scrollSpeed は複数の消費者を持つ localStorage 永続のグローバル設定。共通祖先である Root 層（`main.tsx` の `RootContent`）で所有し、消費者へは props で配る。Context は消費者が近接しており不要（§9.1 参照） |
 | 設定UI     | ネイティブ HTML input + CSS Modules | SettingsWindow が CSS Modules で構築されており、MUI を使わずネイティブ要素で統一              |
 | ウィンドウ間同期 | Tauri Event（`@tauri-apps/api/event` の emit/listen） | 既存の発表者ビュー通信基盤（イベント/チャネル名 `presenter-view`）を拡張。新規メッセージタイプ `scrollSpeedChange` を追加 |
 
@@ -71,10 +71,14 @@ category: presentation-playback
 ```mermaid
 graph TD
     subgraph "メインウィンドウ"
+        subgraph "Root 層 (main.tsx)"
+            RootContent[RootContent]
+            UseScrollSpeed["useScrollSpeed<br/>scrollSpeed 所有 + localStorage 永続化"]
+            SettingsWindow[SettingsWindow<br/>+ スクロールスピード設定]
+        end
         App[App.tsx]
         UseAutoSlideshow[useAutoSlideshow<br/>+ タイマーロジック]
         AudioPlayer[useAudioPlayer]
-        SettingsWindow[SettingsWindow<br/>+ スクロールスピード設定]
         Reveal[Reveal.js]
     end
 
@@ -87,11 +91,14 @@ graph TD
         Evt["Tauri Event<br/>(@tauri-apps/api/event)<br/>チャネル: presenter-view"]
     end
 
+    RootContent --> UseScrollSpeed
+    RootContent -- "scrollSpeed / setScrollSpeed" --> SettingsWindow
+    RootContent -- "scrollSpeed / onScrollSpeedChange" --> App
     App --> UseAutoSlideshow
     UseAutoSlideshow --> AudioPlayer
     UseAutoSlideshow --> Reveal
-    SettingsWindow --> UseAutoSlideshow
-    UseAutoSlideshow --> Evt
+    App -- "controlStateChanged（scrollSpeed 含む）" --> Evt
+    Evt -- "scrollSpeedChange → onScrollSpeedChange" --> App
     Evt --> PVWindow
     PVControls --> Evt
 ```
@@ -100,11 +107,13 @@ graph TD
 
 | モジュール名                | 責務                          | 依存関係                   | 配置場所                                |
 |-----------------------|-----------------------------|------------------------|-------------------------------------|
-| useAutoSlideshow (拡張) | タイマーロジック、scrollSpeed 状態管理   | useAudioPlayer, Reveal | `src/hooks/useAutoSlideshow.ts`     |
-| SettingsWindow (拡張)   | スクロールスピード入力UI               | useAutoSlideshow       | `src/components/SettingsWindow.tsx` |
+| useScrollSpeed (新規)   | scrollSpeed の保持・localStorage 永続化・復元値の検証 | localStorage           | `src/hooks/useScrollSpeed.ts`       |
+| RootContent (拡張)      | scrollSpeed の所有（`useScrollSpeed` 呼び出し）と消費者への配布 | useScrollSpeed         | `src/main.tsx`                      |
+| useAutoSlideshow (拡張) | 自動再生・自動送り・タイマーロジック（scrollSpeed は引数で受け取る） | useAudioPlayer, Reveal | `src/hooks/useAutoSlideshow.ts`     |
+| SettingsWindow (拡張)   | スクロールスピード入力UI（値・setter は props。未指定時は当該行を非表示） | RootContent (props)    | `src/components/SettingsWindow.tsx` |
 | usePresenterView (拡張) | scrollSpeedChange メッセージの送受信 | Tauri Event (emit/listen) | `src/hooks/usePresenterView.ts`     |
 
-## 4.3. useAutoSlideshow の変更概要
+## 4.3. useAutoSlideshow / useScrollSpeed の変更概要
 
 ```
 useAutoSlideshow (既存)
@@ -116,7 +125,7 @@ useAutoSlideshow (既存)
 useAutoSlideshow (拡張後)
 ├── autoPlay 状態管理
 ├── autoSlideshow 状態管理
-├── scrollSpeed 状態管理（localStorage 永続化付き） ← 追加
+├── scrollSpeed を引数で受け取る（controlled。所有は useScrollSpeed）← 変更
 ├── timerDuration 算出（プログレス表示用）            ← 追加
 ├── 音声自動再生（スライド変更時）
 ├── 音声終了/エラー → 次スライド遷移（エラー時はタイマーフォールバック）
@@ -126,6 +135,11 @@ useAutoSlideshow (拡張後)
     ├── スライド変更時に clearTimeout
     ├── 最終スライドではタイマー不開始
     └── voice 定義済みかつ音声読み込み成功時はタイマー不開始
+
+useScrollSpeed (新規)
+├── DEFAULT_SCROLL_SPEED / SCROLL_SPEED_STORAGE_KEY の定義
+├── 初期化時に localStorage を1回読み、検証して初期値を決定
+└── setter: state 更新 + localStorage への永続化
 ```
 
 ---
@@ -134,18 +148,21 @@ useAutoSlideshow (拡張後)
 
 ## 5.1. スクロールスピードのデフォルト値と永続化
 
+定数はいずれも `src/hooks/useScrollSpeed.ts` に置く（`DEFAULT_SCROLL_SPEED` のみ export、キーはモジュールプライベート）。
+
 ```typescript
-const DEFAULT_SCROLL_SPEED = 20  // 秒
+export const DEFAULT_SCROLL_SPEED = 20  // 秒
 const SCROLL_SPEED_STORAGE_KEY = 'slide-app-scroll-speed'
 ```
 
-scrollSpeed は `localStorage` に永続化される。初期値の決定順序:
+scrollSpeed は `localStorage` に永続化される。初期値の決定は `useScrollSpeed` の責務で、`useState` の初期化関数内で次の順に解決する:
 
-1. `initialScrollSpeed` オプションが指定されていればその値
-2. `localStorage` に保存値があり、有効な数値（≥ 1）であればその値
-3. いずれもなければ `DEFAULT_SCROLL_SPEED`（20秒）
+1. `localStorage` に保存値があり、`Number` 変換後に `Number.isFinite(parsed) && parsed >= 1` を満たせばその値
+2. 未保存または無効値なら `DEFAULT_SCROLL_SPEED`（20秒）
 
-**有効範囲:** 設定 UI（`SettingsWindow` の数値入力）で下限 1・上限 300 秒を強制する（`min={1}` / `max={300}` および `onChange` の `1 ≤ v ≤ 300` ガード）。hook 側の `localStorage` 読み込み時の検証は下限（≥ 1）のみで、上限チェックは設定 UI が担う。
+`useAutoSlideshow` は初期値解決に関与しない（`scrollSpeed` を必須引数として受け取るだけ）。この結果、`localStorage` を読むのは**アプリ起動時の 1 回だけ**になる（従来は `App` のマウント毎、すなわちデッキを開く毎に読み直していた）。
+
+**有効範囲:** 設定 UI（`SettingsWindow` の数値入力）で下限 1・上限 300 秒を強制する（`min={1}` / `max={300}` および `onChange` の `1 ≤ v ≤ 300` ガード）。`useScrollSpeed` の `localStorage` 読み込み時の検証は下限（≥ 1）のみで、上限チェックは設定 UI が担う（§9.2 参照）。
 
 ## 5.2. 発表者ビュー通信（Tauri Event）メッセージ拡張
 
@@ -168,13 +185,17 @@ type PresenterViewMessage =
 # 6. インターフェース定義
 
 ```typescript
+/** useScrollSpeed（新規）: scrollSpeed の所有フック。値と setter のタプルを返す */
+function useScrollSpeed(): [number, (speed: number) => void]
+
 /** UseAutoSlideshowOptions の拡張 */
 interface UseAutoSlideshowOptions {
   slides: SlideData[]
   currentIndex: number
   audioPlayer: UseAudioPlayerReturn
   goToNext: () => void
-  initialScrollSpeed?: number  // 初期スクロールスピード（秒）
+  /** タイマー自動送りの秒数。localStorage 永続のグローバル設定なので所有者は Root（useScrollSpeed）側 */
+  scrollSpeed: number
 }
 
 /** UseAutoSlideshowReturn の拡張 */
@@ -183,13 +204,27 @@ interface UseAutoSlideshowReturn {
   setAutoPlay: (enabled: boolean) => void
   autoSlideshow: boolean
   setAutoSlideshow: (enabled: boolean) => void
-  scrollSpeed: number
-  setScrollSpeed: (speed: number) => void
   /** タイマーがアクティブな場合の総時間（秒）。非アクティブ時は null。
    *  プログレス表示用に使用（→ [auto-scroll-progress-bar_design.md](./auto-scroll-progress-bar_design.md)） */
   timerDuration: number | null
 }
+
+/** SettingsWindow の props（抜粋）: スクロールスピードはプレゼンテーション画面専用のため任意 */
+type SettingsWindowProps = {
+  scrollSpeed?: number
+  setScrollSpeed?: (speed: number) => void
+  // ...（言語・アドオン設定等は language-settings 側の設計を参照）
+}
+
+/** App の props（抜粋）: 値は Root から受け取り、変更は Root へ返す */
+type AppProps = {
+  scrollSpeed: number
+  onScrollSpeedChange: (speed: number) => void
+  // ...
+}
 ```
+
+`useAutoSlideshow` は `scrollSpeed` / `setScrollSpeed` を返さない。参照元は `useScrollSpeed` に一本化されており、`DEFAULT_SCROLL_SPEED` の再 export も行わない。
 
 ---
 
@@ -199,7 +234,7 @@ interface UseAutoSlideshowReturn {
 |----------------------------|-----------|--------------------------------------------------------------------|
 | NFR-001 / NFR_AST_001      | タイマー精度    | setTimeout の精度で十分。秒単位の遷移にミリ秒精度は不要（許容誤差 ±1 秒以内）                    |
 | NFR-002 / NFR_AST_002      | タイマーリーク防止 | useEffect のクリーンアップ関数で clearTimeout を実行。スライド変更・アンマウント時に確実にクリアし、アクティブなタイマーは最大 1 個 |
-| NFR-003 / NFR_AST_003      | 設定変更の即時反映 | scrollSpeed を useState で管理し、useEffect の依存配列に含めることで、変更時にタイマーが再設定される |
+| NFR-003 / NFR_AST_003      | 設定変更の即時反映 | scrollSpeed を Root 層の useState（`useScrollSpeed`）で管理し、props で受け取った値を `useAutoSlideshow` の useEffect 依存配列に含めることで、変更時にタイマーが再設定される |
 
 ---
 
@@ -212,10 +247,15 @@ interface UseAutoSlideshowReturn {
 | ユニットテスト    | useAutoSlideshow: 最終スライドでのタイマー不動作         | 主要パス    | ✅ 実装済み |
 | ユニットテスト    | useAutoSlideshow: autoSlideshow OFF 時のタイマー不動作 | 主要パス | ✅ 実装済み |
 | ユニットテスト    | useAutoSlideshow: 手動スライド移動時のタイマーリセット      | 主要パス    | ✅ 実装済み |
-| ユニットテスト    | useAutoSlideshow: scrollSpeed 変更時のタイマー再設定 | 主要パス    | ✅ 実装済み |
-| ユニットテスト    | useAutoSlideshow: scrollSpeed のデフォルト値／initialScrollSpeed／timerDuration | 主要パス | ✅ 実装済み |
+| ユニットテスト    | useAutoSlideshow: scrollSpeed 変更時のタイマー再設定（`rerender` で外から値を変える） | 主要パス | ✅ 実装済み |
+| ユニットテスト    | useAutoSlideshow: timerDuration の算出（voice 有無 / autoSlideshow OFF） | 主要パス | ✅ 実装済み |
+| ユニットテスト    | useScrollSpeed: 保存値なし時のデフォルト値（20 秒）        | 主要パス    | ✅ 実装済み（`useScrollSpeed.test.ts`） |
+| ユニットテスト    | useScrollSpeed: localStorage 保存値の復元             | 主要パス    | ✅ 実装済み |
+| ユニットテスト    | useScrollSpeed: 不正な保存値（数値でない・0・負値・空文字）を無視してデフォルト値 | 境界値 | ✅ 実装済み（`it.each`） |
+| ユニットテスト    | useScrollSpeed: setter が state と localStorage の両方を更新 | 主要パス | ✅ 実装済み |
 | ユニットテスト    | useAutoSlideshow: voice 定義済みだが音声読み込み失敗時のタイマーフォールバック | 主要パス | ⚠️ 未カバー（テスト未実装。§9.2 参照） |
 | コンポーネントテスト | SettingsWindow: スクロールスピード入力の表示・変更         | ハッピーパス  | ✅ 実装済み（`SettingsWindow.test.tsx`） |
+| コンポーネントテスト | SettingsWindow: scrollSpeed 未指定時にスクロールスピード行を表示しない（ホーム画面） | 主要パス | ✅ 実装済み |
 
 > 注: 音声読み込み失敗時のタイマーフォールバック（FR_AST_006 の後段 / DC_SNA_002）はロジックとしては `useAutoSlideshow`（`shouldUseTimer` が `audioPlayer.hasError` を判定）に実装済みだが、これを検証する専用のユニットテストは現時点で存在しない。詳細は §9.2 未解決の課題を参照。
 
@@ -228,20 +268,49 @@ interface UseAutoSlideshowReturn {
 | 決定事項              | 選択肢                                                                         | 決定内容                      | 理由                                                                                                       |
 |-------------------|-----------------------------------------------------------------------------|---------------------------|----------------------------------------------------------------------------------------------------------|
 | タイマー実装方式          | A) setTimeout B) setInterval C) requestAnimationFrame                       | **A) setTimeout**         | スライド遷移はワンショット実行であり、setTimeout が最も自然。setInterval は繰り返し実行のため制御が複雑になる。rAF はアニメーション用途で秒単位の遅延には不適切            |
-| scrollSpeed の管理場所 | A) useAutoSlideshow 内 B) 新規Context C) App.tsx のprops                        | **A) useAutoSlideshow 内** | scrollSpeed は自動スライドショーロジックと密結合。既存フック内に状態を追加することで、外部への依存を最小化し、コンポーネント分離（A-001）を維持                         |
+| scrollSpeed の管理場所 | A) useAutoSlideshow 内 B) 新規Context C) Root 層（`RootContent`）で所有し props で配布 D) App が setter を Root へ登録 | **C) Root 層で所有**（当初は A。設定ダイアログの Root 引き上げに伴い変更） | scrollSpeed は localStorage 永続のグローバル設定で、消費者が3つ（タイマー・設定 UI・発表者ビュー同期）に分散しており、その共通祖先が `RootContent` である。所有を共通祖先に置くのが状態配置の原則に合う（詳細は下記「補足」） |
 | 設定UIの配置先          | A) language-settings の SettingsWindow B) AudioControlBar に追加 C) 新規UIコンポーネント | **A) SettingsWindow**     | PRDの要求（FR_AST_002）で「設定ウィンドウから変更」と明記。language-settings の SettingsWindow（FR-LANG-010: 拡張性）に設定項目として追加するのが自然 |
 | 自動スライドショートグルの共有   | A) 既存トグル共有 B) 別トグル新設                                                        | **A) 既存トグル共有**            | タイマーベース自動スクロールは自動スライドショーの一部（音声なしスライド向けの補完機能）であるため、既存の autoSlideshow トグルを共有。ユーザーに追加の操作負担を与えない             |
+
+### 補足: scrollSpeed の所有権を Root 層へ移した経緯
+
+**きっかけ:** ホーム画面に設定画面への導線がなく、スライドを開くまで UI 言語を変更できなかった。これを解決するため設定ダイアログ（`SettingsWindow`）を `App` から `main.tsx` の `RootContent`（Root 層）へ引き上げた。その副作用として、設定 UI が参照する scrollSpeed の所有権も見直す必要が生じた。
+
+**判断:** scrollSpeed は `localStorage` 永続のグローバル設定であり、消費者は次の3つに分散している。
+
+| 消費者              | 所在                              | 用途                                        |
+|------------------|---------------------------------|-------------------------------------------|
+| タイマー自動送り         | `App` 内の `useAutoSlideshow`     | `setTimeout(goToNext, scrollSpeed * 1000)` |
+| 設定 UI            | Root の `SettingsWindow`         | 数値入力による変更（1〜300）                          |
+| 発表者ビュー同期         | `App` の `sendControlState`      | `controlStateChanged` で発表者ビューへ現在値を通知       |
+
+これら3つの共通祖先が `RootContent` なので、所有もそこに置く（React における「状態は共通祖先へ持ち上げる」原則）。値の実体は `useScrollSpeed`（`src/hooks/useScrollSpeed.ts`）に切り出し、`App` へは `scrollSpeed` / `onScrollSpeedChange` の props で渡す。
+
+**採らなかった案:** `App` が状態を持ち続け、setter だけを Root へ登録する方式（選択肢 D）。値の実体（App の state）と参照（Root の SettingsWindow）が分裂して**二重の真実源**になり、どちらが正なのかがコードから読み取れなくなるため却下した。実装量の多寡ではなく、真実源が一つに保てるかで判断している。
+
+**副産物:** 従来は `App` のマウント毎（＝デッキを開く毎）に `localStorage` を読み直していたが、所有が Root に移ったことで**アプリ起動時 1 回**になった。加えて `App.tsx` にあった死んだ `scrollSpeedRef`（書き込みのみで読み出しがなかった）と `setScrollSpeedRef` / `handleScrollSpeedChange` を削除でき、発表者ビューからの `scrollSpeedChange` は props をそのまま `usePresenterView` の `onScrollSpeedChange` に渡す形に単純化された。
 
 ## 9.2. 未解決の課題
 
 | 課題                                             | 影響度 | 対応方針                                                                                                     |
 |------------------------------------------------|-----|----------------------------------------------------------------------------------------------------------|
 | 音声読み込み失敗時のタイマーフォールバックに対する専用ユニットテストが未整備 | 中   | フォールバックロジック自体は `useAutoSlideshow`（`shouldUseTimer` が `audioPlayer.hasError` を判定）に実装済みだが、`audioPlayer.hasError=true` かつ voice 定義済みのケースでタイマーが起動することを検証するテストは未作成。回帰検知のため今後 `useAutoSlideshow.test.ts` にテストを追加する |
-| スクロールスピード上限（300 秒）が hook 側で未検証             | 低   | 上限 300 は設定 UI（`SettingsWindow`）でのみ強制され、`initialScrollSpeed` 直接指定や `localStorage` 読み込みでは上限チェックがない。現状は設定 UI 経由の変更が唯一の入口のため実害はないが、将来 hook 側にも上限検証を持たせるか検討する |
+| スクロールスピード上限（300 秒）の検証が設定 UI にしかない          | 低   | 検証の所在が2箇所に分かれている。**下限（≥ 1）**は `useScrollSpeed` の `localStorage` 復元時と `SettingsWindow` の `onChange` ガードの両方にあるが、**上限（≤ 300）**は `SettingsWindow`（`max={300}` と `1 ≤ v ≤ 300` ガード）のみで、`useScrollSpeed` 側にはない。値の変更経路が設定 UI と発表者ビューの `scrollSpeedChange` に限られ、`localStorage` に入る値も設定 UI 由来のため実害はないが、将来 `useScrollSpeed` 側にも上限検証を寄せるか検討する |
 
 ---
 
 # 10. 変更履歴
+
+## v1.3.0 (2026-07-28)
+
+**scrollSpeed の所有権を Root 層へ移動（設定ダイアログの Root 引き上げに伴う変更）:**
+
+- `useScrollSpeed`（`src/hooks/useScrollSpeed.ts`）を新設。`DEFAULT_SCROLL_SPEED`・localStorage キー・初期値の検証・setter の永続化を `useAutoSlideshow` から移設（§4.2 / §4.3 / §5.1）
+- `useAutoSlideshow` を controlled 化。`initialScrollSpeed?: number` → `scrollSpeed: number`（必須）、戻り値から `scrollSpeed` / `setScrollSpeed` を削除（§6）
+- 所有者を `main.tsx` の `RootContent` に変更し、`SettingsWindow`（`scrollSpeed` / `setScrollSpeed` は optional。ホーム画面では非表示）と `App`（`scrollSpeed` / `onScrollSpeedChange`）へ props で配布（§4.1 図 / §4.2 / §9.1）
+- §9.1 に所有権を Root へ移した理由と、採らなかった案（App が setter を Root へ登録する二重の真実源）を追記
+- §8 テスト戦略に `useScrollSpeed.test.ts`（デフォルト値・復元・不正値・setter）と SettingsWindow の非表示ケースを反映
+- §9.2 の上限未検証の課題を、下限（`useScrollSpeed`）と上限（`SettingsWindow`）の検証所在の整理として書き換え
 
 ## v1.2.0 (2026-07-24)
 

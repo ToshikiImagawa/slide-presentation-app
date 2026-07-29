@@ -6,7 +6,7 @@ status: approved
 sdd-phase: plan
 impl-status: implemented
 created: 2026-07-22
-updated: 2026-07-26
+updated: 2026-07-28
 depends-on:
   - spec-package-embedded-addon
 tags:
@@ -22,7 +22,7 @@ category: addon-system
 
 **ドキュメント種別:** 技術設計書 (Design Doc)
 **SDDフェーズ:** Plan (計画/設計)
-**最終更新日:** 2026-07-23
+**最終更新日:** 2026-07-28
 **関連 Spec:** [package-embedded-addon_spec.md](./package-embedded-addon_spec.md)
 **関連 PRD:** [package-embedded-addon.md](../requirement/package-embedded-addon.md)
 
@@ -43,10 +43,11 @@ category: addon-system
 | `addonLoader.ts`（新規） | 🟢 | FR-001 / FR-004。`loadAddonScripts`/`loadBuiltinAddons`。冪等化を単体テスト済み |
 | `addon-bridge.ts` owner 伝搬 | 🟢 | FR-002。`setCurrentAddonOwner` |
 | `localSlideLoader.ts` アドオン解決 | 🟢 | FR-005。`resolvePackageAddons`/`extractAddonBundlePaths`（純粋関数テスト済み） |
-| `main.tsx` 順序制御 | 🟢 | FR-003。破棄→await→再マウント。`sourcePath` で信頼判定 |
+| `main.tsx` 順序制御 | 🟢 | FR-003。破棄→await→再マウント。`sourcePath` で信頼判定。`RootContent` が設定ダイアログの開閉 state（`settingsOpen`）も保持する |
+| `useAddonSettings.ts`（新規） | 🟢 | FR-008〜009。アドオン信頼設定（一律無効化フラグ・層C 個別付け外し）の state / 復元 / 永続化を Root 側に集約。単体テスト済み |
 | 発表者ビュー伝搬 | 🟢 | FR-006。`addonsChanged` emit（usePresenterView）／描画前ロード（presenterViewEntry） |
 | `export-slides.mjs` 同梱 | 🟢 | FR-007。`--addons`／相対パス化／純粋関数テスト済み。`export:slides` に `build:addons` 前段 |
-| セキュリティ（信頼確認/オプトアウト） | 🟢 | FR-008〜010。`isAddonAllowed`（既定拒否）／`SettingsWindow` トグル・失効 |
+| セキュリティ（信頼確認/オプトアウト） | 🟢 | FR-008〜010。`isAddonAllowed`（既定拒否）／`SettingsWindow` トグル・失効・層C 個別付け外し。設定 state の所有者は `RootContent` + `useAddonSettings` |
 | 実機統合検証（4.5）・Windows(NFR-004) | 🔴 | headless 環境のため未実施。実機での A→B→A・発表者ビュー・拒否時の確認が残 |
 | lib.rs 検証テスト（任意 5.2） | ⚪ | 任意タスク。未実施（本体変更不要のため） |
 
@@ -86,12 +87,14 @@ graph TD
         EX[extract_slide_package]
         AL[allow_asset_dir 再帰]
     end
-    subgraph Main["メインウィンドウ (main.tsx)"]
+    subgraph Main["メインウィンドウ (main.tsx = Root)"]
         LSL[localSlideLoader.ts]
         LOADER[addonLoader.ts 新規]
         BRIDGE[addon-bridge.ts]
         REG[ComponentRegistry.tsx]
         PV[usePresenterView.ts]
+        HOOK[useAddonSettings.ts 新規]
+        SW[SettingsWindow Root がマウント]
     end
     subgraph Presenter["発表者ビュー (presenterViewEntry.tsx)"]
         PLOADER[addonLoader.ts 共用]
@@ -105,7 +108,11 @@ graph TD
     BRIDGE -->|registerComponent name comp owner| REG
     PV -->|emit addonsChanged| Presenter
     PLOADER --> PREG
+    SW -->|一律無効化 個別付け外し 失効| HOOK
+    HOOK -->|信頼判断の読み書き| LSL
 ```
+
+設定ダイアログ（`SettingsWindow`）はホーム画面・プレゼンテーション画面の双方から開くため、Root（`main.tsx` の `RootContent`）が開閉 state とダイアログ本体を持ち、アドオン信頼設定の state / 永続化は `useAddonSettings` が担う（詳細は §4.2 / §9.1）。
 
 ## 4.2. モジュール分割
 
@@ -115,11 +122,13 @@ graph TD
 | `addonLoader` | manifest 解決済み bundle の冪等 `<script>` 注入、組み込みロード集約 | `addon-bridge` | `src/addonLoader.ts`（新規） |
 | `addon-bridge` | `__ADDON_REGISTER__` に owner を伝搬 | `ComponentRegistry` | `src/addon-bridge.ts`（改修） |
 | `localSlideLoader` | `addons/manifest.json` 読取・asset URL 化、`owner`/`addonScripts` 返却、信頼判定 | Rust コマンド, `plugin-store`, `plugin-dialog` | `src/localSlideLoader.ts`（改修） |
-| `main.tsx` | 切替順序制御（破棄→await→再マウント）、`owner`/`addonScripts` 受領 | `addonLoader`, `ComponentRegistry`, `localSlideLoader` | `src/main.tsx`（改修） |
+| `main.tsx`（`RootContent`） | 切替順序制御（破棄→await→再マウント）、`owner`/`addonScripts` 受領。設定・ショートカットのダイアログ開閉 state（`settingsOpen`/`shortcutsOpen`）とダイアログ本体を保持し、`useAddonSettings` の返り値を `SettingsWindow` へ渡す | `addonLoader`, `ComponentRegistry`, `localSlideLoader`, `useAddonSettings`, `SettingsWindow` | `src/main.tsx`（改修） |
+| `useAddonSettings` | アドオン信頼設定の state・復元・永続化（一律無効化フラグ／層C の個別付け外し／失効）。`settingsOpen` が true になるたび `getAddonTrustMap()` 基点で信頼一覧を再構築し、更新は楽観更新＋失敗時ロールバック | `localSlideLoader`, `SettingsWindow`（`AddonTrustEntry` 型のみ） | `src/hooks/useAddonSettings.ts`（新規） |
 | `usePresenterView` | 切替時・ready 受信時に `addonsChanged` を emit | `types` | `src/hooks/usePresenterView.ts`（改修） |
 | `presenterViewEntry` | 受信アドオンを描画前にロード・登録、切替時 unregister | `addonLoader`, `ComponentRegistry` | `src/presenterViewEntry.tsx`（改修） |
-| `App` | `addonOwner`/`addonScripts` を props で受け取り `usePresenterView` へ中継。無効化トグル・信頼失効ハンドラ（`handleToggleAddonsDisabled`/`handleResetAddonTrust`）を保持し `SettingsWindow` へ渡す | `usePresenterView`, `localSlideLoader`, `SettingsWindow` | `src/App.tsx`（改修） |
-| `SettingsWindow` | 同梱アドオン一律無効化トグルと信頼失効ボタンの UI（`embeddedAddonsDisabled`/`onToggleEmbeddedAddons`/`onResetAddonTrust`） | なし | `src/components/SettingsWindow.tsx`（改修） |
+| `App` | `addonOwner`/`addonScripts` を props で受け取り `usePresenterView` へ中継。アドオン信頼設定は保持せず、ツールバーの `SettingsButton` は props の `onOpenSettings` を呼ぶだけ（ダイアログ本体は Root が持つ） | `usePresenterView` | `src/App.tsx`（改修） |
+| `HomeScreen` | 左上（`.settingsCorner`）に `SettingsButton` を置き、props の `onOpenSettings` で Root のダイアログを開く（スライドを開く前でも設定を変更できる） | なし | `src/components/HomeScreen.tsx`（改修） |
+| `SettingsWindow` | 同梱アドオン一律無効化トグル・信頼失効ボタン・層C 個別付け外しの UI（`embeddedAddonsDisabled`/`onToggleEmbeddedAddons`/`onResetAddonTrust`/`addonTrust`/`onSetAddonTrust`）。アドオン系 props は optional で、渡らない場合は該当行を描画しない | なし | `src/components/SettingsWindow.tsx`（改修） |
 | `types` | `PresenterViewMessage` に `addonsChanged` 追加 | なし | `src/data/types.ts`（改修） |
 | `export-slides` | `--addons` でアドオン同梱、manifest 相対パス化 | なし | `scripts/export-slides.mjs`（改修） |
 
@@ -148,7 +157,7 @@ interface PackageAddonManifest {
 type AddonTrustDecision = 'allowed' | 'denied'
 type AddonTrustMap = Record<string /* path */, AddonTrustDecision>
 
-// 設定（グローバル一律無効化）— 既存 SettingsWindow で管理
+// 設定（グローバル一律無効化）— UI は SettingsWindow、state / 永続化は useAddonSettings が管理
 interface AddonSettings {
   disableEmbeddedAddons: boolean
 }
@@ -190,6 +199,18 @@ export async function resetAddonTrust(): Promise<void>                          
 // ※ hasAddons 判定は isAddonAllowed に含めず、呼び出し側 main.tsx（applyPackageAddons）で
 //   `pkg.addonScripts.length > 0 && (await isAddonAllowed(pkg.sourcePath))` として合成する
 
+// hooks/useAddonSettings.ts（新規）— アドオン信頼設定の state / 永続化を Root 側に集約
+export interface UseAddonSettingsReturn {
+  addonsDisabled: boolean                 // 一律無効化フラグ（FR-009）
+  addonTrustList: AddonTrustEntry[]        // 層C の個別付け外し対象（FR-008）
+  handleToggleAddonsDisabled: (disabled: boolean) => void
+  handleResetAddonTrust: () => void
+  handleSetAddonTrust: (path: string, decision: AddonTrustDecision | undefined) => void
+}
+export function useAddonSettings(settingsOpen: boolean): UseAddonSettingsReturn
+// settingsOpen が true になるたび getRecentSlidePackages() + getAddonTrustMap() で信頼一覧を再構築する
+// （trustMap 全キーを基点にし、title は recent から補完。§9.1「層C 信頼一覧の生成元」）
+
 // usePresenterView.ts
 export function usePresenterView(options: { slides; addonOwner?; addonScripts?; ... }): UsePresenterViewReturn
 // hook オプション addonOwner/addonScripts を受け取り、マウント時と presenterViewReady 受信時に
@@ -202,7 +223,7 @@ export function usePresenterView(options: { slides; addonOwner?; addonScripts?; 
 
 | 要件 | 実現方針 |
 |------|------|
-| NFR-001 セキュリティ | `isAddonAllowed` で「設定の一律無効化 → path 単位の永続化判断 → 未判断は確認ダイアログ（既定拒否）」を通過したときのみ `loadAddonScripts` を呼ぶ。一律無効化トグルは既存 `SettingsWindow` に追加。ロード対象は manifest 宣言かつ `baseDir/addons/` 配下に限定（FR-010）。README に信頼発行元・無効化を明記 |
+| NFR-001 セキュリティ | `isAddonAllowed` で「設定の一律無効化 → path 単位の永続化判断 → 未判断は確認ダイアログ（既定拒否）」を通過したときのみ `loadAddonScripts` を呼ぶ。一律無効化トグルは既存 `SettingsWindow` に追加し、その `SettingsWindow` は Root（`main.tsx`）がマウントするためホーム画面（スライドを開く前）からも無効化できる。設定 state と永続化は `useAddonSettings` に集約。ロード対象は manifest 宣言かつ `baseDir/addons/` 配下に限定（FR-010）。README に信頼発行元・無効化を明記 |
 | NFR-002 リグレッション | 起動時ロードは `loadBuiltinAddons()`（旧 `loadAddons` を移設）として分離保持。`registerComponent` の owner は任意引数のため既存呼び出しは無変更。typecheck/test をゲートにする |
 | NFR-003 切替堅牢性 | 切替の度に旧 owner を `unregisterOwner` → 新 owner を `await` ロード → 再マウント。ホーム復帰・サンプル表示時も旧 owner を unregister。owner=baseDir で A/B を一意識別 |
 | NFR-004 実機互換 | ロード方式は PoC 済みの asset script 注入。Windows(WebView2) は追跡課題として `9.2` に記載 |
@@ -217,6 +238,7 @@ export function usePresenterView(options: { slides; addonOwner?; addonScripts?; 
 | 単体（Vitest） | `addonLoader`: 同一 src の二重注入なし・CSS 冪等 | 主要分岐 |
 | 単体（Vitest） | `export-slides`: manifest bundle の相対パス書換・`files` に `addons` 追加 | 正常系 |
 | 単体（Vitest） | 信頼判定: 一律無効/許可済み/拒否済み/未判断 の分岐 | 分岐網羅 |
+| 単体（Vitest） | `useAddonSettings`（`src/hooks/__tests__/useAddonSettings.test.ts`）: 一律無効化フラグの復元・`settingsOpen` false の間は一覧を取得しない・trustMap 基点の一覧構築（title は recent 補完）・個別許可/未設定戻しの楽観更新・保存失敗時のロールバック | 分岐網羅 |
 | 結合（手動/デモ） | A→B→A 切替で残留・混線なし、再オープンで二重注入なし、発表者ビューで fallback にならない、拒否時もスライドは開ける | AC 全項目 |
 | リグレッション | `npm run typecheck` / `npm run test`、既存ビルド時同梱の動作 | 全通過 |
 
@@ -236,6 +258,7 @@ export function usePresenterView(options: { slides; addonOwner?; addonScripts?; 
 | セキュリティ緩和 | origin/iframe 分離 / オプトアウト | **オプトアウト** | 分離は React 単一インスタンス共有要件と両立しない |
 | 初回既定挙動 | 確認して拒否 / 確認して許可待ち / 一律無効 | **確認して既定拒否** | RCE 相当リスクに対し安全側に倒す（ユーザー確認済み） |
 | Rust 側 | 変更 / 変更不要 | **変更不要** | `extract_tgz` の `package/` 展開と `allow_asset_dir` の再帰許可で `addons/` を包含 |
+| アドオン信頼設定 state の所有者 | `App` が保持 / Root（`main.tsx`）に直書き / Root から専用フックへ抽出 | **Root から専用フック `useAddonSettings` へ抽出**（2026-07-28） | 設定ダイアログをホーム画面からも開けるようにするため、ダイアログ本体の所有者を `App` から共通祖先の Root（`RootContent`）へ引き上げた。それに伴い設定に紐づくアドオン信頼ロジック（2 state・2 effect・4 callback）も移動するが、これらは「アドオン信頼設定の読み書き」という単一の関心事で閉じており、外部依存は `localSlideLoader` と `settingsOpen` のみ。`main.tsx` に直書きすると「スライドを開く／アドオンをロードする／編集モード」という Root 本来の関心事に設定永続化が混入するため、`src/hooks/` へ薄い境界で切り出した。振る舞いは移設前と同一（`console.error` のプレフィックスのみ `[App]` → `[useAddonSettings]`） |
 | `owner` と `sourcePath` の分離 | 単一キー兼用 / `owner`=baseDir と `sourcePath` を分離 | **分離（2 つのキーを持つ）** | `owner`（= 展開先 `baseDir`）はレジストリの owner 単位アンロードのスコープ識別子で、`.tgz` 展開のたびに変わりうる。信頼判断は利用者が選んだ元パス `sourcePath`（`.tgz`／`slides.json` の選択パス）を安定キーにする。両者を混同すると、展開先が変わるたびに信頼判断が失効する／別パッケージの判断を誤って再利用する恐れがあるため分離する |
 
 ## 9.2. 未解決の課題
@@ -248,6 +271,15 @@ export function usePresenterView(options: { slides; addonOwner?; addonScripts?; 
 ---
 
 # 10. 変更履歴
+
+## v0.3（2026-07-28・設定ダイアログの Root 引き上げ）
+
+**変更内容（アドオン信頼設定の所有者移動。機能追加はなし）:**
+
+- 設定ダイアログ（`SettingsWindow`）とショートカット一覧（`ShortcutsDialog`）の所有者を `App` から Root（`src/main.tsx` の `RootContent`）へ引き上げた。ホーム画面にも設定導線（`HomeScreen` 左上の `SettingsButton`）が加わり、スライドを開く前でも同梱アドオンの一律無効化・層C の個別付け外しを操作できる。
+- これに伴い `App` が保持していたアドオン信頼系ロジック（`addonsDisabled`/`addonTrustList` の 2 state、復元・信頼一覧構築の 2 effect、`handleToggleAddonsDisabled`/`handleResetAddonTrust`/`handleSetAddonTrust` の各ハンドラ）を新規フック `src/hooks/useAddonSettings.ts` へ抽出（§4.2 / §6 / §9.1）。振る舞いは移設前と同一。
+- `SettingsWindow` のアドオン系 props とスクロール速度 props は optional で、Root は `view === 'presentation'` のときだけスクロール速度を渡す。ホーム画面ではグローバル設定（言語・キーボードショートカット・アドオン設定）のみが表示される。
+- 単体テスト `src/hooks/__tests__/useAddonSettings.test.ts` を追加（§8）。
 
 ## v0.2（approved・2026-07-26）
 

@@ -6,7 +6,7 @@ status: draft
 sdd-phase: plan
 impl-status: implemented
 created: 2026-02-02
-updated: 2026-07-24
+updated: 2026-07-28
 depends-on:
   - spec-speaker-note-audio
 tags:
@@ -21,7 +21,7 @@ category: presentation
 
 **ドキュメント種別:** 技術設計書 (Design Doc)
 **SDDフェーズ:** Plan (計画/設計)
-**最終更新日:** 2026-07-24
+**最終更新日:** 2026-07-28
 **関連 Spec:** [speaker-note-audio_spec.md](./speaker-note-audio_spec.md)
 **関連 PRD:** [speaker-note-audio.md](../requirement/speaker-note-audio.md)
 
@@ -151,14 +151,12 @@ function useAutoSlideshow(options: {
   currentIndex: number
   audioPlayer: UseAudioPlayerReturn
   goToNext: () => void
-  initialScrollSpeed?: number
+  scrollSpeed: number // タイマーフォールバック時のスライド送り間隔（秒）。所有者は Root 層の useScrollSpeed で、ここでは controlled に受け取る
 }): {
   autoPlay: boolean
   setAutoPlay: (enabled: boolean) => void
   autoSlideshow: boolean
   setAutoSlideshow: (enabled: boolean) => void
-  scrollSpeed: number // タイマーフォールバック時のスライド送り間隔（秒）
-  setScrollSpeed: (speed: number) => void // scrollSpeed を更新し localStorage に永続化する
   timerDuration: number | null // タイマーがアクティブな場合の総時間（秒）。非アクティブ時は null
 } {
 }

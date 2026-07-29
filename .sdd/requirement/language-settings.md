@@ -6,7 +6,7 @@ status: draft
 priority: medium
 risk: medium
 created: 2026-02-02
-updated: 2026-07-24
+updated: 2026-07-28
 tags:
   - i18n
   - localization
@@ -19,7 +19,7 @@ category: internationalization
 
 ## 概要
 
-本ドキュメントは、スライドプレゼンテーションアプリのUI言語を切り替える「言語設定機能」の要求仕様を定義する。ユーザーがスライド画面上の設定ボタンから設定ウィンドウを開き、プルダウンでUI表示言語を変更できる仕組みを提供する。言語リソースは
+本ドキュメントは、スライドプレゼンテーションアプリのUI言語を切り替える「言語設定機能」の要求仕様を定義する。ユーザーがホーム画面またはプレゼンテーション画面の設定ボタンから設定ウィンドウを開き、プルダウンでUI表示言語を変更できる仕組みを提供する。スライドを開く前（初回起動直後のホーム画面）でも言語を変更できることを要件とする。言語リソースは
 `assets` 配下のJSONファイルとして管理し、ファイル追加のみでサポート言語を拡張可能とする。
 
 ---
@@ -84,8 +84,9 @@ graph TB
 ## 2.2. 機能一覧（テキスト形式）
 
 - 設定UI
-    - スライド左上の設定ボタン表示
+    - ホーム画面・プレゼンテーション画面の左上に設定ボタンを表示
     - 設定ウィンドウのオーバーレイ表示
+    - ホーム画面から開いた場合はグローバル設定のみを提示（プレゼンテーション専用設定は非表示）
 - 言語切り替え
     - プルダウンによるUI言語選択
     - 選択後のUI即時反映
@@ -116,7 +117,7 @@ requirementDiagram
 
     functionalRequirement SettingsButton {
         id: FR_LANG_001
-        text: "メインスライドの左上に設定ボタンを表示する"
+        text: "ホーム画面とプレゼンテーション画面の双方の左上に設定ボタンを表示する"
         risk: low
         verifymethod: demonstration
     }
@@ -184,6 +185,13 @@ requirementDiagram
         verifymethod: inspection
     }
 
+    functionalRequirement GlobalSettingsScope {
+        id: FR_LANG_011
+        text: "ホーム画面から開いた設定ウィンドウではグローバル設定（言語・キーボードショートカット・アドオン設定）のみを提示し、プレゼンテーション専用設定（スクロール速度）は表示しない"
+        risk: low
+        verifymethod: test
+    }
+
     LanguageSettings - contains -> SettingsButton
     LanguageSettings - contains -> SettingsWindow
     LanguageSettings - contains -> LanguageSelector
@@ -201,9 +209,11 @@ requirementDiagram
     }
 
     LanguageSettings - contains -> SettingsExtensibility
+    LanguageSettings - contains -> GlobalSettingsScope
     LanguageSettings - contains -> LanguageLoadTime
     LanguageDetection - derives -> FallbackLanguage
     LanguageResources - derives -> MinimumLanguages
+    SettingsExtensibility - derives -> GlobalSettingsScope
 ```
 
 ---
@@ -214,7 +224,7 @@ requirementDiagram
 
 ### UR-LANG-001: UI言語設定
 
-ユーザー（プレゼンター）がアプリのUI表示言語を自由に変更できること。設定はプレゼンテーション画面から離れることなく行え、選択した言語は次回訪問時にも維持される。
+ユーザー（プレゼンター）がアプリのUI表示言語を自由に変更できること。設定はホーム画面（初回起動直後、スライドを開く前）でもプレゼンテーション画面（画面から離れることなく）でも行え、選択した言語は次回訪問時にも維持される。日本語以外を使うユーザーが、スライドを開かないと言語を変更できない状態にならないこと。
 
 **優先度:** Must
 
@@ -224,7 +234,7 @@ requirementDiagram
 
 ### FR-LANG-001: 設定ボタン
 
-メインスライド画面の左上に設定ボタン（アイコン）を常時表示する。ボタンはスライドコンテンツの上にオーバーレイとして配置され、Reveal.jsのスライド操作を妨げない。
+ホーム画面とプレゼンテーション画面の双方の左上に設定ボタン（アイコン）を常時表示する。プレゼンテーション画面ではスライドコンテンツの上にオーバーレイとして配置され、Reveal.jsのスライド操作を妨げない。ホーム画面ではスライドの読み込み中であってもボタンを無効化せず、言語を変更できる状態を保つ。
 
 **優先度:** Must
 **検証方法:** デモンストレーションによる検証
@@ -315,6 +325,20 @@ requirementDiagram
 
 **優先度:** Could
 **検証方法:** インスペクション（レビュー）による検証
+
+---
+
+### FR-LANG-011: 設定項目のスコープ分離
+
+設定ウィンドウの設定項目を「グローバル設定」と「プレゼンテーション専用設定」に区別し、開いた画面に応じて提示する項目を切り替える。
+
+- **グローバル設定**（どの画面から開いても表示）: 言語、キーボードショートカット一覧、アドオン設定（同梱アドオンの一律無効化・許可履歴のリセット・パッケージ単位の許可/拒否）
+- **プレゼンテーション専用設定**（プレゼンテーション画面から開いた場合のみ表示）: スクロール速度
+
+ホーム画面から開いた設定ウィンドウでは、対象となるプレゼンテーションが存在しないためプレゼンテーション専用設定を表示しない。
+
+**優先度:** Should
+**検証方法:** テストによる検証
 
 ---
 
