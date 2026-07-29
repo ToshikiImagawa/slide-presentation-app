@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { emit, listen } from '@tauri-apps/api/event'
 import type { UnlistenFn } from '@tauri-apps/api/event'
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
-import type { SlideData, PresenterViewMessage, PresenterControlState, ThemeData } from '../data'
+import type { SlideData, PresenterViewMessage, PresenterControlState, PresenterProgressState, ThemeData } from '../data'
 import { useTranslation } from '../i18n'
 import { useToast } from '../toast'
 
@@ -31,7 +31,7 @@ export interface UsePresenterViewReturn {
   isOpen: boolean
   sendSlideState: (currentIndex: number) => void
   sendControlState: (state: PresenterControlState) => void
-  sendProgressState: (progress: number, visible: boolean, animationDuration?: number, paused?: boolean) => void
+  sendProgressState: (state: PresenterProgressState) => void
 }
 
 export function usePresenterView({ slides, addonOwner = '', addonScripts = [], themeColors, theme, onNavigate, onAudioToggle, onAutoPlayToggle, onAutoSlideshowToggle, onScrollSpeedChange }: UsePresenterViewOptions): UsePresenterViewReturn {
@@ -139,9 +139,9 @@ export function usePresenterView({ slides, addonOwner = '', addonScripts = [], t
   )
 
   const sendProgressState = useCallback(
-    (progress: number, visible: boolean, animationDuration?: number, paused?: boolean) => {
+    (state: PresenterProgressState) => {
       if (isOpen) {
-        const message: PresenterViewMessage = { type: 'progressChanged', payload: { progress, visible, animationDuration, paused } }
+        const message: PresenterViewMessage = { type: 'progressChanged', payload: state }
         void emit(EVENT_NAME, message)
       }
     },

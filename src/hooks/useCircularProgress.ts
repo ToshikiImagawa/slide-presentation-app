@@ -1,23 +1,19 @@
 import { useMemo } from 'react'
+import type { AudioPlaybackState } from '../data/types'
 
 /** 円形プログレスの進行ソース種別 */
 export type ProgressSource = 'audio' | 'timer' | 'none'
-
-/** 音声再生の進行情報 */
-export interface AudioProgress {
-  currentTime: number
-  duration: number
-}
 
 /** useCircularProgress フックの入力 */
 export interface UseCircularProgressOptions {
   autoSlideshow: boolean
   hasVoice: boolean
-  audioProgress: AudioProgress | null
+  /** 音声の再生状態。idle の場合は音声プログレスとして扱わない（未再生 or 停止済み） */
+  audioPlaybackState: AudioPlaybackState
+  /** 音声の総時間（秒）。audioPlaybackState が idle の間は無視される */
+  audioDuration: number
   /** タイマーがアクティブな場合の総時間（秒）。非アクティブ時は null */
   timerDuration: number | null
-  /** 音声が一時停止中かどうか。true の間は表示を維持したままアニメーションを一時停止する */
-  paused?: boolean
 }
 
 /** useCircularProgress フックの出力 */
@@ -31,15 +27,16 @@ export interface UseCircularProgressReturn {
   paused?: boolean
 }
 
-export function useCircularProgress({ autoSlideshow, hasVoice, audioProgress, timerDuration, paused = false }: UseCircularProgressOptions): UseCircularProgressReturn {
+export function useCircularProgress({ autoSlideshow, hasVoice, audioPlaybackState, audioDuration, timerDuration }: UseCircularProgressOptions): UseCircularProgressReturn {
   return useMemo(() => {
     if (!autoSlideshow) {
       return { progress: 0, source: 'none' as const, visible: false }
     }
 
-    if (hasVoice && audioProgress) {
-      if (audioProgress.duration > 0) {
-        return { progress: 0, source: 'audio' as const, visible: true, animationDuration: audioProgress.duration, paused }
+    if (hasVoice && audioPlaybackState !== 'idle') {
+      const paused = audioPlaybackState === 'paused'
+      if (audioDuration > 0) {
+        return { progress: 0, source: 'audio' as const, visible: true, animationDuration: audioDuration, paused }
       }
       return { progress: 0, source: 'audio' as const, visible: true, paused }
     }
@@ -50,5 +47,5 @@ export function useCircularProgress({ autoSlideshow, hasVoice, audioProgress, ti
     }
 
     return { progress: 0, source: 'none' as const, visible: false }
-  }, [autoSlideshow, hasVoice, audioProgress?.duration, timerDuration, paused])
+  }, [autoSlideshow, hasVoice, audioPlaybackState, audioDuration, timerDuration])
 }

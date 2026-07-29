@@ -9,6 +9,7 @@ export type {
   SlideNotes,
   PresenterSlideState,
   PresenterControlState,
+  PresenterProgressState,
   PresenterViewMessage,
   ThemeData,
   ColorPalette,

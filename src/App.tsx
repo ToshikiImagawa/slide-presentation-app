@@ -13,6 +13,7 @@ import { getFallbackPresentationData, loadPresentationData } from './data'
 import type { PresentationData } from './data'
 import { getVoicePath } from './data/noteHelpers'
 import { isTypingTarget } from './keyboardTarget'
+import { exportSlidesToPdf } from './pdfExport'
 import { useAudioPlayer } from './hooks/useAudioPlayer'
 import { useAutoSlideshow } from './hooks/useAutoSlideshow'
 import { usePresenterView } from './hooks/usePresenterView'
@@ -48,6 +49,7 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
   const data = loadPresentationData(presentationData, defaultData)
   const [currentIndex, setCurrentIndex] = useState(0)
   const [toolbarHidden, setToolbarHidden] = useState(false)
+  const [pdfExportState, setPdfExportState] = useState<'idle' | 'exporting' | 'error'>('idle')
 
   const audioPlayer = useAudioPlayer()
 
@@ -137,16 +139,14 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
   } = useCircularProgress({
     autoSlideshow,
     hasVoice: !!currentVoicePath,
-    // 一時停止中も currentTime/duration を保持し、audioProgress を null にしない
-    // （null にすると progressVisible が false になり、再開時にアニメーションが 0% から再スタートしてしまう）
-    audioProgress: audioPlayer.playbackState !== 'idle' ? { currentTime: audioPlayer.currentTime, duration: audioPlayer.duration } : null,
+    audioPlaybackState: audioPlayer.playbackState,
+    audioDuration: audioPlayer.duration,
     timerDuration,
-    paused: audioPlayer.playbackState === 'paused',
   })
 
   // プログレス状態を発表者ビューに同期
   useEffect(() => {
-    sendProgressState(progress, progressVisible, animationDuration, progressPaused)
+    sendProgressState({ progress, visible: progressVisible, animationDuration, paused: progressPaused })
   }, [progress, progressVisible, animationDuration, progressPaused, sendProgressState])
 
   // 制御状態を発表者ビューに同期
@@ -173,6 +173,18 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
   }, [data.theme])
 
   const handleToggleToolbar = useCallback(() => setToolbarHidden((prev) => !prev), [])
+
+  const handlePdfExport = useCallback(async () => {
+    if (pdfExportState === 'exporting' || !deckRef.current) return
+    setPdfExportState('exporting')
+    try {
+      await exportSlidesToPdf(deckRef.current, data.meta?.title ?? 'slides')
+      setPdfExportState('idle')
+    } catch (e) {
+      console.error(e)
+      setPdfExportState('error')
+    }
+  }, [pdfExportState, data.meta?.title, deckRef])
 
   // T キーでツールバーの表示・非表示をトグルする（入力中は無視）。ツールバーはプレゼンテーション画面固有の
   // ローカル状態なので、この購読も App が持つ（Root 所有ダイアログを開く ? キーは main.tsx 側）。
@@ -220,7 +232,7 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
           progressResetKey={currentIndex}
           progressPaused={progressPaused}
         />
-        <PdfExportButton onClick={() => window.print()} />
+        <PdfExportButton onClick={handlePdfExport} state={pdfExportState} />
         <PresenterViewButton onClick={openPresenterView} isOpen={isOpen} />
       </div>
     </>

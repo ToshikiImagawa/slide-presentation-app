@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { SlideData, PresenterControlState } from '../data'
+import type { SlideData, PresenterControlState, PresenterProgressState } from '../data'
 import { getSpeakerNotes, getSlideSummary } from '../data'
 import { useTranslation } from '../i18n'
 import { FillProgress } from './FillProgress'
@@ -64,7 +64,7 @@ type PresenterViewWindowProps = {
   slides: SlideData[]
   currentIndex: number
   controlState: PresenterControlState | null
-  progressState?: { progress: number; visible: boolean; animationDuration?: number; paused?: boolean }
+  progressState?: PresenterProgressState
   onNavigate: (direction: 'prev' | 'next') => void
   onAudioToggle: () => void
   onAutoPlayToggle: () => void

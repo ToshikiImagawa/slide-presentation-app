@@ -8,7 +8,8 @@ describe('useCircularProgress', () => {
       useCircularProgress({
         autoSlideshow: false,
         hasVoice: true,
-        audioProgress: { currentTime: 15, duration: 30 },
+        audioPlaybackState: 'playing',
+        audioDuration: 30,
         timerDuration: null,
       }),
     )
@@ -18,12 +19,13 @@ describe('useCircularProgress', () => {
     expect(result.current.source).toBe('none')
   })
 
-  it('autoSlideshow=true, hasVoice=true, audioProgress 有効で音声プログレスを返す', () => {
+  it('autoSlideshow=true, hasVoice=true, 再生中で音声プログレスを返す', () => {
     const { result } = renderHook(() =>
       useCircularProgress({
         autoSlideshow: true,
         hasVoice: true,
-        audioProgress: { currentTime: 15, duration: 30 },
+        audioPlaybackState: 'playing',
+        audioDuration: 30,
         timerDuration: null,
       }),
     )
@@ -32,6 +34,7 @@ describe('useCircularProgress', () => {
     expect(result.current.source).toBe('audio')
     expect(result.current.visible).toBe(true)
     expect(result.current.animationDuration).toBe(30)
+    expect(result.current.paused).toBe(false)
   })
 
   it('autoSlideshow=true, hasVoice=false, timerDuration 有効でタイマープログレスを返す', () => {
@@ -39,7 +42,8 @@ describe('useCircularProgress', () => {
       useCircularProgress({
         autoSlideshow: true,
         hasVoice: false,
-        audioProgress: null,
+        audioPlaybackState: 'idle',
+        audioDuration: 0,
         timerDuration: 20,
       }),
     )
@@ -50,12 +54,13 @@ describe('useCircularProgress', () => {
     expect(result.current.animationDuration).toBe(20)
   })
 
-  it('audioProgress の duration が 0 でゼロ除算なし、progress=0', () => {
+  it('audioDuration が 0 でゼロ除算なし、progress=0', () => {
     const { result } = renderHook(() =>
       useCircularProgress({
         autoSlideshow: true,
         hasVoice: true,
-        audioProgress: { currentTime: 0, duration: 0 },
+        audioPlaybackState: 'playing',
+        audioDuration: 0,
         timerDuration: null,
       }),
     )
@@ -70,7 +75,8 @@ describe('useCircularProgress', () => {
       useCircularProgress({
         autoSlideshow: true,
         hasVoice: false,
-        audioProgress: null,
+        audioPlaybackState: 'idle',
+        audioDuration: 0,
         timerDuration: null,
       }),
     )
@@ -84,7 +90,8 @@ describe('useCircularProgress', () => {
       useCircularProgress({
         autoSlideshow: true,
         hasVoice: false,
-        audioProgress: null,
+        audioPlaybackState: 'idle',
+        audioDuration: 0,
         timerDuration: 0,
       }),
     )
@@ -93,12 +100,13 @@ describe('useCircularProgress', () => {
     expect(result.current.source).toBe('none')
   })
 
-  it('音声モードで animationDuration が duration と一致する', () => {
+  it('音声モードで animationDuration が audioDuration と一致する', () => {
     const { result } = renderHook(() =>
       useCircularProgress({
         autoSlideshow: true,
         hasVoice: true,
-        audioProgress: { currentTime: 35, duration: 30 },
+        audioPlaybackState: 'playing',
+        audioDuration: 30,
         timerDuration: null,
       }),
     )
@@ -107,12 +115,13 @@ describe('useCircularProgress', () => {
     expect(result.current.animationDuration).toBe(30)
   })
 
-  it('hasVoice=true だが audioProgress=null の場合は visible=false', () => {
+  it('hasVoice=true だが audioPlaybackState=idle（未再生）の場合は visible=false', () => {
     const { result } = renderHook(() =>
       useCircularProgress({
         autoSlideshow: true,
         hasVoice: true,
-        audioProgress: null,
+        audioPlaybackState: 'idle',
+        audioDuration: 0,
         timerDuration: null,
       }),
     )
@@ -121,14 +130,14 @@ describe('useCircularProgress', () => {
     expect(result.current.source).toBe('none')
   })
 
-  it('paused=true でも audioProgress が維持されていれば visible=true のまま paused を返す', () => {
+  it('audioPlaybackState=paused で visible=true のまま paused=true を返す（一時停止中も表示を維持する）', () => {
     const { result } = renderHook(() =>
       useCircularProgress({
         autoSlideshow: true,
         hasVoice: true,
-        audioProgress: { currentTime: 15, duration: 30 },
+        audioPlaybackState: 'paused',
+        audioDuration: 30,
         timerDuration: null,
-        paused: true,
       }),
     )
 
@@ -136,18 +145,5 @@ describe('useCircularProgress', () => {
     expect(result.current.source).toBe('audio')
     expect(result.current.animationDuration).toBe(30)
     expect(result.current.paused).toBe(true)
-  })
-
-  it('paused を省略した場合は false 相当になる', () => {
-    const { result } = renderHook(() =>
-      useCircularProgress({
-        autoSlideshow: true,
-        hasVoice: true,
-        audioProgress: { currentTime: 15, duration: 30 },
-        timerDuration: null,
-      }),
-    )
-
-    expect(result.current.paused).toBe(false)
   })
 })
