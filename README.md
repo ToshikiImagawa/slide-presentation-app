@@ -624,14 +624,7 @@ The main window and presenter view are bidirectionally synced via Tauri events (
 - Navigating slides in the main window updates the presenter view in real time
 - Navigating slides or controlling audio from the presenter view is reflected in the main window
 
-### Keyboard Navigation
-
-The following keyboard shortcuts are available in the presenter view.
-
-| Key                         | Action         |
-|-----------------------------|----------------|
-| `←` (Left Arrow)            | Previous slide |
-| `→` (Right Arrow) / `Space` | Next slide     |
+The presenter view has its own navigation keys. Press `?` to see them — see [Keyboard Shortcuts](#keyboard-shortcuts).
 
 ## Audio Playback
 
@@ -674,34 +667,12 @@ through all slides.
 
 ## Keyboard Shortcuts
 
-Press `?` during a presentation to show the list inside the app — the same list opens from
-**Settings → Keyboard shortcuts → Show**.
+Press `?` on any screen to show the full list inside the app — the same list opens from
+**Settings → Keyboard shortcuts → Show**. It covers the presentation viewer, edit mode, and the presenter view.
 
-### Presentation viewer
+The list lives in the app rather than in this README so that it always matches the actual key bindings.
 
-| Key                                   | Action                          |
-|---------------------------------------|---------------------------------|
-| `T`                                   | Show/hide the toolbar           |
-| `?`                                   | Show this shortcut list         |
-| `→` / `↓` / `Space` / `N` / `L` / `J` | Next slide                      |
-| `←` / `↑` / `P` / `H` / `K`           | Previous slide                  |
-| `Shift` + `←` / `→`                   | Jump to the first / last slide  |
-| `Alt` + `←` / `↑` / `→` / `↓`         | Navigate ignoring fragments     |
-| `B` / `.`                             | Pause (black out)               |
-| `F`                                   | Toggle fullscreen               |
-| `G`                                   | Jump to a specific slide number |
-| `Esc` / `O`                           | Toggle slide overview           |
-
-### Edit mode
-
-| Key                         | Action                             |
-|-----------------------------|------------------------------------|
-| `Ctrl`/`Cmd` + `S`          | Save                               |
-| `Esc`                       | Exit editing                       |
-| `Ctrl`/`Cmd` + `F`          | Search within the JSON             |
-| `Enter` / `Shift` + `Enter` | Go to next / previous search match  |
-
-The presenter view has its own navigation keys — see [Keyboard Navigation](#keyboard-navigation).
+![Keyboard shortcuts dialog](resources/screenshots/en/shortcuts.png)
 
 ## Slide Packages
 
