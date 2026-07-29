@@ -1,17 +1,17 @@
 /* CSS variable fallbacks (overridden at runtime by applyTheme) */
 :root {
-  --theme-primary: #e07a5f;
-  --theme-primary-rgb: 224, 122, 95;
-  --theme-background: #1c1917;
-  --theme-background-rgb: 28, 25, 23;
-  --theme-background-alt: #292524;
-  --theme-background-grid: #33302e;
-  --theme-text-heading: #faf8f5;
-  --theme-text-body: #a8a29e;
-  --theme-text-subtitle: #d6d3d1;
-  --theme-text-muted: #78716c;
-  --theme-border: #3d3835;
-  --theme-border-light: #4a4543;
+  --theme-primary: #2dd4bf;
+  --theme-primary-rgb: 45, 212, 191;
+  --theme-background: #181a20;
+  --theme-background-rgb: 24, 26, 32;
+  --theme-background-alt: #23262e;
+  --theme-background-grid: #2f333d;
+  --theme-text-heading: #f8fafc;
+  --theme-text-body: #a3b0c7;
+  --theme-text-subtitle: #c7cede;
+  --theme-text-muted: #6b7385;
+  --theme-border: #323743;
+  --theme-border-light: #454b5a;
   --theme-success: #4ade80;
   --theme-code-text: #fb923c;
 
@@ -31,13 +31,13 @@
   --theme-font-size-body2: 16px;
 
   /* 固定パレット（applyTheme が上書きしない。プレゼンのテーマ変更から独立させたいUI chrome用。editorUiTheme(src/theme.ts) と揃える） */
-  --fixed-primary: #e07a5f;
-  --fixed-background: #1c1917;
-  --fixed-background-alt: #292524;
-  --fixed-text-heading: #faf8f5;
-  --fixed-text-body: #a8a29e;
-  --fixed-text-muted: #78716c;
-  --fixed-border: #3d3835;
+  --fixed-primary: #2dd4bf;
+  --fixed-background: #181a20;
+  --fixed-background-alt: #23262e;
+  --fixed-text-heading: #f8fafc;
+  --fixed-text-body: #a3b0c7;
+  --fixed-text-muted: #6b7385;
+  --fixed-border: #323743;
   --fixed-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --fixed-success: #4ade80;
   --fixed-font-code: 'Roboto Mono', monospace;
