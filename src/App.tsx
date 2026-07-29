@@ -1,4 +1,3 @@
-import { ThemeProvider } from '@mui/material/styles'
 import { AudioControlBar } from './components/AudioControlBar'
 import { AudioPlayButton } from './components/AudioPlayButton'
 import { FallbackImage } from './components/FallbackImage'
@@ -17,7 +16,6 @@ import { useAutoSlideshow } from './hooks/useAutoSlideshow'
 import { usePresenterView } from './hooks/usePresenterView'
 import { useCircularProgress } from './hooks/useCircularProgress'
 import { useReveal } from './hooks/useReveal'
-import { theme } from './theme'
 import { applyThemeData } from './applyTheme'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useI18n } from './i18n'
@@ -200,7 +198,7 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
   const toolbarHiddenClass = toolbarHidden ? ' toolbar-hidden' : ''
 
   return (
-    <ThemeProvider theme={theme}>
+    <>
       <div className="reveal" ref={deckRef}>
         <div className="slides">
           <SlideRenderer slides={data.slides} />
@@ -231,6 +229,6 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
         />
         <PresenterViewButton onClick={openPresenterView} isOpen={isOpen} />
       </div>
-    </ThemeProvider>
+    </>
   )
 }

@@ -1,18 +1,15 @@
 import { useI18n, useTranslation } from '../i18n'
 import type { AddonTrustDecision } from '../localSlideLoader'
+import type { AddonTrustEntry } from '../hooks/useAddonSettings'
 import { DialogFrame } from './DialogFrame'
 import dialogFrameStyles from './DialogFrame.module.css'
 import styles from './SettingsWindow.module.css'
-
-/** 層C: 実行時信頼の個別付け外し対象（パッケージ単位） */
-export type AddonTrustEntry = { path: string; title: string; decision: AddonTrustDecision | undefined }
 
 type SettingsWindowProps = {
   open: boolean
   onClose: () => void
   /** スクロール速度はプレゼンテーション画面専用の設定。未指定時（ホーム画面など）はスクロール速度セクションを表示しない */
   scrollSpeed?: number
-  /** スクロール速度の変更ハンドラ（scrollSpeed と対で指定する） */
   setScrollSpeed?: (speed: number) => void
   /** 同梱アドオンの一律無効化フラグ（未指定時はアドオン設定セクションを表示しない） */
   embeddedAddonsDisabled?: boolean
@@ -46,7 +43,7 @@ export function SettingsWindow({ open, onClose, scrollSpeed, setScrollSpeed, emb
           ))}
         </select>
       </div>
-      {scrollSpeed !== undefined && setScrollSpeed && (
+      {scrollSpeed !== undefined && (
         <div className={styles.settingRow}>
           <label className={styles.label} htmlFor="scroll-speed-input">
             {t('settings.scrollSpeed')}
@@ -60,7 +57,7 @@ export function SettingsWindow({ open, onClose, scrollSpeed, setScrollSpeed, emb
             value={scrollSpeed}
             onChange={(e) => {
               const v = Number(e.target.value)
-              if (v >= 1 && v <= 300) setScrollSpeed(v)
+              if (v >= 1 && v <= 300) setScrollSpeed?.(v)
             }}
           />
         </div>

@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useState } from 'react'
-import { clearAddonTrustDecision, getAddonTrustMap, getRecentSlidePackages, isEmbeddedAddonsDisabled, resetAddonTrust, setAddonTrustDecision, setEmbeddedAddonsDisabled } from '../localSlideLoader'
-import type { AddonTrustDecision } from '../localSlideLoader'
-import type { AddonTrustEntry } from '../components/SettingsWindow'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { clearAddonTrustDecision, getAddonTrustMap, isEmbeddedAddonsDisabled, resetAddonTrust, setAddonTrustDecision, setEmbeddedAddonsDisabled } from '../localSlideLoader'
+import type { AddonTrustDecision, RecentSlidePackageEntry } from '../localSlideLoader'
+
+/** 層C: 実行時信頼の個別付け外し対象（パッケージ単位） */
+export type AddonTrustEntry = { path: string; title: string; decision: AddonTrustDecision | undefined }
 
 export interface UseAddonSettingsReturn {
   addonsDisabled: boolean
@@ -11,16 +13,27 @@ export interface UseAddonSettingsReturn {
   handleSetAddonTrust: (path: string, decision: AddonTrustDecision | undefined) => void
 }
 
+type UseAddonSettingsOptions = {
+  /** 一覧を取得する期間（設定ダイアログを開いている間だけ true にする） */
+  active: boolean
+  /** title の供給元。所有者は Root なので、store を読み直さずこの写しから引く */
+  recentPackages: RecentSlidePackageEntry[]
+}
+
 /**
  * 同梱アドオンの信頼設定（一律無効化フラグ・パッケージ単位の許可/拒否）を永続ストア越しに読み書きする。
  *
  * 設定ダイアログはホーム画面・プレゼンテーション画面の双方から開くため、所有者は両者の共通祖先（Root）側になる。
- * `settingsOpen` を受け取り、ダイアログを開くたびに信頼一覧を作り直す（FR-008）
+ * `active` になったタイミングで信頼一覧を作り直す（FR-008）
  */
-export function useAddonSettings(settingsOpen: boolean): UseAddonSettingsReturn {
+export function useAddonSettings({ active, recentPackages }: UseAddonSettingsOptions): UseAddonSettingsReturn {
   const [addonsDisabled, setAddonsDisabled] = useState(false)
   // 層C: 実行時信頼の個別付け外し対象（最近開いたパッケージ × 現在の信頼判断）
   const [addonTrustList, setAddonTrustList] = useState<AddonTrustEntry[]>([])
+
+  // 一覧は active になった瞬間だけ作り直したいので、最近リストの更新で effect を再実行させない
+  const recentPackagesRef = useRef(recentPackages)
+  recentPackagesRef.current = recentPackages
 
   // 同梱アドオンの一律無効化フラグを永続ストアから復元する
   useEffect(() => {
@@ -29,14 +42,14 @@ export function useAddonSettings(settingsOpen: boolean): UseAddonSettingsReturn 
 
   // 設定ダイアログを開くたびに、信頼判断を持つパッケージ（trustMap 全キー）を一覧化する（層C・FR-008）。
   // trustMap を基点にすることで、最近リストの上限を超えて追い出された「許可済み」パッケージも一覧に残り、
-  // 個別に取り消せる一方、信頼判断が一度も記録されていないパッケージは表示されない。title は recent から補完する
+  // 個別に取り消せる一方、信頼判断が一度も記録されていないパッケージは表示されない。title は最近リストから補完する
   useEffect(() => {
-    if (!settingsOpen) return
-    void Promise.all([getRecentSlidePackages(), getAddonTrustMap()]).then(([recent, trustMap]) => {
-      const titleByPath = new Map(recent.map((r) => [r.path, r.title]))
+    if (!active) return
+    void getAddonTrustMap().then((trustMap) => {
+      const titleByPath = new Map(recentPackagesRef.current.map((r) => [r.path, r.title]))
       setAddonTrustList(Object.keys(trustMap).map((path) => ({ path, title: titleByPath.get(path) ?? path, decision: trustMap[path] })))
     })
-  }, [settingsOpen])
+  }, [active])
 
   const handleToggleAddonsDisabled = useCallback((disabled: boolean) => {
     setAddonsDisabled(disabled)

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { expected, lang, openSample } from './fixtures'
+import { expected, lang, localeCode, openSample } from './fixtures'
 
 test.describe('設定ダイアログ', () => {
   test('開閉と各コントロールを検証する', async ({ page }, testInfo) => {
@@ -24,7 +24,7 @@ test.describe('設定ダイアログ', () => {
   test('ホーム画面から開くとグローバル設定のみ表示される', async ({ page }, testInfo) => {
     const { ui } = expected(testInfo.project.name)
     await page.goto('/')
-    await page.waitForSelector('[data-testid="home-screen"]')
+    await expect(page.getByTestId('home-screen')).toBeVisible()
 
     await page.getByTestId('settings-open').click()
     const dialog = page.getByTestId('settings-dialog')
@@ -51,7 +51,7 @@ test.describe('設定ダイアログ', () => {
 
     await page.getByTestId('settings-open').click()
     const dialog = page.getByTestId('settings-dialog')
-    await dialog.locator('#language-select').selectOption(to === 'ja' ? 'ja-JP' : 'en-US')
+    await dialog.locator('#language-select').selectOption(localeCode(to))
 
     // ダイアログを閉じずにホーム画面の文言が切り替わる（リロードなし）
     await expect(page.getByText(toUi.home.sampleButton)).toBeVisible()
