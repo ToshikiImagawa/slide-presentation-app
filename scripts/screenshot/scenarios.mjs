@@ -57,6 +57,13 @@ export const scenarios = [
     steps: [...OPEN_SAMPLE, { click: '[data-testid="settings-open"]' }, { waitFor: '[data-testid="settings-dialog"]' }, { wait: 400 }],
   },
 
+  // キーボードショートカット一覧（? キーで開く。README に表を持たない代わりの唯一の一覧）
+  {
+    key: 'shortcuts',
+    waitFor: '[data-testid="home-sample"]',
+    steps: [...OPEN_SAMPLE, { press: '?' }, { waitFor: '[data-testid="shortcuts-dialog"]' }, { wait: 400 }],
+  },
+
   // 編集モード（プレゼン画面の左ツールバーの編集ボタンから入る）。
   // enterEditMode() は Tauri IPC 不在で失敗するが catch して遷移は続くため（A-005）、screenshot モードでも到達できる。
   // dev サーバー上の撮影なので「組み込みアドオン (dev)」パネルも写る（配布ビルドには出ない）。
