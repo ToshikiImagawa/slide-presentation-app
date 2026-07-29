@@ -138,6 +138,7 @@ function useAudioPlayer(): {
     play: (src: string) => void
     pause: () => void // 現在位置を保持したまま一時停止する
     resume: () => void // 一時停止した位置から再生を再開する
+    toggle: (src: string) => void // playbackState に応じて play/pause/resume のいずれかを呼ぶ（play ⇄ pause ⇄ resume トグル）
     stop: () => void
     isPlaying: boolean
     hasError: boolean // 音声読み込みに失敗した場合 true
@@ -226,7 +227,7 @@ function getVoicePath(slide: SlideData): string | undefined {
 
 **音声の一時停止・再開機能を追加:**
 
-- `useAudioPlayer` に `pause()`（currentTime を保持したまま一時停止）・`resume()`（同じ位置から再生再開）を追加
+- `useAudioPlayer` に `pause()`（currentTime を保持したまま一時停止）・`resume()`（同じ位置から再生再開）・`toggle(src)`（playbackState に応じた play/pause/resume の一括トグル）を追加
 - `AudioPlayButton` を play ⇄ pause ⇄ resume の単一ボタントグルとして3状態（idle/playing/paused）表示に対応
 - 「停止（頭出し）」操作はUIから削除し、スライド切替時の内部リセット処理（`stop()`）のみに残す
 - `AudioPlaybackState` の `paused` を未使用・到達不能から実装済みに更新（Issue #2）

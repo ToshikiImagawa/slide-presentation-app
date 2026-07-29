@@ -6,6 +6,8 @@ export interface UseAudioPlayerReturn {
   play: (src: string) => void
   pause: () => void
   resume: () => void
+  /** playbackState に応じて play/pause/resume のいずれかを呼ぶ（play ⇄ pause ⇄ resume トグル） */
+  toggle: (src: string) => void
   stop: () => void
   isPlaying: boolean
   /** 音声読み込みに失敗した場合 true */
@@ -59,6 +61,19 @@ export function useAudioPlayer(): UseAudioPlayerReturn {
     })
     setPlaybackState('playing')
   }, [])
+
+  const toggle = useCallback(
+    (src: string) => {
+      if (playbackState === 'playing') {
+        pause()
+      } else if (playbackState === 'paused') {
+        resume()
+      } else {
+        play(src)
+      }
+    },
+    [playbackState, play, pause, resume],
+  )
 
   const stop = useCallback(() => {
     const audio = audioRef.current
@@ -124,6 +139,7 @@ export function useAudioPlayer(): UseAudioPlayerReturn {
     play,
     pause,
     resume,
+    toggle,
     stop,
     isPlaying: playbackState === 'playing',
     hasError,

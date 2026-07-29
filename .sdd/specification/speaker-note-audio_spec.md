@@ -88,6 +88,7 @@ interface UseAudioPlayerReturn {
   play: (src: string) => void
   pause: () => void // 現在位置を保持したまま一時停止する
   resume: () => void // 一時停止した位置から再生を再開する
+  toggle: (src: string) => void // playbackState に応じて play/pause/resume のいずれかを呼ぶ（play ⇄ pause ⇄ resume トグル）
   stop: () => void
   isPlaying: boolean
   hasError: boolean // 音声読み込みに失敗した場合 true
@@ -177,17 +178,9 @@ import { AudioPlayButton } from './components/AudioPlayButton'
 import { useAudioPlayer } from './hooks/useAudioPlayer'
 
 function SlideAudioControl({ voicePath }: { voicePath: string }) {
-  const { playbackState, hasError, play, pause, resume } = useAudioPlayer()
+  const { playbackState, hasError, toggle } = useAudioPlayer()
 
-  const handleToggle = () => {
-    if (playbackState === 'playing') {
-      pause()
-    } else if (playbackState === 'paused') {
-      resume()
-    } else {
-      play(voicePath)
-    }
-  }
+  const handleToggle = () => toggle(voicePath)
 
   return <AudioPlayButton playbackState={playbackState} hasError={hasError} onToggle={handleToggle} />
 }

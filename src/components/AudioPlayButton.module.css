@@ -12,16 +12,13 @@
   transition: background-color 0.2s ease;
 }
 
-.button:hover {
+.button:hover,
+.paused {
   background-color: var(--theme-text-muted, #666);
 }
 
 .playing {
   animation: pulse 1.5s ease-in-out infinite;
-}
-
-.paused {
-  background-color: var(--theme-text-muted, #666);
 }
 
 .error {

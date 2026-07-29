@@ -261,6 +261,51 @@ describe('useAudioPlayer', () => {
     expect(result.current.playbackState).toBe('paused')
   })
 
+  it('toggle() は idle 時に play する', () => {
+    const { result } = renderHook(() => useAudioPlayer())
+
+    act(() => {
+      result.current.toggle('/audio/test.mp3')
+    })
+
+    expect(mockAudioInstance.play).toHaveBeenCalled()
+    expect(result.current.playbackState).toBe('playing')
+  })
+
+  it('toggle() は playing 時に pause する', () => {
+    const { result } = renderHook(() => useAudioPlayer())
+
+    act(() => {
+      result.current.play('/audio/test.mp3')
+    })
+
+    act(() => {
+      result.current.toggle('/audio/test.mp3')
+    })
+
+    expect(mockAudioInstance.pause).toHaveBeenCalled()
+    expect(result.current.playbackState).toBe('paused')
+  })
+
+  it('toggle() は paused 時に resume する', () => {
+    const { result } = renderHook(() => useAudioPlayer())
+
+    act(() => {
+      result.current.play('/audio/test.mp3')
+    })
+
+    act(() => {
+      result.current.pause()
+    })
+
+    act(() => {
+      result.current.toggle('/audio/test.mp3')
+    })
+
+    expect(mockAudioInstance.play).toHaveBeenCalledTimes(2)
+    expect(result.current.playbackState).toBe('playing')
+  })
+
   it('stop() 後に currentTime=0, duration=0 にリセットされる', () => {
     const { result } = renderHook(() => useAudioPlayer())
 
