@@ -5,7 +5,7 @@ type: spec
 status: draft
 sdd-phase: specify
 created: 2026-02-02
-updated: 2026-07-27
+updated: 2026-07-29
 depends-on:
   - prd-slide-content-customization
 tags:
@@ -21,7 +21,7 @@ category: slide-content
 
 **ドキュメント種別:** 抽象仕様書 (Spec)
 **SDDフェーズ:** Specify (仕様化)
-**最終更新日:** 2026-07-27
+**最終更新日:** 2026-07-29
 **関連 Design Doc:** [slide-content-customization_design.md](./slide-content-customization_design.md)
 **関連 PRD:** [slide-content-customization.md](../requirement/slide-content-customization.md)
 **関連仕様:** [slide-package-distribution_spec.md](./slide-package-distribution_spec.md)（テンプレートガイドの配布と取得）
@@ -260,9 +260,17 @@ import { App } from './App'
 
 // presentationData 未指定・バリデーション失敗時は loadPresentationData が
 // 最小フォールバック（getFallbackPresentationData(locale) の1枚）にフォールバックする。
-// App は onGoHome を必須で受け取る（ホーム画面への復帰ハンドラ）。
-function Example({ onGoHome }: { onGoHome: () => void }) {
-    return <App onGoHome={onGoHome} />
+// scrollSpeed / onScrollSpeedChange / onOpenSettings は Root（main.tsx の RootContent）が
+// 所有し、App へ必須 props として渡す（設定ダイアログの実体は Root 側にある）
+type PresentationScreenProps = {
+    onGoHome: () => void
+    scrollSpeed: number
+    onScrollSpeedChange: (speed: number) => void
+    onOpenSettings: () => void
+}
+
+function Example({ onGoHome, scrollSpeed, onScrollSpeedChange, onOpenSettings }: PresentationScreenProps) {
+    return <App onGoHome={onGoHome} scrollSpeed={scrollSpeed} onScrollSpeedChange={onScrollSpeedChange} onOpenSettings={onOpenSettings} />
 }
 ```
 
@@ -272,8 +280,8 @@ function Example({ onGoHome }: { onGoHome: () => void }) {
 import { App } from './App'
 import customSlides from './custom-slides.json'
 
-function Example({ onGoHome }: { onGoHome: () => void }) {
-    return <App presentationData={customSlides} onGoHome={onGoHome} />
+function Example({ onGoHome, scrollSpeed, onScrollSpeedChange, onOpenSettings }: PresentationScreenProps) {
+    return <App presentationData={customSlides} onGoHome={onGoHome} scrollSpeed={scrollSpeed} onScrollSpeedChange={onScrollSpeedChange} onOpenSettings={onOpenSettings} />
 }
 ```
 

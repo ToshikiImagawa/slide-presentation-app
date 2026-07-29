@@ -5,7 +5,7 @@ type: spec
 status: draft
 sdd-phase: specify
 created: 2026-02-02
-updated: 2026-07-27
+updated: 2026-07-29
 depends-on:
   - prd-presentation-foundation
 tags:
@@ -22,7 +22,7 @@ category: presentation-foundation
 
 **ドキュメント種別:** 抽象仕様書 (Spec)
 **SDDフェーズ:** Specify (仕様化)
-**最終更新日:** 2026-07-27
+**最終更新日:** 2026-07-29
 **関連 Design Doc:** [presentation-foundation_design.md](./presentation-foundation_design.md)
 **関連 PRD:** [presentation-foundation.md](../requirement/presentation-foundation.md)
 
@@ -124,15 +124,24 @@ interface UseRevealReturn {
   goToPrev: () => void;
 }
 
-/** App コンポーネントの Props */
+/** App コンポーネントの Props。scrollSpeed / onScrollSpeedChange / onOpenSettings は
+ *  設定ダイアログの所有者が Root（main.tsx の RootContent）にあるため必須で渡す */
 interface AppProps {
   presentationData?: PresentationData;
   /** ホーム画面へ戻るコールバック（必須） */
   onGoHome: () => void;
+  /** 編集モードを開始する（未指定なら編集ボタンを表示しない） */
+  onStartEdit?: () => void;
   /** 現在のパッケージ同梱アドオンの owner（発表者ビューへの伝搬用） */
   addonOwner?: string;
   /** 現在のパッケージ同梱アドオンの asset URL 群（発表者ビューへの伝搬用） */
   addonScripts?: string[];
+  /** タイマー自動送りの秒数（所有者は Root）。設定ダイアログもここを参照する */
+  scrollSpeed: number;
+  /** スクロール速度の変更を Root へ通知する（発表者ビューからの変更もこの経路を通る） */
+  onScrollSpeedChange: (speed: number) => void;
+  /** 設定ダイアログを開く（ダイアログ本体は Root が持つ） */
+  onOpenSettings: () => void;
 }
 
 /** ロゴ設定 */
@@ -204,15 +213,23 @@ interface SlideMeta {
 import { App } from './App';
 import type { PresentationData } from './data/types';
 
+// scrollSpeed / onScrollSpeedChange / onOpenSettings は Root（main.tsx の RootContent）が
+// 所有し、App へ props として渡す（設定ダイアログの実体は Root 側にある）
+type PresentationScreenProps = {
+  goHome: () => void;
+  scrollSpeed: number;
+  onScrollSpeedChange: (speed: number) => void;
+  onOpenSettings: () => void;
+};
+
 // デフォルトプレゼンテーション（presentationData 省略時は locale に応じた内部データを使用）
-// onGoHome は必須。ホーム画面へ戻る処理を渡す
-function DefaultPresentation({ goHome }: { goHome: () => void }) {
-  return <App onGoHome={goHome} />;
+function DefaultPresentation({ goHome, scrollSpeed, onScrollSpeedChange, onOpenSettings }: PresentationScreenProps) {
+  return <App onGoHome={goHome} scrollSpeed={scrollSpeed} onScrollSpeedChange={onScrollSpeedChange} onOpenSettings={onOpenSettings} />;
 }
 
 // カスタムプレゼンテーション（外部JSONデータを使用）
-function CustomPresentation({ data, goHome }: { data: PresentationData; goHome: () => void }) {
-  return <App presentationData={data} onGoHome={goHome} />;
+function CustomPresentation({ data, goHome, scrollSpeed, onScrollSpeedChange, onOpenSettings }: PresentationScreenProps & { data: PresentationData }) {
+  return <App presentationData={data} onGoHome={goHome} scrollSpeed={scrollSpeed} onScrollSpeedChange={onScrollSpeedChange} onOpenSettings={onOpenSettings} />;
 }
 ```
 
