@@ -14,7 +14,7 @@ import { unregisterOwner } from './components/ComponentRegistry'
 import { PresenterViewWindow } from './components/PresenterViewWindow'
 import { I18nProvider, loadLocales, useTranslation } from './i18n'
 import { theme } from './theme'
-import type { SlideData, PresenterViewMessage, PresenterControlState } from './data'
+import type { SlideData, PresenterViewMessage, PresenterControlState, PresenterProgressState } from './data'
 
 const EVENT_NAME = 'presenter-view'
 
@@ -25,7 +25,7 @@ function PresenterViewApp() {
   const [slides, setSlides] = useState<SlideData[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [controlState, setControlState] = useState<PresenterControlState | null>(null)
-  const [progressState, setProgressState] = useState<{ progress: number; visible: boolean; animationDuration?: number }>({ progress: 0, visible: false })
+  const [progressState, setProgressState] = useState<PresenterProgressState>({ progress: 0, visible: false })
 
   // 現在登録済みのパッケージアドオンの owner（切替時のアンロード対象）
   const currentOwnerRef = useRef<string | undefined>(undefined)

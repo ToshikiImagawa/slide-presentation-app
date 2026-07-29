@@ -96,12 +96,22 @@ export interface PresenterControlState {
   scrollSpeed: number
 }
 
+/** 円形/バー型プログレス表示の状態（メイン画面・発表者ビュー間で共通） */
+export interface PresenterProgressState {
+  progress: number
+  visible: boolean
+  /** CSS アニメーション用 duration（秒）。none 時は undefined */
+  animationDuration?: number
+  /** true の場合、アニメーションを現在位置で一時停止する */
+  paused?: boolean
+}
+
 /** BroadcastChannel で送受信するメッセージ（双方向） */
 export type PresenterViewMessage =
   // メインウィンドウ → 発表者ビュー
   | { type: 'slideChanged'; payload: { currentIndex: number; slides: SlideData[] } }
   | { type: 'controlStateChanged'; payload: PresenterControlState }
-  | { type: 'progressChanged'; payload: { progress: number; visible: boolean; animationDuration?: number } }
+  | { type: 'progressChanged'; payload: PresenterProgressState }
   // 発表者ビュー → メインウィンドウ
   | { type: 'navigate'; payload: { direction: 'prev' | 'next' } }
   | { type: 'audioToggle' }

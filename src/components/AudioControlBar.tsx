@@ -11,9 +11,10 @@ type AudioControlBarProps = {
   progressVisible?: boolean
   animationDuration?: number
   progressResetKey?: string | number
+  progressPaused?: boolean
 }
 
-export function AudioControlBar({ autoPlay, onAutoPlayChange, autoSlideshow, onAutoSlideshowChange, progress = 0, progressVisible = false, animationDuration, progressResetKey }: AudioControlBarProps) {
+export function AudioControlBar({ autoPlay, onAutoPlayChange, autoSlideshow, onAutoSlideshowChange, progress = 0, progressVisible = false, animationDuration, progressResetKey, progressPaused }: AudioControlBarProps) {
   const { t } = useTranslation()
 
   return (
@@ -41,7 +42,7 @@ export function AudioControlBar({ autoPlay, onAutoPlayChange, autoSlideshow, onA
             <path d="M4 18l8.5-6L4 6v12zm9-12v12l8.5-6L13 6z" />
           </svg>
         </button>
-        <CircularProgress progress={progress} visible={progressVisible} animationDuration={animationDuration} resetKey={progressResetKey} />
+        <CircularProgress progress={progress} visible={progressVisible} animationDuration={animationDuration} resetKey={progressResetKey} paused={progressPaused} />
       </div>
     </div>
   )
