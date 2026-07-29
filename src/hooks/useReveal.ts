@@ -44,7 +44,10 @@ export function useReveal(options?: UseRevealOptions): UseRevealReturn {
       hash: true,
       transition: 'slide',
       progress: true,
-      keyboard: true,
+      // ? キー（Shift + /）でショートカット一覧を開く（main.tsx）が、Reveal は keyCode 191（/）を
+      // 一時停止に割り当てているため、そのままだと一覧を開くたびにスライドがブラックアウトする。
+      // 191 のバインドだけ外す（一時停止は B / . で従来どおり行える）
+      keyboard: { 191: null },
       touch: true,
       navigationMode: 'linear',
     })
