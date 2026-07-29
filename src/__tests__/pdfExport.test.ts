@@ -92,4 +92,50 @@ describe('exportSlidesToPdf', () => {
     expect(sections[0].classList.contains('present')).toBe(true)
     expect(sections[1].classList.contains('present')).toBe(false)
   })
+
+  it('キャプチャ対象に .past/.future が残っていない状態で html2canvas を呼ぶ（Reveal.jsの隠しCSSを回避）', async () => {
+    h.save.mockResolvedValue('/tmp/my-deck.pdf')
+    const deck = buildDeck(3)
+    const sections = deck.querySelectorAll('section')
+    sections[0].classList.add('present')
+    sections[1].classList.add('future')
+    sections[2].classList.add('future')
+
+    const capturedClassNames: string[] = []
+    h.html2canvas.mockImplementation(async (el: HTMLElement) => {
+      capturedClassNames.push(el.className)
+      return { toDataURL: () => 'data:image/png;base64,dummy' }
+    })
+
+    await exportSlidesToPdf(deck, 'my-deck')
+
+    expect(capturedClassNames).toEqual(['present', 'present', 'present'])
+    // キャプチャ後は元の past/future 構成に復元される
+    expect(sections[1].classList.contains('future')).toBe(true)
+    expect(sections[2].classList.contains('future')).toBe(true)
+  })
+
+  it('キャプチャ対象以外は .future で隠したまま撮影する（素のブロック要素として表示されるのを防ぐ）', async () => {
+    h.save.mockResolvedValue('/tmp/my-deck.pdf')
+    const deck = buildDeck(3)
+    const sections = deck.querySelectorAll('section')
+
+    const bystanderStates: string[][] = []
+    h.html2canvas.mockImplementation(async (el: HTMLElement) => {
+      bystanderStates.push(
+        Array.from(sections)
+          .filter((s) => s !== el)
+          .map((s) => s.className),
+      )
+      return { toDataURL: () => 'data:image/png;base64,dummy' }
+    })
+
+    await exportSlidesToPdf(deck, 'my-deck')
+
+    for (const bystanders of bystanderStates) {
+      for (const className of bystanders) {
+        expect(className).toBe('future')
+      }
+    }
+  })
 })

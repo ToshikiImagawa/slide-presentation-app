@@ -323,3 +323,40 @@ code {
   opacity: 1 !important;
   visibility: visible !important;
 }
+
+/* .present を付与すると毎回 fadeInUp が再生されるため、アニメーション途中（低opacity・ズレた位置）で
+   撮影されてしまう不具合を防ぐ。書き出し中は最初から最終状態で表示する */
+.pdf-capturing .slide-title,
+.pdf-capturing .content-area,
+.pdf-capturing .title-layout,
+.pdf-capturing .section-title-layout,
+.pdf-capturing .bleed-content {
+  animation: none !important;
+  opacity: 1 !important;
+  transform: none !important;
+}
+
+/* html2canvas は section 単体しかキャプチャせず祖先（body の背景・.backgrounds::before の上下フェード）を
+   引き継がないため、撮影対象の section 自身に同じ見た目を再現する（src/pdfExport.ts） */
+.pdf-capturing .slide-container {
+  background-color: var(--theme-background);
+  background-image: linear-gradient(var(--theme-background-grid) 1px, transparent 1px), linear-gradient(90deg, var(--theme-background-grid) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* .reveal .slides section.slide-container::after{display:none}（詳細度 0,3,2）より詳細度を上げて
+   確実に上書きする必要がある（.pdf-capturing 単体の子孫セレクタでは詳細度 0,2,1 で負けて無効化されていた） */
+.reveal.pdf-capturing .slides section.slide-container::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(to bottom, var(--theme-background) 0%, transparent 50%, var(--theme-background) 100%);
+  /* .slide-container > * が z-index:1 のため、それより低くしてコンテンツの背後に回す
+     （元の .backgrounds::before は .slides より前のDOM順に置かれ、コンテンツの背後になる構造だった） */
+  z-index: 0;
+  pointer-events: none;
+  display: block;
+}

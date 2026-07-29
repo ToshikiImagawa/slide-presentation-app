@@ -28,11 +28,35 @@ export async function exportSlidesToPdf(deckEl: HTMLElement, title: string): Pro
 
   const [{ default: html2canvas }, { jsPDF }] = await Promise.all([import('html2canvas'), import('jspdf')])
 
-  const previouslyPresent = sections.filter((section) => section.classList.contains('present'))
-  const originalTransform = slidesEl.style.transform
-  // Reveal.js が実行時に付与するビューポート合わせの scale transform を打ち消し、
-  // 常に設計解像度どおりのサイズでキャプチャする（Reveal自身の @media print と同じ考え方）
-  slidesEl.style.transform = 'none'
+  // Reveal.js は初期化時に現在スライド以外へ .past/.future を付与し、opacity:0・画面外transformで隠す。
+  // .present だけをトグルしてもこれらは残るため、キャプチャ対象を確実に見せるには両方消す必要がある
+  const originalClassNames = sections.map((section) => section.className)
+  // html2canvas は section の実際の画面上サイズ（Reveal.js がビューポートに合わせて付与する
+  // scale transform適用後）を基準にキャプチャするため、ウィンドウが設計解像度(1280x720)より
+  // 小さいと縮小されたまま撮影され、PDFページの余白が白抜けになる。
+  // Reveal自身が scale===1 のときに使う「空文字列にリセット」と同じ方法で無効化する
+  // （transform:'none'等を明示指定すると .reveal .slides の left:50%/top:50% が残ってしまい中央寄せが崩れる）。
+  // ウィンドウリサイズで Reveal の resize ハンドラが再度上書きしてくる可能性があるため、
+  // スライドごとに撮影直前へ都度リセットする
+  const originalSlidesStyle = {
+    left: slidesEl.style.left,
+    top: slidesEl.style.top,
+    right: slidesEl.style.right,
+    bottom: slidesEl.style.bottom,
+    zoom: slidesEl.style.zoom,
+    transform: slidesEl.style.transform,
+  }
+  const neutralizeSlidesScale = () => {
+    slidesEl.style.left = ''
+    slidesEl.style.top = ''
+    slidesEl.style.right = ''
+    slidesEl.style.bottom = ''
+    slidesEl.style.zoom = ''
+    slidesEl.style.transform = ''
+  }
+  // .pdf-capturing 付与中は global.css がテーマ背景・フェード効果を .slide-container に再現し、
+  // fadeInUp アニメーションも無効化する（祖先である body/.backgrounds の見た目は
+  // html2canvas が section 単体しかキャプチャしないため引き継がれない）
   deckEl.classList.add('pdf-capturing')
 
   let pdf: JsPDF
@@ -40,14 +64,27 @@ export async function exportSlidesToPdf(deckEl: HTMLElement, title: string): Pro
     // sections.length > 0 は上でガード済みなので、1ページ目を持つ状態で作成できる
     pdf = new jsPDF({ orientation: 'landscape', unit: 'px', format: [SLIDE_WIDTH, SLIDE_HEIGHT] })
     for (const [index, section] of sections.entries()) {
-      sections.forEach((s) => s.classList.remove('present'))
+      // 対象以外は .future を付与して隠す（opacity:0・画面外transform）。
+      // present/past/future のいずれも持たない状態は Reveal.js が想定しないため、通常のブロック要素として
+      // 表示されてしまう（対象スライドしか表示しない、という前提が崩れる）
+      sections.forEach((s) => {
+        s.classList.remove('present', 'past', 'future')
+        if (s !== section) {
+          s.classList.add('future')
+        }
+      })
       section.classList.add('present')
+      neutralizeSlidesScale()
       await waitForSlideReady(section)
+      neutralizeSlidesScale()
 
       const canvas = await html2canvas(section, {
         width: SLIDE_WIDTH,
         height: SLIDE_HEIGHT,
         scale: CAPTURE_SCALE,
+        // QrCodeCard等の外部画像（api.qrserver.com等）をCORSモードで再取得する。
+        // 未対応だとcanvasが汚染され、その画像だけ空白になる
+        useCORS: true,
       })
       const imageData = canvas.toDataURL('image/png')
 
@@ -57,9 +94,15 @@ export async function exportSlidesToPdf(deckEl: HTMLElement, title: string): Pro
       pdf.addImage(imageData, 'PNG', 0, 0, SLIDE_WIDTH, SLIDE_HEIGHT)
     }
   } finally {
-    sections.forEach((s) => s.classList.remove('present'))
-    previouslyPresent.forEach((s) => s.classList.add('present'))
-    slidesEl.style.transform = originalTransform
+    sections.forEach((s, i) => {
+      s.className = originalClassNames[i]
+    })
+    slidesEl.style.left = originalSlidesStyle.left
+    slidesEl.style.top = originalSlidesStyle.top
+    slidesEl.style.right = originalSlidesStyle.right
+    slidesEl.style.bottom = originalSlidesStyle.bottom
+    slidesEl.style.zoom = originalSlidesStyle.zoom
+    slidesEl.style.transform = originalSlidesStyle.transform
     deckEl.classList.remove('pdf-capturing')
   }
 

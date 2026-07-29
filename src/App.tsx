@@ -5,6 +5,7 @@ import { EditButton } from './components/EditButton'
 import { HomeButton } from './components/HomeButton'
 import { PdfExportButton } from './components/PdfExportButton'
 import type { PdfExportState } from './components/PdfExportButton'
+import { PdfExportOverlay } from './components/PdfExportOverlay'
 import { PresenterViewButton } from './components/PresenterViewButton'
 import { SettingsButton } from './components/SettingsButton'
 import { SlideRenderer } from './components/SlideRenderer'
@@ -65,9 +66,11 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
   const autoSlideshowRef = useRef(false)
   const setAutoPlayRef = useRef<(enabled: boolean) => void>(() => {})
   const setAutoSlideshowRef = useRef<(enabled: boolean) => void>(() => {})
+  const pdfExportingRef = useRef(false)
 
   currentIndexRef.current = currentIndex
   audioPlayerRef.current = audioPlayer
+  pdfExportingRef.current = pdfExportState === 'exporting'
 
   const handleNavigate = useCallback((direction: 'prev' | 'next') => {
     if (direction === 'next') goToNextRef.current()
@@ -75,16 +78,19 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
   }, [])
 
   const handleAudioToggle = useCallback(() => {
+    if (pdfExportingRef.current) return
     const voicePath = getVoicePath(data.slides[currentIndexRef.current])
     if (!voicePath) return
     audioPlayerRef.current.toggle(voicePath)
   }, [data.slides])
 
   const handleAutoPlayToggle = useCallback(() => {
+    if (pdfExportingRef.current) return
     setAutoPlayRef.current(!autoPlayRef.current)
   }, [])
 
   const handleAutoSlideshowToggle = useCallback(() => {
+    if (pdfExportingRef.current) return
     setAutoSlideshowRef.current(!autoSlideshowRef.current)
   }, [])
 
@@ -111,7 +117,7 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
     [sendSlideState],
   )
 
-  const { deckRef, goToNext, goToPrev } = useReveal({ onSlideChanged: handleSlideChanged })
+  const { deckRef, goToNext, goToPrev, setNavigationLocked } = useReveal({ onSlideChanged: handleSlideChanged })
 
   // ref を最新値に更新
   goToNextRef.current = goToNext
@@ -164,7 +170,24 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
     })
   }, [audioPlayer.isPlaying, audioPlayer.hasError, autoPlay, autoSlideshow, currentVoicePath, scrollSpeed, sendControlState])
 
+  const handleAutoPlayChangeLocal = useCallback(
+    (enabled: boolean) => {
+      if (pdfExportingRef.current) return
+      setAutoPlay(enabled)
+    },
+    [setAutoPlay],
+  )
+
+  const handleAutoSlideshowChangeLocal = useCallback(
+    (enabled: boolean) => {
+      if (pdfExportingRef.current) return
+      setAutoSlideshow(enabled)
+    },
+    [setAutoSlideshow],
+  )
+
   const handleAudioToggleLocal = useCallback(() => {
+    if (pdfExportingRef.current) return
     if (!currentVoicePath) return
     audioPlayer.toggle(currentVoicePath)
   }, [currentVoicePath, audioPlayer.toggle])
@@ -180,6 +203,8 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
   const handlePdfExport = useCallback(async () => {
     if (pdfExportState === 'exporting' || !deckRef.current) return
     setPdfExportState('exporting')
+    // 書き出し中は .present を直接操作するため、その間にスライドが送られると撮影対象と競合する
+    setNavigationLocked(true)
     try {
       await exportSlidesToPdf(deckRef.current, data.meta?.title ?? 'slides')
       setPdfExportState('idle')
@@ -187,8 +212,10 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
       console.error(e)
       setPdfExportState('error')
       showToast(t('toolbar.pdfExportError'))
+    } finally {
+      setNavigationLocked(false)
     }
-  }, [pdfExportState, data.meta?.title, showToast, t])
+  }, [pdfExportState, data.meta?.title, showToast, t, setNavigationLocked])
 
   // T キーでツールバーの表示・非表示をトグルする（入力中は無視）。ツールバーはプレゼンテーション画面固有の
   // ローカル状態なので、この購読も App が持つ（Root 所有ダイアログを開く ? キーは main.tsx 側）。
@@ -227,9 +254,9 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
         {currentVoicePath && <AudioPlayButton playbackState={audioPlayer.playbackState} hasError={audioPlayer.hasError} onToggle={handleAudioToggleLocal} />}
         <AudioControlBar
           autoPlay={autoPlay}
-          onAutoPlayChange={setAutoPlay}
+          onAutoPlayChange={handleAutoPlayChangeLocal}
           autoSlideshow={autoSlideshow}
-          onAutoSlideshowChange={setAutoSlideshow}
+          onAutoSlideshowChange={handleAutoSlideshowChangeLocal}
           progress={progress}
           progressVisible={progressVisible}
           animationDuration={animationDuration}
@@ -239,6 +266,7 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
         <PdfExportButton onClick={handlePdfExport} state={pdfExportState} />
         <PresenterViewButton onClick={openPresenterView} isOpen={isOpen} />
       </div>
+      <PdfExportOverlay open={pdfExportState === 'exporting'} />
     </>
   )
 }
