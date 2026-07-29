@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const h = vi.hoisted(() => ({
-  invoke: vi.fn(),
+  writeFile: vi.fn(),
   save: vi.fn(),
   html2canvas: vi.fn(),
   addPage: vi.fn(),
@@ -9,7 +9,7 @@ const h = vi.hoisted(() => ({
   output: vi.fn(),
 }))
 
-vi.mock('@tauri-apps/api/core', () => ({ invoke: h.invoke }))
+vi.mock('@tauri-apps/plugin-fs', () => ({ writeFile: h.writeFile }))
 vi.mock('@tauri-apps/plugin-dialog', () => ({ save: h.save }))
 vi.mock('html2canvas', () => ({ default: h.html2canvas }))
 vi.mock('jspdf', () => ({
@@ -35,7 +35,7 @@ function buildDeck(slideCount: number): HTMLElement {
 
 describe('exportSlidesToPdf', () => {
   beforeEach(() => {
-    h.invoke.mockReset()
+    h.writeFile.mockReset()
     h.save.mockReset()
     h.html2canvas.mockReset()
     h.addPage.mockReset()
@@ -61,23 +61,35 @@ describe('exportSlidesToPdf', () => {
     expect(result).toBe('saved')
   })
 
-  it('保存ダイアログをキャンセルすると invoke を呼ばずに cancelled を返す', async () => {
+  it('保存ダイアログをキャンセルすると writeFile を呼ばずに cancelled を返す', async () => {
     h.save.mockResolvedValue(null)
 
     const result = await exportSlidesToPdf(buildDeck(2), 'my-deck')
 
-    expect(h.invoke).not.toHaveBeenCalled()
+    expect(h.writeFile).not.toHaveBeenCalled()
     expect(result).toBe('cancelled')
   })
 
-  it('正常系で export_pdf_file を path/bytes で呼ぶ', async () => {
+  it('正常系で writeFile を保存先パス・バイト列で呼ぶ', async () => {
     h.save.mockResolvedValue('/tmp/my-deck.pdf')
 
     await exportSlidesToPdf(buildDeck(1), 'my-deck')
 
-    expect(h.invoke).toHaveBeenCalledWith('export_pdf_file', {
-      path: '/tmp/my-deck.pdf',
-      bytes: [0, 0, 0, 0],
-    })
+    expect(h.writeFile).toHaveBeenCalledTimes(1)
+    const [path, bytes] = h.writeFile.mock.calls[0]
+    expect(path).toBe('/tmp/my-deck.pdf')
+    expect(bytes).toBeInstanceOf(Uint8Array)
+  })
+
+  it('各スライドをキャプチャ後に .present クラスを元の状態へ復元する', async () => {
+    h.save.mockResolvedValue('/tmp/my-deck.pdf')
+    const deck = buildDeck(2)
+    const sections = deck.querySelectorAll('section')
+    sections[0].classList.add('present')
+
+    await exportSlidesToPdf(deck, 'my-deck')
+
+    expect(sections[0].classList.contains('present')).toBe(true)
+    expect(sections[1].classList.contains('present')).toBe(false)
   })
 })

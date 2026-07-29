@@ -14,13 +14,19 @@ const LABEL_KEY: Record<PdfExportState, string> = {
   error: 'toolbar.pdfExportError',
 }
 
+const STATE_CLASSNAME: Record<PdfExportState, string> = {
+  idle: '',
+  exporting: styles.buttonBusy,
+  error: styles.buttonError,
+}
+
 export function PdfExportButton({ onClick, state }: PdfExportButtonProps) {
   const { t } = useTranslation()
   const label = t(LABEL_KEY[state])
 
   return (
     <div className={styles.wrapper}>
-      <button onClick={onClick} disabled={state === 'exporting'} title={label} className={`${styles.button} ${state === 'exporting' ? styles.buttonOpen : ''}`.trim()} data-testid="pdf-export">
+      <button onClick={onClick} disabled={state === 'exporting'} title={label} className={`${styles.button} ${STATE_CLASSNAME[state]}`.trim()} data-testid="pdf-export">
         <svg className={styles.icon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M6 9V2h9l5 5v2" />
           <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />

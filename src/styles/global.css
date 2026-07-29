@@ -317,3 +317,9 @@ code {
 .reveal .progress span {
   background: var(--theme-primary);
 }
+
+/* PDF書き出し中（src/pdfExport.ts）は未訪問のフラグメントも表示済み状態にする */
+.pdf-capturing .fragment {
+  opacity: 1 !important;
+  visibility: visible !important;
+}

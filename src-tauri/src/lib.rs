@@ -511,13 +511,6 @@ fn save_slides_json(
   write_slides_json_gated(enabled, &path, &json)
 }
 
-/// PdfExportButton から書き出した PDF バイト列をローカルに保存する（書き込みは Rust 境界に集約）。
-/// ビューア機能（EditMode 非依存）のため、EditMode ゲートは slides.json 編集系のみを対象とする（NFR-003）
-#[tauri::command]
-fn export_pdf_file(path: String, bytes: Vec<u8>) -> Result<(), String> {
-  fs::write(&path, bytes).map_err(|e| e.to_string())
-}
-
 /// slides.json 内のアセットパス（image/ voice/ theme/ font/ 配下の相対参照）を再帰抽出する。
 /// scripts/export-slides.mjs の extractAssetPaths と同一規則（先頭スラッシュを1個だけ除去・
 /// 出現順を保持・重複排除・オブジェクトは値のみ走査）を単一真実源として移植する（DC-003）
@@ -1097,7 +1090,6 @@ pub fn run() {
       download_slide_package,
       set_edit_mode,
       save_slides_json,
-      export_pdf_file,
       export_slide_package,
       list_builtin_addons,
       list_builtin_dist_addons,
@@ -1256,21 +1248,6 @@ mod tests {
       .expect("編集モード有効時は書き込む");
 
     assert_eq!(fs::read_to_string(&path).unwrap(), json);
-
-    fs::remove_file(&path).ok();
-  }
-
-  #[test]
-  fn export_pdf_file_writes_bytes() {
-    let path =
-      std::env::temp_dir().join(format!("slide-pdf-export-test-{}.pdf", std::process::id()));
-    fs::remove_file(&path).ok();
-    let bytes = vec![0x25, 0x50, 0x44, 0x46]; // "%PDF"
-
-    export_pdf_file(path.to_str().unwrap().to_string(), bytes.clone())
-      .expect("PDFバイト列を書き込める");
-
-    assert_eq!(fs::read(&path).unwrap(), bytes);
 
     fs::remove_file(&path).ok();
   }

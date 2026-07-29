@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useRef } from 'react'
 import Reveal from 'reveal.js'
 
+/** Reveal.js の設計解像度（スライドの基準サイズ）。pdfExport.ts もPDFページサイズをこれに合わせる */
+export const SLIDE_WIDTH = 1280
+export const SLIDE_HEIGHT = 720
+
 export interface UseRevealOptions {
   onSlideChanged?: (event: { indexh: number; indexv: number }) => void
 }
@@ -33,8 +37,8 @@ export function useReveal(options?: UseRevealOptions): UseRevealReturn {
     }
 
     const deck = new Reveal(deckRef.current, {
-      width: 1280,
-      height: 720,
+      width: SLIDE_WIDTH,
+      height: SLIDE_HEIGHT,
       margin: 0,
       minScale: 0.2,
       maxScale: 2.0,

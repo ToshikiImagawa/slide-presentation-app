@@ -4,6 +4,7 @@ import { FallbackImage } from './components/FallbackImage'
 import { EditButton } from './components/EditButton'
 import { HomeButton } from './components/HomeButton'
 import { PdfExportButton } from './components/PdfExportButton'
+import type { PdfExportState } from './components/PdfExportButton'
 import { PresenterViewButton } from './components/PresenterViewButton'
 import { SettingsButton } from './components/SettingsButton'
 import { SlideRenderer } from './components/SlideRenderer'
@@ -14,6 +15,7 @@ import type { PresentationData } from './data'
 import { getVoicePath } from './data/noteHelpers'
 import { isTypingTarget } from './keyboardTarget'
 import { exportSlidesToPdf } from './pdfExport'
+import { useToast } from './toast'
 import { useAudioPlayer } from './hooks/useAudioPlayer'
 import { useAutoSlideshow } from './hooks/useAutoSlideshow'
 import { usePresenterView } from './hooks/usePresenterView'
@@ -44,12 +46,13 @@ type AppProps = {
 }
 
 export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addonScripts, scrollSpeed, onScrollSpeedChange, onOpenSettings }: AppProps) {
-  const { locale } = useI18n()
+  const { locale, t } = useI18n()
+  const { showToast } = useToast()
   const defaultData = useMemo(() => getFallbackPresentationData(locale), [locale])
   const data = loadPresentationData(presentationData, defaultData)
   const [currentIndex, setCurrentIndex] = useState(0)
   const [toolbarHidden, setToolbarHidden] = useState(false)
-  const [pdfExportState, setPdfExportState] = useState<'idle' | 'exporting' | 'error'>('idle')
+  const [pdfExportState, setPdfExportState] = useState<PdfExportState>('idle')
 
   const audioPlayer = useAudioPlayer()
 
@@ -183,8 +186,9 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
     } catch (e) {
       console.error(e)
       setPdfExportState('error')
+      showToast(t('toolbar.pdfExportError'))
     }
-  }, [pdfExportState, data.meta?.title, deckRef])
+  }, [pdfExportState, data.meta?.title, showToast, t])
 
   // T キーでツールバーの表示・非表示をトグルする（入力中は無視）。ツールバーはプレゼンテーション画面固有の
   // ローカル状態なので、この購読も App が持つ（Root 所有ダイアログを開く ? キーは main.tsx 側）。
