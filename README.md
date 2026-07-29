@@ -44,17 +44,33 @@ Download the file matching your OS from the latest release and run it.
 
 ### macOS Gatekeeper warning
 
-This app is self-signed but not notarized by Apple, so the first time you open it, macOS Gatekeeper shows a warning
-that the developer cannot be verified. Right-click (or Control-click) the app in Finder and choose **Open**, then
-confirm in the dialog — this clears the quarantine attribute, and the warning will not appear again for that copy of
-the app. This is macOS's own code-signature verification.
+This app is self-signed but not notarized by Apple. On macOS Sequoia (15) and later, Finder's right-click-to-open
+Gatekeeper bypass has been removed, so Gatekeeper blocks the downloaded `.dmg` itself — not the app inside it — with
+a message saying macOS cannot verify it's free of malware. This happens every time you download a new version, not
+just once.
+
+To open it, go to **System Settings → Privacy & Security**, scroll down to the blocked item, and click
+**Open Anyway**, then confirm in the dialog. Alternatively, clear the quarantine attribute from the command line:
+
+```bash
+xattr -d com.apple.quarantine ~/Downloads/Slide.Presentation.App_*.dmg
+```
+
+If the installed app is still blocked (quarantine can propagate when the app is copied out of the `.dmg`), also run:
+
+```bash
+xattr -dr com.apple.quarantine "/Applications/Slide Presentation App.app"
+```
+
+> Files downloaded with `curl` do not receive the quarantine attribute, so this warning only appears for files
+> downloaded through a browser.
 
 ### Keychain and password prompts
 
 This app never uses the OS keychain or any secure credential store. The only thing it persists locally is the path
 to the last opened slide file, saved as plain JSON in the app's data directory via `tauri-plugin-store` and
 `tauri-plugin-fs`. You will never be asked for a keychain password when installing or launching the app — the
-Gatekeeper warning above is the only prompt you may see.
+Gatekeeper flow above is the only approval you may need.
 
 ### Updating
 
