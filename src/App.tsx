@@ -178,8 +178,6 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
 
   const handleToggleToolbar = useCallback(() => setToolbarHidden((prev) => !prev), [])
 
-  const handlePdfExport = useCallback(() => window.print(), [])
-
   // T キーでツールバーの表示・非表示をトグルする（入力中は無視）。ツールバーはプレゼンテーション画面固有の
   // ローカル状態なので、この購読も App が持つ（Root 所有ダイアログを開く ? キーは main.tsx 側）。
   // T は Reveal.js のデフォルトキーバインド（H/L/K/J/N/P/B/F/G/O 等）と衝突しないキーとして選定した
@@ -225,7 +223,7 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
           animationDuration={animationDuration}
           progressResetKey={currentIndex}
         />
-        <PdfExportButton onClick={handlePdfExport} />
+        <PdfExportButton onClick={() => window.print()} />
         <PresenterViewButton onClick={openPresenterView} isOpen={isOpen} />
       </div>
     </>
