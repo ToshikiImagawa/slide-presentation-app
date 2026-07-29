@@ -19,6 +19,11 @@ export function lang(projectName: string): Lang {
   return projectName === 'ja' ? 'ja' : 'en'
 }
 
+/** 言語の `languageCode`（`assets/locales/` のファイル名と同じ。言語選択セレクトの value） */
+export function localeCode(l: Lang): string {
+  return LOCALE_FILE[l]
+}
+
 interface SlideFixture {
   id: string
   layout: string

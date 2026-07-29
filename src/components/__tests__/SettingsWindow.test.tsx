@@ -146,6 +146,19 @@ describe('SettingsWindow', () => {
     expect(input.value).toBe('20')
   })
 
+  // ホーム画面ではプレゼンテーション専用設定を出さない（scrollSpeed を渡さない）
+  it('scrollSpeed 未指定ではスクロールスピード設定が表示されない', () => {
+    render(
+      <Wrapper>
+        <SettingsWindow open={true} onClose={() => {}} />
+      </Wrapper>,
+    )
+    expect(screen.queryByText('Scroll Speed (sec)')).toBeNull()
+    expect(screen.queryByRole('spinbutton')).toBeNull()
+    // 言語設定は残る
+    expect(screen.getByText('Language')).toBeDefined()
+  })
+
   it('スクロールスピード変更で setScrollSpeed が呼ばれる', () => {
     const setScrollSpeed = vi.fn()
     render(

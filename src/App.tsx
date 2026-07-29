@@ -1,4 +1,3 @@
-import { ThemeProvider } from '@mui/material/styles'
 import { AudioControlBar } from './components/AudioControlBar'
 import { AudioPlayButton } from './components/AudioPlayButton'
 import { FallbackImage } from './components/FallbackImage'
@@ -6,23 +5,17 @@ import { EditButton } from './components/EditButton'
 import { HomeButton } from './components/HomeButton'
 import { PresenterViewButton } from './components/PresenterViewButton'
 import { SettingsButton } from './components/SettingsButton'
-import { SettingsWindow } from './components/SettingsWindow'
-import { ShortcutsDialog } from './components/ShortcutsDialog'
 import { SlideRenderer } from './components/SlideRenderer'
 import { ToolbarVisibilityButton } from './components/ToolbarVisibilityButton'
 import { registerDefaultComponents } from './components/registerDefaults'
 import { getFallbackPresentationData, loadPresentationData } from './data'
 import type { PresentationData } from './data'
-import { clearAddonTrustDecision, getAddonTrustMap, getRecentSlidePackages, isEmbeddedAddonsDisabled, resetAddonTrust, setAddonTrustDecision, setEmbeddedAddonsDisabled } from './localSlideLoader'
-import type { AddonTrustDecision } from './localSlideLoader'
-import type { AddonTrustEntry } from './components/SettingsWindow'
 import { getVoicePath } from './data/noteHelpers'
 import { useAudioPlayer } from './hooks/useAudioPlayer'
 import { useAutoSlideshow } from './hooks/useAutoSlideshow'
 import { usePresenterView } from './hooks/usePresenterView'
 import { useCircularProgress } from './hooks/useCircularProgress'
 import { useReveal } from './hooks/useReveal'
-import { theme } from './theme'
 import { applyThemeData } from './applyTheme'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useI18n } from './i18n'
@@ -39,69 +32,22 @@ type AppProps = {
   addonOwner?: string
   /** 現在のパッケージ同梱アドオンの asset URL 群（発表者ビューへの伝搬用） */
   addonScripts?: string[]
+  /** タイマー自動送りの秒数（所有者は Root）。設定ダイアログもここを参照する */
+  scrollSpeed: number
+  /** スクロール速度の変更を Root へ通知する（発表者ビューからの変更もこの経路を通る） */
+  onScrollSpeedChange: (speed: number) => void
+  /** 設定ダイアログを開く（ダイアログ本体は Root が持つ） */
+  onOpenSettings: () => void
+  /** キーボードショートカット一覧を開く（ダイアログ本体は Root が持つ） */
+  onOpenShortcuts: () => void
 }
 
-export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addonScripts }: AppProps) {
+export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addonScripts, scrollSpeed, onScrollSpeedChange, onOpenSettings, onOpenShortcuts }: AppProps) {
   const { locale } = useI18n()
   const defaultData = useMemo(() => getFallbackPresentationData(locale), [locale])
   const data = loadPresentationData(presentationData, defaultData)
   const [currentIndex, setCurrentIndex] = useState(0)
-  const [settingsOpen, setSettingsOpen] = useState(false)
-  const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [toolbarHidden, setToolbarHidden] = useState(false)
-  const [addonsDisabled, setAddonsDisabled] = useState(false)
-  // 層C: 実行時信頼の個別付け外し対象（最近開いたパッケージ × 現在の信頼判断）
-  const [addonTrustList, setAddonTrustList] = useState<AddonTrustEntry[]>([])
-
-  // 同梱アドオンの一律無効化フラグを永続ストアから復元する
-  useEffect(() => {
-    void isEmbeddedAddonsDisabled().then(setAddonsDisabled)
-  }, [])
-
-  // 設定ダイアログを開くたびに、信頼判断を持つパッケージ（trustMap 全キー）を一覧化する（層C・FR-008）。
-  // trustMap を基点にすることで、最近リストの上限を超えて追い出された「許可済み」パッケージも一覧に残り、
-  // 個別に取り消せる一方、信頼判断が一度も記録されていないパッケージは表示されない。title は recent から補完する
-  useEffect(() => {
-    if (!settingsOpen) return
-    void Promise.all([getRecentSlidePackages(), getAddonTrustMap()]).then(([recent, trustMap]) => {
-      const titleByPath = new Map(recent.map((r) => [r.path, r.title]))
-      setAddonTrustList(Object.keys(trustMap).map((path) => ({ path, title: titleByPath.get(path) ?? path, decision: trustMap[path] })))
-    })
-  }, [settingsOpen])
-
-  const handleToggleAddonsDisabled = useCallback((disabled: boolean) => {
-    setAddonsDisabled(disabled)
-    void setEmbeddedAddonsDisabled(disabled)
-  }, [])
-
-  // 永続化失敗時に楽観更新した一覧を実態へ戻す（await して store の save 失敗を握りつぶさない）
-  const reloadTrustList = useCallback(() => {
-    void getAddonTrustMap().then((trustMap) => {
-      setAddonTrustList((list) => list.map((e) => ({ ...e, decision: trustMap[e.path] })))
-    })
-  }, [])
-
-  const handleResetAddonTrust = useCallback(() => {
-    // 失効に合わせてローカル一覧の判断も未設定へ戻す（失敗時は実態へロールバック）
-    setAddonTrustList((list) => list.map((e) => ({ ...e, decision: undefined })))
-    resetAddonTrust().catch((err) => {
-      console.error('[App] アドオン許可履歴のリセットに失敗しました', err)
-      reloadTrustList()
-    })
-  }, [reloadTrustList])
-
-  // decision が undefined のときは「未設定」へ戻す（trustMap からキー削除）
-  const handleSetAddonTrust = useCallback(
-    (path: string, decision: AddonTrustDecision | undefined) => {
-      setAddonTrustList((list) => list.map((e) => (e.path === path ? { ...e, decision } : e)))
-      const op = decision === undefined ? clearAddonTrustDecision(path) : setAddonTrustDecision(path, decision)
-      op.catch((err) => {
-        console.error('[App] アドオン信頼の保存に失敗しました', err)
-        reloadTrustList()
-      })
-    },
-    [reloadTrustList],
-  )
 
   const audioPlayer = useAudioPlayer()
 
@@ -114,8 +60,6 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
   const autoSlideshowRef = useRef(false)
   const setAutoPlayRef = useRef<(enabled: boolean) => void>(() => {})
   const setAutoSlideshowRef = useRef<(enabled: boolean) => void>(() => {})
-  const scrollSpeedRef = useRef(0)
-  const setScrollSpeedRef = useRef<(speed: number) => void>(() => {})
 
   currentIndexRef.current = currentIndex
   audioPlayerRef.current = audioPlayer
@@ -143,10 +87,6 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
     setAutoSlideshowRef.current(!autoSlideshowRef.current)
   }, [])
 
-  const handleScrollSpeedChange = useCallback((speed: number) => {
-    setScrollSpeedRef.current(speed)
-  }, [])
-
   const { openPresenterView, isOpen, sendSlideState, sendControlState, sendProgressState } = usePresenterView({
     slides: data.slides,
     addonOwner,
@@ -157,7 +97,8 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
     onAudioToggle: handleAudioToggle,
     onAutoPlayToggle: handleAutoPlayToggle,
     onAutoSlideshowToggle: handleAutoSlideshowToggle,
-    onScrollSpeedChange: handleScrollSpeedChange,
+    // 所有者が Root なので、発表者ビューからの変更もそのまま Root へ通す（ref 経由の中継は不要）
+    onScrollSpeedChange,
   })
 
   const handleSlideChanged = useCallback(
@@ -175,11 +116,12 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
   goToNextRef.current = goToNext
   goToPrevRef.current = goToPrev
 
-  const { autoPlay, setAutoPlay, autoSlideshow, setAutoSlideshow, scrollSpeed, setScrollSpeed, timerDuration } = useAutoSlideshow({
+  const { autoPlay, setAutoPlay, autoSlideshow, setAutoSlideshow, timerDuration } = useAutoSlideshow({
     slides: data.slides,
     currentIndex,
     audioPlayer,
     goToNext,
+    scrollSpeed,
   })
 
   // setter と値の ref を更新
@@ -187,8 +129,6 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
   autoSlideshowRef.current = autoSlideshow
   setAutoPlayRef.current = setAutoPlay
   setAutoSlideshowRef.current = setAutoSlideshow
-  scrollSpeedRef.current = scrollSpeed
-  setScrollSpeedRef.current = setScrollSpeed
 
   const currentVoicePath = getVoicePath(data.slides[currentIndex])
 
@@ -247,18 +187,18 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
       if (e.key.toLowerCase() === 't') {
         handleToggleToolbar()
       } else if (e.key === '?') {
-        setShortcutsOpen(true)
+        onOpenShortcuts()
       }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [handleToggleToolbar])
+  }, [handleToggleToolbar, onOpenShortcuts])
 
   const logo = data.meta.logo
   const toolbarHiddenClass = toolbarHidden ? ' toolbar-hidden' : ''
 
   return (
-    <ThemeProvider theme={theme}>
+    <>
       <div className="reveal" ref={deckRef}>
         <div className="slides">
           <SlideRenderer slides={data.slides} />
@@ -273,7 +213,7 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
         <HomeButton onClick={onGoHome} />
         {onStartEdit && <EditButton onClick={onStartEdit} />}
         <ToolbarVisibilityButton hidden={toolbarHidden} onClick={handleToggleToolbar} />
-        <SettingsButton onClick={() => setSettingsOpen(true)} />
+        <SettingsButton onClick={onOpenSettings} />
       </div>
       <div className={`toolbar${toolbarHiddenClass}`}>
         {currentVoicePath && <AudioPlayButton playbackState={audioPlayer.playbackState} hasError={audioPlayer.hasError} onToggle={handleAudioToggleLocal} />}
@@ -289,19 +229,6 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
         />
         <PresenterViewButton onClick={openPresenterView} isOpen={isOpen} />
       </div>
-      <SettingsWindow
-        open={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
-        scrollSpeed={scrollSpeed}
-        setScrollSpeed={setScrollSpeed}
-        embeddedAddonsDisabled={addonsDisabled}
-        onToggleEmbeddedAddons={handleToggleAddonsDisabled}
-        onResetAddonTrust={handleResetAddonTrust}
-        addonTrust={addonTrustList}
-        onSetAddonTrust={handleSetAddonTrust}
-        onOpenShortcuts={() => setShortcutsOpen(true)}
-      />
-      <ShortcutsDialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
-    </ThemeProvider>
+    </>
   )
 }

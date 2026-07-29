@@ -1,10 +1,13 @@
 import { createRoot } from 'react-dom/client'
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { ThemeProvider } from '@mui/material/styles'
 import 'reveal.js/dist/reveal.css'
 import './styles/global.css'
 import './addon-bridge'
 import { App } from './App'
 import { HomeScreen } from './components/HomeScreen'
+import { SettingsWindow } from './components/SettingsWindow'
+import { ShortcutsDialog } from './components/ShortcutsDialog'
 import { applyPresentationTheme, applyTheme, resetThemeOverrides } from './applyTheme'
 import { loadAddonScripts, loadBuiltinAddons } from './addonLoader'
 import { unregisterOwner } from './components/ComponentRegistry'
@@ -26,7 +29,10 @@ import {
 } from './localSlideLoader'
 import type { LoadedSlidePackage, RecentSlidePackageEntry, SlidePackageLoadResult } from './localSlideLoader'
 import { getSampleSources, loadBundledSampleSlides } from './sampleSlides'
+import { useAddonSettings } from './hooks/useAddonSettings'
 import { useOpenSlideRequest } from './hooks/useOpenSlideRequest'
+import { useScrollSpeed } from './hooks/useScrollSpeed'
+import { theme } from './theme'
 import { SlideEditor } from './edit/SlideEditor'
 import type { EditSource } from './edit/SlideEditor'
 import { serializeSlides } from './edit/slidesSerialize'
@@ -50,6 +56,25 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
   const [editSource, setEditSource] = useState<EditSource | null>(null)
   // OS のファイル関連付けから届いたオープン要求のうち、編集中のため確認待ちのパス（#105）
   const [pendingOpenPath, setPendingOpenPath] = useState<string | null>(null)
+  // 設定・ショートカットのダイアログはホーム画面とプレゼンテーション画面の双方から開くため、
+  // 両者の共通祖先であるここで開閉を管理し、実体は1インスタンスだけ描画する
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [shortcutsOpen, setShortcutsOpen] = useState(false)
+  // スクロール速度はプレゼンテーション専用の設定だが、値の所有者は設定 UI と揃えてこの層に置く
+  const [scrollSpeed, setScrollSpeed] = useScrollSpeed()
+  const { addonsDisabled, addonTrustList, handleToggleAddonsDisabled, handleResetAddonTrust, handleSetAddonTrust } = useAddonSettings({ active: settingsOpen, recentPackages })
+
+  const openSettings = () => setSettingsOpen(true)
+  const closeSettings = () => setSettingsOpen(false)
+  const closeShortcuts = () => setShortcutsOpen(false)
+  // App の keydown 購読（? キー）の依存に入るため、これだけは参照を安定させる
+  const openShortcuts = useCallback(() => setShortcutsOpen(true), [])
+
+  // 画面が切り替わったらダイアログを閉じる（従来は App ごと再マウントされて閉じていた挙動を維持する）
+  useEffect(() => {
+    setSettingsOpen(false)
+    setShortcutsOpen(false)
+  }, [view])
 
   // 表示中プレゼンデータを更新する（App を再マウントするための key 更新を含む）。
   // showPresentation・handleCreateWithAi の両方から使う共通処理
@@ -245,17 +270,58 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
     [pendingOpenPath, handleOpenAssociated, closeEditGate],
   )
 
-  if (view === 'edit' && editSource) {
-    return <SlideEditor source={editSource} onExit={handleExitEdit} openRequestPath={pendingOpenPath} onResolveOpen={handleResolveOpen} />
-  }
-
-  if (view === 'home') {
+  // 画面本体は排他（いずれか1つだけ描画される）
+  const renderScreen = () => {
+    if (view === 'edit' && editSource) return <SlideEditor source={editSource} onExit={handleExitEdit} openRequestPath={pendingOpenPath} onResolveOpen={handleResolveOpen} />
+    if (view === 'home')
+      return (
+        <HomeScreen
+          recentPackages={recentPackages}
+          onOpenRecent={handleOpenRecent}
+          onRemoveRecent={handleRemoveRecent}
+          onOpenSample={handleOpenSample}
+          onBrowse={handleBrowse}
+          onCreateWithAi={handleCreateWithAi}
+          onOpenUrl={handleOpenUrl}
+          onOpenSettings={openSettings}
+        />
+      )
     return (
-      <HomeScreen recentPackages={recentPackages} onOpenRecent={handleOpenRecent} onRemoveRecent={handleRemoveRecent} onOpenSample={handleOpenSample} onBrowse={handleBrowse} onCreateWithAi={handleCreateWithAi} onOpenUrl={handleOpenUrl} />
+      <App
+        key={presentationKey}
+        presentationData={presentationData}
+        onGoHome={handleGoHome}
+        onStartEdit={handleStartEdit}
+        addonOwner={addonInfo.owner}
+        addonScripts={addonInfo.scripts}
+        scrollSpeed={scrollSpeed}
+        onScrollSpeedChange={setScrollSpeed}
+        onOpenSettings={openSettings}
+        onOpenShortcuts={openShortcuts}
+      />
     )
   }
 
-  return <App key={presentationKey} presentationData={presentationData} onGoHome={handleGoHome} onStartEdit={handleStartEdit} addonOwner={addonInfo.owner} addonScripts={addonInfo.scripts} />
+  return (
+    <>
+      {renderScreen()}
+      {/* 設定・ショートカットのダイアログは画面本体の兄弟として並べ、どの画面からでも開けるようにする */}
+      <SettingsWindow
+        open={settingsOpen}
+        onClose={closeSettings}
+        // スクロール速度はプレゼンテーション画面でのみ意味を持つ設定なので、他画面では値を渡さない（行が出ない）
+        scrollSpeed={view === 'presentation' ? scrollSpeed : undefined}
+        setScrollSpeed={setScrollSpeed}
+        embeddedAddonsDisabled={addonsDisabled}
+        onToggleEmbeddedAddons={handleToggleAddonsDisabled}
+        onResetAddonTrust={handleResetAddonTrust}
+        addonTrust={addonTrustList}
+        onSetAddonTrust={handleSetAddonTrust}
+        onOpenShortcuts={openShortcuts}
+      />
+      <ShortcutsDialog open={shortcutsOpen} onClose={closeShortcuts} />
+    </>
+  )
 }
 
 interface RootProps {
@@ -266,9 +332,13 @@ interface RootProps {
 function Root({ locales, initialRecentPackages }: RootProps) {
   return (
     <I18nProvider locales={locales}>
-      <ToastProvider>
-        <RootContent initialRecentPackages={initialRecentPackages} />
-      </ToastProvider>
+      {/* MUI テーマはこの層で 1 度だけ張る。DialogFrame の背景は MuiPaper-root と CSS 詳細度が同等なため、
+          theme が無いと MUI 既定の paper 色が漏れる。編集画面は内側で editorUiTheme に差し替える */}
+      <ThemeProvider theme={theme}>
+        <ToastProvider>
+          <RootContent initialRecentPackages={initialRecentPackages} />
+        </ToastProvider>
+      </ThemeProvider>
     </I18nProvider>
   )
 }

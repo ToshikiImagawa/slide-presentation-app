@@ -5,7 +5,7 @@ type: spec
 status: draft
 sdd-phase: specify
 created: 2026-02-02
-updated: 2026-07-24
+updated: 2026-07-28
 depends-on:
   - prd-language-settings
 tags:
@@ -20,7 +20,7 @@ category: internationalization
 
 **ドキュメント種別:** 抽象仕様書 (Spec)
 **SDDフェーズ:** Specify (仕様化)
-**最終更新日:** 2026-07-24
+**最終更新日:** 2026-07-28
 **関連 Design Doc:** [language-settings_design.md](./language-settings_design.md)
 **関連 PRD:** [language-settings.md](../requirement/language-settings.md)
 
@@ -49,8 +49,8 @@ category: internationalization
 
 | ID     | 要件                                                                                | 優先度    | PRD参照       |
 |--------|-----------------------------------------------------------------------------------|--------|-------------|
-| FR-001 | メインスライド画面の左上に設定ボタンを常時表示する。ボタンはスライドコンテンツの上にオーバーレイ配置し、Reveal.jsのスライド操作を妨げない         | Must   | FR-LANG-001 |
-| FR-002 | 設定ボタン押下時にスライドの上にオーバーレイ形式で設定ウィンドウを表示する。ウィンドウ外クリックまたは閉じるボタンで非表示にできる                 | Must   | FR-LANG-002 |
+| FR-001 | ホーム画面とプレゼンテーション画面の双方の左上に設定ボタンを常時表示する。プレゼンテーション画面ではスライドコンテンツの上にオーバーレイ配置し、Reveal.jsのスライド操作を妨げない。ホーム画面ではスライド読み込み中も無効化しない | Must   | FR-LANG-001 |
+| FR-002 | 設定ボタン押下時にオーバーレイ形式で設定ウィンドウを表示する。ウィンドウ外クリックまたは閉じるボタンで非表示にできる。ダイアログは画面本体（ホーム画面 / プレゼンテーション画面 / 編集画面）の兄弟として1インスタンスのみ存在し、画面遷移時に閉じる | Must   | FR-LANG-002 |
 | FR-003 | 設定ウィンドウ内にプルダウン形式の言語選択UIを配置する。読み込み済みの全サポート言語が選択肢として表示される                           | Must   | FR-LANG-003 |
 | FR-004 | プルダウンで言語を選択すると、アプリのUIテキストがページリロードなしで即座に切り替わる                                      | Must   | FR-LANG-004 |
 | FR-005 | 初回訪問時（保存済み設定なし）にブラウザの言語設定を検出し、対応するサポート言語があればデフォルトとする                              | Should | FR-LANG-005 |
@@ -58,7 +58,8 @@ category: internationalization
 | FR-007 | ユーザーが選択した言語設定（言語コード）をブラウザに永続化し、再訪問時に自動復元する                                        | Must   | FR-LANG-007 |
 | FR-008 | 言語リソースをassets配下のJSONファイルとして管理し、ファイル配置のみで自動的に読み込む。JSONの必須構造を検証し、欠落した個々のUIキーは `t()` 参照時にフォールバック言語（en-US）から補完する | Must   | FR-LANG-008 |
 | FR-009 | 日本語（ja-JP）と英語（en-US）を最低限サポートする（現行実装ではフランス語（fr-FR）も同梱）                            | Must   | FR-LANG-009 |
-| FR-010 | 設定ウィンドウは言語以外の設定項目を追加できる構造とする（現行実装ではスクロール速度・同梱アドオンの一律無効化/許可履歴リセットを追加済み）              | Could  | FR-LANG-010 |
+| FR-010 | 設定ウィンドウは言語以外の設定項目を追加できる構造とする（現行実装ではスクロール速度・キーボードショートカット一覧・同梱アドオンの一律無効化/許可履歴リセット/個別許可を追加済み）              | Could  | FR-LANG-010 |
+| FR-011 | ホーム画面から開いた設定ウィンドウではグローバル設定（言語・キーボードショートカット・アドオン設定）のみを表示し、プレゼンテーション専用設定（スクロール速度）は表示しない | Should | FR-LANG-011 |
 
 ## 3.2. 非機能要件 (Non-Functional Requirements)
 
@@ -77,8 +78,9 @@ category: internationalization
 | src/i18n/       | i18nProvider.tsx   | `useTranslation` | 翻訳関数 `t(key)` を返すフック            |
 | src/i18n/       | loader.ts          | `loadLocales`    | assets配下の言語リソースJSONを読み込み・検証する関数 |
 | src/i18n/       | loader.ts          | `validateLocaleResource` | 言語リソースの必須構造（languageCode/languageName/ui）を検証する関数 |
-| src/components/ | SettingsButton.tsx | `SettingsButton` | スライド左上に表示する設定ボタンコンポーネント         |
-| src/components/ | SettingsWindow.tsx | `SettingsWindow` | 設定ウィンドウのオーバーレイコンポーネント（言語・スクロール速度・同梱アドオン設定を提供） |
+| src/components/ | SettingsButton.tsx | `SettingsButton` | 設定ウィンドウを開くボタンコンポーネント（ホーム画面・プレゼンテーション画面の左上に配置） |
+| src/components/ | SettingsWindow.tsx | `SettingsWindow` | 設定ウィンドウのオーバーレイコンポーネント（言語・キーボードショートカット・同梱アドオン設定に加え、プレゼンテーション画面ではスクロール速度を提供） |
+| src/            | main.tsx           | （内部: `RootContent`） | ホーム画面 / プレゼンテーション画面 / 編集画面の切り替えと、設定・ショートカットダイアログの開閉状態を所有する層 |
 
 ## 4.2. 型定義
 
@@ -105,15 +107,27 @@ interface LocaleValidationResult {
   resource: LocaleResource
 }
 
-/** 設定ウィンドウの props（FR-010: 言語以外の設定項目を追加できる拡張構造） */
+/** アドオン設定の対象（詳細は package-embedded-addon_spec.md を参照） */
+type AddonTrustDecision = 'allowed' | 'denied'
+type AddonTrustEntry = { path: string; title: string; decision: AddonTrustDecision | undefined }
+
+/**
+ * 設定ウィンドウの props（FR-010: 言語以外の設定項目を追加できる拡張構造）
+ *
+ * 言語セレクト以外の設定行はすべて optional props の有無で表示を切り替える。
+ * FR-011 のスコープ分離もこの規約で表現し、プレゼンテーション画面以外では scrollSpeed / setScrollSpeed を渡さない
+ */
 interface SettingsWindowProps {
   open: boolean
   onClose: () => void
-  scrollSpeed: number                       // 自動スライドショーのスクロール速度（秒）
-  setScrollSpeed: (speed: number) => void
+  scrollSpeed?: number                      // 自動スライドショーのスクロール速度（秒）。未指定時はスクロール速度行を非表示（FR-011）
+  setScrollSpeed?: (speed: number) => void  // scrollSpeed と対で指定する（両方揃ったときのみ行を描画）
   embeddedAddonsDisabled?: boolean          // 同梱アドオンの一律無効化フラグ（未指定時はアドオン設定を非表示）
   onToggleEmbeddedAddons?: (disabled: boolean) => void
   onResetAddonTrust?: () => void            // アドオン許可履歴のリセット
+  addonTrust?: AddonTrustEntry[]            // パッケージ単位の許可/拒否の一覧（未指定/空なら非表示）
+  onSetAddonTrust?: (path: string, decision: AddonTrustDecision | undefined) => void
+  onOpenShortcuts?: () => void              // ショートカット一覧ダイアログを開く（未指定時はボタンを非表示）
 }
 ```
 
@@ -195,10 +209,14 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant User as ユーザー
+    participant Screen as 画面本体<br/>HomeScreen または App
+    participant Root as RootContent<br/>ダイアログ所有者
     participant Window as SettingsWindow
     participant Provider as I18nProvider
     participant Storage as ブラウザストレージ
-    User ->> Window: 設定ボタンクリック
+    User ->> Screen: 設定ボタンクリック
+    Screen ->> Root: onOpenSettings()
+    Root ->> Window: open=true（プレゼンテーション画面のときのみ scrollSpeed も渡す・FR-011）
     Window ->> Window: 設定ウィンドウ表示
     User ->> Window: プルダウンで言語選択
     Window ->> Provider: setLocale("ja-JP")
@@ -221,4 +239,4 @@ sequenceDiagram
 
 - 対応PRD: [language-settings.md](../requirement/language-settings.md)
 - カバーする要求: UR-LANG-001, FR-LANG-001, FR-LANG-002, FR-LANG-003, FR-LANG-004, FR-LANG-005, FR-LANG-006,
-  FR-LANG-007, FR-LANG-008, FR-LANG-009, FR-LANG-010, NFR-LANG-001
+  FR-LANG-007, FR-LANG-008, FR-LANG-009, FR-LANG-010, FR-LANG-011, NFR-LANG-001

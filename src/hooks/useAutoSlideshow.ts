@@ -3,15 +3,13 @@ import type { SlideData } from '../data'
 import type { UseAudioPlayerReturn } from './useAudioPlayer'
 import { getVoicePath } from '../data/noteHelpers'
 
-export const DEFAULT_SCROLL_SPEED = 20
-const SCROLL_SPEED_STORAGE_KEY = 'slide-app-scroll-speed'
-
 export interface UseAutoSlideshowOptions {
   slides: SlideData[]
   currentIndex: number
   audioPlayer: UseAudioPlayerReturn
   goToNext: () => void
-  initialScrollSpeed?: number
+  /** タイマー自動送りの秒数。localStorage 永続のグローバル設定なので所有者は Root（useScrollSpeed）側 */
+  scrollSpeed: number
 }
 
 export interface UseAutoSlideshowReturn {
@@ -19,29 +17,13 @@ export interface UseAutoSlideshowReturn {
   setAutoPlay: (enabled: boolean) => void
   autoSlideshow: boolean
   setAutoSlideshow: (enabled: boolean) => void
-  scrollSpeed: number
-  setScrollSpeed: (speed: number) => void
   /** タイマーがアクティブな場合の総時間（秒）。非アクティブ時は null */
   timerDuration: number | null
 }
 
-export function useAutoSlideshow({ slides, currentIndex, audioPlayer, goToNext, initialScrollSpeed }: UseAutoSlideshowOptions): UseAutoSlideshowReturn {
+export function useAutoSlideshow({ slides, currentIndex, audioPlayer, goToNext, scrollSpeed }: UseAutoSlideshowOptions): UseAutoSlideshowReturn {
   const [autoPlay, setAutoPlay] = useState(false)
   const [autoSlideshow, setAutoSlideshow] = useState(false)
-  const [scrollSpeed, setScrollSpeedState] = useState(() => {
-    if (initialScrollSpeed != null) return initialScrollSpeed
-    const stored = localStorage.getItem(SCROLL_SPEED_STORAGE_KEY)
-    if (stored != null) {
-      const parsed = Number(stored)
-      if (Number.isFinite(parsed) && parsed >= 1) return parsed
-    }
-    return DEFAULT_SCROLL_SPEED
-  })
-
-  const setScrollSpeed = useCallback((speed: number) => {
-    setScrollSpeedState(speed)
-    localStorage.setItem(SCROLL_SPEED_STORAGE_KEY, String(speed))
-  }, [])
 
   // 自動再生: スライド変更時に voice があれば再生
   useEffect(() => {
@@ -97,8 +79,6 @@ export function useAutoSlideshow({ slides, currentIndex, audioPlayer, goToNext, 
     setAutoPlay,
     autoSlideshow,
     setAutoSlideshow,
-    scrollSpeed,
-    setScrollSpeed,
     timerDuration,
   }
 }

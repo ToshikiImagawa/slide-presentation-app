@@ -1,17 +1,16 @@
 import { useI18n, useTranslation } from '../i18n'
 import type { AddonTrustDecision } from '../localSlideLoader'
+import type { AddonTrustEntry } from '../hooks/useAddonSettings'
 import { DialogFrame } from './DialogFrame'
 import dialogFrameStyles from './DialogFrame.module.css'
 import styles from './SettingsWindow.module.css'
 
-/** 層C: 実行時信頼の個別付け外し対象（パッケージ単位） */
-export type AddonTrustEntry = { path: string; title: string; decision: AddonTrustDecision | undefined }
-
 type SettingsWindowProps = {
   open: boolean
   onClose: () => void
-  scrollSpeed: number
-  setScrollSpeed: (speed: number) => void
+  /** スクロール速度はプレゼンテーション画面専用の設定。未指定時（ホーム画面など）はスクロール速度セクションを表示しない */
+  scrollSpeed?: number
+  setScrollSpeed?: (speed: number) => void
   /** 同梱アドオンの一律無効化フラグ（未指定時はアドオン設定セクションを表示しない） */
   embeddedAddonsDisabled?: boolean
   /** 一律無効化トグルの変更ハンドラ */
@@ -44,23 +43,25 @@ export function SettingsWindow({ open, onClose, scrollSpeed, setScrollSpeed, emb
           ))}
         </select>
       </div>
-      <div className={styles.settingRow}>
-        <label className={styles.label} htmlFor="scroll-speed-input">
-          {t('settings.scrollSpeed')}
-        </label>
-        <input
-          type="number"
-          id="scroll-speed-input"
-          className={styles.input}
-          min={1}
-          max={300}
-          value={scrollSpeed}
-          onChange={(e) => {
-            const v = Number(e.target.value)
-            if (v >= 1 && v <= 300) setScrollSpeed(v)
-          }}
-        />
-      </div>
+      {scrollSpeed !== undefined && (
+        <div className={styles.settingRow}>
+          <label className={styles.label} htmlFor="scroll-speed-input">
+            {t('settings.scrollSpeed')}
+          </label>
+          <input
+            type="number"
+            id="scroll-speed-input"
+            className={styles.input}
+            min={1}
+            max={300}
+            value={scrollSpeed}
+            onChange={(e) => {
+              const v = Number(e.target.value)
+              if (v >= 1 && v <= 300) setScrollSpeed?.(v)
+            }}
+          />
+        </div>
+      )}
       {onOpenShortcuts && (
         <div className={styles.settingRow}>
           <label className={styles.label}>{t('settings.shortcuts', 'キーボードショートカット')}</label>

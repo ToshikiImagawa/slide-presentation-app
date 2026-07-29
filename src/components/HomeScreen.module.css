@@ -20,6 +20,17 @@
   max-width: 620px;
 }
 
+/* 設定ボタン。.container が overflow-y: auto のスクロール領域なので、
+   最近開いたスライドが増えても流れて消えないよう fixed で固定する。
+   位置はプレゼンテーション画面の .toolbar-left（global.css）と揃え、画面遷移で歯車がずれないようにする */
+.settingsCorner {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 10;
+  animation: fadeInUp 0.5s ease-out both;
+}
+
 /* --- ヒーロー --- */
 .hero {
   display: flex;

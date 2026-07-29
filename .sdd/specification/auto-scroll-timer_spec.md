@@ -5,7 +5,7 @@ type: spec
 status: draft
 sdd-phase: specify
 created: 2026-02-02
-updated: 2026-07-24
+updated: 2026-07-28
 depends-on:
   - prd-auto-scroll-timer
 tags:
@@ -21,7 +21,7 @@ category: presentation-playback
 
 **ドキュメント種別:** 抽象仕様書 (Spec)
 **SDDフェーズ:** Specify (仕様化)
-**最終更新日:** 2026-07-24
+**最終更新日:** 2026-07-28
 **関連 Design Doc:** [auto-scroll-timer_design.md](./auto-scroll-timer_design.md)
 **関連 PRD:** [auto-scroll-timer.md](../requirement/auto-scroll-timer.md)
 
@@ -71,21 +71,28 @@ category: presentation-playback
 
 | ディレクトリ          | ファイル名               | エクスポート                         | 概要                                   |
 |-----------------|---------------------|--------------------------------|--------------------------------------|
-| src/hooks/      | useAutoSlideshow.ts | `useAutoSlideshow()` (拡張)      | 既存フックにタイマーベース自動スクロール機能を追加            |
-| src/hooks/      | useAutoSlideshow.ts | `UseAutoSlideshowOptions` (拡張) | options に initialScrollSpeed を追加     |
-| src/hooks/      | useAutoSlideshow.ts | `UseAutoSlideshowReturn` (拡張)  | 戻り値に scrollSpeed, setScrollSpeed, timerDuration を追加 |
-| src/components/ | SettingsWindow.tsx  | `SettingsWindow` (拡張)          | 言語設定機能の設定ウィンドウにスクロールスピード設定フィールドを追加   |
+| src/hooks/      | useScrollSpeed.ts   | `useScrollSpeed()`             | スクロールスピードの保持と `localStorage` 永続化。`[scrollSpeed, setScrollSpeed]` のタプルを返す |
+| src/hooks/      | useScrollSpeed.ts   | `DEFAULT_SCROLL_SPEED`         | スクロールスピードのデフォルト値（20 秒）           |
+| src/hooks/      | useAutoSlideshow.ts | `useAutoSlideshow()` (拡張)      | 自動再生・自動送り・タイマーベース自動スクロールを担うフック。スクロールスピードは保持せず引数で受け取る（controlled） |
+| src/hooks/      | useAutoSlideshow.ts | `UseAutoSlideshowOptions` (拡張) | options に scrollSpeed（必須）を追加        |
+| src/hooks/      | useAutoSlideshow.ts | `UseAutoSlideshowReturn` (拡張)  | 戻り値に timerDuration を追加             |
+| src/components/ | SettingsWindow.tsx  | `SettingsWindow` (拡張)          | 言語設定機能の設定ウィンドウにスクロールスピード設定フィールドを追加。`scrollSpeed` / `setScrollSpeed` は任意で、両方が渡されたときだけ当該行を表示する |
+
+スクロールスピードの所有者は `useScrollSpeed` を呼び出す Root 層（`main.tsx` の `RootContent`）であり、`useAutoSlideshow`（タイマー）と `SettingsWindow`（設定 UI）はいずれも値を受け取る側になる。詳細な根拠は [auto-scroll-timer_design.md](./auto-scroll-timer_design.md) §9.1 を参照。
 
 ## 4.2. 型定義
 
 ```typescript
+/** スクロールスピードの所有フック。値と setter のタプルを返す */
+function useScrollSpeed(): [number, (speed: number) => void]
+
 /** UseAutoSlideshowOptions の拡張 */
 interface UseAutoSlideshowOptions {
   slides: SlideData[]
   currentIndex: number
   audioPlayer: UseAudioPlayerReturn
   goToNext: () => void
-  initialScrollSpeed?: number  // 追加: 初期スクロールスピード（秒）。未指定時は localStorage 保存値、それも無ければデフォルト値
+  scrollSpeed: number  // タイマー自動送りの秒数（必須・controlled）。所有者は useScrollSpeed を呼ぶ Root 層
 }
 
 /** UseAutoSlideshowReturn の拡張 */
@@ -94,14 +101,13 @@ interface UseAutoSlideshowReturn {
   setAutoPlay: (enabled: boolean) => void
   autoSlideshow: boolean
   setAutoSlideshow: (enabled: boolean) => void
-  scrollSpeed: number                       // 追加: 現在のスクロールスピード（秒）
-  setScrollSpeed: (speed: number) => void   // 追加: スクロールスピードの変更（localStorage へ永続化）
   timerDuration: number | null              // 追加: タイマー稼働中の総秒数。非稼働時は null（プログレス表示用）
 }
 ```
 
-- `initialScrollSpeed` 未指定時は、`localStorage`（キー `slide-app-scroll-speed`）の保存値（有効な数値かつ 1 以上）を初期値とし、それも無ければデフォルト値 20 秒を用いる。`setScrollSpeed` は変更値を同キーへ永続化する。
-- `timerDuration` は、タイマーが稼働中のとき総秒数（= 現在の `scrollSpeed`）を、非稼働時は `null` を返す。プログレス表示（別機能 [auto-scroll-progress-bar.md](../requirement/auto-scroll-progress-bar.md)）が残り時間を算出するために使用する。
+- `useScrollSpeed` は初回マウント時に `localStorage`（キー `slide-app-scroll-speed`）を 1 回だけ読み、保存値が有効な数値かつ 1 以上であればそれを初期値とし、未保存・無効な場合はデフォルト値 20 秒（`DEFAULT_SCROLL_SPEED`）を用いる。setter は state の更新と同キーへの永続化を同時に行う。
+- `useAutoSlideshow` はスクロールスピードを保持しない（controlled）。受け取った `scrollSpeed` をタイマーの待機時間および `timerDuration` にそのまま用いるため、値の変更は追加操作なしに次のカウントへ反映される（NFR-003）。
+- `timerDuration` は、タイマーが稼働中のとき総秒数（= 受け取った `scrollSpeed`）を、非稼働時は `null` を返す。プログレス表示（別機能 [auto-scroll-progress-bar.md](../requirement/auto-scroll-progress-bar.md)）が残り時間を算出するために使用する。
 
 # 5. 用語集
 
@@ -115,13 +121,20 @@ interface UseAutoSlideshowReturn {
 # 6. 使用例
 
 ```tsx
-// App.tsx での使用（既存コードの拡張）
-const autoSlideshow = useAutoSlideshow({
+// main.tsx の RootContent（所有者）— アプリ起動時に localStorage から復元し、消費者へ配る
+const [scrollSpeed, setScrollSpeed] = useScrollSpeed()
+
+// ホーム画面ではスクロールスピード行を出さないため、プレゼンテーション表示中のみ渡す
+<SettingsWindow open={settingsOpen} onClose={closeSettings} scrollSpeed={view === 'presentation' ? scrollSpeed : undefined} setScrollSpeed={view === 'presentation' ? setScrollSpeed : undefined} />
+<App presentationData={data} scrollSpeed={scrollSpeed} onScrollSpeedChange={setScrollSpeed} />
+
+// App.tsx での使用（controlled: 値は props で受け取ったものをそのまま渡す）
+const { autoPlay, setAutoPlay, autoSlideshow, setAutoSlideshow, timerDuration } = useAutoSlideshow({
   slides: presentationData.slides,
   currentIndex,
   audioPlayer,
-  goToNext: () => revealRef.current?.next(),
-  initialScrollSpeed: 20,  // 初期値20秒（未指定なら localStorage 保存値／デフォルト20秒）
+  goToNext,
+  scrollSpeed,
 })
 
 // SettingsWindow は scrollSpeed / setScrollSpeed を props で受け取る
@@ -210,7 +223,7 @@ flowchart TD
 # 8. 制約事項
 
 - スクロールスピードの設定値はコードにハードコードせず、アプリケーション状態として管理する。外部（localStorage）から読み込む値は使用前に検証し、無効時はデフォルト値へフォールバックする（D-002 / A-005 準拠）
-- スクロールスピードの設定可能範囲は 1〜300 秒とし、設定 UI（SettingsWindow の数値入力）で下限 1・上限 300 を強制する
+- スクロールスピードの設定可能範囲は 1〜300 秒とし、設定 UI（SettingsWindow の数値入力）で下限 1・上限 300 を強制する。`useScrollSpeed` の `localStorage` 復元時の検証は下限（1 以上）のみで、上限の検証は設定 UI が担う
 - タイマーのライフサイクルは useEffect で管理し、クリーンアップ時にリソースを解放する（T-003 準拠）
 - TypeScript strict モードで型安全性を確保する（T-001 準拠）
 - Reveal.js の DOM 構造との互換性を維持する（T-002 準拠）
