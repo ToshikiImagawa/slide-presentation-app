@@ -7,7 +7,8 @@ type ShortcutEntry = { keys: string; descKey: string; fallback: string }
 // navigationMode: 'linear'（useReveal.ts）時の Reveal.js デフォルトキーバインド（node_modules/reveal.js/js/controllers/keyboard.js の configure() を根拠とする）
 const VIEWER_SHORTCUTS: ShortcutEntry[] = [
   { keys: 'T', descKey: 'shortcuts.toggleToolbar', fallback: 'ツールバーの表示/非表示' },
-  { keys: '?', descKey: 'shortcuts.openHelp', fallback: 'このショートカット一覧を表示' },
+  // ? の購読は Root（main.tsx）にあり全画面で効く。節の分類はビューアだが、その旨を説明文で示す
+  { keys: '?', descKey: 'shortcuts.openHelp', fallback: 'この一覧を表示（どの画面でも有効）' },
   { keys: '→ / ↓ / Space / N / L / J', descKey: 'shortcuts.nextSlide', fallback: '次のスライド' },
   { keys: '← / ↑ / P / H / K', descKey: 'shortcuts.prevSlide', fallback: '前のスライド' },
   { keys: 'Shift + ← / →', descKey: 'shortcuts.jumpFirstLast', fallback: '最初 / 最後のスライドへ移動' },
@@ -26,9 +27,16 @@ const EDIT_SHORTCUTS: ShortcutEntry[] = [
   { keys: 'Enter / Shift + Enter', descKey: 'shortcuts.searchNav', fallback: '次 / 前の検索結果へ移動' },
 ]
 
+// 発表者ビュー（別ウィンドウ）の独自キーバインド（src/components/PresenterViewWindow.tsx の handleKeyDown が根拠）
+const PRESENTER_SHORTCUTS: ShortcutEntry[] = [
+  { keys: '→ / Space', descKey: 'shortcuts.nextSlide', fallback: '次のスライド' },
+  { keys: '←', descKey: 'shortcuts.prevSlide', fallback: '前のスライド' },
+]
+
 const SECTIONS: { titleKey: string; fallback: string; entries: ShortcutEntry[] }[] = [
   { titleKey: 'shortcuts.viewerSection', fallback: 'プレゼンビューア', entries: VIEWER_SHORTCUTS },
   { titleKey: 'shortcuts.editSection', fallback: '編集モード', entries: EDIT_SHORTCUTS },
+  { titleKey: 'shortcuts.presenterSection', fallback: '発表者ビュー', entries: PRESENTER_SHORTCUTS },
 ]
 
 type ShortcutsDialogProps = {
@@ -47,22 +55,24 @@ export function ShortcutsDialog({ open, onClose }: ShortcutsDialogProps) {
       title={t('shortcuts.title', 'キーボードショートカット')}
       closeLabel={t('settings.close')}
       testId="shortcuts-dialog"
-      paperStyle={{ maxWidth: 560 }}
-      bodyStyle={{ gap: 20, maxHeight: '70vh', overflowY: 'auto' }}
+      paperStyle={{ maxWidth: 820 }}
+      bodyStyle={{ maxHeight: '70vh', overflowY: 'auto' }}
     >
-      {SECTIONS.map((section) => (
-        <div className={styles.section} key={section.titleKey}>
-          <h3 className={styles.sectionTitle}>{t(section.titleKey, section.fallback)}</h3>
-          <div className={styles.list}>
-            {section.entries.map((entry) => (
-              <div className={styles.row} key={entry.keys}>
-                <span className={styles.keys}>{entry.keys}</span>
-                <span className={styles.description}>{t(entry.descKey, entry.fallback)}</span>
-              </div>
-            ))}
+      <div className={styles.sections}>
+        {SECTIONS.map((section) => (
+          <div className={styles.section} key={section.titleKey}>
+            <h3 className={styles.sectionTitle}>{t(section.titleKey, section.fallback)}</h3>
+            <div className={styles.list}>
+              {section.entries.map((entry) => (
+                <div className={styles.row} key={entry.keys}>
+                  <span className={styles.keys}>{entry.keys}</span>
+                  <span className={styles.description}>{t(entry.descKey, entry.fallback)}</span>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </DialogFrame>
   )
 }

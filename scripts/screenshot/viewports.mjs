@@ -19,6 +19,7 @@ export const VIEWPORTS = {
   home: { ...MAIN },
   presentation: { ...MAIN },
   settings: { ...MAIN },
+  shortcuts: { ...MAIN },
   toolbar: { ...MAIN },
   edit: { ...MAIN },
   'presenter-view': { ...PRESENTER },

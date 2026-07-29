@@ -12,6 +12,8 @@ declare module 'reveal.js' {
     transition?: string
     progress?: boolean
     keyboard?: boolean
+    /** ? / F1 で Reveal 組み込みのヘルプオーバーレイを表示するか（既定 true） */
+    help?: boolean
     touch?: boolean
     navigationMode?: string
   }

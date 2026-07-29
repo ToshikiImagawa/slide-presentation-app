@@ -1,3 +1,22 @@
+/* 既定は 1 カラム。幅が足りるときだけ 2 カラムにして、3 節すべてを 1280x720 でスクロールなしに収める */
+.sections {
+  display: grid;
+  gap: 20px 32px;
+}
+
+@media (min-width: 701px) {
+  .sections {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  /* 行数の最も多い先頭節（プレゼンビューア）を左カラムで 2 行ぶん占めさせると、
+     残る短い 2 節は Grid の自動配置で右カラムに積まれる（位置の明示は不要）。
+     節を 4 つ以上に増やすときはこの前提を見直すこと */
+  .sections > .section:first-child {
+    grid-row: 1 / span 2;
+  }
+}
+
 .section {
   display: flex;
   flex-direction: column;

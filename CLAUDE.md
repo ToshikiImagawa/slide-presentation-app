@@ -41,12 +41,13 @@ npm run generate-docs        # README.md / CHANGELOG.md を PDF 化（docs/ に�
 - `vite --mode screenshot` を起動し、Tauri IPC を `src/__screenshot__/`（`tauri-store` / `tauri-event` / `tauri-webview`）へ **Vite alias で差し替え**て素のブラウザで boot させる（本番ビルドには非混入。`@tauri-apps/api/core` は実物の plugin-fs/dialog が依存するため alias しない）。
 - スライド内容はロケール別 fixture `scripts/screenshot/fixtures/slides.{ja,en}.json` を `/slides.json` として配信する（`Accept-Language` で出し分け）。
 - Playwright **WebKit** で撮影し、`scripts/screenshot/chrome.mjs` が macOS ウィンドウ枠を合成。**en / ja の 2 ロケール**で撮影し、`resources/screenshots/en/`・`resources/screenshots/ja/` に出力する（Playwright の context `locale` で UI 言語と fixture を切り替え）。
-- シナリオは `scripts/screenshot/scenarios.mjs`（`home` / `presentation` / `toolbar` / `settings` / `edit` / `presenter-view` / `layout-*` / `logo`）。撮影キーは `VIEWPORTS`（`viewports.mjs`）にも同名で登録が必要。待受は `data-testid` で行うため、新シナリオが UI に到達できないときはコンポーネント側に testid を足す。回帰検知は **git 差分ベース**（閾値自動判定はしない）。
+- シナリオは `scripts/screenshot/scenarios.mjs`（`home` / `presentation` / `toolbar` / `settings` / `shortcuts` / `edit` / `presenter-view` / `layout-*` / `logo`）。撮影キーは `VIEWPORTS`（`viewports.mjs`）にも同名で登録が必要。待受は `data-testid` で行うため、新シナリオが UI に到達できないときはコンポーネント側に testid を足す。回帰検知は **git 差分ベース**（閾値自動判定はしない）。
 - **日本語フォント・WebKit 描画差のため macOS で実行する**（CI は `.github/workflows/screenshots.yml` の macOS ランナー・手動 dispatch）。
 - E2E は `e2e/` にある: Playwright（`*.spec.ts`・配線済み・上記）と、実機 Tauri WebView 用の WebdriverIO 雛形（`*.e2e.ts.sample`・未配線）。詳細は `e2e/README.md`。
 - ドキュメントは英日 2 言語: `README.md` / `CHANGELOG.md` / `CONTRIBUTING.md`（英語）と `README.ja.md` / `CHANGELOG.ja.md` / `CONTRIBUTING.ja.md`（日本語）。英語版は `en/`、日本語版は `ja/` のスクリーンショットを参照する。`npm run generate-docs` が PDF 化するのは README / CHANGELOG の 4 ファイルのみ（CONTRIBUTING は対象外）。
 - **README は利用者向け・CONTRIBUTING は開発者向け**に分ける。セットアップ・npm コマンド・アドオンの実装方法・`public/` の扱い・CLI でのパッケージ書き出し（`export:slides`）と `VITE_SLIDE_PACKAGE` は CONTRIBUTING に置く。テスト・E2E・CI / リリースの手順はどちらにも書かない（`CLAUDE.md` と各ワークフローが真実源）。
-- README のスクリーンショットは **冒頭のヒーロー 1 枚（`presentation.png`）＋各機能節にインライン 1 枚**で、同じ画像を 2 度使わない。`resources/screenshots/{en,ja}/` の 13 枚すべてがちょうど 1 回参照される状態を保つ。
+- README のスクリーンショットは **冒頭のヒーロー 1 枚（`presentation.png`）＋各機能節にインライン 1 枚**で、同じ画像を 2 度使わない。`resources/screenshots/{en,ja}/` の 14 枚すべてがちょうど 1 回参照される状態を保つ。
+- **キーボードショートカットの一覧は `ShortcutsDialog`（アプリ内）が唯一の真実源**。README には表を置かず、`?` で開ける旨と `shortcuts.png` のみを載せる（実装との乖離を防ぐため）。キーを追加・変更したら `ShortcutsDialog.tsx` の定数と `assets/locales/*.json` を更新する。
 
 ## アーキテクチャ
 

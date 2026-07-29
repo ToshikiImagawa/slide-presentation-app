@@ -6,7 +6,7 @@ status: draft
 sdd-phase: plan
 impl-status: implemented
 created: 2026-02-02
-updated: 2026-07-28
+updated: 2026-07-29
 depends-on:
   - spec-language-settings
 tags:
@@ -21,7 +21,7 @@ category: internationalization
 
 **ドキュメント種別:** 技術設計書 (Design Doc)
 **SDDフェーズ:** Plan (計画/設計)
-**最終更新日:** 2026-07-28
+**最終更新日:** 2026-07-29
 **関連 Spec:** [language-settings_spec.md](./language-settings_spec.md)
 **関連 PRD:** [language-settings.md](../requirement/language-settings.md)
 
@@ -134,7 +134,7 @@ graph TD
     RootContent --> UseScrollSpeed
     RootContent --> UseAddonSettings
     HomeScreen -- onOpenSettings --> RootContent
-    App -- "onOpenSettings / onOpenShortcuts" --> RootContent
+    App -- onOpenSettings --> RootContent
     HomeScreen --> SettingsButton
     App --> SettingsButton
     App --> SlideRenderer
@@ -186,24 +186,28 @@ main.tsx
 `RootContent` は「画面本体」と「ダイアログ」を兄弟として描画する。画面本体は排他（いずれか1つだけ）だが、ダイアログはどの画面と組み合わせても開ける。
 
 ```
-<RootContent>
-├── screen（排他）
-│   ├── <SlideEditor>   # view === 'edit' かつ editSource あり
-│   ├── <HomeScreen onOpenSettings={openSettings}>            # view === 'home'
-│   └── <App onOpenSettings={...} onOpenShortcuts={...}>      # view === 'presentation'
-└── <ThemeProvider theme={theme}>   # MUI サブツリーには必ずテーマを与える（§9.4）
-      ├── <SettingsWindow open={settingsOpen}
-      │     scrollSpeed={view === 'presentation' ? scrollSpeed : undefined}      # FR-011
-      │     setScrollSpeed={view === 'presentation' ? setScrollSpeed : undefined}
-      │     embeddedAddonsDisabled / onToggleEmbeddedAddons / onResetAddonTrust
-      │     addonTrust / onSetAddonTrust / onOpenShortcuts />
-      └── <ShortcutsDialog open={shortcutsOpen} />
-    </ThemeProvider>
+<I18nProvider>
+└── <ThemeProvider theme={theme}>   # MUI テーマはこの層で 1 度だけ張る（§9.4）
+      └── <ToastProvider>
+            └── <RootContent>
+                  ├── renderScreen()（排他）
+                  │   ├── <SlideEditor>   # view === 'edit' かつ editSource あり
+                  │   ├── <HomeScreen onOpenSettings={openSettings}>   # view === 'home'
+                  │   └── <App onOpenSettings={openSettings} scrollSpeed onScrollSpeedChange />
+                  ├── <SettingsWindow open={settingsOpen}
+                  │     scrollSpeed={view === 'presentation' ? scrollSpeed : undefined}   # FR-011
+                  │     setScrollSpeed={setScrollSpeed}
+                  │     embeddedAddonsDisabled / onToggleEmbeddedAddons / onResetAddonTrust
+                  │     addonTrust / onSetAddonTrust / onOpenShortcuts />
+                  └── <ShortcutsDialog open={shortcutsOpen} />
 ```
 
-- 開閉状態（`settingsOpen` / `shortcutsOpen`）は `RootContent` が所有し、`HomeScreen` / `App` へは `onOpenSettings` / `onOpenShortcuts` のコールバックだけを渡す
+- 開閉状態（`settingsOpen` / `shortcutsOpen`）は `RootContent` が所有し、`HomeScreen` / `App` へは `onOpenSettings` のコールバックだけを渡す
+- 出し分けの条件は「値の有無」1 本に寄せる。`scrollSpeed` だけを `view` で切り替え、`setScrollSpeed` は常に渡す（受け側の判定も `scrollSpeed !== undefined` の 1 つで済む）
 - `view` の変化を監視する `useEffect` で両ダイアログを閉じる。従来は `App` 全体の再マウントで閉じていた挙動を、Root 保持へ移した後も維持するため
-- `?` キーによるショートカット一覧表示と `T` キーによるツールバートグルはプレゼンテーション画面固有のため、キーハンドラは `App` に残し、`onOpenShortcuts()` を呼ぶだけにしている
+- `?` キーの `keydown` 購読は `RootContent` が持つ。ダイアログの所有者と同じ層に置くことで、ホーム・プレゼンテーション・編集のどの画面からでも同じキーで開ける（`App` への `onOpenShortcuts` prop は不要になった）
+- 一方 `T` キー（ツールバートグル）の購読は `App` に残す。`toolbarHidden` はプレゼンテーション画面固有のローカル状態であり、ホーム画面の URL 入力中に `T` でツールバー状態が動くような無関係な結合を避けるため
+- どちらの購読も `INPUT` / `TEXTAREA` / `contentEditable` にフォーカスがある間は無視する（編集画面の JSON 入力中に誤発火させない）
 
 ---
 
@@ -279,7 +283,7 @@ interface SettingsWindowProps {
   open: boolean
   onClose: () => void
   scrollSpeed?: number                    // 自動スライドショーのスクロール速度（秒）。未指定時はスクロール速度行を非表示（FR-011）
-  setScrollSpeed?: (speed: number) => void  // scrollSpeed と対。両方揃ったときのみ行を描画
+  setScrollSpeed?: (speed: number) => void  // 呼び出し側は常に渡す。行の表示判定は scrollSpeed の有無のみで行う
   embeddedAddonsDisabled?: boolean        // 同梱アドオンの一律無効化フラグ
   onToggleEmbeddedAddons?: (disabled: boolean) => void  // 未指定時はアドオン設定セクション全体を非表示
   onResetAddonTrust?: () => void          // アドオン許可履歴のリセット
@@ -291,8 +295,12 @@ interface SettingsWindowProps {
 // スクロール速度の状態フック（既定値 20 秒 / localStorage キー `slide-app-scroll-speed`）
 function useScrollSpeed(): [number, (speed: number) => void]
 
-// 同梱アドオンの信頼設定フック（settingsOpen が true になるたび信頼一覧を作り直す）
-function useAddonSettings(settingsOpen: boolean): UseAddonSettingsReturn
+// 同梱アドオンの信頼設定フック（active が true になるたび信頼一覧を作り直す）。
+// title の供給元は Root が持つ recentPackages で、store の再読はしない
+function useAddonSettings(options: { active: boolean; recentPackages: RecentSlidePackageEntry[] }): UseAddonSettingsReturn
+
+// 層C の一覧要素。定義はフック側（src/hooks/useAddonSettings.ts）が持ち、SettingsWindow が import する
+type AddonTrustEntry = { path: string; title: string; decision: AddonTrustDecision | undefined }
 
 interface UseAddonSettingsReturn {
   addonsDisabled: boolean
@@ -316,7 +324,8 @@ interface HomeScreenProps {
 | 要件                     | 実現方針                                                                                         |
 |------------------------|----------------------------------------------------------------------------------------------|
 | NFR-001: 言語切り替え500ms以内 | React Context の状態更新により即座に再レンダリング。言語リソースはアプリ起動時にすべてメモリに読み込み済みのため、切り替え時のI/Oなし                  |
-| Reveal.js非干渉           | 設定ウィンドウのオーバーレイ要素に `onKeyDown` ハンドラで `stopPropagation()` を設定し、キーボードイベントがReveal.jsに伝播するのを防止。`useReveal` フックの変更が不要でシンプル |
+| Reveal.js非干渉           | 設定ウィンドウのオーバーレイ要素に `onKeyDown` ハンドラで `stopPropagation()` を設定し、キーボードイベントがReveal.jsに伝播するのを防止 |
+| `?` キーと Reveal の衝突     | Reveal は `?`（keyCode 191 + Shift）と `F1` で**英語固定の組み込みヘルプ**を開く（`keyboard.js` の `toggleHelp()`）。アプリ独自キーを含まない一覧が出てしまうため、`useReveal` に `help: false` を渡して抑止する。キーバインド自体は潰さないので `/`（Shift なし）による Reveal 既定の一時停止は残る。回帰は `e2e/shortcuts.spec.ts` で検証する |
 
 ---
 
@@ -331,8 +340,10 @@ interface HomeScreenProps {
 | ユニットテスト    | useAddonSettings（無効化フラグ復元・信頼一覧の構築・保存失敗時のロールバック）`src/hooks/__tests__/useAddonSettings.test.ts` | 主要パス |
 | コンポーネントテスト | SettingsWindow（言語切り替え操作、`scrollSpeed` 未指定でスクロール速度行が出ないこと・FR-011） | 主要パス    |
 | コンポーネントテスト | HomeScreen（設定ボタン押下で `onOpenSettings` が呼ばれること・FR-001） | 主要パス    |
+| コンポーネントテスト | ShortcutsDialog（ビューア・編集モード・発表者ビューの全節と各キーが表示されること） | 主要パス    |
 | 統合テスト      | 言語切り替え → localStorage保存 → 再読み込み復元      | ハッピーパス  |
 | E2E（Playwright） | `e2e/settings.spec.ts` — 設定ダイアログの開閉と各コントロール、ホーム画面から開くとグローバル設定のみ表示（FR-011）、ホーム画面での言語切り替えで UI 文言が即座に変わる（FR-004 / UR-LANG-001） | ハッピーパス |
+| E2E（Playwright） | `e2e/shortcuts.spec.ts` — `?` で全節が開く / Reveal 組み込みヘルプが `?`・`F1` のどちらでも開かない（`help: false` の回帰） / `B` と `/` による Reveal 既定の一時停止は維持 / ホーム画面でも `?` で開く | ハッピーパス＋回帰 |
 
 ---
 
@@ -376,21 +387,40 @@ interface HomeScreenProps {
 |----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----|-----------------------------------------------------------------------------------------------------------------------------------------|
 | 設定UIのCSSに一部ハードコード色が残存しており、A-002（色値ハードコード禁止）に完全準拠していない。具体的には `SettingsButton.module.css` の前景色 `color: #fff`、`DialogFrame.module.css` の box-shadow `rgba(0, 0, 0, 0.4)`（オーバーレイ背景は MUI Dialog の backdrop に委譲済み） | 低   | 前景色・影用の `--theme-*` CSS変数を追加して置き換える。視認性確保のための黒半透明の影・バックドロップはテーマ非依存の妥当値だが、変数化することで一貫性を高める余地がある。CSSはコード側の変更となるため本設計書では課題として記録するにとどめる |
 
-## 9.4. ダイアログを ThemeProvider で包む理由
+## 9.4. MUI テーマを Root で 1 度だけ張る理由
 
-`RootContent` の `SettingsWindow` / `ShortcutsDialog` は `<ThemeProvider theme={theme}>`（`src/theme.ts`）で包む。App / presenterViewEntry / SlideEditor と同じく「MUI を使うサブツリーには必ずテーマを与える」という慣習に従うためで、外すと配色が崩れる。
+`ThemeProvider theme={theme}`（`src/theme.ts`）は `Root`（`I18nProvider` の直下）で 1 度だけ張り、配下の `RootContent`・画面本体・両ダイアログすべてがそれを共有する。かつては MUI を使うサブツリーごとに provider を持たせていた（`App` / `presenterViewEntry` / `SlideEditor`）が、ダイアログが Root へ上がった時点で `App` 側の provider は重複になったため削除した。`presenterViewEntry` は別ウィンドウ＝別 React root なので独自に張り、`SlideEditor` は `editorUiTheme` を入れ子で上書きする（いずれも現状維持）。
 
-理由は CSS の詳細度にある。
+テーマを与えないと配色が崩れる。理由は CSS の詳細度にある。
 
 - `DialogFrame` は MUI `Dialog` の paper スロットへ `DialogFrame.module.css` の `.window` を渡し、`background: var(--theme-background-alt)` で背景色を決めている
 - MUI が paper に付ける `.MuiPaper-root` も単一クラスセレクタであり、`.window` と詳細度が同等になる。したがって勝敗は宣言順に依存し、`.MuiPaper-root` 側の `background-color` が後勝ちすると背景が上書きされる
 - `theme` は `MuiPaper.styleOverrides.root` で `backgroundImage: 'none'` を指定し、パレットを `mode: 'dark'` / `background.paper: '#292524'` に固定している。ThemeProvider を外すと MUI 既定（ライトテーマ）の paper 色とエレベーション用グラデーションが適用され、暗色前提の設定ダイアログの配色が破綻する
 
-そのため、ダイアログを Root へ引き上げる際もテーマ境界を必ず一緒に持ち上げる。
+そのため、ダイアログを Root へ引き上げる際はテーマ境界も一緒に持ち上げる。Root 層に MUI を使う UI を足すときも、この provider の内側にあることを前提にできる。
 
 ---
 
 # 10. 変更履歴
+
+## v1.4.0 (2026-07-29)
+
+**ショートカット一覧の単一真実源化と `?` キーの Root 移動:**
+
+- `?` キーの `keydown` 購読を `App` から `RootContent` へ移動。ダイアログの所有者と同じ層に置き、ホーム・プレゼンテーション・編集のどの画面からでも開けるようにした（`App` の `onOpenShortcuts` prop は削除。`T` キーは `toolbarHidden` がローカル状態のため `App` に残す）
+- `ShortcutsDialog` に「発表者ビュー」節（`→` / `Space` / `←`）を追加し、3 節を 2 カラム配置にして 1280x720 でスクロールなしに収まるようにした（`assets/locales/*.json` に `shortcuts.presenterSection` を追加）
+- **既存バグの修正**: Reveal は `?`（keyCode 191 + Shift）と `F1` で英語固定の組み込みヘルプを開くため、アプリ独自キーを含まない一覧が重なって出ていた。`useReveal` に `help: false` を渡して抑止した（`src/reveal.d.ts` に `help?: boolean` を追加）。当初 `keyboard: { 191: null }` でキーバインドごと潰す実装にしたが、`F1` 経路が残り `/` の一時停止まで失う誤った層だったため、機能フラグで切る形に改めた
+- 入力中ガード（`INPUT` / `TEXTAREA` / `contentEditable`）を `src/keyboardTarget.ts` の `isTypingTarget()` に集約（Root・`App`・`SlideEditor` の 3 箇所が共有）
+- README 英日からキーマップの表（プレゼンビューア / 編集モード / 発表者ビュー）を削除し、`?` で開ける旨と `shortcuts.png` のみを残した。キーマップの真実源をダイアログ 1 つに統一して実装との乖離を防ぐ
+- 回帰テストを `e2e/shortcuts.spec.ts` に追加（全節の表示 / `?` で一時停止しない / `B` は一時停止する / ホーム画面でも開く）
+
+**前バージョンで反映漏れだった実装（レビュー後の整理分）を追記:**
+
+- `ThemeProvider` は `Root` で 1 度だけ張り、`App` 側の provider は削除済み（§4.4・§9.4）
+- `useAddonSettings` は `{ active, recentPackages }` を受け取り、title 補完のための store 再読を廃止（§6）
+- `AddonTrustEntry` の定義は `src/hooks/useAddonSettings.ts` が持ち、`SettingsWindow` が import する（hooks → components の依存方向の逆流を解消）
+- `setScrollSpeed` は常に渡し、行の表示判定は `scrollSpeed` の有無のみで行う（§4.4・§6）
+- `.settingsCorner` の位置は `12px`（`global.css` の `.toolbar-left` と一致させ、画面遷移時のずれを解消）
 
 ## v1.3.0 (2026-07-28)
 

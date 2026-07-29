@@ -11,6 +11,7 @@ import { registerDefaultComponents } from './components/registerDefaults'
 import { getFallbackPresentationData, loadPresentationData } from './data'
 import type { PresentationData } from './data'
 import { getVoicePath } from './data/noteHelpers'
+import { isTypingTarget } from './keyboardTarget'
 import { useAudioPlayer } from './hooks/useAudioPlayer'
 import { useAutoSlideshow } from './hooks/useAutoSlideshow'
 import { usePresenterView } from './hooks/usePresenterView'
@@ -38,11 +39,9 @@ type AppProps = {
   onScrollSpeedChange: (speed: number) => void
   /** 設定ダイアログを開く（ダイアログ本体は Root が持つ） */
   onOpenSettings: () => void
-  /** キーボードショートカット一覧を開く（ダイアログ本体は Root が持つ） */
-  onOpenShortcuts: () => void
 }
 
-export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addonScripts, scrollSpeed, onScrollSpeedChange, onOpenSettings, onOpenShortcuts }: AppProps) {
+export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addonScripts, scrollSpeed, onScrollSpeedChange, onOpenSettings }: AppProps) {
   const { locale } = useI18n()
   const defaultData = useMemo(() => getFallbackPresentationData(locale), [locale])
   const data = loadPresentationData(presentationData, defaultData)
@@ -178,21 +177,17 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
 
   const handleToggleToolbar = useCallback(() => setToolbarHidden((prev) => !prev), [])
 
-  // T キーでツールバーの表示・非表示をトグル、? キーでショートカット一覧を表示（いずれも入力中は無視）。
+  // T キーでツールバーの表示・非表示をトグルする（入力中は無視）。ツールバーはプレゼンテーション画面固有の
+  // ローカル状態なので、この購読も App が持つ（Root 所有ダイアログを開く ? キーは main.tsx 側）。
   // T は Reveal.js のデフォルトキーバインド（H/L/K/J/N/P/B/F/G/O 等）と衝突しないキーとして選定した
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null
-      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return
-      if (e.key.toLowerCase() === 't') {
-        handleToggleToolbar()
-      } else if (e.key === '?') {
-        onOpenShortcuts()
-      }
+      if (e.key.toLowerCase() !== 't' || isTypingTarget(e.target)) return
+      handleToggleToolbar()
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [handleToggleToolbar, onOpenShortcuts])
+  }, [handleToggleToolbar])
 
   const logo = data.meta.logo
   const toolbarHiddenClass = toolbarHidden ? ' toolbar-hidden' : ''

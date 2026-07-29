@@ -45,6 +45,10 @@ export function useReveal(options?: UseRevealOptions): UseRevealReturn {
       transition: 'slide',
       progress: true,
       keyboard: true,
+      // Reveal 組み込みのヘルプオーバーレイを無効化する。ショートカット一覧はアプリ側の
+      // ShortcutsDialog を唯一の真実源にしているため（英語固定・アプリ独自キーを含まない
+      // Reveal の一覧が ? や F1 で開くのを防ぐ）。/ による一時停止は Reveal 既定のまま残す
+      help: false,
       touch: true,
       navigationMode: 'linear',
     })

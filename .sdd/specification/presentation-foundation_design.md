@@ -6,7 +6,7 @@ status: draft
 sdd-phase: plan
 impl-status: implemented
 created: 2026-02-02
-updated: 2026-07-27
+updated: 2026-07-29
 depends-on:
   - spec-presentation-foundation
 tags:
@@ -23,7 +23,7 @@ category: presentation-foundation
 
 **ドキュメント種別:** 技術設計書 (Design Doc)
 **SDDフェーズ:** Plan (計画/設計)
-**最終更新日:** 2026-07-27
+**最終更新日:** 2026-07-29
 **関連 Spec:** [presentation-foundation_spec.md](./presentation-foundation_spec.md)
 **関連 PRD:** [presentation-foundation.md](../requirement/presentation-foundation.md)
 **関連設計:** [slide-package-distribution_design.md](./slide-package-distribution_design.md)（サンプルスライドの配布と取得）
@@ -223,6 +223,10 @@ const revealConfig = {
 
   // インタラクション
   keyboard: true,           // キーボードナビゲーション（FR_601）
+  // Reveal 組み込みのヘルプオーバーレイを無効化する。ショートカット一覧はアプリ側の
+  // ShortcutsDialog を唯一の真実源にしているため、? / F1 で英語固定の Reveal 一覧が
+  // 開くのを防ぐ。キーバインド自体は潰さないので / による一時停止は既定のまま残る
+  help: false,
   touch: true,              // タッチナビゲーション（FR_602）
   navigationMode: 'linear', // 線形ナビゲーション（ネストスライドなし）
 

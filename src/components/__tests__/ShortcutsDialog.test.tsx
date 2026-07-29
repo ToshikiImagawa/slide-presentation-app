@@ -14,6 +14,7 @@ const enUS: LocaleResource = {
       title: 'Keyboard shortcuts',
       viewerSection: 'Presentation viewer',
       editSection: 'Edit mode',
+      presenterSection: 'Presenter View',
       toggleToolbar: 'Show/hide the toolbar',
     },
   },
@@ -59,7 +60,8 @@ describe('ShortcutsDialog', () => {
     expect(dialog.getAttribute('aria-labelledby')).toBeTruthy()
   })
 
-  it('ビューア用・編集モード用の両セクションを表示する', () => {
+  // キーマップの真実源はこのダイアログだけなので、全セクションが揃っていることを検証する（README には表を置かない）
+  it('ビューア・編集モード・発表者ビューの全セクションを表示する', () => {
     render(
       <Wrapper>
         <ShortcutsDialog open={true} onClose={() => {}} />
@@ -67,9 +69,10 @@ describe('ShortcutsDialog', () => {
     )
     expect(screen.getByText('Presentation viewer')).toBeDefined()
     expect(screen.getByText('Edit mode')).toBeDefined()
+    expect(screen.getByText('Presenter View')).toBeDefined()
   })
 
-  it('ビューア用ショートカット（T）と編集モード用ショートカット（Ctrl / Cmd + S）を表示する', () => {
+  it('各セクションのショートカットを表示する（T / Ctrl+S / 発表者ビューの → ・ Space）', () => {
     render(
       <Wrapper>
         <ShortcutsDialog open={true} onClose={() => {}} />
@@ -77,6 +80,9 @@ describe('ShortcutsDialog', () => {
     )
     expect(screen.getByText('T')).toBeDefined()
     expect(screen.getByText('Ctrl / Cmd + S')).toBeDefined()
+    // 発表者ビューは PresenterViewWindow の handleKeyDown（ArrowRight / Space / ArrowLeft）に対応する
+    expect(screen.getByText('→ / Space')).toBeDefined()
+    expect(screen.getByText('←')).toBeDefined()
   })
 
   it('Escapeキーで onClose が呼ばれる', () => {
