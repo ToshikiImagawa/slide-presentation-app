@@ -11,6 +11,7 @@ import { registerDefaultComponents } from './components/registerDefaults'
 import { getFallbackPresentationData, loadPresentationData } from './data'
 import type { PresentationData } from './data'
 import { getVoicePath } from './data/noteHelpers'
+import { isTypingTarget } from './keyboardTarget'
 import { useAudioPlayer } from './hooks/useAudioPlayer'
 import { useAutoSlideshow } from './hooks/useAutoSlideshow'
 import { usePresenterView } from './hooks/usePresenterView'
@@ -181,9 +182,8 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
   // T は Reveal.js のデフォルトキーバインド（H/L/K/J/N/P/B/F/G/O 等）と衝突しないキーとして選定した
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null
-      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return
-      if (e.key.toLowerCase() === 't') handleToggleToolbar()
+      if (e.key.toLowerCase() !== 't' || isTypingTarget(e.target)) return
+      handleToggleToolbar()
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)

@@ -29,6 +29,7 @@ import {
 } from './localSlideLoader'
 import type { LoadedSlidePackage, RecentSlidePackageEntry, SlidePackageLoadResult } from './localSlideLoader'
 import { getSampleSources, loadBundledSampleSlides } from './sampleSlides'
+import { isTypingTarget } from './keyboardTarget'
 import { useAddonSettings } from './hooks/useAddonSettings'
 import { useOpenSlideRequest } from './hooks/useOpenSlideRequest'
 import { useScrollSpeed } from './hooks/useScrollSpeed'
@@ -79,9 +80,7 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
   // ホーム・プレゼンテーション・編集のどの画面からでも同じキーで開けるようにする
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== '?') return
-      const target = e.target as HTMLElement | null
-      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return
+      if (e.key !== '?' || isTypingTarget(e.target)) return
       setShortcutsOpen(true)
     }
     window.addEventListener('keydown', handleKeyDown)

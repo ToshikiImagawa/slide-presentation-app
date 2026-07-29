@@ -65,7 +65,7 @@ export function SettingsWindow({ open, onClose, scrollSpeed, setScrollSpeed, emb
       {onOpenShortcuts && (
         <div className={styles.settingRow}>
           <label className={styles.label}>{t('settings.shortcuts', 'キーボードショートカット')}</label>
-          <button type="button" className={dialogFrameStyles.footerButton} onClick={onOpenShortcuts}>
+          <button type="button" className={dialogFrameStyles.footerButton} onClick={onOpenShortcuts} data-testid="shortcuts-open">
             {t('settings.shortcutsOpen', '表示')}
           </button>
         </div>

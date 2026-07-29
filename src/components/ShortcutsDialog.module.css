@@ -1,38 +1,19 @@
-/* 3 節すべてを 1280x720 のウィンドウでスクロールなしに収めるため 2 カラムに置く。
-   行数の多いプレゼンビューアを左に、短い 2 節を右に積む */
+/* 既定は 1 カラム。幅が足りるときだけ 2 カラムにして、3 節すべてを 1280x720 でスクロールなしに収める */
 .sections {
   display: grid;
-  grid-template-columns: 1fr 1fr;
   gap: 20px 32px;
-  align-content: start;
 }
 
-.sections > .section:first-child {
-  grid-column: 1;
-  grid-row: 1 / span 2;
-}
-
-.sections > .section:nth-child(2) {
-  grid-column: 2;
-  grid-row: 1;
-}
-
-.sections > .section:nth-child(3) {
-  grid-column: 2;
-  grid-row: 2;
-}
-
-/* 幅の狭いウィンドウでは 1 カラムへ戻す（縦スクロールは DialogFrame の bodyStyle が担う） */
-@media (max-width: 700px) {
+@media (min-width: 701px) {
   .sections {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr 1fr;
   }
 
-  .sections > .section:first-child,
-  .sections > .section:nth-child(2),
-  .sections > .section:nth-child(3) {
-    grid-column: 1;
-    grid-row: auto;
+  /* 行数の最も多い先頭節（プレゼンビューア）を左カラムで 2 行ぶん占めさせると、
+     残る短い 2 節は Grid の自動配置で右カラムに積まれる（位置の明示は不要）。
+     節を 4 つ以上に増やすときはこの前提を見直すこと */
+  .sections > .section:first-child {
+    grid-row: 1 / span 2;
   }
 }
 

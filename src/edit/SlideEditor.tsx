@@ -21,6 +21,7 @@ import { SlideJsonEditor } from './SlideJsonEditor'
 import { SlideMetaForm } from './SlideMetaForm'
 import { SlidePreview } from './SlidePreview'
 import { addBuiltinAddon, buildBuiltinAddons, chooseExportDir, chooseSlidesSavePath, exportSlidePackage, listBuiltinAddons, listBuiltinDistAddons, removeBuiltinAddon, saveSlidesJson } from '../editModeSave'
+import { isTypingTarget } from '../keyboardTarget'
 
 /** 編集対象データの供給元。相対パスの生 JSON を土台にし、プレビューだけ baseDir 基準でアセット解決する */
 export interface EditSource {
@@ -301,9 +302,7 @@ export function SlideEditor({
         e.preventDefault()
         void handleSaveRef.current()
       } else if (e.key === 'Escape') {
-        if (hasOpenDialogRef.current) return
-        const target = e.target as HTMLElement | null
-        if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return
+        if (hasOpenDialogRef.current || isTypingTarget(e.target)) return
         handleExitClickRef.current()
       }
     }
