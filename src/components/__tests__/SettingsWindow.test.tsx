@@ -41,6 +41,14 @@ function Wrapper({ children }: { children: ReactNode }) {
   )
 }
 
+/** 各テストで共通の no-op props。テストごとに必要な prop だけ上書きする */
+const defaultProps = {
+  open: true,
+  onClose: () => {},
+  global: {},
+  presentation: { scrollSpeed: 20, setScrollSpeed: () => {} },
+}
+
 describe('SettingsWindow', () => {
   beforeEach(() => {
     localStorage.clear()
@@ -49,7 +57,7 @@ describe('SettingsWindow', () => {
   it('open=false の場合、ウィンドウが表示されない', () => {
     render(
       <Wrapper>
-        <SettingsWindow open={false} onClose={() => {}} scrollSpeed={20} setScrollSpeed={() => {}} />
+        <SettingsWindow {...defaultProps} open={false} />
       </Wrapper>,
     )
     expect(screen.queryByText('Settings')).toBeNull()
@@ -58,7 +66,7 @@ describe('SettingsWindow', () => {
   it('open=true の場合、ウィンドウが表示される', () => {
     render(
       <Wrapper>
-        <SettingsWindow open={true} onClose={() => {}} scrollSpeed={20} setScrollSpeed={() => {}} />
+        <SettingsWindow {...defaultProps} />
       </Wrapper>,
     )
     expect(screen.getByText('Settings')).toBeDefined()
@@ -67,7 +75,7 @@ describe('SettingsWindow', () => {
   it('role="dialog" と aria-modal="true" を持つ', () => {
     render(
       <Wrapper>
-        <SettingsWindow open={true} onClose={() => {}} scrollSpeed={20} setScrollSpeed={() => {}} />
+        <SettingsWindow {...defaultProps} />
       </Wrapper>,
     )
     const dialog = screen.getByRole('dialog')
@@ -79,7 +87,7 @@ describe('SettingsWindow', () => {
     const onClose = vi.fn()
     render(
       <Wrapper>
-        <SettingsWindow open={true} onClose={onClose} scrollSpeed={20} setScrollSpeed={() => {}} />
+        <SettingsWindow {...defaultProps} onClose={onClose} />
       </Wrapper>,
     )
     fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
@@ -89,7 +97,7 @@ describe('SettingsWindow', () => {
   it('開いた際にフォーカスが背景（body）から外れてダイアログ側へ移動する', () => {
     render(
       <Wrapper>
-        <SettingsWindow open={true} onClose={() => {}} scrollSpeed={20} setScrollSpeed={() => {}} />
+        <SettingsWindow {...defaultProps} />
       </Wrapper>,
     )
     expect(document.activeElement).not.toBe(document.body)
@@ -98,7 +106,7 @@ describe('SettingsWindow', () => {
   it('末尾のフォーカス境界（sentinel）へ到達すると先頭の要素へ折り返す（フォーカストラップ）', () => {
     render(
       <Wrapper>
-        <SettingsWindow open={true} onClose={() => {}} scrollSpeed={20} setScrollSpeed={() => {}} />
+        <SettingsWindow {...defaultProps} />
       </Wrapper>,
     )
     const closeButtons = screen.getAllByRole('button', { name: 'Close' })
@@ -112,7 +120,7 @@ describe('SettingsWindow', () => {
   it('言語選択肢が表示される', () => {
     render(
       <Wrapper>
-        <SettingsWindow open={true} onClose={() => {}} scrollSpeed={20} setScrollSpeed={() => {}} />
+        <SettingsWindow {...defaultProps} />
       </Wrapper>,
     )
     expect(screen.getByText('Language')).toBeDefined()
@@ -125,7 +133,7 @@ describe('SettingsWindow', () => {
     const onClose = vi.fn()
     render(
       <Wrapper>
-        <SettingsWindow open={true} onClose={onClose} scrollSpeed={20} setScrollSpeed={() => {}} />
+        <SettingsWindow {...defaultProps} onClose={onClose} />
       </Wrapper>,
     )
 
@@ -138,7 +146,7 @@ describe('SettingsWindow', () => {
   it('スクロールスピード設定が表示される', () => {
     render(
       <Wrapper>
-        <SettingsWindow open={true} onClose={() => {}} scrollSpeed={20} setScrollSpeed={() => {}} />
+        <SettingsWindow {...defaultProps} />
       </Wrapper>,
     )
     expect(screen.getByText('Scroll Speed (sec)')).toBeDefined()
@@ -146,11 +154,11 @@ describe('SettingsWindow', () => {
     expect(input.value).toBe('20')
   })
 
-  // ホーム画面ではプレゼンテーション専用設定を出さない（scrollSpeed を渡さない）
-  it('scrollSpeed 未指定ではスクロールスピード設定が表示されない', () => {
+  // ホーム画面ではプレゼンテーション専用設定を出さない（presentation を渡さない）
+  it('presentation 未指定ではスクロールスピード設定が表示されない', () => {
     render(
       <Wrapper>
-        <SettingsWindow open={true} onClose={() => {}} />
+        <SettingsWindow {...defaultProps} presentation={undefined} />
       </Wrapper>,
     )
     expect(screen.queryByText('Scroll Speed (sec)')).toBeNull()
@@ -163,7 +171,7 @@ describe('SettingsWindow', () => {
     const setScrollSpeed = vi.fn()
     render(
       <Wrapper>
-        <SettingsWindow open={true} onClose={() => {}} scrollSpeed={20} setScrollSpeed={setScrollSpeed} />
+        <SettingsWindow {...defaultProps} presentation={{ scrollSpeed: 20, setScrollSpeed }} />
       </Wrapper>,
     )
     const input = screen.getByRole('spinbutton')
@@ -174,7 +182,7 @@ describe('SettingsWindow', () => {
   it('言語を変更するとセレクトの値が更新される', () => {
     render(
       <Wrapper>
-        <SettingsWindow open={true} onClose={() => {}} scrollSpeed={20} setScrollSpeed={() => {}} />
+        <SettingsWindow {...defaultProps} />
       </Wrapper>,
     )
 
@@ -188,7 +196,7 @@ describe('SettingsWindow', () => {
     it('onOpenShortcuts 未指定時はボタンを表示しない（後方互換）', () => {
       render(
         <Wrapper>
-          <SettingsWindow open={true} onClose={() => {}} scrollSpeed={20} setScrollSpeed={() => {}} />
+          <SettingsWindow {...defaultProps} />
         </Wrapper>,
       )
       expect(screen.queryByText('Keyboard shortcuts')).toBeNull()
@@ -198,7 +206,7 @@ describe('SettingsWindow', () => {
       const onOpenShortcuts = vi.fn()
       render(
         <Wrapper>
-          <SettingsWindow open={true} onClose={() => {}} scrollSpeed={20} setScrollSpeed={() => {}} onOpenShortcuts={onOpenShortcuts} />
+          <SettingsWindow {...defaultProps} global={{ onOpenShortcuts }} />
         </Wrapper>,
       )
       fireEvent.click(screen.getByRole('button', { name: 'Show' }))
@@ -210,7 +218,7 @@ describe('SettingsWindow', () => {
     it('onToggleEmbeddedAddons 未指定時はアドオン設定を表示しない（後方互換）', () => {
       render(
         <Wrapper>
-          <SettingsWindow open={true} onClose={() => {}} scrollSpeed={20} setScrollSpeed={() => {}} />
+          <SettingsWindow {...defaultProps} />
         </Wrapper>,
       )
       expect(screen.queryByText('Always disable embedded add-ons')).toBeNull()
@@ -219,7 +227,7 @@ describe('SettingsWindow', () => {
     it('ハンドラ指定時に無効化トグルとリセットボタンが表示される', () => {
       render(
         <Wrapper>
-          <SettingsWindow open={true} onClose={() => {}} scrollSpeed={20} setScrollSpeed={() => {}} embeddedAddonsDisabled={false} onToggleEmbeddedAddons={() => {}} onResetAddonTrust={() => {}} />
+          <SettingsWindow {...defaultProps} global={{ embeddedAddonsDisabled: false, onToggleEmbeddedAddons: () => {}, onResetAddonTrust: () => {} }} />
         </Wrapper>,
       )
       expect(screen.getByText('Always disable embedded add-ons')).toBeDefined()
@@ -231,7 +239,7 @@ describe('SettingsWindow', () => {
     it('embeddedAddonsDisabled=true でチェックボックスが ON', () => {
       render(
         <Wrapper>
-          <SettingsWindow open={true} onClose={() => {}} scrollSpeed={20} setScrollSpeed={() => {}} embeddedAddonsDisabled={true} onToggleEmbeddedAddons={() => {}} />
+          <SettingsWindow {...defaultProps} global={{ embeddedAddonsDisabled: true, onToggleEmbeddedAddons: () => {} }} />
         </Wrapper>,
       )
       expect((screen.getByRole('checkbox') as HTMLInputElement).checked).toBe(true)
@@ -241,7 +249,7 @@ describe('SettingsWindow', () => {
       const onToggle = vi.fn()
       render(
         <Wrapper>
-          <SettingsWindow open={true} onClose={() => {}} scrollSpeed={20} setScrollSpeed={() => {}} embeddedAddonsDisabled={false} onToggleEmbeddedAddons={onToggle} />
+          <SettingsWindow {...defaultProps} global={{ embeddedAddonsDisabled: false, onToggleEmbeddedAddons: onToggle }} />
         </Wrapper>,
       )
       fireEvent.click(screen.getByRole('checkbox'))
@@ -252,7 +260,7 @@ describe('SettingsWindow', () => {
       const onReset = vi.fn()
       render(
         <Wrapper>
-          <SettingsWindow open={true} onClose={() => {}} scrollSpeed={20} setScrollSpeed={() => {}} embeddedAddonsDisabled={false} onToggleEmbeddedAddons={() => {}} onResetAddonTrust={onReset} />
+          <SettingsWindow {...defaultProps} global={{ embeddedAddonsDisabled: false, onToggleEmbeddedAddons: () => {}, onResetAddonTrust: onReset }} />
         </Wrapper>,
       )
       fireEvent.click(screen.getByRole('button', { name: 'Reset add-on trust history' }))
@@ -263,17 +271,16 @@ describe('SettingsWindow', () => {
       render(
         <Wrapper>
           <SettingsWindow
-            open={true}
-            onClose={() => {}}
-            scrollSpeed={20}
-            setScrollSpeed={() => {}}
-            embeddedAddonsDisabled={false}
-            onToggleEmbeddedAddons={() => {}}
-            addonTrust={[
-              { path: '/a/slides.json', title: 'Deck A', decision: 'allowed' },
-              { path: '/b.tgz', title: 'Deck B', decision: undefined },
-            ]}
-            onSetAddonTrust={() => {}}
+            {...defaultProps}
+            global={{
+              embeddedAddonsDisabled: false,
+              onToggleEmbeddedAddons: () => {},
+              addonTrust: [
+                { path: '/a/slides.json', title: 'Deck A', decision: 'allowed' },
+                { path: '/b.tgz', title: 'Deck B', decision: undefined },
+              ],
+              onSetAddonTrust: () => {},
+            }}
           />
         </Wrapper>,
       )
@@ -288,14 +295,13 @@ describe('SettingsWindow', () => {
       render(
         <Wrapper>
           <SettingsWindow
-            open={true}
-            onClose={() => {}}
-            scrollSpeed={20}
-            setScrollSpeed={() => {}}
-            embeddedAddonsDisabled={false}
-            onToggleEmbeddedAddons={() => {}}
-            addonTrust={[{ path: '/b.tgz', title: 'Deck B', decision: undefined }]}
-            onSetAddonTrust={onSet}
+            {...defaultProps}
+            global={{
+              embeddedAddonsDisabled: false,
+              onToggleEmbeddedAddons: () => {},
+              addonTrust: [{ path: '/b.tgz', title: 'Deck B', decision: undefined }],
+              onSetAddonTrust: onSet,
+            }}
           />
         </Wrapper>,
       )
@@ -306,7 +312,14 @@ describe('SettingsWindow', () => {
     it('onSetAddonTrust 未指定なら個別許可セクションを表示しない（後方互換）', () => {
       render(
         <Wrapper>
-          <SettingsWindow open={true} onClose={() => {}} scrollSpeed={20} setScrollSpeed={() => {}} embeddedAddonsDisabled={false} onToggleEmbeddedAddons={() => {}} addonTrust={[{ path: '/b.tgz', title: 'Deck B', decision: undefined }]} />
+          <SettingsWindow
+            {...defaultProps}
+            global={{
+              embeddedAddonsDisabled: false,
+              onToggleEmbeddedAddons: () => {},
+              addonTrust: [{ path: '/b.tgz', title: 'Deck B', decision: undefined }],
+            }}
+          />
         </Wrapper>,
       )
       expect(screen.queryByText('Deck B')).toBeNull()

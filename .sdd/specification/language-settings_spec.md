@@ -5,7 +5,7 @@ type: spec
 status: draft
 sdd-phase: specify
 created: 2026-02-02
-updated: 2026-07-28
+updated: 2026-07-29
 depends-on:
   - prd-language-settings
 tags:
@@ -20,7 +20,7 @@ category: internationalization
 
 **ドキュメント種別:** 抽象仕様書 (Spec)
 **SDDフェーズ:** Specify (仕様化)
-**最終更新日:** 2026-07-28
+**最終更新日:** 2026-07-29
 **関連 Design Doc:** [language-settings_design.md](./language-settings_design.md)
 **関連 PRD:** [language-settings.md](../requirement/language-settings.md)
 
@@ -114,20 +114,29 @@ type AddonTrustEntry = { path: string; title: string; decision: AddonTrustDecisi
 /**
  * 設定ウィンドウの props（FR-010: 言語以外の設定項目を追加できる拡張構造）
  *
- * 言語セレクト以外の設定行はすべて optional props の有無で表示を切り替える。
- * FR-011 のスコープ分離もこの規約で表現し、プレゼンテーション画面以外では scrollSpeed / setScrollSpeed を渡さない
+ * FR-011 のスコープ分離（グローバル設定 / プレゼンテーション専用設定）を型で表現する。
+ * global は必須（どの画面でも渡す）、presentation は任意（プレゼンテーション画面のみ渡す）。
+ * global 内部の各項目は既存通り optional props の有無で表示を切り替える規約を維持する
  */
-interface SettingsWindowProps {
-  open: boolean
-  onClose: () => void
-  scrollSpeed?: number                      // 自動スライドショーのスクロール速度（秒）。未指定時はスクロール速度行を非表示（FR-011）
-  setScrollSpeed?: (speed: number) => void  // scrollSpeed と対で指定する（両方揃ったときのみ行を描画）
+interface GlobalSettingsProps {
   embeddedAddonsDisabled?: boolean          // 同梱アドオンの一律無効化フラグ（未指定時はアドオン設定を非表示）
   onToggleEmbeddedAddons?: (disabled: boolean) => void
   onResetAddonTrust?: () => void            // アドオン許可履歴のリセット
   addonTrust?: AddonTrustEntry[]            // パッケージ単位の許可/拒否の一覧（未指定/空なら非表示）
   onSetAddonTrust?: (path: string, decision: AddonTrustDecision | undefined) => void
   onOpenShortcuts?: () => void              // ショートカット一覧ダイアログを開く（未指定時はボタンを非表示）
+}
+
+interface PresentationSettingsProps {
+  scrollSpeed: number                       // 自動スライドショーのスクロール速度（秒）
+  setScrollSpeed: (speed: number) => void
+}
+
+interface SettingsWindowProps {
+  open: boolean
+  onClose: () => void
+  global: GlobalSettingsProps                     // 言語・ショートカット・アドオン（すべての画面で渡す）
+  presentation?: PresentationSettingsProps        // プレゼンテーション画面でのみ渡す（FR-011）
 }
 ```
 

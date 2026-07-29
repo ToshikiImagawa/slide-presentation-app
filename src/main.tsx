@@ -319,15 +319,16 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
       <SettingsWindow
         open={settingsOpen}
         onClose={closeSettings}
-        // スクロール速度はプレゼンテーション画面でのみ意味を持つ設定なので、他画面では値を渡さない（行が出ない）
-        scrollSpeed={view === 'presentation' ? scrollSpeed : undefined}
-        setScrollSpeed={setScrollSpeed}
-        embeddedAddonsDisabled={addonsDisabled}
-        onToggleEmbeddedAddons={handleToggleAddonsDisabled}
-        onResetAddonTrust={handleResetAddonTrust}
-        addonTrust={addonTrustList}
-        onSetAddonTrust={handleSetAddonTrust}
-        onOpenShortcuts={openShortcuts}
+        global={{
+          embeddedAddonsDisabled: addonsDisabled,
+          onToggleEmbeddedAddons: handleToggleAddonsDisabled,
+          onResetAddonTrust: handleResetAddonTrust,
+          addonTrust: addonTrustList,
+          onSetAddonTrust: handleSetAddonTrust,
+          onOpenShortcuts: openShortcuts,
+        }}
+        // スクロール速度はプレゼンテーション画面でのみ意味を持つ設定なので、他画面では渡さない（行が出ない）
+        presentation={view === 'presentation' ? { scrollSpeed, setScrollSpeed } : undefined}
       />
       <ShortcutsDialog open={shortcutsOpen} onClose={closeShortcuts} />
     </>

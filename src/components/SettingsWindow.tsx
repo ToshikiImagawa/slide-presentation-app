@@ -5,12 +5,8 @@ import { DialogFrame } from './DialogFrame'
 import dialogFrameStyles from './DialogFrame.module.css'
 import styles from './SettingsWindow.module.css'
 
-type SettingsWindowProps = {
-  open: boolean
-  onClose: () => void
-  /** スクロール速度はプレゼンテーション画面専用の設定。未指定時（ホーム画面など）はスクロール速度セクションを表示しない */
-  scrollSpeed?: number
-  setScrollSpeed?: (speed: number) => void
+/** どの画面からでも表示するグローバル設定（言語・ショートカット・アドオン）。個々の項目は既存通り optional で「未指定なら非表示」の規約を維持する（FR-LANG-011） */
+type GlobalSettingsProps = {
   /** 同梱アドオンの一律無効化フラグ（未指定時はアドオン設定セクションを表示しない） */
   embeddedAddonsDisabled?: boolean
   /** 一律無効化トグルの変更ハンドラ */
@@ -25,7 +21,22 @@ type SettingsWindowProps = {
   onOpenShortcuts?: () => void
 }
 
-export function SettingsWindow({ open, onClose, scrollSpeed, setScrollSpeed, embeddedAddonsDisabled, onToggleEmbeddedAddons, onResetAddonTrust, addonTrust, onSetAddonTrust, onOpenShortcuts }: SettingsWindowProps) {
+/** プレゼンテーション画面専用の設定。渡された場合は scrollSpeed / setScrollSpeed が両方揃うことを型で強制する（FR-LANG-011） */
+type PresentationSettingsProps = {
+  scrollSpeed: number
+  setScrollSpeed: (speed: number) => void
+}
+
+type SettingsWindowProps = {
+  open: boolean
+  onClose: () => void
+  global: GlobalSettingsProps
+  /** ホーム画面など、プレゼンテーション専用設定を出さない画面では渡さない */
+  presentation?: PresentationSettingsProps
+}
+
+export function SettingsWindow({ open, onClose, global, presentation }: SettingsWindowProps) {
+  const { embeddedAddonsDisabled, onToggleEmbeddedAddons, onResetAddonTrust, addonTrust, onSetAddonTrust, onOpenShortcuts } = global
   const { locale, locales, setLocale } = useI18n()
   const { t } = useTranslation()
 
@@ -43,7 +54,7 @@ export function SettingsWindow({ open, onClose, scrollSpeed, setScrollSpeed, emb
           ))}
         </select>
       </div>
-      {scrollSpeed !== undefined && (
+      {presentation && (
         <div className={styles.settingRow}>
           <label className={styles.label} htmlFor="scroll-speed-input">
             {t('settings.scrollSpeed')}
@@ -54,10 +65,10 @@ export function SettingsWindow({ open, onClose, scrollSpeed, setScrollSpeed, emb
             className={styles.input}
             min={1}
             max={300}
-            value={scrollSpeed}
+            value={presentation.scrollSpeed}
             onChange={(e) => {
               const v = Number(e.target.value)
-              if (v >= 1 && v <= 300) setScrollSpeed?.(v)
+              if (v >= 1 && v <= 300) presentation.setScrollSpeed(v)
             }}
           />
         </div>
