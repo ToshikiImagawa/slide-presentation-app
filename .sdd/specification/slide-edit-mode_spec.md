@@ -30,17 +30,17 @@ category: authoring
 
 # 1. 背景
 
-スライド作成は「`slides.json` を手書き」→「`npm run export:slides` で `.tgz` にパッケージ化」という CLI ベースのフローに依存している。ビューワーは Tauri デスクトップアプリ化済みだが、作成（オーサリング）は依然として npm コマンド頼みで、アプリ単体では完結しない。開いたスライドを**その場で編集して確認する導線もない**。
+スライド作成は「`slides.json` を手書き」→「`npm run export:slides` で `.spkg`（旧 `.tgz`）にパッケージ化」という CLI ベースのフローに依存している。ビューワーは Tauri デスクトップアプリ化済みだが、作成（オーサリング）は依然として npm コマンド頼みで、アプリ単体では完結しない。開いたスライドを**その場で編集して確認する導線もない**。
 
 一方、レンダラ一式（`SlideRenderer` / `ComponentRegistry` / `applyTheme` / レイアウト / Reveal.js）はビューワー側に完備しており、単一スライドを Reveal 外で描画する仕組み（発表者ビューのプレビュー）も存在する。ここに「編集モード」を同梱すれば、**本番と同一レンダラのライブプレビュー**を伴う編集をアプリ内で実現できる。
 
 ただし編集対象の `slides.json` は自由度が高い。`SlideContent` は `[key: string]: unknown` を持ち、本文の主要フィールド（`left` / `right` / `steps` / `tiles` / `codeBlock` 等）は型定義がなくレンダラのキャストが唯一の暗黙スキーマである。文字列内には HTML・改行・インデントが直書きされ、`theme.customCSS` や任意 `component` の props は完全に自由記述である。これらを編集で破壊せず保持する **ラウンドトリップ問題**が最大の設計難所となる。また fs 書き込みが必要になるため、発表本番での誤操作・意図しない書き込みを防ぐ **capability 分離**が要る。
 
-関連する既存仕様: [presentation-foundation_spec.md](./presentation-foundation_spec.md)（レンダラ・Reveal 初期化）、[slide-content-customization_spec.md](./slide-content-customization_spec.md)（レイアウト分岐・コンポーネント解決）、[package-embedded-addon_spec.md](./package-embedded-addon_spec.md)（`.tgz` 同梱・実行時信頼）。本仕様はこれらを上流に持ち、編集モードを新規に定義する。
+関連する既存仕様: [presentation-foundation_spec.md](./presentation-foundation_spec.md)（レンダラ・Reveal 初期化）、[slide-content-customization_spec.md](./slide-content-customization_spec.md)（レイアウト分岐・コンポーネント解決）、[package-embedded-addon_spec.md](./package-embedded-addon_spec.md)（`.spkg` 同梱・実行時信頼）。本仕様はこれらを上流に持ち、編集モードを新規に定義する。
 
 # 2. 概要
 
-既存ビューワーに **View / Edit のモード**を追加し、Edit 時に「JSON 編集 → ライブプレビュー → ローカル保存 → `.tgz` 書き出し」と「同梱アドオンの参照・付け外し」をアプリ内で完結させる。本仕様は PRD の **UR-001**（編集モードの同梱）と **UR-002**（安全な編集）を満たすことを目的とする。設計原則は以下のとおり。
+既存ビューワーに **View / Edit のモード**を追加し、Edit 時に「JSON 編集 → ライブプレビュー → ローカル保存 → `.spkg` 書き出し」と「同梱アドオンの参照・付け外し」をアプリ内で完結させる。本仕様は PRD の **UR-001**（編集モードの同梱）と **UR-002**（安全な編集）を満たすことを目的とする。設計原則は以下のとおり。
 
 - **レンダラの再利用**: 編集プレビューは本番と同一の `SlideRenderer` で描画する（**DC-001**）。プレビューはプレゼン全体の再マウント（Reveal 全再初期化）を伴わず、編集中スライドを差分描画する。
 - **JSON テキストを土台とした段階的フォーム**: 編集の土台は JSON テキストエディタ＋ライブプレビューとし、型が確定したフィールド（`meta` / `theme` / `layout` / `id`）のみを段階的にフォーム化する。
@@ -62,9 +62,9 @@ category: authoring
 | FR-004 | 未知キー・文字列内 HTML・意味を持つ空白・`customCSS`・props・`fragment` を無損失で往復する | 必須  | FR-004      |
 | FR-005 | 保存前にバリデーションし、破損時は全体フォールバックへ流さず保存を止める                       | 必須  | FR-005      |
 | FR-006 | 編集した `slides.json` を Rust コマンド境界でローカル保存する                            | 必須  | FR-006      |
-| FR-007 | アセット収集 → パッケージ生成で `.tgz` を書き出し、既存の「開く」で読み込める                    | 必須  | FR-007 / DC-003 |
+| FR-007 | アセット収集 → パッケージ生成で `.spkg` を書き出し、既存の「開く」で読み込める                    | 必須  | FR-007 / DC-003 |
 | FR-008 | 実行時信頼（`addonTrust`）の個別 on/off をアプリ内で操作する（層C）                       | 推奨  | FR-008      |
-| FR-009 | `.tgz` export 時に同梱アドオンを個別選択する（層B）                                     | 推奨  | FR-009      |
+| FR-009 | `.spkg` export 時に同梱アドオンを個別選択する（層B）                                     | 推奨  | FR-009      |
 | FR-010 | 組み込みアドオン `entry.ts` の増減をアプリから操作する（層A・dev 限定）                      | 任意  | FR-010 / DC-004 |
 | FR-011 | fs 書き込みを Rust コマンド境界に集約し、編集モード状態でゲートする                          | 必須  | FR-011 / DC-002 |
 
@@ -84,7 +84,7 @@ category: authoring
 | ディレクトリ | ファイル名 | エクスポート | 概要 |
 |--------|-------|--------|------|
 | `src` | `main.tsx` | `View`（型拡張） | `'home'`／`'presentation'` に `'edit'` を追加し、編集モードの表示分岐を持つ（FR-001） |
-| `src/edit` | `SlideEditor.tsx` | `<SlideEditor slides onChange onSave onExport />` | 編集画面のルート。JSON エディタ・フォーム・ライブプレビューを束ねる（FR-001/002/003） |
+| `src/edit` | `SlideEditor.tsx` | `<SlideEditor source onExit openRequestPath onResolveOpen />` | 編集画面のルート。JSON エディタ・フォーム・ライブプレビューを束ねる（FR-001/002/003） |
 | `src/edit` | `SlideJsonEditor.tsx` | `<SlideJsonEditor value onChange errors />` | JSON テキストエディタ（構文・スキーマ検証つき）（FR-002） |
 | `src/edit` | `SlideMetaForm.tsx` | `<SlideMetaForm value onChange />` | 確定フィールド（`meta`/`theme`/`layout`/`id`）のフォーム（FR-003） |
 | `src/components` | `SlideRenderer.tsx` | `SlideRenderer.Slide`（再利用） | 単一スライドを Reveal 外で描画するプレビュー核（DC-001・変更なし） |
@@ -92,7 +92,7 @@ category: authoring
 | `src/data` | `loader.ts` | `getValidationErrors`（再利用） | 保存前バリデーション。破損時は保存を止める（FR-005） |
 | `src` | `editModeSave.ts` | `saveSlidesJson(path, json)` / `exportSlidePackage(options)` | Rust コマンドの呼び出し口（編集モード時のみ）（FR-006/007/011） |
 | `src-tauri` | `lib.rs` | `save_slides_json`（Rust コマンド） | `slides.json` をローカル保存。編集モード state でゲート（FR-006/011） |
-| `src-tauri` | `lib.rs` | `export_slide_package`（Rust コマンド） | アセット収集 → `.tgz` 生成。編集モード state でゲート（FR-007/011/DC-003） |
+| `src-tauri` | `lib.rs` | `export_slide_package`（Rust コマンド） | アセット収集 → `.spkg` 生成。編集モード state でゲート（FR-007/011/DC-003） |
 | `src-tauri` | `lib.rs` | `set_edit_mode`（Rust コマンド） | 編集モード state（`tauri::State<EditMode>`）を切り替える（FR-001/011） |
 | `src` | `localSlideLoader.ts` | `setAddonTrustDecision(path, decision)`（新設・層C） | 実行時信頼を個別に許可/拒否する（既存 `resolveAddonTrust`/`resetAddonTrust` を補完）（FR-008） |
 | `scripts` | `export-slides.mjs` | `extractAssetPaths`（公開・再利用元） | アセット収集規則の単一真実源。同梱ロジック `bundleAddons`（内部関数）を含め、Rust 実装が規則を移植する（DC-003/FR-009） |
@@ -113,11 +113,17 @@ export function serializeSlides(data: PresentationData): string
 export interface ExportOptions {
   /** 出力先ディレクトリ（dialog で選択） */
   outDir: string
+  /** パッケージ名（`@slides/{name}` として生成） */
+  name: string
+  /** バージョン（デフォルト 1.0.0 を UI 側で補完） */
+  version: string
+  /** 相対アセットの収集元。未指定なら収集をスキップ */
+  baseDir?: string
   /** 同梱するアドオン（層B・個別選択）。未指定なら同梱しない */
   includedAddons?: string[]
 }
 export function saveSlidesJson(path: string, json: string): Promise<void>
-export function exportSlidePackage(json: string, options: ExportOptions): Promise<string> // 生成された .tgz パス
+export function exportSlidePackage(json: string, options: ExportOptions): Promise<string> // 生成された .spkg パス
 
 // localSlideLoader.ts — 層C: 実行時信頼の個別操作（既存 AddonTrustDecision を利用）
 export function setAddonTrustDecision(path: string, decision: AddonTrustDecision): Promise<void>
@@ -186,7 +192,7 @@ sequenceDiagram
     alt errors なし
         U->>Edit: 保存 / 書き出し
         Edit->>Rust: save_slides_json / export_slide_package
-        Rust-->>Edit: 成功（.tgz パス）
+        Rust-->>Edit: 成功（.spkg パス）
     else errors あり
         Edit->>U: エラー提示（保存を止める）
     end
@@ -199,7 +205,7 @@ sequenceDiagram
 
 - 編集プレビューは `SlideRenderer` / `ComponentRegistry` / `applyTheme` / レイアウトを再利用し、再実装しない（DC-001）。
 - fs 書き込みは Rust コマンド境界に集約し、`plugin-fs` write を JS へ開放しない（DC-002）。
-- `.tgz` のアセット収集規則は `export-slides.mjs` の `extractAssetPaths` を単一の真実源とする（DC-003）。
+- `.spkg` のアセット収集規則は `export-slides.mjs` の `extractAssetPaths` を単一の真実源とする（DC-003）。
 - 層A（組み込みアドオン付け外し）は再ビルドを要するため dev 環境限定とする（DC-004）。
 - フル WYSIWYG（ドラッグ配置）は作らない（DC-005）。
 - 既存読込の全体フォールバック（1 スライド破損でプレゼン全体を default 差し替え）へ、編集途中の不整合を流し込まない（FR-005）。

@@ -2,11 +2,11 @@
 id: prd-presentation-foundation
 title: Reveal.js プレゼンテーション基盤 要求仕様書
 type: prd
-status: draft
+status: approved
 priority: high
 risk: high
 created: 2026-02-02
-updated: 2026-07-24
+updated: 2026-07-29
 tags:
   - presentation
   - reveal-js

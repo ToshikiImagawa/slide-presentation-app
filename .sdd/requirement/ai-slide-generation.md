@@ -470,7 +470,7 @@ GCP 認証は `gcloud auth application-default login`（ADC）で用意し、Ver
 
 **優先度**: Must ／ **カテゴリ**: 互換性
 
-既存の表示・「開く」・発表者ビュー・編集モード・ビルド時同梱／`.tgz` 配布が従来どおり動作すること。`npm run typecheck` / `npm run test` が通ること。生成機能の追加が View（発表本番）および編集モードの既存挙動を変えないこと。
+既存の表示・「開く」・発表者ビュー・編集モード・ビルド時同梱／`.spkg` 配布が従来どおり動作すること。`npm run typecheck` / `npm run test` が通ること。生成機能の追加が View（発表本番）および編集モードの既存挙動を変えないこと。
 
 **検証方法:** テストによる検証
 
@@ -566,7 +566,7 @@ GCP 認証は `gcloud auth application-default login`（ADC）で用意し、Ver
 
 # 6. 前提条件
 
-- 器（編集モード）が動作していること: View/Edit モード切替、`SlideEditor` の単一真実源（`text`）と無損失往復、本番同一レンダラのライブプレビュー、`slides.json` 保存・`.tgz` 書き出し、編集モード時のみ書き込みを有効化する capability 分離（[slide-edit-mode.md](./slide-edit-mode.md)）。
+- 器（編集モード）が動作していること: View/Edit モード切替、`SlideEditor` の単一真実源（`text`）と無損失往復、本番同一レンダラのライブプレビュー、`slides.json` 保存・`.spkg` 書き出し、編集モード時のみ書き込みを有効化する capability 分離（[slide-edit-mode.md](./slide-edit-mode.md)）。
 - 書き込みが Rust コマンド境界に集約され、編集モード状態でゲートされていること（[slide-edit-mode.md](./slide-edit-mode.md) の DC-002 / FR-011）。本 Feature はこの境界にネットワーク通信・キー操作を追加する。
 - 生成結果の取り込みに用いる構造化バリデーション（`loader.ts` の `getValidationErrors`）が存在すること。
 - 内蔵生成には Vertex AI を有効化した GCP プロジェクトと `gcloud` ログイン（ADC）・オンライン接続、外部生成には対応する外部生成手段（Claude Code 等）の導入が、利用者環境に用意されること。
@@ -577,7 +577,7 @@ GCP 認証は `gcloud auth application-default login`（ADC）で用意し、Ver
 
 以下は本 PRD のスコープ外とします：
 
-- **器側の既存機能**（モード切替・JSON 編集・ライブプレビュー・保存・`.tgz` 書き出し・アドオン付け外し・capability 分離）は先行 Feature [slide-edit-mode.md](./slide-edit-mode.md)（[#13](https://github.com/ToshikiImagawa/slide-presentation-app/issues/13)）で対応済み。
+- **器側の既存機能**（モード切替・JSON 編集・ライブプレビュー・保存・`.spkg` 書き出し・アドオン付け外し・capability 分離）は先行 Feature [slide-edit-mode.md](./slide-edit-mode.md)（[#13](https://github.com/ToshikiImagawa/slide-presentation-app/issues/13)）で対応済み。
 - **課金上限・コスト見積り管理**（トークン/コストの上限設定・事前見積り UI）。オンライン依存・課金は UI の注意書きで周知するに留める。
 - **部分マージ・スライド単位生成**（DC-005）。当面は全体置換のみ。
 - **トークン単位のストリーミング逐次プレビュー**（v1 は試行・フェーズ単位の進捗通知に留める）。

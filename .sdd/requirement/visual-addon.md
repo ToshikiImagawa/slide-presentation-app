@@ -285,7 +285,7 @@ custom側の登録 API（`registerComponent`）を利用する。`registerCompon
 
 # 6. 前提条件
 
-- ComponentRegistry が default/custom の二層構造で動作していること
+- ComponentRegistry が custom → default → fallback の3層優先解決で動作していること（A-004）
 - 移動対象のビジュアルコンポーネントが他のコンポーネントから直接 import されていないこと（レジストリ経由でのみ使用）
 - Vite によるビルド環境が利用可能であること
 

@@ -2,11 +2,11 @@
 id: prd-auto-scroll-timer
 title: タイマーベース自動スクロール（Auto Scroll Timer）要求仕様書
 type: prd
-status: draft
+status: approved
 priority: high
 risk: high
 created: 2026-02-02
-updated: 2026-07-24
+updated: 2026-07-29
 tags:
   - auto-slideshow
   - timer

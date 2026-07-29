@@ -20,7 +20,7 @@ category: addon-system
 
 ## 概要
 
-アドオン（ビジュアルコンポーネント群の IIFE バンドル）を、スライドデータと同様に **`.tgz` スライドパッケージに同梱し、そのパッケージを開いたときに起動後に動的ロードして利用できる**ようにする。現状アドオンはビルド時に固定され、起動時に一度だけ `/addons/manifest.json` から読み込まれるため、スライドごとに差し替えられない。本要求では、これを「ローカルスライド選択」と同じく起動後のオーバーレイとして拡張する。
+アドオン（ビジュアルコンポーネント群の IIFE バンドル）を、スライドデータと同様に **`.spkg`（旧 `.tgz`）スライドパッケージに同梱し、そのパッケージを開いたときに起動後に動的ロードして利用できる**ようにする。現状アドオンはビルド時に固定され、起動時に一度だけ `/addons/manifest.json` から読み込まれるため、スライドごとに差し替えられない。本要求では、これを「ローカルスライド選択」と同じく起動後のオーバーレイとして拡張する。
 
 同梱アドオンはサンドボックスなしでアプリと同一権限で実行される（RCE 相当）ため、利用者側での信頼確認・オプトアウトを併せて定義する。
 
@@ -82,7 +82,7 @@ flowchart LR
     User((利用者・発表者))
 
     subgraph System["パッケージ同梱アドオンシステム"]
-        UC1[アドオンを .tgz に同梱]
+        UC1[アドオンを .spkg に同梱]
         UC2[パッケージを開いてアドオンを動的ロード]
         UC3[パッケージ切替時にアドオンを破棄・再ロード]
         UC4[発表者ビューへアドオンを伝搬]
@@ -104,15 +104,15 @@ flowchart LR
 
 | アクター       | 説明                                                     |
 |:-----------|:-------------------------------------------------------|
-| スライド配布者    | アドオンをスライドパッケージ（`.tgz`）に同梱して配布する開発者・作成者                |
+| スライド配布者    | アドオンをスライドパッケージ（`.spkg`）に同梱して配布する開発者・作成者                |
 | 利用者・発表者    | パッケージを開いてスライドを表示・発表し、同梱アドオンの実行可否を判断する                  |
 
 **ユースケース**
 
 | ユースケース                | 説明                                                        |
 |:----------------------|:----------------------------------------------------------|
-| アドオンを `.tgz` に同梱      | `export-slides --addons` でビルド済みアドオンをパッケージに含める             |
-| パッケージを開いてアドオンを動的ロード | 起動後に開いた `.tgz` の `addons/manifest.json` を読み、バンドルをロードする    |
+| アドオンを `.spkg` に同梱      | `export-slides --addons` でビルド済みアドオンをパッケージに含める             |
+| パッケージを開いてアドオンを動的ロード | 起動後に開いた `.spkg` の `addons/manifest.json` を読み、バンドルをロードする    |
 | パッケージ切替時に破棄・再ロード     | パッケージ A→B 切替時に A のアドオンを破棄し、B のアドオンをロードしてから再マウントする          |
 | 発表者ビューへ伝搬            | 別ウィンドウの発表者ビューにも同じアドオンをロード・登録する                            |
 | 同梱アドオンの信頼確認         | 実行コードを含むパッケージの初回オープン時に許可/拒否を確認する                          |
@@ -121,7 +121,7 @@ flowchart LR
 ## 2.2. 機能一覧（テキスト形式）
 
 - ランタイムロード（#6）
-    - `.tgz` 展開ディレクトリの IIFE バンドルを asset URL 経由で `<script>` 注入してロード
+    - `.spkg` 展開ディレクトリの IIFE バンドルを asset URL 経由で `<script>` 注入してロード
     - manifest 読取と `<script>`/`<style>` 注入の共通化・冪等化
 - ライフサイクル管理（#6）
     - `ComponentRegistry` のオーナースコープ付き登録・アンロード API
@@ -146,7 +146,7 @@ flowchart LR
 requirementDiagram
     requirement PackageEmbeddedAddon {
         id: UR_001
-        text: "配布者が .tgz に同梱したアドオンを、開いた利用者が起動後にロードして利用できること"
+        text: "配布者が .spkg に同梱したアドオンを、開いた利用者が起動後にロードして利用できること"
         risk: high
         verifymethod: demonstration
     }
@@ -291,7 +291,7 @@ requirementDiagram
 
 ### UR-001: パッケージ同梱アドオンのランタイムロード
 
-スライド配布者が `.tgz` パッケージにアドオンを同梱でき、パッケージを開いた利用者が起動後にそのアドオンをロードして、スライドの `{ "component": { "name": ... } }` 参照を解決・描画できること。
+スライド配布者が `.spkg` パッケージにアドオンを同梱でき、パッケージを開いた利用者が起動後にそのアドオンをロードして、スライドの `{ "component": { "name": ... } }` 参照を解決・描画できること。
 
 **検証方法:** デモンストレーションによる検証
 
@@ -307,7 +307,7 @@ requirementDiagram
 
 **優先度**: Must ／ **派生元**: UR-001（[visual-addon.md](./visual-addon.md) FR-001/FR-002 を再利用）
 
-`.tgz` を開いた後、パッケージ内 `addons/manifest.json` に宣言されたバンドルを、`convertFileSrc` が返す asset URL を `<script src>` に注入することで起動後にロードする。ロード方式は実機（macOS/WKWebView）で確認済みの「IIFE + asset URL の `<script>` 注入」を採る。
+`.spkg` を開いた後、パッケージ内 `addons/manifest.json` に宣言されたバンドルを、`convertFileSrc` が返す asset URL を `<script src>` に注入することで起動後にロードする。ロード方式は実機（macOS/WKWebView）で確認済みの「IIFE + asset URL の `<script>` 注入」を採る。
 
 **検証方法:** デモンストレーション（パッケージを開きコンポーネントが解決される）による検証
 
@@ -397,7 +397,7 @@ requirementDiagram
 
 **優先度**: Must ／ **カテゴリ**: 互換性
 
-既存のビルド時同梱（`public/slides.json`・`VITE_SLIDE_PACKAGE` 経由の npm パッケージ／`.tgz` 配布）と、起動時の組み込み `/addons/manifest.json` ロードは従来どおり動作すること。`npm run typecheck` / `npm run test` が通ること。
+既存のビルド時同梱（`public/slides.json`・`VITE_SLIDE_PACKAGE` 経由の npm パッケージ／`.spkg` 配布）と、起動時の組み込み `/addons/manifest.json` ロードは従来どおり動作すること。`npm run typecheck` / `npm run test` が通ること。
 
 **検証方法:** テストによる検証
 
@@ -427,7 +427,7 @@ macOS（WKWebView）で asset URL の `<script>` 実行が可能であること�
 
 ### DC-002: Tauri ランタイム経路への限定
 
-本要求の対象は Tauri ランタイム経路（`.tgz` をローカルで開いて起動後にアドオンをロードする経路）に限定する。dev/build（Vite）経路での同梱アドオン配信はスコープ外とする。
+本要求の対象は Tauri ランタイム経路（`.spkg` をローカルで開いて起動後にアドオンをロードする経路）に限定する。dev/build（Vite）経路での同梱アドオン配信はスコープ外とする。
 
 **検証方法:** インスペクションによる検証
 
@@ -439,7 +439,7 @@ macOS（WKWebView）で asset URL の `<script>` 実行が可能であること�
 
 ### DC-004: ロード順序制約
 
-アドオンのロードは「`.tgz` 展開 → `allow_asset_dir(baseDir)` → `<script>` 注入」の順序を守る。`allow_asset_dir` 実行前に asset URL を読むと 403 になる（実機 PoC で確認済み）。
+アドオンのロードは「`.spkg` 展開 → `allow_asset_dir(baseDir)` → `<script>` 注入」の順序を守る。`allow_asset_dir` 実行前に asset URL を読むと 403 になる（実機 PoC で確認済み）。
 
 入口が増えてもこの順序は不変とする。**OS のファイル関連付け経由で開いた場合でも、展開 → `allow_asset_dir` → `<script>` 注入の順序は変わらない**（[slide-package-open.md](./slide-package-open.md) FR-009 / DC-005）。
 
@@ -465,10 +465,10 @@ macOS（WKWebView）で asset URL の `<script>` 実行が可能であること�
 
 # 6. 前提条件
 
-- `extract_slide_package`（`.tgz` 展開）と `allow_asset_dir`（asset スコープの再帰許可）が Rust 側に存在すること。開く入口は [slide-package-open.md](./slide-package-open.md) が所有し、本要求はどの入口から開かれた場合も同じロード順序（DC-004）を前提とする
+- `extract_slide_package`（`.spkg` 展開）と `allow_asset_dir`（asset スコープの再帰許可）が Rust 側に存在すること。開く入口は [slide-package-open.md](./slide-package-open.md) が所有し、本要求はどの入口から開かれた場合も同じロード順序（DC-004）を前提とする
 - `convertFileSrc` によりローカルパスを asset URL 化できること
 - 実機 PoC（#5）で macOS における asset URL の `<script>` 実行が確認済みであること
-- `ComponentRegistry` が default/custom の二層構造で動作していること
+- `ComponentRegistry` が custom → default → fallback の3層優先解決で動作していること（A-004）
 
 ---
 
@@ -477,7 +477,7 @@ macOS（WKWebView）で asset URL の `<script>` 実行が可能であること�
 以下は本 PRD のスコープ外とします：
 
 - dev/build（Vite）経路での同梱アドオン配信（`servedPaths`/alias 競合を解く manifest マージが別途必要）
-- 既存のビルド時同梱（`public/slides.json`・`VITE_SLIDE_PACKAGE`・`.tgz` 配布）の仕様変更
+- 既存のビルド時同梱（`public/slides.json`・`VITE_SLIDE_PACKAGE`・`.spkg` 配布）の仕様変更
 - アドオンのバージョン管理・依存関係解決・ホットリロード
 - 別 origin / iframe によるサンドボックス分離
 - Windows（WebView2）実機動作の保証（フォローアップとして追跡）
@@ -488,13 +488,13 @@ macOS（WKWebView）で asset URL の `<script>` 実行が可能であること�
 
 | 用語                     | 定義                                                                    |
 |:-----------------------|:----------------------------------------------------------------------|
-| 同梱アドオン                | `.tgz` スライドパッケージ内 `addons/` に含めて配布されるアドオン                            |
+| 同梱アドオン                | `.spkg` スライドパッケージ内 `addons/` に含めて配布されるアドオン                            |
 | ランタイムロード             | 起動後、パッケージを開いた時点でアドオンを動的にロードすること                                     |
 | owner（オーナースコープ）      | 登録されたコンポーネントの所有者識別子。パッケージ単位（= `baseDir`）でスコープする                     |
 | アンロード                 | 指定 owner の custom 登録のみをレジストリから削除すること（default は温存）                    |
 | asset URL             | `convertFileSrc` が返す `asset://localhost/<絶対パス>` 形式のローカルリソース URL      |
 | `allow_asset_dir`     | 展開先ディレクトリを asset プロトコルの読み取りスコープに再帰的に許可する Rust コマンド                  |
-| `extract_slide_package` | `.tgz` をアプリのキャッシュディレクトリに展開する Rust コマンド                              |
+| `extract_slide_package` | `.spkg` をアプリのキャッシュディレクトリに展開する Rust コマンド                              |
 | RCE 相当                 | 同梱 JS がサンドボックスなしでアプリと同一権限で実行される状態（Remote Code Execution 相当のリスク）    |
 | オプトアウト                | 利用者が同梱アドオンのロードを拒否・無効化すること。既定挙動は「確認して拒否」                            |
 | 発表者ビュー                | `WebviewWindow` で生成される別ウィンドウの発表者用ビュー（別レジストリを持つ）                     |

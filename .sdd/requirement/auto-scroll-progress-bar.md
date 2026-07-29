@@ -2,9 +2,9 @@
 id: prd-auto-scroll-progress-bar
 title: 自動スクロールプログレスバー（Auto Scroll Progress Bar）要求仕様書
 type: prd
-status: draft
+status: approved
 created: 2026-02-02
-updated: 2026-07-24
+updated: 2026-07-29
 priority: medium
 risk: medium
 tags:

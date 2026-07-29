@@ -148,7 +148,10 @@ type PresenterViewMessage =
   | { type: 'slideChanged'; payload: { currentIndex: number; slides: SlideData[] } }
   | { type: 'controlStateChanged'; payload: PresenterControlState }
   | { type: 'progressChanged'; payload: { progress: number; visible: boolean; animationDuration?: number } }
+  // メインウィンドウ → 発表者ビュー（パッケージ切替に伴う同梱アドオンの変更を伝搬する）
   | { type: 'addonsChanged'; payload: { owner: string; scripts: string[] } }
+  // メインウィンドウ → 発表者ビュー（本編に適用中のテーマを伝搬する）
+  | { type: 'themeChanged'; payload: { themeColors?: string; theme?: ThemeData } }
   // 発表者ビュー → メインウィンドウ
   | { type: 'navigate'; payload: { direction: 'prev' | 'next' } }
   | { type: 'audioToggle' }
