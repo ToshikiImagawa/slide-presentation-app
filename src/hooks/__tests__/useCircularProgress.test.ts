@@ -120,4 +120,34 @@ describe('useCircularProgress', () => {
     expect(result.current.visible).toBe(false)
     expect(result.current.source).toBe('none')
   })
+
+  it('paused=true でも audioProgress が維持されていれば visible=true のまま paused を返す', () => {
+    const { result } = renderHook(() =>
+      useCircularProgress({
+        autoSlideshow: true,
+        hasVoice: true,
+        audioProgress: { currentTime: 15, duration: 30 },
+        timerDuration: null,
+        paused: true,
+      }),
+    )
+
+    expect(result.current.visible).toBe(true)
+    expect(result.current.source).toBe('audio')
+    expect(result.current.animationDuration).toBe(30)
+    expect(result.current.paused).toBe(true)
+  })
+
+  it('paused を省略した場合は false 相当になる', () => {
+    const { result } = renderHook(() =>
+      useCircularProgress({
+        autoSlideshow: true,
+        hasVoice: true,
+        audioProgress: { currentTime: 15, duration: 30 },
+        timerDuration: null,
+      }),
+    )
+
+    expect(result.current.paused).toBe(false)
+  })
 })

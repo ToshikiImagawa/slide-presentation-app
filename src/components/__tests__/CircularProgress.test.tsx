@@ -57,4 +57,16 @@ describe('CircularProgress', () => {
     // animationDuration 指定時は stroke-dashoffset を直接属性に設定しない（CSS @keyframes が担当）
     expect(circle!.getAttribute('stroke-dashoffset')).toBeNull()
   })
+
+  it('paused=true で animationPlayState が paused になる（一時停止しても経過時間を維持する）', () => {
+    const { container } = render(<CircularProgress progress={0} visible={true} animationDuration={30} paused={true} />)
+    const circle = container.querySelector('circle')
+    expect(circle!.style.animationPlayState).toBe('paused')
+  })
+
+  it('paused=false（未指定）で animationPlayState が running になる', () => {
+    const { container } = render(<CircularProgress progress={0} visible={true} animationDuration={30} />)
+    const circle = container.querySelector('circle')
+    expect(circle!.style.animationPlayState).toBe('running')
+  })
 })

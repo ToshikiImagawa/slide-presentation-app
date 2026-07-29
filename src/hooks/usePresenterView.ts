@@ -31,7 +31,7 @@ export interface UsePresenterViewReturn {
   isOpen: boolean
   sendSlideState: (currentIndex: number) => void
   sendControlState: (state: PresenterControlState) => void
-  sendProgressState: (progress: number, visible: boolean, animationDuration?: number) => void
+  sendProgressState: (progress: number, visible: boolean, animationDuration?: number, paused?: boolean) => void
 }
 
 export function usePresenterView({ slides, addonOwner = '', addonScripts = [], themeColors, theme, onNavigate, onAudioToggle, onAutoPlayToggle, onAutoSlideshowToggle, onScrollSpeedChange }: UsePresenterViewOptions): UsePresenterViewReturn {
@@ -139,9 +139,9 @@ export function usePresenterView({ slides, addonOwner = '', addonScripts = [], t
   )
 
   const sendProgressState = useCallback(
-    (progress: number, visible: boolean, animationDuration?: number) => {
+    (progress: number, visible: boolean, animationDuration?: number, paused?: boolean) => {
       if (isOpen) {
-        const message: PresenterViewMessage = { type: 'progressChanged', payload: { progress, visible, animationDuration } }
+        const message: PresenterViewMessage = { type: 'progressChanged', payload: { progress, visible, animationDuration, paused } }
         void emit(EVENT_NAME, message)
       }
     },

@@ -64,7 +64,7 @@ type PresenterViewWindowProps = {
   slides: SlideData[]
   currentIndex: number
   controlState: PresenterControlState | null
-  progressState?: { progress: number; visible: boolean; animationDuration?: number }
+  progressState?: { progress: number; visible: boolean; animationDuration?: number; paused?: boolean }
   onNavigate: (direction: 'prev' | 'next') => void
   onAudioToggle: () => void
   onAutoPlayToggle: () => void
@@ -165,7 +165,7 @@ export function PresenterViewWindow({ slides, currentIndex, controlState, progre
               </svg>
               <span className={styles.autoLabel}>A</span>
             </button>
-            <FillProgress progress={progressState?.progress ?? 0} visible={progressState?.visible ?? false} animationDuration={progressState?.animationDuration} resetKey={currentIndex} />
+            <FillProgress progress={progressState?.progress ?? 0} visible={progressState?.visible ?? false} animationDuration={progressState?.animationDuration} resetKey={currentIndex} paused={progressState?.paused} />
           </div>
         </div>
       </div>

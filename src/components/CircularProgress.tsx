@@ -9,6 +9,8 @@ export interface CircularProgressProps {
   animationDuration?: number
   /** 変更するとアニメーションをリセットする key */
   resetKey?: string | number
+  /** true の場合、アニメーションを現在位置で一時停止する（animationDuration 指定時のみ有効） */
+  paused?: boolean
 }
 
 const RING_RADIUS = 18
@@ -16,7 +18,7 @@ const RING_SIZE = RING_RADIUS * 2 + 2
 const RING_CENTER = RING_RADIUS + 1
 const CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS
 
-export function CircularProgress({ progress, visible, animationDuration, resetKey }: CircularProgressProps) {
+export function CircularProgress({ progress, visible, animationDuration, resetKey, paused }: CircularProgressProps) {
   if (!visible) return null
 
   if (animationDuration != null) {
@@ -33,7 +35,7 @@ export function CircularProgress({ progress, visible, animationDuration, resetKe
           strokeDasharray={CIRCUMFERENCE}
           strokeLinecap="round"
           transform={`rotate(-90 ${RING_CENTER} ${RING_CENTER})`}
-          style={{ animationDuration: `${animationDuration}s` }}
+          style={{ animationDuration: `${animationDuration}s`, animationPlayState: paused ? 'paused' : 'running' }}
         />
       </svg>
     )

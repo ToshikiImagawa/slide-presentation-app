@@ -25,7 +25,7 @@ function PresenterViewApp() {
   const [slides, setSlides] = useState<SlideData[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [controlState, setControlState] = useState<PresenterControlState | null>(null)
-  const [progressState, setProgressState] = useState<{ progress: number; visible: boolean; animationDuration?: number }>({ progress: 0, visible: false })
+  const [progressState, setProgressState] = useState<{ progress: number; visible: boolean; animationDuration?: number; paused?: boolean }>({ progress: 0, visible: false })
 
   // 現在登録済みのパッケージアドオンの owner（切替時のアンロード対象）
   const currentOwnerRef = useRef<string | undefined>(undefined)

@@ -16,6 +16,8 @@ export interface UseCircularProgressOptions {
   audioProgress: AudioProgress | null
   /** タイマーがアクティブな場合の総時間（秒）。非アクティブ時は null */
   timerDuration: number | null
+  /** 音声が一時停止中かどうか。true の間は表示を維持したままアニメーションを一時停止する */
+  paused?: boolean
 }
 
 /** useCircularProgress フックの出力 */
@@ -25,9 +27,11 @@ export interface UseCircularProgressReturn {
   visible: boolean
   /** CSS アニメーション用 duration（秒）。タイマーモード・音声モードで使用。none 時は undefined */
   animationDuration?: number
+  /** true の場合、CSS アニメーションを一時停止した状態で描画する（現在位置を維持） */
+  paused?: boolean
 }
 
-export function useCircularProgress({ autoSlideshow, hasVoice, audioProgress, timerDuration }: UseCircularProgressOptions): UseCircularProgressReturn {
+export function useCircularProgress({ autoSlideshow, hasVoice, audioProgress, timerDuration, paused = false }: UseCircularProgressOptions): UseCircularProgressReturn {
   return useMemo(() => {
     if (!autoSlideshow) {
       return { progress: 0, source: 'none' as const, visible: false }
@@ -35,9 +39,9 @@ export function useCircularProgress({ autoSlideshow, hasVoice, audioProgress, ti
 
     if (hasVoice && audioProgress) {
       if (audioProgress.duration > 0) {
-        return { progress: 0, source: 'audio' as const, visible: true, animationDuration: audioProgress.duration }
+        return { progress: 0, source: 'audio' as const, visible: true, animationDuration: audioProgress.duration, paused }
       }
-      return { progress: 0, source: 'audio' as const, visible: true }
+      return { progress: 0, source: 'audio' as const, visible: true, paused }
     }
 
     // voice 未定義、または voice 定義済みだが音声読み込み失敗時のタイマーフォールバック（DC_SNA_002 準拠）
@@ -46,5 +50,5 @@ export function useCircularProgress({ autoSlideshow, hasVoice, audioProgress, ti
     }
 
     return { progress: 0, source: 'none' as const, visible: false }
-  }, [autoSlideshow, hasVoice, audioProgress?.duration, timerDuration])
+  }, [autoSlideshow, hasVoice, audioProgress?.duration, timerDuration, paused])
 }

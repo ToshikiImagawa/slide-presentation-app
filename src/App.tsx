@@ -133,17 +133,21 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
     progress,
     visible: progressVisible,
     animationDuration,
+    paused: progressPaused,
   } = useCircularProgress({
     autoSlideshow,
     hasVoice: !!currentVoicePath,
-    audioProgress: audioPlayer.isPlaying ? { currentTime: audioPlayer.currentTime, duration: audioPlayer.duration } : null,
+    // 一時停止中も currentTime/duration を保持し、audioProgress を null にしない
+    // （null にすると progressVisible が false になり、再開時にアニメーションが 0% から再スタートしてしまう）
+    audioProgress: audioPlayer.playbackState !== 'idle' ? { currentTime: audioPlayer.currentTime, duration: audioPlayer.duration } : null,
     timerDuration,
+    paused: audioPlayer.playbackState === 'paused',
   })
 
   // プログレス状態を発表者ビューに同期
   useEffect(() => {
-    sendProgressState(progress, progressVisible, animationDuration)
-  }, [progress, progressVisible, animationDuration, sendProgressState])
+    sendProgressState(progress, progressVisible, animationDuration, progressPaused)
+  }, [progress, progressVisible, animationDuration, progressPaused, sendProgressState])
 
   // 制御状態を発表者ビューに同期
   useEffect(() => {
@@ -214,6 +218,7 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
           progressVisible={progressVisible}
           animationDuration={animationDuration}
           progressResetKey={currentIndex}
+          progressPaused={progressPaused}
         />
         <PdfExportButton onClick={() => window.print()} />
         <PresenterViewButton onClick={openPresenterView} isOpen={isOpen} />

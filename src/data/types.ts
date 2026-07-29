@@ -101,7 +101,7 @@ export type PresenterViewMessage =
   // メインウィンドウ → 発表者ビュー
   | { type: 'slideChanged'; payload: { currentIndex: number; slides: SlideData[] } }
   | { type: 'controlStateChanged'; payload: PresenterControlState }
-  | { type: 'progressChanged'; payload: { progress: number; visible: boolean; animationDuration?: number } }
+  | { type: 'progressChanged'; payload: { progress: number; visible: boolean; animationDuration?: number; paused?: boolean } }
   // 発表者ビュー → メインウィンドウ
   | { type: 'navigate'; payload: { direction: 'prev' | 'next' } }
   | { type: 'audioToggle' }
