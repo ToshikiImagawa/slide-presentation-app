@@ -201,6 +201,7 @@
       "title": "Raccourcis clavier",
       "viewerSection": "Visionneuse de présentation",
       "editSection": "Mode édition",
+      "presenterSection": "Vue du présentateur",
       "toggleToolbar": "Afficher/masquer la barre d'outils",
       "openHelp": "Afficher cette liste de raccourcis",
       "nextSlide": "Diapositive suivante",

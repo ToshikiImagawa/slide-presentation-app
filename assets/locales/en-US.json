@@ -201,6 +201,7 @@
       "title": "Keyboard shortcuts",
       "viewerSection": "Presentation viewer",
       "editSection": "Edit mode",
+      "presenterSection": "Presenter View",
       "toggleToolbar": "Show/hide the toolbar",
       "openHelp": "Show this shortcut list",
       "nextSlide": "Next slide",

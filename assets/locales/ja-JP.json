@@ -201,6 +201,7 @@
       "title": "キーボードショートカット",
       "viewerSection": "プレゼンビューア",
       "editSection": "編集モード",
+      "presenterSection": "発表者ビュー",
       "toggleToolbar": "ツールバーの表示/非表示",
       "openHelp": "このショートカット一覧を表示",
       "nextSlide": "次のスライド",

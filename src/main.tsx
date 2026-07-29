@@ -66,15 +66,27 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
 
   const openSettings = () => setSettingsOpen(true)
   const closeSettings = () => setSettingsOpen(false)
+  const openShortcuts = () => setShortcutsOpen(true)
   const closeShortcuts = () => setShortcutsOpen(false)
-  // App の keydown 購読（? キー）の依存に入るため、これだけは参照を安定させる
-  const openShortcuts = useCallback(() => setShortcutsOpen(true), [])
 
   // 画面が切り替わったらダイアログを閉じる（従来は App ごと再マウントされて閉じていた挙動を維持する）
   useEffect(() => {
     setSettingsOpen(false)
     setShortcutsOpen(false)
   }, [view])
+
+  // ? キーでショートカット一覧を開く（入力中は無視）。ダイアログの所有者がこの層なので購読もここに置き、
+  // ホーム・プレゼンテーション・編集のどの画面からでも同じキーで開けるようにする
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== '?') return
+      const target = e.target as HTMLElement | null
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return
+      setShortcutsOpen(true)
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
 
   // 表示中プレゼンデータを更新する（App を再マウントするための key 更新を含む）。
   // showPresentation・handleCreateWithAi の両方から使う共通処理
@@ -297,7 +309,6 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
         scrollSpeed={scrollSpeed}
         onScrollSpeedChange={setScrollSpeed}
         onOpenSettings={openSettings}
-        onOpenShortcuts={openShortcuts}
       />
     )
   }

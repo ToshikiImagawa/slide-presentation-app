@@ -26,9 +26,16 @@ const EDIT_SHORTCUTS: ShortcutEntry[] = [
   { keys: 'Enter / Shift + Enter', descKey: 'shortcuts.searchNav', fallback: '次 / 前の検索結果へ移動' },
 ]
 
+// 発表者ビュー（別ウィンドウ）の独自キーバインド（src/components/PresenterViewWindow.tsx の handleKeyDown が根拠）
+const PRESENTER_SHORTCUTS: ShortcutEntry[] = [
+  { keys: '→ / Space', descKey: 'shortcuts.nextSlide', fallback: '次のスライド' },
+  { keys: '←', descKey: 'shortcuts.prevSlide', fallback: '前のスライド' },
+]
+
 const SECTIONS: { titleKey: string; fallback: string; entries: ShortcutEntry[] }[] = [
   { titleKey: 'shortcuts.viewerSection', fallback: 'プレゼンビューア', entries: VIEWER_SHORTCUTS },
   { titleKey: 'shortcuts.editSection', fallback: '編集モード', entries: EDIT_SHORTCUTS },
+  { titleKey: 'shortcuts.presenterSection', fallback: '発表者ビュー', entries: PRESENTER_SHORTCUTS },
 ]
 
 type ShortcutsDialogProps = {
@@ -47,22 +54,24 @@ export function ShortcutsDialog({ open, onClose }: ShortcutsDialogProps) {
       title={t('shortcuts.title', 'キーボードショートカット')}
       closeLabel={t('settings.close')}
       testId="shortcuts-dialog"
-      paperStyle={{ maxWidth: 560 }}
-      bodyStyle={{ gap: 20, maxHeight: '70vh', overflowY: 'auto' }}
+      paperStyle={{ maxWidth: 820 }}
+      bodyStyle={{ maxHeight: '70vh', overflowY: 'auto' }}
     >
-      {SECTIONS.map((section) => (
-        <div className={styles.section} key={section.titleKey}>
-          <h3 className={styles.sectionTitle}>{t(section.titleKey, section.fallback)}</h3>
-          <div className={styles.list}>
-            {section.entries.map((entry) => (
-              <div className={styles.row} key={entry.keys}>
-                <span className={styles.keys}>{entry.keys}</span>
-                <span className={styles.description}>{t(entry.descKey, entry.fallback)}</span>
-              </div>
-            ))}
+      <div className={styles.sections}>
+        {SECTIONS.map((section) => (
+          <div className={styles.section} key={section.titleKey}>
+            <h3 className={styles.sectionTitle}>{t(section.titleKey, section.fallback)}</h3>
+            <div className={styles.list}>
+              {section.entries.map((entry) => (
+                <div className={styles.row} key={entry.keys}>
+                  <span className={styles.keys}>{entry.keys}</span>
+                  <span className={styles.description}>{t(entry.descKey, entry.fallback)}</span>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </DialogFrame>
   )
 }
