@@ -638,10 +638,9 @@ fn validate_package_name(name: &str) -> Result<(), String> {
   if trimmed.is_empty() {
     return Err("パッケージ名を入力してください".to_string());
   }
-  let valid = trimmed
-    .chars()
-    .enumerate()
-    .all(|(i, c)| c.is_ascii_lowercase() || c.is_ascii_digit() || (i > 0 && (c == '-' || c == '_')));
+  let valid = trimmed.chars().enumerate().all(|(i, c)| {
+    c.is_ascii_lowercase() || c.is_ascii_digit() || (i > 0 && (c == '-' || c == '_'))
+  });
   if !valid {
     return Err(
       "パッケージ名は小文字英数字・ハイフン・アンダースコアのみ使用でき、先頭は英数字にしてください"
