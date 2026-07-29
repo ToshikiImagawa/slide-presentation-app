@@ -58,9 +58,13 @@ Gatekeeper warning above is the only prompt you may see.
 
 ### Updating
 
-This app does not currently check for updates automatically. Update by downloading the latest installer from
-[Releases](https://github.com/ToshikiImagawa/slide-presentation-app/releases) and installing it over the existing
-copy.
+On launch, the app checks for updates automatically and shows a dialog when a new version is available.
+Choose "Install now and restart" to apply it immediately, or skip and update later by downloading the latest
+installer from [Releases](https://github.com/ToshikiImagawa/slide-presentation-app/releases) and installing it
+over the existing copy.
+
+> **macOS note:** the app is not notarized yet, so an installed update may be blocked by Gatekeeper. If that
+> happens, download the installer from Releases manually instead.
 
 ## Home Screen
 

@@ -42,3 +42,5 @@ async-trait = "0.1"
 # 応答タイムアウト（NFR-005）・外部 CLI サブプロセス実行・ADC ファイル読取（fs）・トークンキャッシュ（sync::Mutex）・
 # trait の async テスト（#[tokio::test]）に使用
 tokio = { version = "1", features = ["time", "process", "io-util", "macros", "rt", "fs", "sync"] }
+# 自動アップデート（#121）: GitHub API で解決した latest.json アセット URL を updater の endpoints に渡す
+url = "2"

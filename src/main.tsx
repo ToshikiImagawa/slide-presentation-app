@@ -8,6 +8,7 @@ import { App } from './App'
 import { HomeScreen } from './components/HomeScreen'
 import { SettingsWindow } from './components/SettingsWindow'
 import { ShortcutsDialog } from './components/ShortcutsDialog'
+import { UpdateDialog } from './components/UpdateDialog'
 import { applyPresentationTheme, applyTheme, resetThemeOverrides } from './applyTheme'
 import { loadAddonScripts, loadBuiltinAddons } from './addonLoader'
 import { unregisterOwner } from './components/ComponentRegistry'
@@ -29,6 +30,8 @@ import {
 } from './localSlideLoader'
 import type { LoadedSlidePackage, RecentSlidePackageEntry, SlidePackageLoadResult } from './localSlideLoader'
 import { getSampleSources, loadBundledSampleSlides } from './sampleSlides'
+import { checkForUpdate, installUpdate } from './update'
+import type { UpdateInfo } from './update'
 import { isTypingTarget } from './keyboardTarget'
 import { useAddonSettings } from './hooks/useAddonSettings'
 import { useOpenSlideRequest } from './hooks/useOpenSlideRequest'
@@ -61,6 +64,10 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
   // 両者の共通祖先であるここで開閉を管理し、実体は1インスタンスだけ描画する
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
+  // 自動アップデート（#121）: 起動時チェックで見つかった更新（見つからなければ null のまま）
+  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null)
+  const [updateDialogOpen, setUpdateDialogOpen] = useState(false)
+  const [installingUpdate, setInstallingUpdate] = useState(false)
   // スクロール速度はプレゼンテーション専用の設定だが、値の所有者は設定 UI と揃えてこの層に置く
   const [scrollSpeed, setScrollSpeed] = useScrollSpeed()
   const { addonsDisabled, addonTrustList, handleToggleAddonsDisabled, handleResetAddonTrust, handleSetAddonTrust } = useAddonSettings({ active: settingsOpen, recentPackages })
@@ -70,10 +77,12 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
   const openShortcuts = () => setShortcutsOpen(true)
   const closeShortcuts = () => setShortcutsOpen(false)
 
-  // 画面が切り替わったらダイアログを閉じる（従来は App ごと再マウントされて閉じていた挙動を維持する）
+  // 画面が切り替わったらダイアログを閉じる（従来は App ごと再マウントされて閉じていた挙動を維持する）。
+  // 更新ダイアログも同様に閉じる（ホーム画面から離れたら発表・編集に割り込まない・#121）
   useEffect(() => {
     setSettingsOpen(false)
     setShortcutsOpen(false)
+    setUpdateDialogOpen(false)
   }, [view])
 
   // ? キーでショートカット一覧を開く（入力中は無視）。ダイアログの所有者がこの層なので購読もここに置き、
@@ -86,6 +95,32 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
+
+  // 起動時に1回だけ更新を確認する（常にホーム画面から起動するため、発表中・編集中に割り込まない）。
+  // オフライン・GitHub API のレート制限・latest.json 未添付はすべて無言で諦める（利用を妨げない・#121）
+  useEffect(() => {
+    checkForUpdate()
+      .then((info) => {
+        if (!info) return
+        setUpdateInfo(info)
+        setUpdateDialogOpen(true)
+      })
+      .catch((error) => console.debug('[main] 更新の確認に失敗しました', error))
+  }, [])
+
+  const closeUpdateDialog = () => setUpdateDialogOpen(false)
+
+  const handleInstallUpdate = useCallback(async () => {
+    setInstallingUpdate(true)
+    try {
+      await installUpdate()
+      // 成功時はアプリが再起動するため、ここに到達しない
+    } catch (error) {
+      console.error('[main] 更新の適用に失敗しました', error)
+      setInstallingUpdate(false)
+      showToast(t('updater.installFailed', '更新の適用に失敗しました'))
+    }
+  }, [showToast, t])
 
   // 表示中プレゼンデータを更新する（App を再マウントするための key 更新を含む）。
   // showPresentation・handleCreateWithAi の両方から使う共通処理
@@ -330,6 +365,7 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
         onOpenShortcuts={openShortcuts}
       />
       <ShortcutsDialog open={shortcutsOpen} onClose={closeShortcuts} />
+      {updateInfo && <UpdateDialog open={updateDialogOpen} onClose={closeUpdateDialog} onInstall={handleInstallUpdate} installing={installingUpdate} version={updateInfo.version} body={updateInfo.body} />}
     </>
   )
 }

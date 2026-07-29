@@ -84,6 +84,7 @@ dependencies = [
  "tauri-plugin-store",
  "tauri-plugin-updater",
  "tokio",
+ "url",
 ]
 
 [[package]]

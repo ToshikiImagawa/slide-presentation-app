@@ -216,6 +216,14 @@
       "exitEdit": "編集を終了",
       "search": "JSON内を検索",
       "searchNav": "次 / 前の検索結果へ移動"
+    },
+    "updater": {
+      "title": "新しいバージョンがあります",
+      "later": "後で",
+      "versionAvailable": "バージョン {version} が利用可能です",
+      "installing": "更新中…",
+      "installNow": "今すぐ更新して再起動",
+      "installFailed": "更新の適用に失敗しました"
     }
   }
 }

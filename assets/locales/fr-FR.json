@@ -216,6 +216,14 @@
       "exitEdit": "Quitter l'édition",
       "search": "Rechercher dans le JSON",
       "searchNav": "Aller au résultat de recherche suivant / précédent"
+    },
+    "updater": {
+      "title": "Une nouvelle version est disponible",
+      "later": "Plus tard",
+      "versionAvailable": "La version {version} est disponible",
+      "installing": "Installation…",
+      "installNow": "Installer maintenant et redémarrer",
+      "installFailed": "Échec de l'installation de la mise à jour"
     }
   }
 }

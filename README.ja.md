@@ -58,9 +58,14 @@ AI 支援ワークフローに特に適しています。
 
 ### 更新方法について
 
-本アプリは現状、アプリ内で更新を自動チェックする機能を搭載していません。
-[Releases](https://github.com/ToshikiImagawa/slide-presentation-app/releases) から最新のインストーラをダウンロードし、
+起動時にアプリが自動で更新を確認し、新しいバージョンがあればダイアログで通知します。
+「今すぐ更新して再起動」を選ぶとすぐに適用されます。あとで更新する場合は、
+[Releases](https://github.com/ToshikiImagawa/slide-presentation-app/releases) から最新のインストーラを手動でダウンロードし、
 既存のアプリに上書きインストールしてください。
+
+> **macOS での注意**: 本アプリは現時点で公証（notarization）に対応していないため、
+> 自動更新後のアプリが Gatekeeper にブロックされる可能性があります。その場合は
+> Releases から手動でインストーラをダウンロードしてください。
 
 ## ホーム画面
 

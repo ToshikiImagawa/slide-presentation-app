@@ -216,6 +216,14 @@
       "exitEdit": "Exit editing",
       "search": "Search within the JSON",
       "searchNav": "Go to next / previous search match"
+    },
+    "updater": {
+      "title": "A new version is available",
+      "later": "Later",
+      "versionAvailable": "Version {version} is available",
+      "installing": "Installing…",
+      "installNow": "Install now and restart",
+      "installFailed": "Failed to install the update"
     }
   }
 }
