@@ -206,6 +206,8 @@ fn candidate_paths() -> Vec<PathBuf> {
 }
 
 /// CLI 起動引数を構築する（tools なし単発を保証・ユーザ環境の MCP を無視）。
+/// `--tools ""` で全ツールを無効化し、モデルのツール呼び出しによる `--max-turns 1` 消費（#157）を防ぐ。
+/// `--system-prompt`（完全上書き）を使い、`--append-system-prompt` によるグローバル CLAUDE.md 混入（#157）を防ぐ。
 fn build_cli_args(model: &str) -> Vec<String> {
   let mut args = vec![
     "--print".to_string(),
@@ -214,7 +216,9 @@ fn build_cli_args(model: &str) -> Vec<String> {
     "--strict-mcp-config".to_string(),
     "--max-turns".to_string(),
     "1".to_string(),
-    "--append-system-prompt".to_string(),
+    "--tools".to_string(),
+    "".to_string(),
+    "--system-prompt".to_string(),
     super::system_prompt(),
   ];
   if let Some(alias) = map_model_to_cli_alias(model) {
@@ -281,7 +285,12 @@ mod tests {
     // --max-turns 1
     let mti = args.iter().position(|a| a == "--max-turns").unwrap();
     assert_eq!(args[mti + 1], "1");
-    assert!(args.contains(&"--append-system-prompt".to_string()));
+    // --tools "" ですべてのツールを無効化（#157）
+    let ti = args.iter().position(|a| a == "--tools").unwrap();
+    assert_eq!(args[ti + 1], "");
+    // --append-system-prompt ではなく --system-prompt（完全上書き）を使う（#157）
+    assert!(!args.contains(&"--append-system-prompt".to_string()));
+    assert!(args.contains(&"--system-prompt".to_string()));
     // opus モデルは --model opus
     let mi = args.iter().position(|a| a == "--model").unwrap();
     assert_eq!(args[mi + 1], "opus");
