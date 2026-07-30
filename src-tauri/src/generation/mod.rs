@@ -162,9 +162,11 @@ fn parse_generator_kind(value: &str) -> Option<SlideGeneratorKind> {
 /// 解決済み種別から生成器を生成する factory（利用側は内蔵/外部を意識しない）。
 /// 内蔵は `VertexConfig`（project/region/model）を受け取り、未設定なら `NotConfigured` を返す。
 /// 外部は Vertex 設定不要（CLI 実行）。GCP トークンは各生成器が実行時に ADC から取得する（キーは持ち回らない）。
+/// `claude_cli_env_vars` は外部 CLI のサブプロセスへ明示的に注入する環境変数（`CLAUDE_CONFIG_DIR` 等・#152）。
 pub fn create_generator(
   kind: SlideGeneratorKind,
   vertex_config: Option<crate::vertex_config::VertexConfig>,
+  claude_cli_env_vars: Vec<(String, String)>,
 ) -> Result<Box<dyn SlideGenerator>, GenerateError> {
   match kind {
     SlideGeneratorKind::BuiltinVertex => {
@@ -180,6 +182,7 @@ pub fn create_generator(
     // 外部 CLI は Vertex 設定不要。model 未指定（空）で CLI 既定に委ねる
     SlideGeneratorKind::ExternalClaudeCode => Ok(Box::new(claude_cli::ClaudeCodeGenerator::new(
       String::new(),
+      claude_cli_env_vars,
     ))),
   }
 }

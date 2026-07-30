@@ -6,6 +6,7 @@ use tauri::{Emitter, Manager};
 use tauri_plugin_fs::FsExt;
 
 mod bin_resolve;
+mod claude_cli_config;
 mod generation;
 mod update_check;
 mod vertex_config;
@@ -337,9 +338,23 @@ async fn run_generation(
   let kind = generation::resolve_generator_kind(env_override.as_deref(), request.kind);
 
   // 内蔵は Vertex 設定（project/region/model）を渡す。未設定なら factory が NotConfigured を返し事前ゲートへ戻す。
-  // 外部は設定不要（factory 側で無視）
-  let vertex_config = vertex_config::get_vertex_config(app).ok().flatten();
-  let generator = generation::create_generator(kind, vertex_config)?;
+  // 外部は設定不要（factory 側で無視）だが、CLAUDE_CONFIG_DIR 等の環境変数はサブプロセスへ明示注入する（#152）。
+  // 使わない側の設定はロードしない（自動修正ループで最大 N 回呼ばれるため無駄な store I/O を避ける）
+  let (vertex_config, claude_cli_env_vars) = match kind {
+    generation::SlideGeneratorKind::BuiltinVertex => (
+      vertex_config::get_vertex_config(app).ok().flatten(),
+      Vec::new(),
+    ),
+    generation::SlideGeneratorKind::ExternalClaudeCode => (
+      None,
+      claude_cli_config::get_claude_cli_config(app)
+        .ok()
+        .flatten()
+        .map(|c| c.sanitized_pairs())
+        .unwrap_or_default(),
+    ),
+  };
+  let generator = generation::create_generator(kind, vertex_config, claude_cli_env_vars)?;
   generator.generate(request, cancel).await
 }
 
@@ -425,6 +440,35 @@ fn get_vertex_config(app: tauri::AppHandle) -> Result<Option<vertex_config::Vert
 #[tauri::command]
 fn get_vertex_status(app: tauri::AppHandle) -> Result<vertex_config::VertexStatus, String> {
   vertex_config::vertex_status(&app)
+}
+
+/// 外部 CLI（Claude Code CLI）へ渡す環境変数設定（`CLAUDE_CONFIG_DIR` 等）を保存する（編集モード必須・#152）。
+#[tauri::command]
+fn set_claude_cli_config(
+  config: claude_cli_config::ClaudeCliConfig,
+  app: tauri::AppHandle,
+  edit_mode: tauri::State<EditMode>,
+) -> Result<(), String> {
+  require_edit_mode(&edit_mode)?;
+  claude_cli_config::set_claude_cli_config(&app, config)
+}
+
+/// 外部 CLI の環境変数設定を消去する（編集モード必須）。
+#[tauri::command]
+fn clear_claude_cli_config(
+  app: tauri::AppHandle,
+  edit_mode: tauri::State<EditMode>,
+) -> Result<(), String> {
+  require_edit_mode(&edit_mode)?;
+  claude_cli_config::clear_claude_cli_config(&app)
+}
+
+/// 外部 CLI の環境変数設定を返す（フォームのプリフィル用。非秘密）。
+#[tauri::command]
+fn get_claude_cli_config(
+  app: tauri::AppHandle,
+) -> Result<Option<claude_cli_config::ClaudeCliConfig>, String> {
+  claude_cli_config::get_claude_cli_config(&app)
 }
 
 /// `gcloud auth application-default login` を起動して ADC を生成する（初回セットアップ・編集モード必須）。
@@ -1104,6 +1148,9 @@ pub fn run() {
       clear_vertex_config,
       get_vertex_config,
       get_vertex_status,
+      set_claude_cli_config,
+      clear_claude_cli_config,
+      get_claude_cli_config,
       gcloud_login,
       check_claude_cli,
       take_pending_open_paths,
