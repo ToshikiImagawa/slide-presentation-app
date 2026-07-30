@@ -6,6 +6,28 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-07-30
+
+### Added
+
+- Auto-update check at launch (via GitHub API)
+- Pause/resume for text-to-speech narration
+- Toolbar button to export slides as PDF
+- Open the Settings dialog from the edit screen
+- Open Settings from the home screen on first launch to change the UI language
+
+### Changed
+
+- Unified the keyboard shortcuts list into the in-app dialog, resolving the conflict with Reveal.js's built-in help
+- Updated the UI theme color to match the app logo (orange to mint green/slate)
+
+### Fixed
+
+- Fixed the PDF export button being unresponsive on macOS
+- Fixed the seek bar restarting from 0% when pausing/resuming audio narration
+- Fixed the edit screen's slide preview being left-aligned instead of centered
+- Fixed slide package name validation rejecting underscores
+
 ## [2.0.0] - 2026-07-28
 
 Slide Presentation App is now a desktop app. Beyond viewing, you can author, generate, and package slides inside the app
