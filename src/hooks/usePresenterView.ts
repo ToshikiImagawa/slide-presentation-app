@@ -11,6 +11,8 @@ const PRESENTER_WINDOW_LABEL = 'presenterView'
 
 export interface UsePresenterViewOptions {
   slides: SlideData[]
+  /** 本編側の現在の表示位置（発表者ビューを開いた瞬間の初期表示に使う） */
+  currentIndex: number
   /** 現在のパッケージ同梱アドオンの owner（組み込みのみの場合は空文字） */
   addonOwner?: string
   /** 現在のパッケージ同梱アドオンの asset URL 群（発表者ビューへ伝搬してロードさせる） */
@@ -34,7 +36,19 @@ export interface UsePresenterViewReturn {
   sendProgressState: (state: PresenterProgressState) => void
 }
 
-export function usePresenterView({ slides, addonOwner = '', addonScripts = [], themeColors, theme, onNavigate, onAudioToggle, onAutoPlayToggle, onAutoSlideshowToggle, onScrollSpeedChange }: UsePresenterViewOptions): UsePresenterViewReturn {
+export function usePresenterView({
+  slides,
+  currentIndex,
+  addonOwner = '',
+  addonScripts = [],
+  themeColors,
+  theme,
+  onNavigate,
+  onAudioToggle,
+  onAutoPlayToggle,
+  onAutoSlideshowToggle,
+  onScrollSpeedChange,
+}: UsePresenterViewOptions): UsePresenterViewReturn {
   const [isOpen, setIsOpen] = useState(false)
   const { t } = useTranslation()
   const { showToast } = useToast()
@@ -46,6 +60,9 @@ export function usePresenterView({ slides, addonOwner = '', addonScripts = [], t
   const onAutoSlideshowToggleRef = useRef(onAutoSlideshowToggle)
   const onScrollSpeedChangeRef = useRef(onScrollSpeedChange)
   const latestControlStateRef = useRef<PresenterControlState | null>(null)
+  // presenterViewReady 受信時に本編の現在位置を参照するため ref で保持（stale closure 回避）
+  const currentIndexRef = useRef(currentIndex)
+  currentIndexRef.current = currentIndex
 
   useEffect(() => {
     onNavigateRef.current = onNavigate
@@ -80,7 +97,7 @@ export function usePresenterView({ slides, addonOwner = '', addonScripts = [], t
         setIsOpen(true)
         // テーマ・アドオンを slides より先に伝搬し、発表者ビューが描画前に適用・ロードできるようにする
         emitThemeAndAddons()
-        const message: PresenterViewMessage = { type: 'slideChanged', payload: { currentIndex: 0, slides } }
+        const message: PresenterViewMessage = { type: 'slideChanged', payload: { currentIndex: currentIndexRef.current, slides } }
         void emit(EVENT_NAME, message)
         // 初期制御状態を送信
         if (latestControlStateRef.current) {
