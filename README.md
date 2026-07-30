@@ -2,7 +2,7 @@
 
 **English** | [日本語](README.ja.md)
 
-![version](https://img.shields.io/badge/version-2.0.0-blue)
+![version](https://img.shields.io/badge/version-2.1.0-blue)
 
 A slide presentation tool built with React + Reveal.js, packaged as a local desktop app with Tauri.
 Define slide content and themes using JSON files and display them as presentations in a native window.
@@ -541,8 +541,8 @@ from the settings window. The selected language is saved to `localStorage` and p
 ### Settings Window
 
 Click the gear icon (settings button) in the upper left corner to open the settings window and select a language. It is
-available both on the home screen and during a presentation, so you can switch languages right after the first launch
-without opening a deck. The same language setting is applied to the presenter view.
+available on the home screen, during a presentation, and in edit mode, so you can switch languages right after the
+first launch without opening a deck. The same language setting is applied to the presenter view.
 
 ![Settings window — Language / Scroll Speed / showing the keyboard shortcuts / how embedded add-ons are handled](resources/screenshots/en/settings.png)
 
@@ -655,11 +655,11 @@ Specify an audio file path in the `meta.notes.voice` field to enable per-slide a
 
 On slides with a `voice` defined, the following buttons appear in the upper-right toolbar.
 
-| Button         | Icon    | Function                                              |
-|----------------|---------|-------------------------------------------------------|
-| Play/Stop      | Speaker | Manually play/stop the current slide's audio          |
-| Auto-play      | ▶       | Toggle auto-play audio on slide transition ON/OFF     |
-| Auto-slideshow | ▶▶      | Toggle auto-advance to next slide on audio end ON/OFF |
+| Button              | Icon    | Function                                                    |
+|---------------------|---------|--------------------------------------------------------------|
+| Play/Pause/Resume    | Speaker | Manually play, pause, and resume the current slide's audio  |
+| Auto-play            | ▶       | Toggle auto-play audio on slide transition ON/OFF            |
+| Auto-slideshow        | ▶▶      | Toggle auto-advance to next slide on audio end ON/OFF        |
 
 The toolbar is displayed at reduced opacity by default and fully visible on hover. The same controls are available from
 the presenter view's control bar.
@@ -667,12 +667,12 @@ the presenter view's control bar.
 To get the toolbar out of the way entirely, use the **Hide toolbar** button in the top-left toolbar or press `T`. While
 hidden, the button itself is not clickable either, so press `T` again to bring the toolbar back.
 
-![Toolbar — left: Home / Edit / Hide toolbar / Settings, right: audio playback / auto-play / auto-slideshow / presenter view](resources/screenshots/en/toolbar.png)
+![Toolbar — left: Home / Edit / Hide toolbar / Settings, right: audio playback / auto-play / auto-slideshow / export as PDF / presenter view](resources/screenshots/en/toolbar.png)
 
 ### Manual Playback
 
-Click the speaker icon to play the current slide's audio. Click again to stop. The icon is not shown on slides without a
-`voice` defined.
+Click the speaker icon to play the current slide's audio. Click again to pause it, and click once more to resume. The
+icon is not shown on slides without a `voice` defined.
 
 ### Auto-Play
 
@@ -684,6 +684,12 @@ navigate to it.
 When the auto-slideshow button (▶▶) is ON, the presentation automatically advances to the next slide when audio playback
 ends. It does not auto-advance on the last slide. Combined with auto-play, this enables a fully automated presentation
 through all slides.
+
+## Export to PDF
+
+Click the **Save as PDF** button in the top-right toolbar to export the current deck as a PDF, one page per slide.
+Pick a destination in the native save dialog; while the export is running, the button shows a busy state and is
+disabled.
 
 ## Keyboard Shortcuts
 
