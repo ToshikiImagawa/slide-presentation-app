@@ -2,11 +2,11 @@
 id: design-presenter-view
 title: 発表者ビュー（Presenter View）技術設計書
 type: design
-status: draft
+status: approved
 sdd-phase: plan
 impl-status: implemented
 created: 2026-02-02
-updated: 2026-07-29
+updated: 2026-07-30
 depends-on:
   - spec-presenter-view
 tags:

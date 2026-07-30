@@ -2,11 +2,11 @@
 id: design-speaker-note-audio
 title: スピーカーノート音声再生（Speaker Note Audio）技術設計書
 type: design
-status: draft
+status: approved
 sdd-phase: plan
 impl-status: implemented
 created: 2026-02-02
-updated: 2026-07-29
+updated: 2026-07-30
 depends-on:
   - spec-speaker-note-audio
 tags:

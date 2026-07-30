@@ -2,11 +2,11 @@
 id: design-builtin-ui-components
 title: 組み込みUIコンポーネント群 技術設計書
 type: design
-status: draft
+status: approved
 sdd-phase: plan
 impl-status: implemented
 created: 2026-02-02
-updated: 2026-07-24
+updated: 2026-07-30
 depends-on:
   - spec-builtin-ui-components
 tags:

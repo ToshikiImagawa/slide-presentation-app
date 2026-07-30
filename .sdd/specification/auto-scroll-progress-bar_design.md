@@ -2,11 +2,11 @@
 id: design-auto-scroll-progress-bar
 title: 自動スクロールプログレスバー（Auto Scroll Progress Bar）技術設計書
 type: design
-status: draft
+status: approved
 sdd-phase: plan
 impl-status: implemented
 created: 2026-02-02
-updated: 2026-07-24
+updated: 2026-07-30
 depends-on:
   - spec-auto-scroll-progress-bar
 tags:

@@ -2,10 +2,10 @@
 id: spec-speaker-note-audio
 title: スピーカーノート音声再生（Speaker Note Audio）抽象仕様書
 type: spec
-status: draft
+status: approved
 sdd-phase: specify
 created: 2026-02-02
-updated: 2026-07-29
+updated: 2026-07-30
 depends-on:
   - prd-speaker-note-audio
 tags:
