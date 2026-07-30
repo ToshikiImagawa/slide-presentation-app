@@ -25,7 +25,7 @@ export interface ConfirmDialogProps {
 
 export function ConfirmDialog({ open, title, message, confirmLabel, cancelLabel, confirmColor = 'error', onConfirm, onCancel }: ConfirmDialogProps) {
   return (
-    <Dialog open={open} onClose={onCancel} maxWidth="xs" fullWidth aria-labelledby="confirm-dialog-title">
+    <Dialog open={open} onClose={onCancel} maxWidth="xs" fullWidth aria-labelledby="confirm-dialog-title" data-testid="confirm-dialog">
       <DialogTitle id="confirm-dialog-title">{title}</DialogTitle>
       <DialogContent>
         <DialogContentText sx={{ color: 'var(--fixed-text-body)', whiteSpace: 'pre-line' }}>{message}</DialogContentText>
