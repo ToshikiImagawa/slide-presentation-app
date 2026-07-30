@@ -96,6 +96,7 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
 
   const { openPresenterView, isOpen, sendSlideState, sendControlState, sendProgressState } = usePresenterView({
     slides: data.slides,
+    currentIndex,
     addonOwner,
     addonScripts,
     themeColors: data.meta?.themeColors,
