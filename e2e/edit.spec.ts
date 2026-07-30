@@ -42,9 +42,9 @@ test.describe('編集画面 (SlideEditor)', () => {
     await openEditor(page)
 
     await editor.getByRole('button', { name: ui.edit.searchOpen }).click()
-    await editor.getByPlaceholder(ui.edit.searchPlaceholder, { exact: true }).fill(cover)
+    await editor.getByRole('textbox', { name: ui.edit.searchPlaceholder }).fill(cover)
     await editor.getByRole('button', { name: ui.edit.searchToggleReplace }).click()
-    await editor.getByPlaceholder(ui.edit.searchReplacePlaceholder, { exact: true }).fill(`${cover} EDITED`)
+    await editor.getByRole('textbox', { name: ui.edit.searchReplacePlaceholder }).fill(`${cover} EDITED`)
     await editor.getByRole('button', { name: ui.edit.searchReplaceAll }).click()
 
     await expect(editor.locator('.reveal')).toContainText(`${cover} EDITED`)

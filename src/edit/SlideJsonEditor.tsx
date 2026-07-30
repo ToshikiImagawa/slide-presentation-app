@@ -163,7 +163,15 @@ export function SlideJsonEditor({ value, onChange, errors }: SlideJsonEditorProp
           }}
         >
           <Stack direction="row" spacing={0.5} alignItems="center">
-            <TextField size="small" autoFocus value={query} onChange={(e) => handleQueryChange(e.target.value)} placeholder={t('edit.searchPlaceholder', '検索...')} aria-label={t('edit.searchPlaceholder', '検索...')} sx={{ width: 160 }} />
+            <TextField
+              size="small"
+              autoFocus
+              value={query}
+              onChange={(e) => handleQueryChange(e.target.value)}
+              placeholder={t('edit.searchPlaceholder', '検索...')}
+              slotProps={{ htmlInput: { 'aria-label': t('edit.searchPlaceholder', '検索...') } }}
+              sx={{ width: 160 }}
+            />
             <Typography variant="caption" sx={{ color: 'var(--fixed-text-body)', minWidth: 40, textAlign: 'center' }}>
               {matches.length > 0 ? `${activeIndex + 1}/${matches.length}` : '0/0'}
             </Typography>
@@ -187,7 +195,7 @@ export function SlideJsonEditor({ value, onChange, errors }: SlideJsonEditorProp
                 value={replaceValue}
                 onChange={(e) => setReplaceValue(e.target.value)}
                 placeholder={t('edit.searchReplacePlaceholder', '置換後の文字列')}
-                aria-label={t('edit.searchReplacePlaceholder', '置換後の文字列')}
+                slotProps={{ htmlInput: { 'aria-label': t('edit.searchReplacePlaceholder', '置換後の文字列') } }}
                 sx={{ width: 160 }}
               />
               <Button size="small" onClick={handleReplaceCurrent} disabled={matches.length === 0}>
