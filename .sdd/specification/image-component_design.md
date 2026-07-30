@@ -2,11 +2,11 @@
 id: design-image-component
 title: 画像表示コンポーネント 技術設計書
 type: design
-status: draft
+status: approved
 sdd-phase: plan
 impl-status: implemented
 created: 2026-02-02
-updated: 2026-07-24
+updated: 2026-07-30
 depends-on:
   - spec-image-component
 tags:

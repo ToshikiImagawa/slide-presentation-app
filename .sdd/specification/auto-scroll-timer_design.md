@@ -2,11 +2,11 @@
 id: design-auto-scroll-timer
 title: タイマーベース自動スクロール（Auto Scroll Timer）技術設計書
 type: design
-status: draft
+status: approved
 sdd-phase: plan
 impl-status: implemented
 created: 2026-02-02
-updated: 2026-07-28
+updated: 2026-07-30
 depends-on:
   - spec-auto-scroll-timer
 tags:

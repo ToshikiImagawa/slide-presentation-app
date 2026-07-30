@@ -2,10 +2,10 @@
 id: spec-auto-scroll-timer
 title: タイマーベース自動スクロール（Auto Scroll Timer）抽象仕様書
 type: spec
-status: draft
+status: approved
 sdd-phase: specify
 created: 2026-02-02
-updated: 2026-07-28
+updated: 2026-07-30
 depends-on:
   - prd-auto-scroll-timer
 tags:

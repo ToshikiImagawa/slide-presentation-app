@@ -2,10 +2,10 @@
 id: spec-presenter-view
 title: 発表者ビュー（Presenter View）抽象仕様書
 type: spec
-status: draft
+status: approved
 sdd-phase: specify
 created: 2026-02-02
-updated: 2026-07-24
+updated: 2026-07-30
 depends-on:
   - prd-presenter-view
 tags:
