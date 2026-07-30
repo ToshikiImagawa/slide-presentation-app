@@ -338,13 +338,22 @@ async fn run_generation(
   let kind = generation::resolve_generator_kind(env_override.as_deref(), request.kind);
 
   // 内蔵は Vertex 設定（project/region/model）を渡す。未設定なら factory が NotConfigured を返し事前ゲートへ戻す。
-  // 外部は設定不要（factory 側で無視）だが、CLAUDE_CONFIG_DIR 等の環境変数はサブプロセスへ明示注入する（#152）
-  let vertex_config = vertex_config::get_vertex_config(app).ok().flatten();
-  let claude_cli_env_vars = claude_cli_config::get_claude_cli_config(app)
-    .ok()
-    .flatten()
-    .map(|c| c.sanitized_pairs())
-    .unwrap_or_default();
+  // 外部は設定不要（factory 側で無視）だが、CLAUDE_CONFIG_DIR 等の環境変数はサブプロセスへ明示注入する（#152）。
+  // 使わない側の設定はロードしない（自動修正ループで最大 N 回呼ばれるため無駄な store I/O を避ける）
+  let (vertex_config, claude_cli_env_vars) = match kind {
+    generation::SlideGeneratorKind::BuiltinVertex => (
+      vertex_config::get_vertex_config(app).ok().flatten(),
+      Vec::new(),
+    ),
+    generation::SlideGeneratorKind::ExternalClaudeCode => (
+      None,
+      claude_cli_config::get_claude_cli_config(app)
+        .ok()
+        .flatten()
+        .map(|c| c.sanitized_pairs())
+        .unwrap_or_default(),
+    ),
+  };
   let generator = generation::create_generator(kind, vertex_config, claude_cli_env_vars)?;
   generator.generate(request, cancel).await
 }
