@@ -37,12 +37,21 @@ interface SlideFixture {
   meta?: { notes?: { speakerNotes?: string; summary?: string[] } }
 }
 
+// 静的ファイルなのでプロセス内では言語ごとに1回読めば十分。多数の spec がテストごとに呼ぶため、
+// 呼び出し側を変えずに repeated readFileSync/JSON.parse をなくすためここでメモ化する
+const expectedCache = new Map<Lang, { l: Lang; ui: any; slides: SlideFixture[] }>()
+
 /** 指定プロジェクトのロケールに対応する UI 文言と fixture スライドを返す */
 export function expected(projectName: string): { l: Lang; ui: any; slides: SlideFixture[] } {
   const l = lang(projectName)
+  const cached = expectedCache.get(l)
+  if (cached) return cached
+
   const ui = (readJson(`assets/locales/${LOCALE_FILE[l]}.json`) as { ui: unknown }).ui
   const slides = (readJson(`scripts/screenshot/fixtures/slides.${l}.json`) as { slides: SlideFixture[] }).slides
-  return { l, ui, slides }
+  const result = { l, ui, slides }
+  expectedCache.set(l, result)
+  return result
 }
 
 /** id からスライド fixture を取得する */
@@ -64,6 +73,13 @@ export async function openSample(page: Page): Promise<void> {
   await page.goto('/')
   await page.getByTestId('home-sample').click()
   await page.waitForSelector('.reveal .slides section')
+}
+
+/** サンプルデッキを開き、続けて編集ボタンから編集画面（SlideEditor）へ入る */
+export async function openEditor(page: Page): Promise<void> {
+  await openSample(page)
+  await page.getByTestId('edit-open').click()
+  await page.getByTestId('slide-editor').waitFor({ state: 'visible' })
 }
 
 /** Reveal のハッシュナビで指定インデックスのスライドへ移動する */

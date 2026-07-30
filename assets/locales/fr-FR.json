@@ -52,6 +52,9 @@
     "edit": {
       "startEdit": "Éditer",
       "exit": "Quitter l'édition",
+      "exitConfirmTitle": "Abandonner les modifications non enregistrées ?",
+      "exitConfirmMessage": "Vos modifications ne sont pas enregistrées. Les abandonner et quitter l'édition ?",
+      "exitConfirmDiscard": "Abandonner et quitter",
       "save": "Enregistrer",
       "export": "Exporter .spkg",
       "packageName": "Nom du paquet",

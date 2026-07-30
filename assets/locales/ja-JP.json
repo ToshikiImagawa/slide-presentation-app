@@ -52,6 +52,9 @@
     "edit": {
       "startEdit": "編集",
       "exit": "編集を終了",
+      "exitConfirmTitle": "未保存の変更を破棄しますか？",
+      "exitConfirmMessage": "編集内容は保存されていません。破棄して編集を終了しますか？",
+      "exitConfirmDiscard": "破棄して終了",
       "save": "保存",
       "export": ".spkg 書き出し",
       "packageName": "パッケージ名",

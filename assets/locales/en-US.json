@@ -52,6 +52,9 @@
     "edit": {
       "startEdit": "Edit",
       "exit": "Exit editing",
+      "exitConfirmTitle": "Discard unsaved changes?",
+      "exitConfirmMessage": "Your edits are not saved. Discard them and exit editing?",
+      "exitConfirmDiscard": "Discard and exit",
       "save": "Save",
       "export": "Export .spkg",
       "packageName": "Package name",
