@@ -5,15 +5,31 @@ import Checkbox from '@mui/material/Checkbox'
 import ExpandLessIcon from '@mui/icons-material/ExpandLess'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import FormControlLabel from '@mui/material/FormControlLabel'
+import IconButton from '@mui/material/IconButton'
 import LinearProgress from '@mui/material/LinearProgress'
+import DeleteIcon from '@mui/icons-material/Delete'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Typography from '@mui/material/Typography'
 import { useTranslation } from '../i18n'
-import type { GenerateProgress, GeneratedCandidate, GeneratorKind } from '../aiGenerate'
-import { cancelGenerate, checkExternalAvailable, clearVertexConfig, gcloudLogin, generateSlides, getVertexConfig, getVertexStatus, setGenerationEnabled, setVertexConfig, toGeneratedCandidate } from '../aiGenerate'
+import type { ClaudeCliEnvVar, GenerateProgress, GeneratedCandidate, GeneratorKind } from '../aiGenerate'
+import {
+  cancelGenerate,
+  checkExternalAvailable,
+  clearClaudeCliConfig,
+  clearVertexConfig,
+  gcloudLogin,
+  generateSlides,
+  getClaudeCliConfig,
+  getVertexConfig,
+  getVertexStatus,
+  setClaudeCliConfig,
+  setGenerationEnabled,
+  setVertexConfig,
+  toGeneratedCandidate,
+} from '../aiGenerate'
 
 type PanelStatus = { kind: 'idle' | 'ok' | 'warn' | 'error'; message: string }
 
@@ -49,6 +65,8 @@ export function AiGeneratePanel({
   const [projectId, setProjectId] = useState('')
   const [region, setRegion] = useState('')
   const [model, setModel] = useState('')
+  // 外部（Claude Code CLI）へ渡す環境変数設定フォーム（#152）
+  const [envVars, setEnvVars] = useState<ClaudeCliEnvVar[]>([])
   const [running, setRunning] = useState(false)
   const [progress, setProgress] = useState<GenerateProgress | null>(null)
   const [status, setStatus] = useState<PanelStatus>({ kind: 'idle', message: '' })
@@ -77,6 +95,13 @@ export function AiGeneratePanel({
       .catch(() => setConfigured(false))
   }
   useEffect(refreshVertex, [])
+
+  // 外部（Claude Code CLI）の環境変数設定を取得してフォームへプリフィルする（#152）
+  useEffect(() => {
+    void getClaudeCliConfig()
+      .then((c) => setEnvVars(c?.envVars ?? []))
+      .catch(() => undefined)
+  }, [])
 
   // 外部の事前ゲート: 外部方式を選んだときだけ CLI 可用性を確認する（builtin 時に `claude --version` を spawn しない）
   useEffect(() => {
@@ -123,6 +148,32 @@ export function AiGeneratePanel({
     }
   }
 
+  // 空行（追加ボタン由来）を除いた有効な行のみ保存する（キー未入力の行は破棄）
+  const handleSaveClaudeCliConfig = async () => {
+    try {
+      const trimmed = envVars.map((v) => ({ key: v.key.trim(), value: v.value.trim() })).filter((v) => v.key !== '')
+      await setClaudeCliConfig({ envVars: trimmed })
+      setEnvVars(trimmed)
+      setStatus({ kind: 'ok', message: t('aiGenerate.claudeCliSaved', '環境変数設定を保存しました') })
+    } catch (e) {
+      setStatus({ kind: 'error', message: `${t('aiGenerate.claudeCliSaveFailed', '環境変数設定の保存に失敗しました')}: ${e instanceof Error ? e.message : String(e)}` })
+    }
+  }
+
+  const handleClearClaudeCliConfig = async () => {
+    try {
+      await clearClaudeCliConfig()
+      setEnvVars([])
+      setStatus({ kind: 'ok', message: t('aiGenerate.claudeCliCleared', '環境変数設定を削除しました') })
+    } catch (e) {
+      setStatus({ kind: 'error', message: `${t('aiGenerate.claudeCliClearFailed', '環境変数設定の削除に失敗しました')}: ${e instanceof Error ? e.message : String(e)}` })
+    }
+  }
+
+  const handleAddEnvVarRow = () => setEnvVars((prev) => [...prev, { key: '', value: '' }])
+  const handleRemoveEnvVarRow = (index: number) => setEnvVars((prev) => prev.filter((_, i) => i !== index))
+  const handleEnvVarChange = (index: number, field: 'key' | 'value', value: string) => setEnvVars((prev) => prev.map((v, i) => (i === index ? { ...v, [field]: value } : v)))
+
   const handleGcloudLogin = async () => {
     try {
       await gcloudLogin()
@@ -155,10 +206,13 @@ export function AiGeneratePanel({
           // 器には触れず現状を保持する（安全退避・FR-008）
           setStatus({ kind: 'warn', message: t('aiGenerate.cancelled', '生成を中断しました') })
           break
-        default:
-          // failed: 器には触れず手動編集へ退避する（既存データ保持・FR-008）
-          setStatus({ kind: 'error', message: t('aiGenerate.failed', '生成に失敗しました。手動編集を続けてください') })
+        default: {
+          // failed: 器には触れず手動編集へ退避する（既存データ保持・FR-008）。
+          // 実際の失敗理由（Rust 側 GenerateError の整形済み文言）を併記し調査可能にする（#151）
+          const base = t('aiGenerate.failed', '生成に失敗しました。手動編集を続けてください')
+          setStatus({ kind: 'error', message: result.errorMessage ? `${base}: ${result.errorMessage}` : base })
           break
+        }
       }
     } finally {
       setRunning(false)
@@ -222,6 +276,40 @@ export function AiGeneratePanel({
                 {configured && (
                   <Button size="small" color="inherit" onClick={() => void handleClearVertex()}>
                     {t('aiGenerate.vertexClear', '設定を削除')}
+                  </Button>
+                )}
+              </Stack>
+            </Stack>
+          )}
+
+          {/* 外部: Claude CLI へ渡す環境変数設定（CLAUDE_CONFIG_DIR 等・#152） */}
+          {kind === 'external-claude-code' && (
+            <Stack spacing={1}>
+              <Typography variant="body2" sx={{ color: 'var(--fixed-text-muted)' }}>
+                {t('aiGenerate.claudeCliLabel', 'Claude CLI 環境変数設定')}
+              </Typography>
+              <Typography variant="caption" sx={{ color: 'var(--fixed-text-muted)' }}>
+                {t('aiGenerate.claudeCliHint', 'GUI 起動時にシェルプロファイルの環境変数が継承されない場合、claude CLI へ渡す環境変数（例: CLAUDE_CONFIG_DIR）をここで設定できます。')}
+              </Typography>
+              {envVars.map((envVar, index) => (
+                <Stack key={index} direction="row" spacing={1} alignItems="center">
+                  <TextField size="small" label={t('aiGenerate.claudeCliEnvKeyLabel', '変数名')} placeholder="CLAUDE_CONFIG_DIR" value={envVar.key} onChange={(e) => handleEnvVarChange(index, 'key', e.target.value)} sx={{ width: 220 }} />
+                  <TextField size="small" label={t('aiGenerate.claudeCliEnvValueLabel', '値')} value={envVar.value} onChange={(e) => handleEnvVarChange(index, 'value', e.target.value)} sx={{ width: 260 }} />
+                  <IconButton size="small" aria-label={t('aiGenerate.claudeCliRemoveRow', '行を削除')} onClick={() => handleRemoveEnvVarRow(index)}>
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
+                </Stack>
+              ))}
+              <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                <Button size="small" variant="outlined" onClick={handleAddEnvVarRow}>
+                  {t('aiGenerate.claudeCliAddRow', '+ 追加')}
+                </Button>
+                <Button size="small" variant="outlined" onClick={() => void handleSaveClaudeCliConfig()}>
+                  {t('aiGenerate.claudeCliSave', '設定を保存')}
+                </Button>
+                {envVars.length > 0 && (
+                  <Button size="small" color="inherit" onClick={() => void handleClearClaudeCliConfig()}>
+                    {t('aiGenerate.claudeCliClear', '設定を削除')}
                   </Button>
                 )}
               </Stack>

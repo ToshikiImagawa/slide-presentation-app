@@ -12,6 +12,9 @@ const h = vi.hoisted(() => ({
   cancelGenerate: vi.fn().mockResolvedValue(undefined),
   setVertexConfig: vi.fn().mockResolvedValue(undefined),
   clearVertexConfig: vi.fn().mockResolvedValue(undefined),
+  getClaudeCliConfig: vi.fn(),
+  setClaudeCliConfig: vi.fn().mockResolvedValue(undefined),
+  clearClaudeCliConfig: vi.fn().mockResolvedValue(undefined),
   gcloudLogin: vi.fn().mockResolvedValue(undefined),
 }))
 // toGeneratedCandidate は invoke 非依存の純粋関数のため実装をそのまま使う（手動再実装によるドリフトを避ける）
@@ -25,6 +28,9 @@ vi.mock('../../aiGenerate', async (importOriginal) => ({
   cancelGenerate: h.cancelGenerate,
   setVertexConfig: h.setVertexConfig,
   clearVertexConfig: h.clearVertexConfig,
+  getClaudeCliConfig: h.getClaudeCliConfig,
+  setClaudeCliConfig: h.setClaudeCliConfig,
+  clearClaudeCliConfig: h.clearClaudeCliConfig,
   gcloudLogin: h.gcloudLogin,
 }))
 
@@ -84,6 +90,9 @@ describe('AiGeneratePanel 事前ゲート・退避（Vertex・FR-007/FR-008）',
     h.getVertexStatus.mockReset().mockResolvedValue({ configured: false })
     h.checkExternalAvailable.mockReset().mockResolvedValue(false)
     h.generateSlides.mockReset()
+    h.getClaudeCliConfig.mockReset().mockResolvedValue(null)
+    h.setClaudeCliConfig.mockReset().mockResolvedValue(undefined)
+    h.clearClaudeCliConfig.mockReset().mockResolvedValue(undefined)
   })
 
   it('マウントで生成を有効化する（capability ゲート・DC-003）', async () => {
@@ -184,6 +193,27 @@ describe('AiGeneratePanel 事前ゲート・退避（Vertex・FR-007/FR-008）',
     expect(onApply).not.toHaveBeenCalled()
   })
 
+  it('failed では失敗理由（errorMessage）をステータスに表示する（#151）', async () => {
+    h.getVertexStatus.mockResolvedValue({ configured: true })
+    h.generateSlides.mockResolvedValue({
+      outcome: 'failed',
+      slidesJson: null,
+      validationErrors: [],
+      attempts: 1,
+      errorMessage: '外部生成エラー: claude が異常終了しました（exit 1）',
+    })
+    render(
+      <Wrapper>
+        <AiGeneratePanel currentText={VALID} onApply={() => {}} />
+      </Wrapper>,
+    )
+    expandPanel()
+    fireEvent.change(promptField(), { target: { value: 'p' } })
+    await waitFor(() => expect(generateButton().disabled).toBe(false))
+    fireEvent.click(generateButton())
+    await waitFor(() => expect(screen.getByText(/外部生成エラー: claude が異常終了しました/)).toBeTruthy())
+  })
+
   it('cancelled では onApply を呼ばない（退避・FR-008）', async () => {
     h.getVertexStatus.mockResolvedValue({ configured: true })
     h.generateSlides.mockResolvedValue({ outcome: 'cancelled', slidesJson: null, validationErrors: [], attempts: 0 })
@@ -234,6 +264,70 @@ describe('AiGeneratePanel 事前ゲート・退避（Vertex・FR-007/FR-008）',
     await waitFor(() => expect(h.checkExternalAvailable).toHaveBeenCalled())
     expect(generateButton().disabled).toBe(true)
   })
+
+  it('外部方式で環境変数を追加して保存すると setClaudeCliConfig が呼ばれる（#152）', async () => {
+    h.getVertexStatus.mockResolvedValue({ configured: true })
+    render(
+      <Wrapper>
+        <AiGeneratePanel currentText={VALID} onApply={() => {}} />
+      </Wrapper>,
+    )
+    expandPanel()
+    fireEvent.click(screen.getByRole('button', { name: '外部（Claude Code CLI）' }))
+    fireEvent.click(screen.getByRole('button', { name: '+ 追加' }))
+    fireEvent.change(screen.getByLabelText('変数名'), { target: { value: 'CLAUDE_CONFIG_DIR' } })
+    fireEvent.change(screen.getByLabelText('値'), { target: { value: '/Users/x/.claude-work' } })
+    fireEvent.click(screen.getByRole('button', { name: '設定を保存' }))
+    await waitFor(() =>
+      expect(h.setClaudeCliConfig).toHaveBeenCalledWith({
+        envVars: [{ key: 'CLAUDE_CONFIG_DIR', value: '/Users/x/.claude-work' }],
+      }),
+    )
+  })
+
+  it('未入力の変数名の行は保存時に破棄される（#152）', async () => {
+    h.getVertexStatus.mockResolvedValue({ configured: true })
+    render(
+      <Wrapper>
+        <AiGeneratePanel currentText={VALID} onApply={() => {}} />
+      </Wrapper>,
+    )
+    expandPanel()
+    fireEvent.click(screen.getByRole('button', { name: '外部（Claude Code CLI）' }))
+    fireEvent.click(screen.getByRole('button', { name: '+ 追加' }))
+    fireEvent.click(screen.getByRole('button', { name: '設定を保存' }))
+    await waitFor(() => expect(h.setClaudeCliConfig).toHaveBeenCalledWith({ envVars: [] }))
+  })
+
+  it('既存の環境変数設定が読み込まれ、削除ボタンで行を除去できる（#152）', async () => {
+    h.getVertexStatus.mockResolvedValue({ configured: true })
+    h.getClaudeCliConfig.mockResolvedValue({ envVars: [{ key: 'CLAUDE_CONFIG_DIR', value: '/tmp/x' }] })
+    render(
+      <Wrapper>
+        <AiGeneratePanel currentText={VALID} onApply={() => {}} />
+      </Wrapper>,
+    )
+    expandPanel()
+    fireEvent.click(screen.getByRole('button', { name: '外部（Claude Code CLI）' }))
+    await waitFor(() => expect(screen.getByDisplayValue('CLAUDE_CONFIG_DIR')).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: '行を削除' }))
+    expect(screen.queryByDisplayValue('CLAUDE_CONFIG_DIR')).toBeNull()
+  })
+
+  it('設定を削除すると clearClaudeCliConfig が呼ばれる（#152）', async () => {
+    h.getVertexStatus.mockResolvedValue({ configured: true })
+    h.getClaudeCliConfig.mockResolvedValue({ envVars: [{ key: 'CLAUDE_CONFIG_DIR', value: '/tmp/x' }] })
+    render(
+      <Wrapper>
+        <AiGeneratePanel currentText={VALID} onApply={() => {}} />
+      </Wrapper>,
+    )
+    expandPanel()
+    fireEvent.click(screen.getByRole('button', { name: '外部（Claude Code CLI）' }))
+    await waitFor(() => expect(screen.getByDisplayValue('CLAUDE_CONFIG_DIR')).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: '設定を削除' }))
+    await waitFor(() => expect(h.clearClaudeCliConfig).toHaveBeenCalled())
+  })
 })
 
 describe('SlideEditor への生成結果の全体置換注入（FR-004/DC-005）', () => {
@@ -243,6 +337,9 @@ describe('SlideEditor への生成結果の全体置換注入（FR-004/DC-005）
     h.getVertexStatus.mockReset().mockResolvedValue({ configured: true })
     h.checkExternalAvailable.mockReset().mockResolvedValue(false)
     h.generateSlides.mockReset()
+    h.getClaudeCliConfig.mockReset().mockResolvedValue(null)
+    h.setClaudeCliConfig.mockReset().mockResolvedValue(undefined)
+    h.clearClaudeCliConfig.mockReset().mockResolvedValue(undefined)
   })
 
   it('生成成功で器の単一真実源 text が置換され、フォームに反映される', async () => {

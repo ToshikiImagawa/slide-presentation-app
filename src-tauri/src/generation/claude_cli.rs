@@ -4,6 +4,8 @@
 //! --max-turns 1` を一時 cwd で spawn し、結果 JSON（`result` 文字列）を受け取る。API キー不要。
 //! タイムアウト安全弁（`tokio::time::timeout`）・`kill_on_drop`・`is_error` 判定を備える
 //! （`claude_cli/llm_client.rs` 流用）。バイナリ検出は env override → PATH → 代表配置の順。
+//! GUI 起動は login shell の環境変数を継承しないことがあるため、`claude_cli_config`（plugin-store）に
+//! 保存された環境変数（`CLAUDE_CONFIG_DIR` 等）をサブプロセスへ明示的に注入できる（#152）。
 
 use super::{CancelToken, GenerateError, GenerateRequest, SlideGenerator};
 use serde_json::Value;
@@ -27,11 +29,13 @@ const CLAUDE_BINARY_NAME: &str = "claude";
 /// 外部 Claude Code 生成器。モデルは CLI の `--model` エイリアスへ写像する。
 pub struct ClaudeCodeGenerator {
   model: String,
+  /// サブプロセスへ明示的に注入する環境変数（`CLAUDE_CONFIG_DIR` 等。#152）。
+  env_vars: Vec<(String, String)>,
 }
 
 impl ClaudeCodeGenerator {
-  pub fn new(model: String) -> Self {
-    Self { model }
+  pub fn new(model: String, env_vars: Vec<(String, String)>) -> Self {
+    Self { model, env_vars }
   }
 }
 
@@ -55,18 +59,26 @@ impl SlideGenerator for ClaudeCodeGenerator {
     tokio::select! {
       biased;
       _ = cancel.cancelled() => Err(GenerateError::Cancelled),
-      result = run_cli(&binary, &args, &prompt) => result,
+      result = run_cli(&binary, &args, &prompt, &self.env_vars) => result,
     }
   }
 }
 
 /// `claude` を spawn し stdin にプロンプトを渡して結果 JSON を受領する（child を所有）。
 /// この future が drop されると child も drop され、kill_on_drop で子プロセスが kill される（中断・design §6）。
-async fn run_cli(binary: &Path, args: &[String], prompt: &str) -> Result<String, GenerateError> {
+/// GUI 起動の Tauri アプリはシェルプロファイル経由の環境変数を継承しないことがあるため、
+/// `env_vars`（`CLAUDE_CONFIG_DIR` 等・#152）を明示的に注入する。
+async fn run_cli(
+  binary: &Path,
+  args: &[String],
+  prompt: &str,
+  env_vars: &[(String, String)],
+) -> Result<String, GenerateError> {
   let mut command = tokio::process::Command::new(binary);
   command
     .args(args)
     .current_dir(std::env::temp_dir()) // ローカル CLAUDE.md / hooks を巻き込まない
+    .envs(env_vars.iter().map(|(k, v)| (k.as_str(), v.as_str())))
     .stdin(Stdio::piped())
     .stdout(Stdio::piped())
     .stderr(Stdio::piped())
@@ -321,10 +333,12 @@ mod tests {
   }
 
   #[test]
-  fn new_stores_model() {
-    // コンストラクタが種別に依存せずモデルを保持する（factory から生成される）
-    let gen = ClaudeCodeGenerator::new("claude-opus-4-8".to_string());
+  fn new_stores_model_and_env_vars() {
+    // コンストラクタが種別に依存せずモデル/環境変数を保持する（factory から生成される）
+    let env_vars = vec![("CLAUDE_CONFIG_DIR".to_string(), "/tmp/x".to_string())];
+    let gen = ClaudeCodeGenerator::new("claude-opus-4-8".to_string(), env_vars.clone());
     assert_eq!(gen.model, "claude-opus-4-8");
+    assert_eq!(gen.env_vars, env_vars);
     let _ = SlideGeneratorKind::ExternalClaudeCode; // 種別列挙の存在確認
   }
 }

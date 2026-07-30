@@ -48,6 +48,8 @@ export interface GenerateResult {
   validationErrors: ValidationError[]
   /** 自動修正ループの試行回数 */
   attempts: number
+  /** failed の失敗理由（Rust 側 `GenerateError` の整形済み文言。秘密は含まない・NFR-004）。failed 以外は null */
+  errorMessage: string | null
 }
 
 /** `GenerateResult` から取り出す「器へ適用可能な候補」（slidesJson が非 null な succeeded/exhausted のみ）。 */
@@ -93,6 +95,21 @@ export interface VertexStatus {
   configured: boolean
 }
 
+/** 外部生成（Claude Code CLI）へ渡す環境変数 1 件。Rust の `ClaudeCliEnvVar` と camelCase で一致（#152）。 */
+export interface ClaudeCliEnvVar {
+  key: string
+  value: string
+}
+
+/**
+ * 外部生成（Claude Code CLI）へ渡す環境変数の設定（非秘密。#152）。Rust の `ClaudeCliConfig` と camelCase で一致。
+ * GUI 起動の Tauri アプリはシェルプロファイル経由の環境変数（`CLAUDE_CONFIG_DIR` 等）を継承しないことがあるため、
+ * ここで設定した値をサブプロセス起動時に明示的に注入する。
+ */
+export interface ClaudeCliConfig {
+  envVars: ClaudeCliEnvVar[]
+}
+
 /** 自動修正ループの試行上限 N（NFR-005・design §9.1 で暫定確定＝3）。 */
 export const MAX_GENERATE_ATTEMPTS = 3
 
@@ -131,6 +148,21 @@ export async function getVertexStatus(): Promise<VertexStatus> {
   return invoke<VertexStatus>('get_vertex_status')
 }
 
+/** 外部 CLI（Claude Code CLI）へ渡す環境変数設定を保存する（編集モード必須。非秘密を Rust 境界で plugin-store に保存・#152）。 */
+export async function setClaudeCliConfig(config: ClaudeCliConfig): Promise<void> {
+  await invoke('set_claude_cli_config', { config })
+}
+
+/** 外部 CLI の環境変数設定を消去する（編集モード必須）。 */
+export async function clearClaudeCliConfig(): Promise<void> {
+  await invoke('clear_claude_cli_config')
+}
+
+/** 外部 CLI の環境変数設定を取得する（フォームのプリフィル用。未設定は null）。 */
+export async function getClaudeCliConfig(): Promise<ClaudeCliConfig | null> {
+  return invoke<ClaudeCliConfig | null>('get_claude_cli_config')
+}
+
 /**
  * `gcloud auth application-default login` を起動して GCP ADC を生成する（初回セットアップ・編集モード必須）。
  * 以後の生成は Rust が ADC を読んでトークン交換するため、実行時に gcloud は不要。
@@ -163,7 +195,7 @@ function summarizeValidationErrors(errors: ValidationError[]): string {
  * 明示中断した検証 NG 候補を器へ流し込まないための安全退避（FR-008）。最良候補 best は exhausted 専用。
  */
 function cancelledResult(attempts: number): GenerateResult {
-  return { outcome: 'cancelled', slidesJson: null, validationErrors: [], attempts }
+  return { outcome: 'cancelled', slidesJson: null, validationErrors: [], attempts, errorMessage: null }
 }
 
 /**
@@ -196,8 +228,9 @@ export async function generateSlides(request: GenerateRequest, onProgress?: (p: 
       // ゲート拒否・タイムアウト・HTTP エラー・中断はいずれも Rust 側で Err になる。
       // 中断要求済みなら cancelled、それ以外は failed に分類する（Rust はキー等を漏らさず整形済み・NFR-004）。
       if (cancelRequested) return cancelledResult(attempt - 1)
+      const errorMessage = e instanceof Error ? e.message : String(e)
       console.error('[ai-slide-generation] 生成に失敗しました:', e)
-      return { outcome: 'failed', slidesJson: null, validationErrors: [], attempts: attempt }
+      return { outcome: 'failed', slidesJson: null, validationErrors: [], attempts: attempt, errorMessage }
     }
 
     // invoke 解決後の中断再検査。in-flight 完了と中断がわずかに競合した場合でも、明示中断した候補は
@@ -210,7 +243,7 @@ export async function generateSlides(request: GenerateRequest, onProgress?: (p: 
     const errors = [...structuralErrors, ...getSchemaConformanceErrors(data)]
 
     if (errors.length === 0) {
-      return { outcome: 'succeeded', slidesJson: candidate, validationErrors: [], attempts: attempt }
+      return { outcome: 'succeeded', slidesJson: candidate, validationErrors: [], attempts: attempt, errorMessage: null }
     }
 
     // 最良候補（検証エラー最小）を更新
@@ -226,5 +259,11 @@ export async function generateSlides(request: GenerateRequest, onProgress?: (p: 
   }
 
   // 上限到達: 最良候補を退避して返す（exhausted）
-  return { outcome: 'exhausted', slidesJson: best?.slidesJson ?? null, validationErrors: best?.errors ?? [], attempts: MAX_GENERATE_ATTEMPTS }
+  return {
+    outcome: 'exhausted',
+    slidesJson: best?.slidesJson ?? null,
+    validationErrors: best?.errors ?? [],
+    attempts: MAX_GENERATE_ATTEMPTS,
+    errorMessage: null,
+  }
 }

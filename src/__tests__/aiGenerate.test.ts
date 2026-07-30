@@ -5,7 +5,22 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 const h = vi.hoisted(() => ({ invoke: vi.fn() }))
 vi.mock('@tauri-apps/api/core', () => ({ invoke: h.invoke }))
 
-import { generateSlides, cancelGenerate, setVertexConfig, clearVertexConfig, getVertexConfig, getVertexStatus, gcloudLogin, setGenerationEnabled, checkExternalAvailable, toGeneratedCandidate, MAX_GENERATE_ATTEMPTS } from '../aiGenerate'
+import {
+  generateSlides,
+  cancelGenerate,
+  setVertexConfig,
+  clearVertexConfig,
+  getVertexConfig,
+  getVertexStatus,
+  setClaudeCliConfig,
+  clearClaudeCliConfig,
+  getClaudeCliConfig,
+  gcloudLogin,
+  setGenerationEnabled,
+  checkExternalAvailable,
+  toGeneratedCandidate,
+  MAX_GENERATE_ATTEMPTS,
+} from '../aiGenerate'
 import type { GenerateProgress, GenerateResult } from '../aiGenerate'
 
 // getValidationErrors を満たす妥当な slides.json
@@ -64,6 +79,20 @@ describe('aiGenerate オーケストレータ（generateSlides）', () => {
     expect(result.validationErrors).toEqual([])
   })
 
+  it('invoke が reject すると失敗理由を errorMessage に伝播する（#151）', async () => {
+    h.invoke.mockRejectedValue(new Error('外部生成エラー: claude が異常終了しました'))
+    const result = await generateSlides(REQ)
+    expect(result.outcome).toBe('failed')
+    expect(result.errorMessage).toBe('外部生成エラー: claude が異常終了しました')
+  })
+
+  it('reject 値が Error でなければ String化した値を errorMessage にする', async () => {
+    h.invoke.mockRejectedValue('プレーン文字列エラー')
+    const result = await generateSlides(REQ)
+    expect(result.outcome).toBe('failed')
+    expect(result.errorMessage).toBe('プレーン文字列エラー')
+  })
+
   it('in-flight 完了後に中断されていれば cancelled で候補を適用しない（レビュー修正・FR-008）', async () => {
     // generate_slides が候補を返す直前に中断要求が入ったケースを模す
     h.invoke.mockImplementation(async (cmd: string) => {
@@ -104,19 +133,19 @@ describe('aiGenerate オーケストレータ（generateSlides）', () => {
 
 describe('toGeneratedCandidate（GenerateResult → 適用可能候補の抽出・#47）', () => {
   it('succeeded/exhausted かつ slidesJson 非 null なら候補を返す', () => {
-    const succeeded: GenerateResult = { outcome: 'succeeded', slidesJson: VALID, validationErrors: [], attempts: 1 }
+    const succeeded: GenerateResult = { outcome: 'succeeded', slidesJson: VALID, validationErrors: [], attempts: 1, errorMessage: null }
     expect(toGeneratedCandidate(succeeded)).toEqual({ slidesJson: VALID, validationErrors: [] })
 
     const errors = [{ path: 'slides[0]', message: 'x', expected: 'y', actual: 'z' }]
-    const exhausted: GenerateResult = { outcome: 'exhausted', slidesJson: LESS_INVALID, validationErrors: errors, attempts: 3 }
+    const exhausted: GenerateResult = { outcome: 'exhausted', slidesJson: LESS_INVALID, validationErrors: errors, attempts: 3, errorMessage: null }
     expect(toGeneratedCandidate(exhausted)).toEqual({ slidesJson: LESS_INVALID, validationErrors: errors })
   })
 
   it('cancelled/failed または slidesJson が null なら null を返す', () => {
-    expect(toGeneratedCandidate({ outcome: 'cancelled', slidesJson: null, validationErrors: [], attempts: 0 })).toBeNull()
-    expect(toGeneratedCandidate({ outcome: 'failed', slidesJson: null, validationErrors: [], attempts: 1 })).toBeNull()
+    expect(toGeneratedCandidate({ outcome: 'cancelled', slidesJson: null, validationErrors: [], attempts: 0, errorMessage: null })).toBeNull()
+    expect(toGeneratedCandidate({ outcome: 'failed', slidesJson: null, validationErrors: [], attempts: 1, errorMessage: '外部生成エラー: x' })).toBeNull()
     // outcome は succeeded だが slidesJson が null（本来生じない組み合わせだが契約上のガードを確認）
-    expect(toGeneratedCandidate({ outcome: 'succeeded', slidesJson: null, validationErrors: [], attempts: 1 })).toBeNull()
+    expect(toGeneratedCandidate({ outcome: 'succeeded', slidesJson: null, validationErrors: [], attempts: 1, errorMessage: null })).toBeNull()
   })
 })
 
@@ -151,5 +180,18 @@ describe('aiGenerate invoke ラッパ', () => {
     h.invoke.mockResolvedValueOnce(true)
     await expect(checkExternalAvailable()).resolves.toBe(true)
     expect(h.invoke).toHaveBeenCalledWith('check_claude_cli')
+  })
+
+  it('外部 CLI の環境変数設定ラッパが対応コマンドを呼ぶ（#152）', async () => {
+    const config = { envVars: [{ key: 'CLAUDE_CONFIG_DIR', value: '/tmp/claude-work' }] }
+    await setClaudeCliConfig(config)
+    expect(h.invoke).toHaveBeenCalledWith('set_claude_cli_config', { config })
+
+    await clearClaudeCliConfig()
+    expect(h.invoke).toHaveBeenCalledWith('clear_claude_cli_config')
+
+    h.invoke.mockResolvedValueOnce(config)
+    await expect(getClaudeCliConfig()).resolves.toEqual(config)
+    expect(h.invoke).toHaveBeenCalledWith('get_claude_cli_config')
   })
 })
