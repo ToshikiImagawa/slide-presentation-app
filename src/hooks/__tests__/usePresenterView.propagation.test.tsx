@@ -122,7 +122,7 @@ describe('usePresenterView テーマ伝搬', () => {
 
 /** emit 呼び出しのうち slideChanged のものを抽出 */
 function slideChangedCalls() {
-  return h.emit.mock.calls.filter((c) => (c[1] as { type?: string })?.type === 'slideChanged') as Array<[string, { type: 'slideChanged'; payload: { currentIndex: number; slides: SlideData[] } }]>
+  return h.emit.mock.calls.filter((c) => (c[1] as { type?: string })?.type === 'slideChanged')
 }
 
 describe('usePresenterView 初期表示位置', () => {
@@ -132,13 +132,8 @@ describe('usePresenterView 初期表示位置', () => {
   })
 
   it('presenterViewReady 受信時、本編の現在位置（currentIndex）を初期表示として送信する', async () => {
-    const { rerender } = renderHook(({ currentIndex }: { currentIndex: number }) => usePresenterView({ slides, currentIndex }), {
-      wrapper,
-      initialProps: { currentIndex: 0 },
-    })
-
-    // 本編側でスライドを進めた後に発表者ビューを開く状況を模擬
-    rerender({ currentIndex: 3 })
+    // 本編側でスライドを進めてから発表者ビューを開く状況を模擬
+    renderHook(() => usePresenterView({ slides, currentIndex: 3 }), { wrapper })
 
     await waitFor(() => expect(h.listeners.length).toBe(1))
     h.emit.mockClear()
@@ -149,6 +144,6 @@ describe('usePresenterView 初期表示位置', () => {
 
     const calls = slideChangedCalls()
     expect(calls.length).toBeGreaterThanOrEqual(1)
-    expect(calls[0][1].payload.currentIndex).toBe(3)
+    expect(calls[0][1]).toEqual({ type: 'slideChanged', payload: { currentIndex: 3, slides } })
   })
 })
