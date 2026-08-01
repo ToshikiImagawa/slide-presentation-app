@@ -72,4 +72,15 @@ describe('GeneratedDiffDialog（①構造サマリ差分）', () => {
     render(wrap(<GeneratedDiffDialog open beforeText={BEFORE} afterText={AFTER} validationErrors={[]} onApply={() => {}} onCancel={() => {}} />))
     expect(screen.queryByText(/検証エラー/)).toBeNull()
   })
+
+  it('changed のスライドは git diff 風の行単位表示（追加=+/削除=-）になる', () => {
+    // MUI Dialog は Portal で document.body 直下に描画されるため container ではなく document から探す
+    render(wrap(<GeneratedDiffDialog open beforeText={BEFORE} afterText={AFTER} validationErrors={[]} onApply={() => {}} onCancel={() => {}} />))
+    const pre = document.body.querySelector('pre')
+    // JSON インデントの空白がそのまま残るため、prefix 直後の空白量は問わずに判定する
+    expect(pre?.textContent).toMatch(/-\s+"title": "旧"/)
+    expect(pre?.textContent).toMatch(/\+\s+"title": "新"/)
+    // 左右2カラム表示（変更前/変更後の見出し）はもう使わない
+    expect(screen.queryByText('変更前')).toBeNull()
+  })
 })
