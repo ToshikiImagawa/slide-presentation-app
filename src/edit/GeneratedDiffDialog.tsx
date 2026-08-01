@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { diffLines } from 'diff'
 import Dialog from '@mui/material/Dialog'
 import DialogTitle from '@mui/material/DialogTitle'
 import DialogContent from '@mui/material/DialogContent'
@@ -8,6 +9,7 @@ import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
+import { alpha } from '@mui/material/styles'
 import { useTranslation } from '../i18n'
 import type { ValidationError } from '../data/types'
 import { computeSlidesDiff, hasChanges, type FieldChange, type SlideChange } from './slidesDiff'
@@ -45,6 +47,31 @@ function jsonBlock(value: unknown): string {
   return JSON.stringify(value, null, 2)
 }
 
+/** before/after の整形済み JSON を git diff 風の行単位表示（追加=緑/削除=赤）に変換する。 */
+function renderLineDiff(before: unknown, after: unknown) {
+  const parts = diffLines(jsonBlock(before), jsonBlock(after))
+  return parts.flatMap((part, partIndex) => {
+    // diffLines の各 part は末尾に改行を含む複数行の塊。末尾の空要素（改行由来）は行として扱わない
+    const lines = part.value.split('\n')
+    if (lines[lines.length - 1] === '') lines.pop()
+    const prefix = part.added ? '+' : part.removed ? '-' : ' '
+    return lines.map((line, lineIndex) => (
+      <Box
+        key={`${partIndex}-${lineIndex}`}
+        component="span"
+        sx={{
+          display: 'block',
+          px: 0.5,
+          backgroundColor: part.added ? (theme) => alpha(theme.palette.success.main, 0.15) : part.removed ? (theme) => alpha(theme.palette.error.main, 0.15) : undefined,
+          color: part.added ? 'success.main' : part.removed ? 'error.main' : undefined,
+        }}
+      >
+        {prefix} {line}
+      </Box>
+    ))
+  })
+}
+
 export function GeneratedDiffDialog({ open, beforeText, afterText, validationErrors, onApply, onCancel }: GeneratedDiffDialogProps) {
   const { t } = useTranslation()
   // 閉じているときは差分計算をスキップ（開いたときだけ算出）
@@ -60,24 +87,19 @@ export function GeneratedDiffDialog({ open, beforeText, afterText, validationErr
           {c.id}
         </Typography>
       </Box>
-      <Box sx={{ px: 1, pb: 1, display: 'grid', gap: 1, gridTemplateColumns: c.kind === 'changed' ? '1fr 1fr' : '1fr' }}>
-        {c.before !== undefined && (
-          <Box>
-            <Typography variant="caption" sx={{ color: 'var(--fixed-text-muted)' }}>
-              {t('diff.before', '変更前')}
-            </Typography>
-            <Box component="pre" sx={{ m: 0, p: 1, fontSize: 12, overflow: 'auto', maxHeight: 220, backgroundColor: 'var(--fixed-background-alt)', borderRadius: 1, fontFamily: 'var(--fixed-font-code)' }}>
-              {jsonBlock(c.before)}
-            </Box>
+      <Box sx={{ px: 1, pb: 1 }}>
+        {c.kind === 'changed' ? (
+          // git diff 風の行単位表示（追加=緑/削除=赤）。左右の全文並列より変更箇所が一目で分かる
+          <Box component="pre" sx={{ m: 0, p: 1, fontSize: 12, overflow: 'auto', maxHeight: 360, backgroundColor: 'var(--fixed-background-alt)', borderRadius: 1, fontFamily: 'var(--fixed-font-code)' }}>
+            {renderLineDiff(c.before, c.after)}
           </Box>
-        )}
-        {c.after !== undefined && (
+        ) : (
           <Box>
             <Typography variant="caption" sx={{ color: 'var(--fixed-text-muted)' }}>
-              {t('diff.after', '変更後')}
+              {c.kind === 'removed' ? t('diff.before', '変更前') : t('diff.after', '変更後')}
             </Typography>
             <Box component="pre" sx={{ m: 0, p: 1, fontSize: 12, overflow: 'auto', maxHeight: 220, backgroundColor: 'var(--fixed-background-alt)', borderRadius: 1, fontFamily: 'var(--fixed-font-code)' }}>
-              {jsonBlock(c.after)}
+              {jsonBlock(c.kind === 'removed' ? c.before : c.after)}
             </Box>
           </Box>
         )}
