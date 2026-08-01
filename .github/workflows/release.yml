@@ -287,7 +287,10 @@ jobs:
           name: release-notes
 
       - name: Build latest.json
-        # 本体 asset は public repo の静的ダウンロード URL(browser_download_url)を使う。
+        # 本体 asset の URL は browser_download_url を使わず https://github.com/$REPO/releases/download/$TAG/<name>
+        # を自前で組み立てる。browser_download_url は draft 状態の間 releases/download/untagged-<hash>/... という
+        # 一時 URL を返し、この値は publish(un-draft) 後も latest.json に焼き込まれたままになって 404 化するため
+        # (実際に v2.1.1 で発生し、更新の適用に失敗する不具合の原因になった)。
         # .sig は draft 状態でも読めるよう asset の API URL 経由(Accept: application/octet-stream)で取得する。
         # url_pattern は release ジョブの matrix.assets(このファイル内)のファイル拡張子と
         # 対応させる必要がある
@@ -300,17 +303,18 @@ jobs:
           resolve_platform() {
             local platform="$1" url_pattern="$2"
             local sig_pattern="${url_pattern%\$}\\.sig\$"
-            local url sig_id sig
+            local name sig_id sig url
 
-            url=$(jq -r --arg p "$url_pattern" '.assets[] | select(.name | test($p)) | .browser_download_url' release.json)
+            name=$(jq -r --arg p "$url_pattern" '.assets[] | select(.name | test($p)) | .name' release.json)
             sig_id=$(jq -r --arg p "$sig_pattern" '.assets[] | select(.name | test($p)) | .id' release.json)
 
-            if [ -z "$url" ] || [ -z "$sig_id" ]; then
+            if [ -z "$name" ] || [ -z "$sig_id" ]; then
               echo "::error::$platform 用のアセットまたは署名ファイルが見つかりません" >&2
               exit 1
             fi
 
             sig=$(gh api "repos/$REPO/releases/assets/$sig_id" -H "Accept: application/octet-stream")
+            url="https://github.com/$REPO/releases/download/$TAG/$name"
 
             jq -n --arg url "$url" --arg signature "$sig" '{url: $url, signature: $signature}'
           }
