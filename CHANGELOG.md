@@ -6,6 +6,23 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.1.1] - 2026-08-02
+
+### Added
+
+- Added the ability to configure Claude CLI environment variables (e.g. `CLAUDE_CONFIG_DIR`) for the external generation (Claude Code CLI) method
+
+### Changed
+
+- Changed the AI generation diff view from a side-by-side full-text comparison to a git-diff-style line-by-line view (added = green / removed = red)
+
+### Fixed
+
+- Fixed the generated diff dialog where long lines pushed the "after" column out of view due to a CSS Grid issue
+- Fixed the external generation (Claude Code CLI) failure display to show the actual failure reason instead of a generic message
+- Fixed the presenter view always starting from the first slide when opened while the main view had already advanced
+- Fixed external generation CLI failures caused by tool-call turns being consumed, and unintended inclusion of the global CLAUDE.md
+
 ## [2.1.0] - 2026-07-30
 
 ### Added
