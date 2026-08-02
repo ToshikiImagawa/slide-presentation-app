@@ -30,6 +30,8 @@ test.describe('プレゼンテーション', () => {
 
   test('ロゴが左下に表示される', async ({ page }) => {
     await openSample(page)
-    await expect(page.locator('.slide-logo img')).toBeVisible()
+    // #163: ロゴは各 section 内側の .slide-logo-inline に移動した（PDF書き出し・発表者ビュー・
+    // 編集プレビューにも写るようにするため）。表示中のスライドのロゴのみを対象にする
+    await expect(page.locator('section.present .slide-logo-inline img')).toBeVisible()
   })
 })

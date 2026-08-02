@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { SlideData } from '../data'
+import type { LogoConfig, SlideData } from '../data'
 import { SlideRenderer } from '../components/SlideRenderer'
 import styles from './SlidePreview.module.css'
 
@@ -9,7 +9,7 @@ import styles from './SlidePreview.module.css'
  * 親要素サイズに追従して transform: scale する。編集内容は props 更新で差分再描画され、
  * presentationKey による App 全再マウント（Reveal 全再初期化）を伴わない（NFR-004）。
  */
-export function SlidePreview({ slide }: { slide: SlideData }) {
+export function SlidePreview({ slide, logo }: { slide: SlideData; logo?: LogoConfig }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [scale, setScale] = useState(0.3)
 
@@ -34,7 +34,7 @@ export function SlidePreview({ slide }: { slide: SlideData }) {
     <div ref={containerRef} className={styles.previewScaler} style={{ transform: `translate(-50%, -50%) scale(${scale})` }}>
       <div className={`reveal ${styles.previewReveal}`}>
         <div className="slides">
-          <SlideRenderer.Slide slide={slide} />
+          <SlideRenderer.Slide slide={slide} logo={logo} />
         </div>
       </div>
     </div>

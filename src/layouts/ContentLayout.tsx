@@ -1,16 +1,17 @@
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
-import type { SlideMeta } from '../data'
+import type { LogoConfig, SlideMeta } from '../data'
+import { SlideFrame } from './SlideFrame'
 
-type Props = { id: string; title: string; meta?: SlideMeta; children: React.ReactNode }
+type Props = { id: string; title: string; meta?: SlideMeta; logo?: LogoConfig; children: React.ReactNode }
 
-export function ContentLayout({ id, title, meta, children }: Props) {
+export function ContentLayout({ id, title, meta, logo, children }: Props) {
   return (
-    <section className="slide-container" id={id} data-transition={meta?.transition} data-background-image={meta?.backgroundImage} data-background-color={meta?.backgroundColor}>
+    <SlideFrame id={id} meta={meta} logo={logo}>
       <Typography variant="h2" className="slide-title">
         {title}
       </Typography>
       <Box className="content-area">{children}</Box>
-    </section>
+    </SlideFrame>
   )
 }

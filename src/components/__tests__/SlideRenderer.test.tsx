@@ -50,10 +50,37 @@ const testSlides: SlideData[] = [
     layout: 'center',
     content: { variant: 'section', title: 'セクションスライド' },
   },
+  {
+    id: 'test-bleed',
+    layout: 'bleed',
+    content: {
+      title: 'ビールドスライド',
+      commands: [{ text: 'npm install', color: 'green' }],
+      component: { name: 'TerminalAnimation' },
+    },
+  },
+  {
+    id: 'test-custom',
+    layout: 'custom',
+    content: {
+      component: { name: 'TerminalAnimation' },
+    },
+  },
 ]
 
 function renderWithTheme(ui: React.ReactNode) {
   return render(<ThemeProvider theme={theme}>{ui}</ThemeProvider>)
+}
+
+/** 要素配下の DOM 構造をタグ名とclassのみで文字列化する。
+ * テキスト内容の変更に影響されない属性スナップショットとして使う */
+function domSkeleton(el: Element, depth = 0): string {
+  const cls = el.getAttribute('class')
+  const label = cls ? `${el.tagName.toLowerCase()}.${cls.split(' ').join('.')}` : el.tagName.toLowerCase()
+  const children = Array.from(el.children)
+    .map((child) => domSkeleton(child, depth + 1))
+    .join('')
+  return `${'  '.repeat(depth)}${label}\n${children}`
 }
 
 describe('SlideRenderer', () => {
@@ -131,5 +158,48 @@ describe('SlideRenderer', () => {
     const { container } = renderWithTheme(<SlideRenderer slides={[]} />)
     const sections = container.querySelectorAll('section')
     expect(sections.length).toBe(0)
+  })
+
+  // #163: SlideFrame への section 生成統合。全レイアウトが共通の section > .master-body 構造を持つことと、
+  // リファクタ前後でのDOM構造の変化をスナップショットで固定する
+  describe('SlideFrame統合後のDOM構造（属性スナップショット）', () => {
+    it.each(testSlides.map((slide) => [slide.id, slide] as const))('%s の section 配下がスナップショットと一致する', (_id, slide) => {
+      const { container } = renderWithTheme(<SlideRenderer slides={[slide]} />)
+      const section = container.querySelector('section.slide-container')!
+      expect(domSkeleton(section)).toMatchSnapshot()
+    })
+
+    it.each(testSlides.map((slide) => [slide.id, slide] as const))('%s が section > .master-body の共通構造を持つ', (_id, slide) => {
+      const { container } = renderWithTheme(<SlideRenderer slides={[slide]} />)
+      const section = container.querySelector('section.slide-container')!
+      expect(section.querySelector(':scope > .master-layer-back')).not.toBeNull()
+      expect(section.querySelector(':scope > .master-body')).not.toBeNull()
+      expect(section.querySelector(':scope > .master-layer-front')).not.toBeNull()
+    })
+  })
+
+  describe('ロゴ（meta.logo → .slide-logo-inline）', () => {
+    const logo = { src: '/logo.png', width: 100, height: 32 }
+
+    it('logo指定時、section内側の.master-layer-frontに.slide-logo-inlineが描画される', () => {
+      const { container } = renderWithTheme(<SlideRenderer slides={[testSlides[0]]} logo={logo} />)
+      const section = container.querySelector('section.slide-container')!
+      const logoEl = section.querySelector('.master-layer-front > .slide-logo-inline')
+      expect(logoEl).not.toBeNull()
+    })
+
+    it('logo未指定時は.slide-logo-inlineが描画されない', () => {
+      const { container } = renderWithTheme(<SlideRenderer slides={[testSlides[0]]} />)
+      expect(container.querySelector('.slide-logo-inline')).toBeNull()
+    })
+
+    it('全レイアウトでロゴがsection内側に描画される（PDF書き出し・発表者ビュー・編集プレビューに写る前提）', () => {
+      const { container } = renderWithTheme(<SlideRenderer slides={testSlides} logo={logo} />)
+      const sections = container.querySelectorAll('section.slide-container')
+      expect(sections.length).toBe(testSlides.length)
+      sections.forEach((section) => {
+        expect(section.querySelector('.slide-logo-inline')).not.toBeNull()
+      })
+    })
   })
 })

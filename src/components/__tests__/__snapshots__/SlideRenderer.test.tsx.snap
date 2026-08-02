@@ -1,0 +1,204 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`SlideRenderer > SlideFrame統合後のDOM構造（属性スナップショット） > test-bleed の section 配下がスナップショットと一致する 1`] = `
+"section.slide-container
+  div.master-layer-back
+  div.master-body.bleed-image-layout
+    div.bleed-content
+      h2.MuiTypography-root.MuiTypography-h2.css-1p72pc-MuiTypography-root
+      ul.MuiList-root.css-1ra2nx3-MuiList-root
+        li.MuiListItem-root.MuiListItem-gutters.css-1goxov1-MuiListItem-root
+    div._terminal-window_2e7c2d.MuiBox-root.css-0
+      div._terminal-titlebar_2e7c2d.MuiBox-root.css-0
+        span._terminal-dot_2e7c2d._terminal-dot-red_2e7c2d
+        span._terminal-dot_2e7c2d._terminal-dot-yellow_2e7c2d
+        span._terminal-dot_2e7c2d._terminal-dot-green_2e7c2d
+        span._terminal-title_2e7c2d
+      div._terminal-body_2e7c2d.MuiBox-root.css-0
+        div._terminal-line_2e7c2d._line-visible_2e7c2d._line-command_2e7c2d
+          span._cursor_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+  div.master-layer-front
+"
+`;
+
+exports[`SlideRenderer > SlideFrame統合後のDOM構造（属性スナップショット） > test-custom の section 配下がスナップショットと一致する 1`] = `
+"section.slide-container
+  div.master-layer-back
+  div.master-body
+    div._terminal-window_2e7c2d.MuiBox-root.css-0
+      div._terminal-titlebar_2e7c2d.MuiBox-root.css-0
+        span._terminal-dot_2e7c2d._terminal-dot-red_2e7c2d
+        span._terminal-dot_2e7c2d._terminal-dot-yellow_2e7c2d
+        span._terminal-dot_2e7c2d._terminal-dot-green_2e7c2d
+        span._terminal-title_2e7c2d
+      div._terminal-body_2e7c2d.MuiBox-root.css-0
+        div._terminal-line_2e7c2d._line-visible_2e7c2d._line-command_2e7c2d
+          span._cursor_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+        div._terminal-line_2e7c2d._line-hidden_2e7c2d
+  div.master-layer-front
+"
+`;
+
+exports[`SlideRenderer > SlideFrame統合後のDOM構造（属性スナップショット） > test-section の section 配下がスナップショットと一致する 1`] = `
+"section.slide-container
+  div.master-layer-back
+  div.master-body
+    div.section-title-layout.MuiBox-root.css-0
+      div.MuiBox-root.css-mbh4vg
+        h2.MuiTypography-root.MuiTypography-h2.css-16fi8hv-MuiTypography-root
+        hr.MuiDivider-root.MuiDivider-fullWidth.css-zw6bxm-MuiDivider-root
+  div.master-layer-front
+"
+`;
+
+exports[`SlideRenderer > SlideFrame統合後のDOM構造（属性スナップショット） > test-steps の section 配下がスナップショットと一致する 1`] = `
+"section.slide-container
+  div.master-layer-back
+  div.master-body
+    h2.MuiTypography-root.MuiTypography-h2.slide-title.css-7bs1js-MuiTypography-root
+    div.content-area.MuiBox-root.css-0
+      div._layout_0d1779
+        div._line_0d1779
+        div._item_0d1779
+          div.MuiAvatar-root.MuiAvatar-circular.MuiAvatar-colorDefault.css-r3q7wc-MuiAvatar-root
+          h3.MuiTypography-root.MuiTypography-h3.css-1kjw84w-MuiTypography-root
+          p.MuiTypography-root.MuiTypography-body2.css-2x9zaw-MuiTypography-root
+        div._item_0d1779
+          div.MuiAvatar-root.MuiAvatar-circular.MuiAvatar-colorDefault.css-r3q7wc-MuiAvatar-root
+          h3.MuiTypography-root.MuiTypography-h3.css-1kjw84w-MuiTypography-root
+          p.MuiTypography-root.MuiTypography-body2.css-2x9zaw-MuiTypography-root
+  div.master-layer-front
+"
+`;
+
+exports[`SlideRenderer > SlideFrame統合後のDOM構造（属性スナップショット） > test-tiles の section 配下がスナップショットと一致する 1`] = `
+"section.slide-container
+  div.master-layer-back
+  div.master-body
+    h2.MuiTypography-root.MuiTypography-h2.slide-title.css-7bs1js-MuiTypography-root
+    div.content-area.MuiBox-root.css-0
+      div.MuiStack-root.css-39kloq-MuiStack-root
+        div.MuiPaper-root.MuiPaper-elevation.MuiPaper-rounded.MuiPaper-elevation1.MuiCard-root.css-z8zbi0-MuiPaper-root-MuiCard-root
+          div.MuiCardContent-root.css-154h7r6-MuiCardContent-root
+            div.MuiAvatar-root.MuiAvatar-rounded.MuiAvatar-colorDefault.css-qoetrp-MuiAvatar-root
+              svg.MuiSvgIcon-root.MuiSvgIcon-fontSizeMedium.css-15kj1qc-MuiSvgIcon-root
+                path
+            h3.MuiTypography-root.MuiTypography-h3.css-80g8u7-MuiTypography-root
+            p.MuiTypography-root.MuiTypography-body2.css-2x9zaw-MuiTypography-root
+        div.MuiPaper-root.MuiPaper-elevation.MuiPaper-rounded.MuiPaper-elevation1.MuiCard-root.css-z8zbi0-MuiPaper-root-MuiCard-root
+          div.MuiCardContent-root.css-154h7r6-MuiCardContent-root
+            div.MuiAvatar-root.MuiAvatar-rounded.MuiAvatar-colorDefault.css-qoetrp-MuiAvatar-root
+              svg.MuiSvgIcon-root.MuiSvgIcon-fontSizeMedium.css-15kj1qc-MuiSvgIcon-root
+                path
+            h3.MuiTypography-root.MuiTypography-h3.css-80g8u7-MuiTypography-root
+            p.MuiTypography-root.MuiTypography-body2.css-2x9zaw-MuiTypography-root
+  div.master-layer-front
+"
+`;
+
+exports[`SlideRenderer > SlideFrame統合後のDOM構造（属性スナップショット） > test-title の section 配下がスナップショットと一致する 1`] = `
+"section.slide-container
+  div.master-layer-back
+  div.master-body
+    div.title-layout.MuiBox-root.css-0
+      h1.MuiTypography-root.MuiTypography-h1.css-vq6ak2-MuiTypography-root
+      h6.MuiTypography-root.MuiTypography-subtitle1.css-9ccdti-MuiTypography-root
+  div.master-layer-front
+"
+`;
+
+exports[`SlideRenderer > SlideFrame統合後のDOM構造（属性スナップショット） > test-two-column の section 配下がスナップショットと一致する 1`] = `
+"section.slide-container
+  div.master-layer-back
+  div.master-body
+    h2.MuiTypography-root.MuiTypography-h2.slide-title.css-7bs1js-MuiTypography-root
+    div.content-area.MuiBox-root.css-0
+      div.MuiBox-root.css-1tzz7
+        div.MuiBox-root.css-dy4pxl
+          div.MuiBox-root.css-1v8my8o
+            h3.MuiTypography-root.MuiTypography-h3.css-80g8u7-MuiTypography-root
+            p.MuiTypography-root.MuiTypography-body1.css-1dvgegk-MuiTypography-root
+        div.MuiBox-root.css-dy4pxl
+          div.MuiBox-root.css-1v8my8o
+            h3.MuiTypography-root.MuiTypography-h3.css-80g8u7-MuiTypography-root
+            p.MuiTypography-root.MuiTypography-body1.css-1dvgegk-MuiTypography-root
+  div.master-layer-front
+"
+`;
