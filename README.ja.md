@@ -425,6 +425,7 @@ xattr -dr com.apple.quarantine "/Applications/Slide Presentation App.app"
   "theme": {
     "colors": {
       "primary": "#6c63ff",
+      "accent": "#ff6584",
       "background": "#0a0a1a",
       "text": "#e0e0e0"
     },
@@ -449,6 +450,11 @@ xattr -dr com.apple.quarantine "/Applications/Slide Presentation App.app"
   "slides": []
 }
 ```
+
+`theme.colors` には、後述の `theme-colors.json` と同じ12キー（`background`, `backgroundAlt`, `backgroundGrid`,
+`textHeading`, `textBody`, `textSubtitle`, `textMuted`, `border`, `borderLight`, `codeText`, `success`）に加えて
+`primary`・`accent` を指定できます。`primary` と `accent` は別の CSS 変数（`--theme-primary` / `--theme-accent`）
+として独立して反映されるため、同じスライド内で両方の色を使い分けられます。
 
 #### フォント設定の詳細
 
@@ -481,11 +487,15 @@ xattr -dr com.apple.quarantine "/Applications/Slide Presentation App.app"
 }
 ```
 
-| フィールド | 型     | 説明                                                                    |
-|-----------|--------|-------------------------------------------------------------------------|
-| `family`  | string | フォント名                                                              |
-| `src`     | string | ローカルフォントファイルへのパス（`@font-face` で登録）                  |
-| `url`     | string | 外部フォント URL（`<link>` タグで読み込み。Google Fonts に対応）         |
+| フィールド    | 型     | 説明                                                                    |
+|--------------|--------|-------------------------------------------------------------------------|
+| `family`     | string | フォント名                                                              |
+| `src`        | string | ローカルフォントファイルへのパス（`@font-face` で登録）                  |
+| `url`        | string | 外部フォント URL（`<link>` タグで読み込み。Google Fonts に対応）         |
+| `weight`     | string | `font-weight`（例: `'400'`, `'700'`, `'bold'`）。省略時は `'normal'`     |
+| `style`      | string | `font-style`（例: `'normal'`, `'italic'`）。省略時は `'normal'`         |
+| `format`     | string | `src` のフォント形式ヒント（例: `'woff2'`）                              |
+| `localName`  | string | ローカルインストール済みフォント名（`local()` で参照）                  |
 
 ### 方法 2: theme-colors.json で色のみ上書きする
 

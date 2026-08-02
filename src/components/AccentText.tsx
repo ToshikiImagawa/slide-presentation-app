@@ -9,7 +9,7 @@ type Props = {
 
 export function AccentText({ children, sx }: Props) {
   return (
-    <Typography variant="body1" sx={{ color: 'var(--theme-primary)', ...sx }}>
+    <Typography variant="body1" sx={{ color: 'var(--theme-accent)', ...sx }}>
       {children}
     </Typography>
   )

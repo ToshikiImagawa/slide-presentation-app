@@ -30,7 +30,8 @@
       "pdfExportError": "Failed to export PDF"
     },
     "theme": {
-      "applyFailed": "Failed to apply the theme"
+      "applyFailed": "Failed to apply the theme",
+      "colorWarning": "Some theme settings could not be applied"
     },
     "settings": {
       "title": "Settings",

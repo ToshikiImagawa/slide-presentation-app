@@ -139,7 +139,10 @@
   },
   "theme": {
     "description": "プレゼン全体のtheme（トップレベル、オプション）",
-    "colors": { "type": "object", "description": "primary/accent/background/text等" },
+    "colors": {
+      "type": "object",
+      "description": "primary/accent/background/backgroundAlt/backgroundGrid/text/textHeading/textBody/textSubtitle/textMuted/border/borderLight/codeText/success。primaryとaccentは別の色として反映される"
+    },
     "fonts": {
       "type": "object",
       "fields": {
@@ -152,7 +155,11 @@
           "itemFields": {
             "family": { "type": "string" },
             "src": { "type": "string", "description": "ローカルフォントファイルパス" },
-            "url": { "type": "string", "description": "外部フォントURL" }
+            "url": { "type": "string", "description": "外部フォントURL" },
+            "weight": { "type": "string", "description": "font-weight（例: '400','700','normal','bold'）。省略時は'normal'" },
+            "style": { "type": "string", "description": "font-style（例: 'normal','italic'）。省略時は'normal'" },
+            "format": { "type": "string", "description": "src指定時のフォント形式ヒント（例: 'woff2'）" },
+            "localName": { "type": "string", "description": "ローカルインストール済みフォント名（local()参照）" }
           }
         }
       }

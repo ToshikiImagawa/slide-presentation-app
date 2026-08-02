@@ -29,6 +29,8 @@ const VALID = JSON.stringify({ meta: { title: 'T' }, slides: [{ id: 's1', layout
 const INVALID = JSON.stringify({ meta: { title: '' }, slides: [] })
 // slides が1件だけ妥当性を欠く（INVALID より検証エラーが少ない＝より良い候補）
 const LESS_INVALID = JSON.stringify({ meta: { title: 'T' }, slides: [{ id: '', layout: 'center', content: {} }] })
+// 構造は不正（INVALID同様）だが theme.colors に不明なキーを含む（getThemeWarnings 対象）
+const INVALID_WITH_BAD_THEME = JSON.stringify({ meta: { title: '' }, slides: [], theme: { colors: { primar: '#112233' } } })
 
 const REQ = { prompt: 'AI の歴史', kind: 'builtin-vertex' as const }
 
@@ -69,6 +71,16 @@ describe('aiGenerate オーケストレータ（generateSlides）', () => {
     expect(secondCall[0]).toBe('generate_slides')
     expect(typeof secondCall[1].request.repairFeedback).toBe('string')
     expect(secondCall[1].request.repairFeedback.length).toBeGreaterThan(0)
+  })
+
+  it('theme の警告（getThemeWarnings）も repairFeedback に載せて再投入する（#162）', async () => {
+    h.invoke.mockResolvedValueOnce(INVALID_WITH_BAD_THEME).mockResolvedValueOnce(VALID)
+    const result = await generateSlides(REQ)
+    expect(result.outcome).toBe('succeeded')
+
+    const secondCall = h.invoke.mock.calls[1]
+    const repairFeedback: string = secondCall[1].request.repairFeedback
+    expect(repairFeedback).toContain('theme.colors.primar')
   })
 
   it('invoke が reject すると failed で候補を返さない（手動編集へ退避・FR-008）', async () => {

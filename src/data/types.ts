@@ -133,12 +133,22 @@ export interface ThemeData {
   customCSS?: string
 }
 
-/** カラーパレット */
+/** カラーパレット（キーは THEME_COLOR_TOKENS と一致。外部 theme-colors.json と同じ項目を指定できる） */
 export interface ColorPalette {
   primary?: string
   accent?: string
   background?: string
+  backgroundAlt?: string
+  backgroundGrid?: string
   text?: string
+  textHeading?: string
+  textBody?: string
+  textSubtitle?: string
+  textMuted?: string
+  border?: string
+  borderLight?: string
+  codeText?: string
+  success?: string
   [key: string]: string | undefined
 }
 
@@ -149,6 +159,14 @@ export interface FontSource {
   src?: string
   /** 外部フォント URL（<link> タグで読み込み） */
   url?: string
+  /** font-weight（例: '400', '700', 'normal', 'bold'）。省略時は 'normal' */
+  weight?: string
+  /** font-style（例: 'normal', 'italic'）。省略時は 'normal' */
+  style?: string
+  /** src 指定時のフォント形式ヒント（例: 'woff2', 'truetype'）。省略時は format() を付与しない */
+  format?: string
+  /** ローカルインストール済みフォント名（@font-face の local() ソースとして追加） */
+  localName?: string
 }
 
 /** フォント定義 */

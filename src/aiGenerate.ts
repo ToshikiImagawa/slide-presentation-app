@@ -2,6 +2,7 @@ import { invoke } from '@tauri-apps/api/core'
 import type { ValidationError } from './data/types'
 import { parseSlides } from './edit/slidesSerialize'
 import { getSchemaConformanceErrors } from './data/slideContentSchema'
+import { getThemeWarnings } from './applyTheme'
 
 /**
  * AI スライド生成の契約型＋invoke ラッパ＆オーケストレータ（#14）。
@@ -185,9 +186,11 @@ export async function cancelGenerate(): Promise<void> {
 /**
  * 検証エラーを次試行の `repairFeedback` に載せる要約へ整形する（自動修正の再投入・FR-005）。
  * path が空（ルート／JSON 構文エラー）は `(root)` と表示する。
+ * `theme` の警告（`getThemeWarnings`）も併記し、描画は継続するが反映されない設定も AI に修正させる。
  */
-function summarizeValidationErrors(errors: ValidationError[]): string {
-  return errors.map((e) => `- ${e.path || '(root)'}: ${e.message}（期待: ${e.expected}, 実際: ${e.actual}）`).join('\n')
+function summarizeValidationErrors(errors: ValidationError[], themeWarnings: string[]): string {
+  const lines = errors.map((e) => `- ${e.path || '(root)'}: ${e.message}（期待: ${e.expected}, 実際: ${e.actual}）`)
+  return [...lines, ...themeWarnings.map((w) => `- ${w}`)].join('\n')
 }
 
 /**
@@ -254,7 +257,7 @@ export async function generateSlides(request: GenerateRequest, onProgress?: (p: 
     // 次試行があるなら検証エラー要約を repairFeedback に載せて再投入する
     if (attempt < MAX_GENERATE_ATTEMPTS) {
       onProgress?.({ attempt, maxAttempts: MAX_GENERATE_ATTEMPTS, phase: 'repairing' })
-      repairFeedback = summarizeValidationErrors(errors)
+      repairFeedback = summarizeValidationErrors(errors, getThemeWarnings(data.theme))
     }
   }
 

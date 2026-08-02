@@ -30,7 +30,8 @@
       "pdfExportError": "PDFの書き出しに失敗しました"
     },
     "theme": {
-      "applyFailed": "テーマの適用に失敗しました"
+      "applyFailed": "テーマの適用に失敗しました",
+      "colorWarning": "一部のテーマ設定を反映できませんでした"
     },
     "settings": {
       "title": "設定",
