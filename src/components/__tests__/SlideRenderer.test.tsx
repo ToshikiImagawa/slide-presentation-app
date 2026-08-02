@@ -162,7 +162,7 @@ describe('SlideRenderer', () => {
     expect(sections.length).toBe(0)
   })
 
-  // #163: SlideFrame への section 生成統合。全レイアウトが共通の section > .master-back/.master-body/
+  // #163: SlideFrame への section 生成統合。全レイアウトが共通の section > .master-layer-back/.master-body/
   // .master-layer-front 構造を持つことを、リファクタ前後のDOM構造スナップショットで固定する
   // （スナップショットが一致すれば3層の存在・順序・class名も自動的に保証される）
   describe('SlideFrame統合後のDOM構造（属性スナップショット）', () => {

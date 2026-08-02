@@ -11,9 +11,9 @@ type Props = {
   children: ReactNode
 }
 
-/** 5レイアウト共通の section 生成を担う。装飾用の .master-layer-back / .master-layer-front は
- * 本チケットでは空のプレースホルダ（実装は別チケット）。余白は section ではなく .master-body に
- * 持たせることで、本編・発表者ビュー・編集プレビュー・PDF書き出しの4経路の見た目を一致させる */
+/** 5レイアウト共通の section 生成を担う。装飾用の .master-layer-back は本チケットでは空のプレースホルダ
+ * （実装は別チケット）。.master-layer-front はロゴ（.slide-logo-inline）を持つ。余白は section ではなく
+ * .master-body に持たせることで、本編・発表者ビュー・編集プレビュー・PDF書き出しの4経路の見た目を一致させる */
 export function SlideFrame({ id, meta, logo, bleed, children }: Props) {
   return (
     <section className="slide-container" id={id} data-transition={meta?.transition} data-background-image={meta?.backgroundImage} data-background-color={meta?.backgroundColor}>
