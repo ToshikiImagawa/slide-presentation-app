@@ -98,6 +98,13 @@ describe('usePresenterView テーマ伝搬', () => {
     expect(calls[0][1]).toEqual({ type: 'themeChanged', payload: { themeColors: 'theme/colors.json', theme: { colors: { primary: '#000000' } } } })
   })
 
+  it('マウント時に themeChanged のpayloadにロゴ（logo）を含める（#163: 発表者ビューへのロゴ伝搬）', () => {
+    renderHook(() => usePresenterView({ slides, currentIndex: 0, logo: { src: '/logo.png', width: 100, height: 32 } }), { wrapper })
+    const calls = themeChangedCalls()
+    expect(calls.length).toBeGreaterThanOrEqual(1)
+    expect((calls[0][1] as { payload: { logo?: unknown } }).payload.logo).toEqual({ src: '/logo.png', width: 100, height: 32 })
+  })
+
   it('presenterViewReady 受信時に themeChanged を slideChanged より先に emit する', async () => {
     renderHook(() => usePresenterView({ slides, currentIndex: 0, themeColors: 'theme/colors.json' }), { wrapper })
 

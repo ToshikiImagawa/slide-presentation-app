@@ -1,19 +1,20 @@
-import { ReactNode, Ref } from 'react'
-import type { SlideMeta } from '../data'
+import { ReactNode } from 'react'
+import type { LogoConfig, SlideMeta } from '../data'
+import { SlideFrame } from './SlideFrame'
 
 type Props = {
   id: string
   left: ReactNode
   right: ReactNode
   meta?: SlideMeta
-  sectionRef?: Ref<HTMLElement>
+  logo?: LogoConfig
 }
 
-export function BleedLayout({ id, left, right, meta, sectionRef }: Props) {
+export function BleedLayout({ id, left, right, meta, logo }: Props) {
   return (
-    <section ref={sectionRef} className="slide-container bleed-image-layout" id={id} data-transition={meta?.transition} data-background-image={meta?.backgroundImage} data-background-color={meta?.backgroundColor}>
+    <SlideFrame id={id} meta={meta} logo={logo} bleed>
       <div className="bleed-content">{left}</div>
       {right}
-    </section>
+    </SlideFrame>
   )
 }

@@ -90,18 +90,52 @@ body {
 }
 
 .slide-container {
-  align-items: center;
   background: transparent;
   border-radius: 0;
   box-shadow: none;
   display: flex !important;
   flex-direction: column;
   height: 100%;
+  overflow: hidden;
+  position: relative;
+  width: 100%;
+}
+
+/* 余白は section ではなく .master-body に持たせる。プレビュー系CSS（SlidePreview.module.css /
+   PresenterViewWindow.module.css）の padding:0 !important は section にしか当たらないため、
+   本編・発表者ビュー・編集プレビュー・PDF書き出しの4経路で同じ余白になる */
+.master-body {
+  align-items: center;
+  box-sizing: border-box;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
   justify-content: center;
+  min-height: 0;
   overflow: hidden;
   padding: 60px;
   position: relative;
   width: 100%;
+  z-index: 1;
+}
+
+/* 装飾レイヤー（帯・背景装飾等）用のプレースホルダ。.master-layer-back は空、.master-layer-front は
+   ロゴ（.slide-logo-inline）を含む。装飾自体の実装は別チケット。
+   .master-body（z-index:1）を挟んで背面・前面になるよう z-index を明示する
+   （ロゴはコンテンツより手前に来る必要がある） */
+.master-layer-back,
+.master-layer-front {
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+}
+
+.master-layer-back {
+  z-index: 0;
+}
+
+.master-layer-front {
+  z-index: 2;
 }
 
 .slides .slide-container::before {
@@ -131,11 +165,10 @@ body {
   pointer-events: none;
 }
 
-.slide-logo {
-  position: fixed;
+.slide-logo-inline {
+  position: absolute;
   bottom: 20px;
   left: 30px;
-  z-index: 10;
   pointer-events: none;
 }
 
@@ -164,11 +197,6 @@ body {
   /* .toolbar:hover の opacity: 1 に打ち勝つため !important が必要 */
   opacity: 0 !important;
   pointer-events: none;
-}
-
-.slide-container > * {
-  position: relative;
-  z-index: 1;
 }
 
 /* Slide entrance animation */
@@ -220,9 +248,9 @@ code {
 
 /* Timeline */
 /* Bleed Image */
-.slide-container.bleed-image-layout {
-  padding: 0 !important;
-  display: grid !important;
+.master-body.bleed-image-layout {
+  padding: 0;
+  display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: start;
 }
@@ -356,7 +384,7 @@ code {
   width: 100%;
   height: 100%;
   background: linear-gradient(to bottom, var(--theme-background) 0%, transparent 50%, var(--theme-background) 100%);
-  /* .slide-container > * が z-index:1 のため、それより低くしてコンテンツの背後に回す
+  /* .master-body が z-index:1 のため、それより低くしてコンテンツの背後に回す
      （元の .backgrounds::before は .slides より前のDOM順に置かれ、コンテンツの背後になる構造だった） */
   z-index: 0;
   pointer-events: none;

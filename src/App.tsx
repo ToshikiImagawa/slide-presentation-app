@@ -1,6 +1,5 @@
 import { AudioControlBar } from './components/AudioControlBar'
 import { AudioPlayButton } from './components/AudioPlayButton'
-import { FallbackImage } from './components/FallbackImage'
 import { EditButton } from './components/EditButton'
 import { HomeButton } from './components/HomeButton'
 import { PdfExportButton } from './components/PdfExportButton'
@@ -51,6 +50,7 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
   const { showToast } = useToast()
   const defaultData = useMemo(() => getFallbackPresentationData(locale), [locale])
   const data = loadPresentationData(presentationData, defaultData)
+  const logo = data.meta.logo
   const [currentIndex, setCurrentIndex] = useState(0)
   const [toolbarHidden, setToolbarHidden] = useState(false)
   const [pdfExportState, setPdfExportState] = useState<PdfExportState>('idle')
@@ -101,6 +101,7 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
     addonScripts,
     themeColors: data.meta?.themeColors,
     theme: data.theme,
+    logo,
     onNavigate: handleNavigate,
     onAudioToggle: handleAudioToggle,
     onAutoPlayToggle: handleAutoPlayToggle,
@@ -230,21 +231,15 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [handleToggleToolbar])
 
-  const logo = data.meta.logo
   const toolbarHiddenClass = toolbarHidden ? ' toolbar-hidden' : ''
 
   return (
     <>
       <div className="reveal" ref={deckRef}>
         <div className="slides">
-          <SlideRenderer slides={data.slides} />
+          <SlideRenderer slides={data.slides} logo={logo} />
         </div>
       </div>
-      {logo && (
-        <div className="slide-logo">
-          <FallbackImage src={logo.src} width={logo.width ?? 120} height={logo.height ?? 40} alt="Logo" />
-        </div>
-      )}
       <div className={`toolbar toolbar-left${toolbarHiddenClass}`}>
         <HomeButton onClick={onGoHome} />
         {onStartEdit && <EditButton onClick={onStartEdit} />}

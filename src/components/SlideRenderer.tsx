@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
-import type { SlideData } from '../data'
+import type { LogoConfig, SlideData } from '../data'
 import { resolveComponent } from './ComponentRegistry'
-import { BleedLayout, ContentLayout, SectionLayout, TitleLayout } from '../layouts'
+import { BleedLayout, ContentLayout, SectionLayout, SlideFrame, TitleLayout } from '../layouts'
 import { SlideHeading } from './SlideHeading'
 import { SubtitleText } from './SubtitleText'
 import { BulletList } from './BulletList'
@@ -21,6 +21,7 @@ import { GitHubLink } from './GitHubLink'
 
 type SlideRendererProps = {
   slides: SlideData[]
+  logo?: LogoConfig
 }
 
 /** HTMLタグを含む文字列をReactNodeに変換する */
@@ -60,13 +61,13 @@ function renderIcon(iconName: string): ReactNode {
 }
 
 /** centerスライドをレンダリング（variant: "section" でSectionLayout） */
-function renderCenterSlide(slide: SlideData): ReactNode {
+function renderCenterSlide(slide: SlideData, logo?: LogoConfig): ReactNode {
   const { content } = slide
   const variant = content.variant as string | undefined
 
   if (variant === 'section') {
     return (
-      <SectionLayout id={slide.id} meta={slide.meta}>
+      <SectionLayout id={slide.id} meta={slide.meta} logo={logo}>
         <UnderlinedHeading sx={{ mb: '30px' }}>{content.title}</UnderlinedHeading>
         {content.body && (
           <Typography variant="body1" sx={{ fontSize: '24px', maxWidth: '800px', mb: '40px' }}>
@@ -80,7 +81,7 @@ function renderCenterSlide(slide: SlideData): ReactNode {
   }
 
   return (
-    <TitleLayout id={slide.id} meta={slide.meta}>
+    <TitleLayout id={slide.id} meta={slide.meta} logo={logo}>
       <SlideHeading title={content.title ?? ''} variant="h1" sx={{ color: 'var(--theme-text-heading)' }} />
       {content.subtitle && <SubtitleText>{renderWithLineBreaks(content.subtitle)}</SubtitleText>}
     </TitleLayout>
@@ -88,13 +89,13 @@ function renderCenterSlide(slide: SlideData): ReactNode {
 }
 
 /** 2カラムスライドをレンダリング */
-function renderTwoColumnSlide(slide: SlideData): ReactNode {
+function renderTwoColumnSlide(slide: SlideData, logo?: LogoConfig): ReactNode {
   const { content } = slide
   const leftData = content.left as Record<string, unknown> | undefined
   const rightData = content.right as Record<string, unknown> | undefined
 
   return (
-    <ContentLayout id={slide.id} title={content.title ?? ''} meta={slide.meta}>
+    <ContentLayout id={slide.id} title={content.title ?? ''} meta={slide.meta} logo={logo}>
       <TwoColumnGrid left={renderColumnContent(leftData)} right={renderColumnContent(rightData)} />
     </ContentLayout>
   )
@@ -240,17 +241,17 @@ function renderContentChildren(content: SlideData['content']): ReactNode {
 }
 
 /** contentスライドをレンダリング */
-function renderContentSlide(slide: SlideData): ReactNode {
+function renderContentSlide(slide: SlideData, logo?: LogoConfig): ReactNode {
   const { content } = slide
   return (
-    <ContentLayout id={slide.id} title={content.title ?? ''} meta={slide.meta}>
+    <ContentLayout id={slide.id} title={content.title ?? ''} meta={slide.meta} logo={logo}>
       {renderContentChildren(content)}
     </ContentLayout>
   )
 }
 
 /** bleedスライドをレンダリング */
-function renderBleedSlide(slide: SlideData): ReactNode {
+function renderBleedSlide(slide: SlideData, logo?: LogoConfig): ReactNode {
   const { content } = slide
   const commands = content.commands as Array<{ text: string; color: string }>
 
@@ -264,47 +265,47 @@ function renderBleedSlide(slide: SlideData): ReactNode {
   const terminalRef = content.component as { name: string; props?: Record<string, unknown>; style?: Record<string, string | number> } | undefined
   const rightContent = terminalRef ? renderComponent(terminalRef) : null
 
-  return <BleedLayout id={slide.id} meta={slide.meta} left={leftContent} right={rightContent} />
+  return <BleedLayout id={slide.id} meta={slide.meta} logo={logo} left={leftContent} right={rightContent} />
 }
 
 /** 単一スライドをレイアウト種別に応じてレンダリング */
-function renderSlide(slide: SlideData): ReactNode {
+function renderSlide(slide: SlideData, logo?: LogoConfig): ReactNode {
   switch (slide.layout) {
     case 'center':
-      return renderCenterSlide(slide)
+      return renderCenterSlide(slide, logo)
     case 'two-column':
-      return renderTwoColumnSlide(slide)
+      return renderTwoColumnSlide(slide, logo)
     case 'content':
-      return renderContentSlide(slide)
+      return renderContentSlide(slide, logo)
     case 'bleed':
-      return renderBleedSlide(slide)
+      return renderBleedSlide(slide, logo)
     case 'custom': {
       const ref = slide.content.component
       if (ref)
         return (
-          <section className="slide-container" id={slide.id} data-transition={slide.meta?.transition} data-background-image={slide.meta?.backgroundImage} data-background-color={slide.meta?.backgroundColor}>
+          <SlideFrame id={slide.id} meta={slide.meta} logo={logo}>
             {renderComponent(ref)}
-          </section>
+          </SlideFrame>
         )
       return null
     }
     default:
-      return renderCenterSlide(slide)
+      return renderCenterSlide(slide, logo)
   }
 }
 
 /** スライドデータ配列からReact要素を生成するレンダラー */
-export function SlideRenderer({ slides }: SlideRendererProps) {
+export function SlideRenderer({ slides, logo }: SlideRendererProps) {
   return (
     <>
       {slides.map((slide) => (
-        <SlideRenderer.Slide key={slide.id} slide={slide} />
+        <SlideRenderer.Slide key={slide.id} slide={slide} logo={logo} />
       ))}
     </>
   )
 }
 
 /** 個別スライドコンポーネント */
-SlideRenderer.Slide = function SlideRendererSlide({ slide }: { slide: SlideData }) {
-  return <>{renderSlide(slide)}</>
+SlideRenderer.Slide = function SlideRendererSlide({ slide, logo }: { slide: SlideData; logo?: LogoConfig }) {
+  return <>{renderSlide(slide, logo)}</>
 }
