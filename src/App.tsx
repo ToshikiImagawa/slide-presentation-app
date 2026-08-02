@@ -50,6 +50,7 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
   const { showToast } = useToast()
   const defaultData = useMemo(() => getFallbackPresentationData(locale), [locale])
   const data = loadPresentationData(presentationData, defaultData)
+  const logo = data.meta.logo
   const [currentIndex, setCurrentIndex] = useState(0)
   const [toolbarHidden, setToolbarHidden] = useState(false)
   const [pdfExportState, setPdfExportState] = useState<PdfExportState>('idle')
@@ -100,7 +101,7 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
     addonScripts,
     themeColors: data.meta?.themeColors,
     theme: data.theme,
-    logo: data.meta.logo,
+    logo,
     onNavigate: handleNavigate,
     onAudioToggle: handleAudioToggle,
     onAutoPlayToggle: handleAutoPlayToggle,
@@ -236,7 +237,7 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
     <>
       <div className="reveal" ref={deckRef}>
         <div className="slides">
-          <SlideRenderer slides={data.slides} logo={data.meta.logo} />
+          <SlideRenderer slides={data.slides} logo={logo} />
         </div>
       </div>
       <div className={`toolbar toolbar-left${toolbarHiddenClass}`}>

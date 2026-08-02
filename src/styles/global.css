@@ -121,12 +121,9 @@ body {
    （ロゴは .master-layer-front 内に描画されるため、コンテンツより手前に来る必要がある） */
 .master-layer-back,
 .master-layer-front {
-  bottom: 0;
-  left: 0;
+  inset: 0;
   pointer-events: none;
   position: absolute;
-  right: 0;
-  top: 0;
 }
 
 .master-layer-back {
