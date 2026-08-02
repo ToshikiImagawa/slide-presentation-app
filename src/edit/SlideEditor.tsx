@@ -576,7 +576,7 @@ export function SlideEditor({
                     {currentSlide ? (
                       // プレビューだけはプレゼン用テーマ（スライド本来のフォントサイズ）で描画する。編集 chrome は editorUiTheme のまま
                       <ThemeProvider theme={theme}>
-                        <SlidePreview slide={currentSlide} logo={previewData.meta?.logo} />
+                        <SlidePreview slide={currentSlide} logo={previewData.meta?.logo} theme={previewData.theme} index={clampedIndex} total={slides.length} />
                       </ThemeProvider>
                     ) : (
                       <Box sx={{ p: 2, color: 'var(--fixed-text-muted)' }}>{t('edit.noSlides', 'スライドがありません')}</Box>

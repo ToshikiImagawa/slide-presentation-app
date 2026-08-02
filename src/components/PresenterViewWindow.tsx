@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { SlideData, PresenterControlState, PresenterProgressState, LogoConfig } from '../data'
+import type { SlideData, PresenterControlState, PresenterProgressState, LogoConfig, ThemeData } from '../data'
 import { getSpeakerNotes, getSlideSummary } from '../data'
 import { useTranslation } from '../i18n'
 import { FillProgress } from './FillProgress'
@@ -64,6 +64,7 @@ type PresenterViewWindowProps = {
   slides: SlideData[]
   currentIndex: number
   logo?: LogoConfig
+  theme?: ThemeData
   controlState: PresenterControlState | null
   progressState?: PresenterProgressState
   onNavigate: (direction: 'prev' | 'next') => void
@@ -73,7 +74,7 @@ type PresenterViewWindowProps = {
   onScrollSpeedChange?: (speed: number) => void
 }
 
-export function PresenterViewWindow({ slides, currentIndex, logo, controlState, progressState, onNavigate, onAudioToggle, onAutoPlayToggle, onAutoSlideshowToggle }: PresenterViewWindowProps) {
+export function PresenterViewWindow({ slides, currentIndex, logo, theme, controlState, progressState, onNavigate, onAudioToggle, onAutoPlayToggle, onAutoSlideshowToggle }: PresenterViewWindowProps) {
   const { t } = useTranslation()
   const currentSlide = slides[currentIndex]
   const previousSlide = currentIndex > 0 ? slides[currentIndex - 1] : null
@@ -185,7 +186,7 @@ export function PresenterViewWindow({ slides, currentIndex, logo, controlState, 
           <div className={styles.previewPanel}>
             <h2>{t('presenterView.nextSlide')}</h2>
             <div className={styles.previewFrame} style={{ height: previewHeight > 0 ? previewHeight : undefined, aspectRatio: '16 / 9' }}>
-              {nextSlide ? <PreviewSlide slide={nextSlide} logo={logo} /> : <div className={styles.boundaryMessage}>{t('presenterView.lastSlide')}</div>}
+              {nextSlide ? <PreviewSlide slide={nextSlide} logo={logo} theme={theme} index={currentIndex + 1} total={slides.length} /> : <div className={styles.boundaryMessage}>{t('presenterView.lastSlide')}</div>}
             </div>
           </div>
 
@@ -193,7 +194,7 @@ export function PresenterViewWindow({ slides, currentIndex, logo, controlState, 
           <div className={styles.previewPanel}>
             <h2>{t('presenterView.previousSlide')}</h2>
             <div className={styles.previewFrame} style={{ height: previewHeight > 0 ? previewHeight : undefined, aspectRatio: '16 / 9' }}>
-              {previousSlide ? <PreviewSlide slide={previousSlide} logo={logo} /> : <div className={styles.boundaryMessage}>{t('presenterView.firstSlide')}</div>}
+              {previousSlide ? <PreviewSlide slide={previousSlide} logo={logo} theme={theme} index={currentIndex - 1} total={slides.length} /> : <div className={styles.boundaryMessage}>{t('presenterView.firstSlide')}</div>}
             </div>
           </div>
         </div>
@@ -217,7 +218,7 @@ export function PresenterViewWindow({ slides, currentIndex, logo, controlState, 
 }
 
 /** スライドの縮小プレビュー */
-function PreviewSlide({ slide, logo }: { slide: SlideData; logo?: LogoConfig }) {
+function PreviewSlide({ slide, logo, theme, index, total }: { slide: SlideData; logo?: LogoConfig; theme?: ThemeData; index: number; total: number }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [scale, setScale] = useState(0.3)
 
@@ -244,7 +245,7 @@ function PreviewSlide({ slide, logo }: { slide: SlideData; logo?: LogoConfig }) 
     <div ref={containerRef} className={styles.previewScaler} style={{ transform: `scale(${scale})` }}>
       <div className={`reveal ${styles.previewReveal}`}>
         <div className="slides">
-          <SlideRenderer.Slide slide={slide} logo={logo} />
+          <SlideRenderer.Slide slide={slide} logo={logo} theme={theme} index={index} total={total} />
         </div>
       </div>
     </div>

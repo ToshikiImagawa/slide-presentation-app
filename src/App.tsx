@@ -237,7 +237,7 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
     <>
       <div className="reveal" ref={deckRef}>
         <div className="slides">
-          <SlideRenderer slides={data.slides} logo={logo} />
+          <SlideRenderer slides={data.slides} logo={logo} theme={data.theme} />
         </div>
       </div>
       <div className={`toolbar toolbar-left${toolbarHiddenClass}`}>

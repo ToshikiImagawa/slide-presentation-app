@@ -164,6 +164,47 @@
         }
       }
     },
-    "customCSS": { "type": "string" }
+    "customCSS": { "type": "string" },
+    "masters": {
+      "type": "object",
+      "description": "masterKey → マスター定義。帯・ロゴ・フッター・ページ番号等の装飾セットを宣言する（キーは任意の文字列）",
+      "itemFields": {
+        "extends": { "type": "string", "description": "継承元のmasterKey。循環参照は不可" },
+        "decorations": {
+          "type": "array",
+          "description": "logo/band/rule/text/image/component の6種のみ許可（DSL膨張の歯止め）",
+          "itemFields": {
+            "type": { "type": "string", "enum": ["logo", "band", "rule", "text", "image", "component"] },
+            "anchor": {
+              "type": "string",
+              "enum": ["top-left", "top-center", "top-right", "middle-left", "middle-center", "middle-right", "bottom-left", "bottom-center", "bottom-right"],
+              "description": "9方向のアンカー位置"
+            },
+            "offset": { "type": "object", "description": "{ x, y } でアンカーからのpxオフセット" },
+            "only": { "type": "string", "enum": ["first", "last", "not-first", "all"], "description": "省略時は all" },
+            "layer": { "type": "string", "enum": ["back", "front"], "description": "省略時は back" },
+            "src": { "type": "string", "description": "type: logo/image で使用する画像パス" },
+            "width": { "type": "number", "description": "type: logo/image で使用" },
+            "height": { "type": "number", "description": "type: logo/image で使用" },
+            "color": { "type": "string", "description": "type: band/rule/text で使用" },
+            "thickness": { "type": "number", "description": "type: band/rule で使用（帯・線の太さ）" },
+            "length": { "type": "number", "description": "type: rule で使用（線の長さ）" },
+            "orientation": { "type": "string", "enum": ["horizontal", "vertical"], "description": "type: band/rule で使用" },
+            "content": { "type": "string", "description": "type: text で使用。{index}/{total}でページ番号を展開" },
+            "fontSize": { "type": "number", "description": "type: text で使用" },
+            "name": { "type": "string", "description": "type: component で使用。ComponentRegistryに登録済みのコンポーネント名" },
+            "props": { "type": "object", "description": "type: component で使用" }
+          }
+        }
+      }
+    },
+    "masterMap": {
+      "type": "object",
+      "description": "レイアウト種別（center/content/two-column/bleed/custom）→ masterKey の対応表。未指定のレイアウトには装飾を描画しない"
+    },
+    "tokens": {
+      "type": "object",
+      "description": "masterKey → { CSS変数名: 値 } 。section[data-master=\"masterKey\"] スコープのCSS変数として出力される"
+    }
   }
 }

@@ -14,7 +14,7 @@ import { unregisterOwner } from './components/ComponentRegistry'
 import { PresenterViewWindow } from './components/PresenterViewWindow'
 import { I18nProvider, loadLocales, useTranslation } from './i18n'
 import { theme } from './theme'
-import type { SlideData, PresenterViewMessage, PresenterControlState, PresenterProgressState, LogoConfig } from './data'
+import type { SlideData, PresenterViewMessage, PresenterControlState, PresenterProgressState, LogoConfig, ThemeData } from './data'
 
 const EVENT_NAME = 'presenter-view'
 
@@ -27,6 +27,7 @@ function PresenterViewApp() {
   const [controlState, setControlState] = useState<PresenterControlState | null>(null)
   const [progressState, setProgressState] = useState<PresenterProgressState>({ progress: 0, visible: false })
   const [logo, setLogo] = useState<LogoConfig | undefined>(undefined)
+  const [slideTheme, setSlideTheme] = useState<ThemeData | undefined>(undefined)
 
   // 現在登録済みのパッケージアドオンの owner（切替時のアンロード対象）
   const currentOwnerRef = useRef<string | undefined>(undefined)
@@ -43,6 +44,7 @@ function PresenterViewApp() {
         // 本編とテーマの上書きが食い違わないよう、本編と同じ手順（reset→適用）で再適用する
         await applyPresentationTheme(themeColors, themeData)
         setLogo(logo)
+        setSlideTheme(themeData)
       } else if (event.payload.type === 'addonsChanged') {
         const { owner, scripts } = event.payload.payload
         // 旧 owner を破棄してから新アドオンをロードする（slideChanged 側がこの完了を待つ）
@@ -131,6 +133,7 @@ function PresenterViewApp() {
         slides={slides}
         currentIndex={currentIndex}
         logo={logo}
+        theme={slideTheme}
         controlState={controlState}
         progressState={progressState}
         onNavigate={handleNavigate}

@@ -248,7 +248,28 @@
         { "family": "Fira Code", "url": "https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&display=swap" }
       ]
     },
-    "customCSS": ".reveal h1 { text-shadow: none; }"
+    "customCSS": ".reveal h1 { text-shadow: none; }",
+    "masters": {
+      "standard": {
+        "decorations": [
+          { "type": "band", "anchor": "top-center", "thickness": 6, "color": "var(--theme-primary)" },
+          { "type": "text", "anchor": "bottom-right", "content": "{index} / {total}", "only": "not-first" }
+        ]
+      }
+    },
+    "masterMap": {
+      "content": "standard",
+      "two-column": "standard"
+    },
+    "tokens": {
+      "standard": { "band-color": "#6c63ff" }
+    }
   }
 }
 ```
+
+`masters` は masterKey → 装飾セット（`decorations`）の定義。装飾は `logo`/`band`/`rule`/`text`/`image`/`component` の6種のみで、`anchor`（9方向）・`offset`（`{x,y}`のpx）・`only`（`first`/`last`/`not-first`/`all`。省略時 `all`）・`layer`（`back`/`front`。省略時 `back`）を組み合わせて宣言する。`text` の `content` は `{index}`/`{total}` でページ番号を展開できる。`extends` で他の masterKey の decorations を継承できる（循環参照は不可）。
+
+`masterMap` はレイアウト種別（`center`/`content`/`two-column`/`bleed`/`custom`）→ masterKey の対応表。未指定のレイアウトには装飾を描画しない（masters/masterMap を省略したデッキは現行と完全同一のDOMになる）。
+
+`tokens` は masterKey → CSS変数辞書。`section[data-master="masterKey"]` スコープの CSS 変数として出力される。

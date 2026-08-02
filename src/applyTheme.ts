@@ -1,4 +1,5 @@
 import type { FontSource, ThemeData } from './data'
+import { buildMasterCss, getMasterWarnings } from './masters'
 
 function hexToRgb(hex: string): string {
   const r = parseInt(hex.slice(1, 3), 16)
@@ -207,6 +208,18 @@ export function applyThemeData(themeData: ThemeData): void {
     }
     styleEl.textContent = themeData.customCSS
   }
+
+  const masterCss = buildMasterCss(themeData.tokens)
+  if (masterCss) {
+    const styleId = 'sdd-master-tokens-css'
+    let styleEl = document.getElementById(styleId) as HTMLStyleElement | null
+    if (!styleEl) {
+      styleEl = document.createElement('style')
+      styleEl.id = styleId
+      document.head.appendChild(styleEl)
+    }
+    styleEl.textContent = masterCss
+  }
 }
 
 /**
@@ -233,6 +246,8 @@ export function getThemeWarnings(theme?: ThemeData): string[] {
     }
   }
 
+  warnings.push(...getMasterWarnings(theme))
+
   return warnings
 }
 
@@ -253,6 +268,7 @@ export function resetThemeOverrides(): void {
     root.style.removeProperty(cssVar)
   }
   document.getElementById('sdd-custom-theme-css')?.remove()
+  document.getElementById('sdd-master-tokens-css')?.remove()
   document.querySelectorAll('style[id^="sdd-font-face-"]').forEach((el) => el.remove())
   document.querySelectorAll('link[data-sdd-dynamic-font="true"]').forEach((el) => el.remove())
 }
