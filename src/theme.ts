@@ -16,6 +16,7 @@ export const theme = createTheme({
   typography: {
     fontFamily: 'var(--theme-font-body)',
     h1: {
+      fontFamily: 'var(--theme-font-heading)',
       fontSize: 'var(--theme-font-size-h1)',
       fontWeight: 700,
       lineHeight: 1.2,
@@ -23,18 +24,21 @@ export const theme = createTheme({
       color: 'var(--theme-text-heading)',
     },
     h2: {
+      fontFamily: 'var(--theme-font-heading)',
       fontSize: 'var(--theme-font-size-h2)',
       fontWeight: 700,
       lineHeight: 1.2,
       color: 'var(--theme-text-heading)',
     },
     h3: {
+      fontFamily: 'var(--theme-font-heading)',
       fontSize: 'var(--theme-font-size-h3)',
       fontWeight: 700,
       lineHeight: 1.2,
       color: 'var(--theme-text-heading)',
     },
     h4: {
+      fontFamily: 'var(--theme-font-heading)',
       fontSize: 'var(--theme-font-size-h4)',
       fontWeight: 700,
       lineHeight: 1.2,

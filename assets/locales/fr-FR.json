@@ -30,7 +30,8 @@
       "pdfExportError": "Échec de l'export PDF"
     },
     "theme": {
-      "applyFailed": "Échec de l'application du thème"
+      "applyFailed": "Échec de l'application du thème",
+      "colorWarning": "Certains paramètres du thème n'ont pas pu être appliqués"
     },
     "settings": {
       "title": "Paramètres",

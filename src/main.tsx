@@ -9,7 +9,7 @@ import { HomeScreen } from './components/HomeScreen'
 import { SettingsWindow } from './components/SettingsWindow'
 import { ShortcutsDialog } from './components/ShortcutsDialog'
 import { UpdateDialog } from './components/UpdateDialog'
-import { applyPresentationTheme, applyTheme, resetThemeOverrides } from './applyTheme'
+import { applyPresentationTheme, applyTheme, getThemeWarnings, resetThemeOverrides } from './applyTheme'
 import { loadAddonScripts, loadBuiltinAddons } from './addonLoader'
 import { unregisterOwner } from './components/ComponentRegistry'
 import { getBlankPresentationData, getSampleUnavailablePresentationData } from './data'
@@ -104,6 +104,8 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
       const themeApplied = await applyPresentationTheme(themeColors, theme)
       if (!themeApplied) {
         showToast(t('theme.applyFailed'))
+      } else if (getThemeWarnings(theme).length > 0) {
+        showToast(t('theme.colorWarning'))
       }
     },
     [showToast, t],

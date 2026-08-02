@@ -431,6 +431,7 @@ Add a `theme` field to `slides.json`.
   "theme": {
     "colors": {
       "primary": "#6c63ff",
+      "accent": "#ff6584",
       "background": "#0a0a1a",
       "text": "#e0e0e0"
     },
@@ -455,6 +456,11 @@ Add a `theme` field to `slides.json`.
   "slides": []
 }
 ```
+
+`theme.colors` accepts the same 12 keys as `theme-colors.json` below (`background`, `backgroundAlt`, `backgroundGrid`,
+`textHeading`, `textBody`, `textSubtitle`, `textMuted`, `border`, `borderLight`, `codeText`, `success`) plus `primary`
+and `accent`. `primary` and `accent` are applied independently (`--theme-primary` / `--theme-accent`), so both colors
+can be used in the same slide.
 
 #### Font Configuration Details
 
@@ -488,11 +494,15 @@ Load local or external fonts using `sources`.
 }
 ```
 
-| Field    | Type   | Description                                                        |
-|----------|--------|--------------------------------------------------------------------|
-| `family` | string | Font name                                                          |
-| `src`    | string | Path to local font file (registered via `@font-face`)              |
-| `url`    | string | External font URL (loaded via `<link>` tag, supports Google Fonts) |
+| Field       | Type   | Description                                                          |
+|-------------|--------|------------------------------------------------------------------------|
+| `family`    | string | Font name                                                              |
+| `src`       | string | Path to local font file (registered via `@font-face`)                  |
+| `url`       | string | External font URL (loaded via `<link>` tag, supports Google Fonts)     |
+| `weight`    | string | `font-weight` (e.g. `'400'`, `'700'`, `'bold'`). Defaults to `'normal'` |
+| `style`     | string | `font-style` (e.g. `'normal'`, `'italic'`). Defaults to `'normal'`     |
+| `format`    | string | Font format hint for `src` (e.g. `'woff2'`)                            |
+| `localName` | string | Locally installed font name (referenced via `local()`)                 |
 
 ### Method 2: Override colors only with theme-colors.json
 

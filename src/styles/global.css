@@ -2,6 +2,8 @@
 :root {
   --theme-primary: #2dd4bf;
   --theme-primary-rgb: 45, 212, 191;
+  --theme-accent: #2dd4bf;
+  --theme-accent-rgb: 45, 212, 191;
   --theme-background: #181a20;
   --theme-background-rgb: 24, 26, 32;
   --theme-background-alt: #23262e;
