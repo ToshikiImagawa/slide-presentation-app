@@ -241,5 +241,15 @@ describe('SlideRenderer', () => {
       expect(sections[0].querySelector('.master-layer-front')?.textContent).toBe('')
       expect(sections[1].querySelector('.master-layer-front')?.textContent).toBe(`2 / ${contentSlides.length}`)
     })
+
+    it('band装飾はcenter系anchor（top-center）でも9方向センタリングtransformの影響を受けず画面外にずれない', () => {
+      const contentSlide = testSlides.find((s) => s.layout === 'content')!
+      const { container } = renderWithTheme(<SlideRenderer slides={[contentSlide]} theme={masterTheme} />)
+      const band = container.querySelector('.master-layer-back > div') as HTMLElement
+      // band(horizontal)は left:0/right:0 で全幅に広がるため、横方向のセンタリングtransform(-50%)が
+      // 残っていると自身の幅の半分だけ左にずれて画面外に出てしまう
+      expect(band.style.left).toBe('0px')
+      expect(band.style.transform).not.toContain('-50%')
+    })
   })
 })

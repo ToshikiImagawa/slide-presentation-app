@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react'
 import { FallbackImage } from '../components/FallbackImage'
-import { resolveComponent } from '../components/ComponentRegistry'
+import { renderRegisteredComponent } from '../components/ComponentRegistry'
 import type { MasterAnchor, MasterDecoration, MasterDecorationLayer, MasterDecorationOnly, MasterRenderContext } from '../data'
 
 type Props = {
@@ -34,8 +34,12 @@ function matchesOnly(only: MasterDecorationOnly | undefined, ctx: MasterRenderCo
   }
 }
 
-/** anchor（9方向）+ offset から position: absolute 用のスタイルを組み立てる */
-function anchorStyle(anchor: MasterAnchor, offset?: { x?: number; y?: number }): CSSProperties {
+/**
+ * anchor（9方向）+ offset から position: absolute 用のスタイルを組み立てる。
+ * stretchAxis を指定した軸は、band が辺いっぱいに広がる際に center 系アンカー（transform: translate(-50%,...)）と
+ * 衝突して画面外にずれるのを防ぐため、その軸のセンタリング transform を無効化する。
+ */
+function anchorStyle(anchor: MasterAnchor, offset?: { x?: number; y?: number }, stretchAxis?: 'horizontal' | 'vertical'): CSSProperties {
   const [vertical, horizontal] = anchor.split('-') as ['top' | 'middle' | 'bottom', 'left' | 'center' | 'right']
 
   const style: CSSProperties = { position: 'absolute' }
@@ -47,13 +51,22 @@ function anchorStyle(anchor: MasterAnchor, offset?: { x?: number; y?: number }):
   else if (horizontal === 'right') style.right = 0
   else style.left = '50%'
 
-  const translateX = horizontal === 'center' ? -50 : 0
-  const translateY = vertical === 'middle' ? -50 : 0
+  const translateX = horizontal === 'center' && stretchAxis !== 'horizontal' ? -50 : 0
+  const translateY = vertical === 'middle' && stretchAxis !== 'vertical' ? -50 : 0
   const offsetX = offset?.x ?? 0
   const offsetY = offset?.y ?? 0
   style.transform = `translate(${translateX}%, ${translateY}%) translate(${offsetX}px, ${offsetY}px)`
 
   return style
+}
+
+/** band（length未指定=辺いっぱいに広がる）/ rule（length指定=区切り線）共通のサイズ組み立て */
+function stripeSize(orientation: 'horizontal' | 'vertical' | undefined, thickness: number, length?: number): CSSProperties {
+  const vertical = orientation === 'vertical'
+  if (length === undefined) {
+    return vertical ? { width: thickness, top: 0, bottom: 0, height: 'auto' } : { height: thickness, left: 0, right: 0, width: 'auto' }
+  }
+  return vertical ? { width: thickness, height: length } : { width: length, height: thickness }
 }
 
 /** content 内の {index}/{total} をページ番号として展開する */
@@ -62,46 +75,37 @@ function renderTextContent(content: string, ctx: MasterRenderContext): string {
 }
 
 function MasterDecorationElement({ decoration, ctx }: { decoration: MasterDecoration; ctx: MasterRenderContext }) {
-  const style = anchorStyle(decoration.anchor, decoration.offset)
-
   switch (decoration.type) {
     case 'logo':
       return (
-        <div style={style}>
+        <div style={anchorStyle(decoration.anchor, decoration.offset)}>
           <FallbackImage src={decoration.src} width={decoration.width ?? 120} height={decoration.height ?? 40} alt="Logo" />
         </div>
       )
 
     case 'image':
       return (
-        <div style={style}>
+        <div style={anchorStyle(decoration.anchor, decoration.offset)}>
           <FallbackImage src={decoration.src} width={decoration.width ?? 120} height={decoration.height ?? 120} alt="" />
         </div>
       )
 
     case 'band': {
-      const thickness = decoration.thickness ?? 8
-      const sizeStyle: CSSProperties = decoration.orientation === 'vertical' ? { width: thickness, top: 0, bottom: 0, height: 'auto' } : { height: thickness, left: 0, right: 0, width: 'auto' }
+      const style = anchorStyle(decoration.anchor, decoration.offset, decoration.orientation ?? 'horizontal')
+      const sizeStyle = stripeSize(decoration.orientation, decoration.thickness ?? 8)
       return <div style={{ ...style, ...sizeStyle, backgroundColor: decoration.color ?? 'var(--theme-primary)' }} />
     }
 
     case 'rule': {
-      const thickness = decoration.thickness ?? 2
-      const length = decoration.length ?? 200
-      const sizeStyle: CSSProperties = decoration.orientation === 'vertical' ? { width: thickness, height: length } : { width: length, height: thickness }
+      const style = anchorStyle(decoration.anchor, decoration.offset)
+      const sizeStyle = stripeSize(decoration.orientation, decoration.thickness ?? 2, decoration.length ?? 200)
       return <div style={{ ...style, ...sizeStyle, backgroundColor: decoration.color ?? 'var(--theme-primary)' }} />
     }
 
     case 'text':
-      return <div style={{ ...style, color: decoration.color ?? 'var(--theme-text-body)', fontSize: decoration.fontSize, whiteSpace: 'nowrap' }}>{renderTextContent(decoration.content, ctx)}</div>
+      return <div style={{ ...anchorStyle(decoration.anchor, decoration.offset), color: decoration.color ?? 'var(--theme-text-body)', fontSize: decoration.fontSize, whiteSpace: 'nowrap' }}>{renderTextContent(decoration.content, ctx)}</div>
 
-    case 'component': {
-      const Component = resolveComponent(decoration.name)
-      return (
-        <div style={style}>
-          <Component {...(decoration.props ?? {})} name={decoration.name} />
-        </div>
-      )
-    }
+    case 'component':
+      return <div style={anchorStyle(decoration.anchor, decoration.offset)}>{renderRegisteredComponent(decoration.name, decoration.props)}</div>
   }
 }

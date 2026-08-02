@@ -166,6 +166,17 @@ const themeFontToCssVar: Record<string, string> = {
   code: '--theme-font-code',
 }
 
+/** id の <style> 要素を作成（未存在時）または更新する（customCSS・master tokens CSS の注入で共通利用） */
+function upsertStyleElement(id: string, css: string): void {
+  let styleEl = document.getElementById(id) as HTMLStyleElement | null
+  if (!styleEl) {
+    styleEl = document.createElement('style')
+    styleEl.id = id
+    document.head.appendChild(styleEl)
+  }
+  styleEl.textContent = css
+}
+
 /** ThemeDataからCSS変数を適用する */
 export function applyThemeData(themeData: ThemeData): void {
   const root = document.documentElement
@@ -199,26 +210,12 @@ export function applyThemeData(themeData: ThemeData): void {
   }
 
   if (themeData.customCSS) {
-    const styleId = 'sdd-custom-theme-css'
-    let styleEl = document.getElementById(styleId) as HTMLStyleElement | null
-    if (!styleEl) {
-      styleEl = document.createElement('style')
-      styleEl.id = styleId
-      document.head.appendChild(styleEl)
-    }
-    styleEl.textContent = themeData.customCSS
+    upsertStyleElement('sdd-custom-theme-css', themeData.customCSS)
   }
 
   const masterCss = buildMasterCss(themeData.tokens)
   if (masterCss) {
-    const styleId = 'sdd-master-tokens-css'
-    let styleEl = document.getElementById(styleId) as HTMLStyleElement | null
-    if (!styleEl) {
-      styleEl = document.createElement('style')
-      styleEl.id = styleId
-      document.head.appendChild(styleEl)
-    }
-    styleEl.textContent = masterCss
+    upsertStyleElement('sdd-master-tokens-css', masterCss)
   }
 }
 

@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import type { LogoConfig, MasterRenderContext, SlideData, ThemeData } from '../data'
-import { resolveComponent } from './ComponentRegistry'
+import { renderRegisteredComponent, resolveComponent } from './ComponentRegistry'
 import { BleedLayout, ContentLayout, SectionLayout, SlideFrame, TitleLayout } from '../layouts'
 import { SlideHeading } from './SlideHeading'
 import { SubtitleText } from './SubtitleText'
@@ -47,8 +47,7 @@ function renderWithLineBreaks(text: string): ReactNode {
 
 /** カスタムコンポーネントを解決しレンダリングする */
 function renderComponent(ref: { name: string; props?: Record<string, unknown>; style?: Record<string, string | number> }): ReactNode {
-  const Component = resolveComponent(ref.name)
-  const element = <Component {...(ref.props ?? {})} name={ref.name} />
+  const element = renderRegisteredComponent(ref.name, ref.props)
   if (ref.style) {
     return <div style={ref.style}>{element}</div>
   }

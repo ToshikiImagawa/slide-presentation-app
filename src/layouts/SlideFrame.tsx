@@ -4,7 +4,9 @@ import type { LogoConfig, MasterRenderContext, SlideMeta, ThemeData } from '../d
 import { resolveMaster } from '../masters'
 import { SlideMasterLayer } from './SlideMasterLayer'
 
-type Props = {
+/** 4つのレイアウトラッパー（TitleLayout等）と SlideFrame が共通で受け取るprops。SlideFrame にpropsを
+ * 追加する際はここに1箇所加えるだけでよい（各レイアウトファイルの型定義を個別に追随させない） */
+export type SlideFrameCommonProps = {
   id: string
   /** SlideData.layout の値。masterMap 解決に使う */
   layout: string
@@ -12,6 +14,9 @@ type Props = {
   logo?: LogoConfig
   theme?: ThemeData
   ctx: MasterRenderContext
+}
+
+type Props = SlideFrameCommonProps & {
   /** .master-body を余白なしの2カラムgridにする（未指定なら通常のflex中央寄せ） */
   bleed?: boolean
   children: ReactNode
