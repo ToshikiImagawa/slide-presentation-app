@@ -111,6 +111,11 @@ export function applyBaseFontSize(root: HTMLElement, baseFontSize: number): void
   }
 }
 
+/** フォントソースが @font-face / <link> のどちらにも展開されない（読み込みが何も起きない）か */
+function hasFontSourceContent(source: FontSource): boolean {
+  return Boolean(source.src || source.url || source.localName)
+}
+
 /** フォントソースを動的にロードする */
 export function loadFontSources(sources: FontSource[]): void {
   for (const source of sources) {
@@ -123,25 +128,25 @@ export function loadFontSources(sources: FontSource[]): void {
 }
 
 /** @font-face の重複登録判定キー（family + weight + style。太字/イタリック等の異なる字形は別ソースとして扱う） */
-function fontFaceStyleId(source: FontSource): string {
-  const slug = source.family.replace(/\s+/g, '-').toLowerCase()
-  const weight = source.weight ?? 'normal'
-  const style = source.style ?? 'normal'
+function fontFaceStyleId(family: string, weight: string, style: string): string {
+  const slug = family.replace(/\s+/g, '-').toLowerCase()
   return `sdd-font-face-${slug}-${weight}-${style}`
 }
 
 function loadLocalFont(source: FontSource): void {
-  const styleId = fontFaceStyleId(source)
+  const weight = source.weight ?? 'normal'
+  const style = source.style ?? 'normal'
+  const styleId = fontFaceStyleId(source.family, weight, style)
   if (document.getElementById(styleId)) return
 
   const srcList: string[] = []
   if (source.localName) srcList.push(`local('${source.localName}')`)
   if (source.src) srcList.push(`url('${source.src}')${source.format ? ` format('${source.format}')` : ''}`)
 
-  const style = document.createElement('style')
-  style.id = styleId
-  style.textContent = `@font-face { font-family: '${source.family}'; src: ${srcList.join(', ')}; font-weight: ${source.weight ?? 'normal'}; font-style: ${source.style ?? 'normal'}; }`
-  document.head.appendChild(style)
+  const styleEl = document.createElement('style')
+  styleEl.id = styleId
+  styleEl.textContent = `@font-face { font-family: '${source.family}'; src: ${srcList.join(', ')}; font-weight: ${weight}; font-style: ${style}; }`
+  document.head.appendChild(styleEl)
 }
 
 function loadExternalFont(url: string): void {
@@ -223,7 +228,7 @@ export function getThemeWarnings(theme?: ThemeData): string[] {
   }
 
   for (const source of theme.fonts?.sources ?? []) {
-    if (!source.src && !source.url && !source.localName) {
+    if (!hasFontSourceContent(source)) {
       warnings.push(`theme.fonts.sources（family: "${source.family}"）: src/url/localName のいずれも指定されていません`)
     }
   }
@@ -231,8 +236,11 @@ export function getThemeWarnings(theme?: ThemeData): string[] {
   return warnings
 }
 
+/** THEME_COLOR_TOKENS が指す CSS 変数（重複除去）と、その `-rgb` companion */
+const RESETTABLE_COLOR_VARS = [...new Set(Object.values(THEME_COLOR_TOKENS))].flatMap((cssVar) => [cssVar, `${cssVar}-rgb`])
+
 /** applyTheme/applyThemeData が設定する CSS 変数の一覧（リセット対象） */
-const RESETTABLE_CSS_VARS: string[] = [...[...new Set(Object.values(THEME_COLOR_TOKENS))].flatMap((cssVar) => [cssVar, `${cssVar}-rgb`]), ...Object.values(themeFontToCssVar), '--theme-font-size-base', ...Object.keys(fontSizeRatios)]
+const RESETTABLE_CSS_VARS: string[] = [...RESETTABLE_COLOR_VARS, ...Object.values(themeFontToCssVar), '--theme-font-size-base', ...Object.keys(fontSizeRatios)]
 
 /**
  * 前のプレゼンテーションで適用したテーマの上書きをすべて解除する。
