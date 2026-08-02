@@ -1,6 +1,6 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`SlideRenderer > SlideFrame統合後のDOM構造（属性スナップショット） > test-bleed が section > .master-body の共通構造を持ち、スナップショットと一致する 1`] = `
+exports[`SlideRenderer > SlideFrame統合後のDOM構造（属性スナップショット） > test-bleed の section 配下がスナップショットと一致する 1`] = `
 "section.slide-container
   div.master-layer-back
   div.master-body.bleed-image-layout
@@ -10,7 +10,7 @@ exports[`SlideRenderer > SlideFrame統合後のDOM構造（属性スナップシ
 "
 `;
 
-exports[`SlideRenderer > SlideFrame統合後のDOM構造（属性スナップショット） > test-custom が section > .master-body の共通構造を持ち、スナップショットと一致する 1`] = `
+exports[`SlideRenderer > SlideFrame統合後のDOM構造（属性スナップショット） > test-custom の section 配下がスナップショットと一致する 1`] = `
 "section.slide-container
   div.master-layer-back
   div.master-body
@@ -19,7 +19,7 @@ exports[`SlideRenderer > SlideFrame統合後のDOM構造（属性スナップシ
 "
 `;
 
-exports[`SlideRenderer > SlideFrame統合後のDOM構造（属性スナップショット） > test-section が section > .master-body の共通構造を持ち、スナップショットと一致する 1`] = `
+exports[`SlideRenderer > SlideFrame統合後のDOM構造（属性スナップショット） > test-section の section 配下がスナップショットと一致する 1`] = `
 "section.slide-container
   div.master-layer-back
   div.master-body
@@ -28,7 +28,7 @@ exports[`SlideRenderer > SlideFrame統合後のDOM構造（属性スナップシ
 "
 `;
 
-exports[`SlideRenderer > SlideFrame統合後のDOM構造（属性スナップショット） > test-steps が section > .master-body の共通構造を持ち、スナップショットと一致する 1`] = `
+exports[`SlideRenderer > SlideFrame統合後のDOM構造（属性スナップショット） > test-steps の section 配下がスナップショットと一致する 1`] = `
 "section.slide-container
   div.master-layer-back
   div.master-body
@@ -38,7 +38,7 @@ exports[`SlideRenderer > SlideFrame統合後のDOM構造（属性スナップシ
 "
 `;
 
-exports[`SlideRenderer > SlideFrame統合後のDOM構造（属性スナップショット） > test-tiles が section > .master-body の共通構造を持ち、スナップショットと一致する 1`] = `
+exports[`SlideRenderer > SlideFrame統合後のDOM構造（属性スナップショット） > test-tiles の section 配下がスナップショットと一致する 1`] = `
 "section.slide-container
   div.master-layer-back
   div.master-body
@@ -48,7 +48,7 @@ exports[`SlideRenderer > SlideFrame統合後のDOM構造（属性スナップシ
 "
 `;
 
-exports[`SlideRenderer > SlideFrame統合後のDOM構造（属性スナップショット） > test-title が section > .master-body の共通構造を持ち、スナップショットと一致する 1`] = `
+exports[`SlideRenderer > SlideFrame統合後のDOM構造（属性スナップショット） > test-title の section 配下がスナップショットと一致する 1`] = `
 "section.slide-container
   div.master-layer-back
   div.master-body
@@ -57,7 +57,7 @@ exports[`SlideRenderer > SlideFrame統合後のDOM構造（属性スナップシ
 "
 `;
 
-exports[`SlideRenderer > SlideFrame統合後のDOM構造（属性スナップショット） > test-two-column が section > .master-body の共通構造を持ち、スナップショットと一致する 1`] = `
+exports[`SlideRenderer > SlideFrame統合後のDOM構造（属性スナップショット） > test-two-column の section 配下がスナップショットと一致する 1`] = `
 "section.slide-container
   div.master-layer-back
   div.master-body

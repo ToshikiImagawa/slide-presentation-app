@@ -12,7 +12,7 @@ type Props = {
 
 export function BleedLayout({ id, left, right, meta, logo }: Props) {
   return (
-    <SlideFrame id={id} meta={meta} logo={logo} bodyVariant="bleed">
+    <SlideFrame id={id} meta={meta} logo={logo} bleed>
       <div className="bleed-content">{left}</div>
       {right}
     </SlideFrame>

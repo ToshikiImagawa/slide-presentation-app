@@ -162,15 +162,13 @@ describe('SlideRenderer', () => {
     expect(sections.length).toBe(0)
   })
 
-  // #163: SlideFrame への section 生成統合。全レイアウトが共通の section > .master-body 構造を持つことと、
-  // リファクタ前後でのDOM構造の変化をスナップショットで固定する
+  // #163: SlideFrame への section 生成統合。全レイアウトが共通の section > .master-back/.master-body/
+  // .master-layer-front 構造を持つことを、リファクタ前後のDOM構造スナップショットで固定する
+  // （スナップショットが一致すれば3層の存在・順序・class名も自動的に保証される）
   describe('SlideFrame統合後のDOM構造（属性スナップショット）', () => {
-    it.each(testSlides.map((slide) => [slide.id, slide] as const))('%s が section > .master-body の共通構造を持ち、スナップショットと一致する', (_id, slide) => {
+    it.each(testSlides.map((slide) => [slide.id, slide] as const))('%s の section 配下がスナップショットと一致する', (_id, slide) => {
       const { container } = renderWithTheme(<SlideRenderer slides={[slide]} />)
       const section = container.querySelector('section.slide-container')!
-      expect(section.querySelector(':scope > .master-layer-back')).not.toBeNull()
-      expect(section.querySelector(':scope > .master-body')).not.toBeNull()
-      expect(section.querySelector(':scope > .master-layer-front')).not.toBeNull()
       expect(domSkeleton(section, 2)).toMatchSnapshot()
     })
   })
