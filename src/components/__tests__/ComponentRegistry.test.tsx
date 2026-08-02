@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach, vi, afterEach } from 'vitest'
-import { registerComponent, registerDefaultComponent, resolveComponent, getRegisteredComponents, clearRegistry, unregisterOwner } from '../ComponentRegistry'
+import { registerComponent, registerDefaultComponent, resolveComponent, getRegisteredComponents, clearRegistry, unregisterOwner, hasComponent } from '../ComponentRegistry'
 
 function MockComponentA() {
   return <div>ComponentA</div>
@@ -54,6 +54,20 @@ describe('ComponentRegistry', () => {
     registerComponent('Shared', CustomOverride)
     const names = getRegisteredComponents()
     expect(names).toEqual(['Shared'])
+  })
+
+  it('hasComponentはデフォルト登録済みコンポーネントに対してtrueを返す', () => {
+    registerDefaultComponent('TestA', MockComponentA)
+    expect(hasComponent('TestA')).toBe(true)
+  })
+
+  it('hasComponentはカスタム登録済みコンポーネントに対してtrueを返す', () => {
+    registerComponent('TestB', MockComponentB)
+    expect(hasComponent('TestB')).toBe(true)
+  })
+
+  it('hasComponentは未登録名に対してfalseを返す', () => {
+    expect(hasComponent('NonExistent')).toBe(false)
   })
 
   it('clearRegistryで全登録がクリアされる', () => {

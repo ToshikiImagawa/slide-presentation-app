@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react'
 import { FallbackImage } from '../components/FallbackImage'
-import { renderRegisteredComponent } from '../components/ComponentRegistry'
+import { hasComponent, renderRegisteredComponent } from '../components/ComponentRegistry'
 import type { MasterAnchor, MasterDecoration, MasterDecorationLayer, MasterDecorationOnly, MasterRenderContext } from '../data'
 
 type Props = {
@@ -106,6 +106,9 @@ function MasterDecorationElement({ decoration, ctx }: { decoration: MasterDecora
       return <div style={{ ...anchorStyle(decoration.anchor, decoration.offset), color: decoration.color ?? 'var(--theme-text-body)', fontSize: decoration.fontSize, whiteSpace: 'nowrap' }}>{renderTextContent(decoration.content, ctx)}</div>
 
     case 'component':
+      // 未登録コンポーネントは FallbackComponent の破線枠が全スライドに並ぶのを避けるため、装飾自体を描画しない
+      // （検証エラーは getMasterWarnings 経由で通常ロードのトーストに集約する）
+      if (!hasComponent(decoration.name)) return null
       return <div style={anchorStyle(decoration.anchor, decoration.offset)}>{renderRegisteredComponent(decoration.name, decoration.props)}</div>
   }
 }
