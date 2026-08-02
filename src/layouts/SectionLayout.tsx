@@ -1,12 +1,12 @@
 import Box from '@mui/material/Box'
-import type { LogoConfig, SlideMeta } from '../data'
 import { SlideFrame } from './SlideFrame'
+import type { SlideFrameCommonProps } from './SlideFrame'
 
-type Props = { id: string; meta?: SlideMeta; logo?: LogoConfig; children: React.ReactNode }
+type Props = SlideFrameCommonProps & { children: React.ReactNode }
 
-export function SectionLayout({ id, meta, logo, children }: Props) {
+export function SectionLayout({ children, ...frameProps }: Props) {
   return (
-    <SlideFrame id={id} meta={meta} logo={logo}>
+    <SlideFrame {...frameProps}>
       <Box className="section-title-layout">{children}</Box>
     </SlideFrame>
   )

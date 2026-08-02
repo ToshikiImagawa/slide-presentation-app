@@ -3,7 +3,7 @@ import { render } from '@testing-library/react'
 import { ThemeProvider } from '@mui/material/styles'
 import { SlideRenderer } from '../SlideRenderer'
 import { registerDefaultComponents } from '../registerDefaults'
-import type { SlideData } from '../../data'
+import type { SlideData, ThemeData } from '../../data'
 import { theme } from '../../theme'
 
 // レイアウト網羅用のテストデータ。テンプレートガイドのサンプルは .spkg として外部配布するため、
@@ -194,6 +194,62 @@ describe('SlideRenderer', () => {
       sections.forEach((section) => {
         expect(section.querySelector('.slide-logo-inline')).not.toBeNull()
       })
+    })
+  })
+
+  // #164: masters/masterMap/tokens と SlideMasterLayer。theme 未指定時は既存と完全同一のDOMになることも併せて確認する
+  describe('masters（SlideMasterLayer 装飾描画）', () => {
+    const masterTheme: ThemeData = {
+      masters: {
+        standard: {
+          decorations: [
+            { type: 'band', anchor: 'top-center' },
+            { type: 'text', anchor: 'bottom-right', content: '{index} / {total}', layer: 'front', only: 'not-first' },
+          ],
+        },
+      },
+      masterMap: { content: 'standard' },
+    }
+
+    it('theme未指定時はdata-master属性が付かず装飾も描画されない（現行と完全同一のDOM）', () => {
+      const contentSlide = testSlides.find((s) => s.layout === 'content')!
+      const { container } = renderWithTheme(<SlideRenderer slides={[contentSlide]} />)
+      const section = container.querySelector('section.slide-container')!
+      expect(section.getAttribute('data-master')).toBeNull()
+      expect(section.querySelector('.master-layer-back')?.children.length).toBe(0)
+    })
+
+    it('masterMapに対応するlayoutのスライドにdata-master属性が付き、backレイヤーの装飾が描画される', () => {
+      const contentSlide = testSlides.find((s) => s.layout === 'content')!
+      const { container } = renderWithTheme(<SlideRenderer slides={[contentSlide]} theme={masterTheme} />)
+      const section = container.querySelector('section.slide-container')!
+      expect(section.getAttribute('data-master')).toBe('standard')
+      expect(section.querySelector('.master-layer-back')?.children.length).toBe(1)
+    })
+
+    it('masterMapに対応しないlayoutのスライドは装飾が描画されない', () => {
+      const titleSlide = testSlides.find((s) => s.layout === 'center' && !(s.content as Record<string, unknown>).variant)!
+      const { container } = renderWithTheme(<SlideRenderer slides={[titleSlide]} theme={masterTheme} />)
+      const section = container.querySelector('section.slide-container')!
+      expect(section.getAttribute('data-master')).toBeNull()
+    })
+
+    it('only: not-first の装飾は最初のスライドに描画されず、2枚目以降に描画される（{index}/{total}のページ番号展開含む）', () => {
+      const contentSlides = testSlides.filter((s) => s.layout === 'content')
+      const { container } = renderWithTheme(<SlideRenderer slides={contentSlides} theme={masterTheme} />)
+      const sections = container.querySelectorAll('section.slide-container')
+      expect(sections[0].querySelector('.master-layer-front')?.textContent).toBe('')
+      expect(sections[1].querySelector('.master-layer-front')?.textContent).toBe(`2 / ${contentSlides.length}`)
+    })
+
+    it('band装飾はcenter系anchor（top-center）でも9方向センタリングtransformの影響を受けず画面外にずれない', () => {
+      const contentSlide = testSlides.find((s) => s.layout === 'content')!
+      const { container } = renderWithTheme(<SlideRenderer slides={[contentSlide]} theme={masterTheme} />)
+      const band = container.querySelector('.master-layer-back > div') as HTMLElement
+      // band(horizontal)は left:0/right:0 で全幅に広がるため、横方向のセンタリングtransform(-50%)が
+      // 残っていると自身の幅の半分だけ左にずれて画面外に出てしまう
+      expect(band.style.left).toBe('0px')
+      expect(band.style.transform).not.toContain('-50%')
     })
   })
 })

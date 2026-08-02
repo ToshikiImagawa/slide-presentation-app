@@ -1,18 +1,12 @@
 import { ReactNode } from 'react'
-import type { LogoConfig, SlideMeta } from '../data'
 import { SlideFrame } from './SlideFrame'
+import type { SlideFrameCommonProps } from './SlideFrame'
 
-type Props = {
-  id: string
-  left: ReactNode
-  right: ReactNode
-  meta?: SlideMeta
-  logo?: LogoConfig
-}
+type Props = SlideFrameCommonProps & { left: ReactNode; right: ReactNode }
 
-export function BleedLayout({ id, left, right, meta, logo }: Props) {
+export function BleedLayout({ left, right, ...frameProps }: Props) {
   return (
-    <SlideFrame id={id} meta={meta} logo={logo} bleed>
+    <SlideFrame {...frameProps} bleed>
       <div className="bleed-content">{left}</div>
       {right}
     </SlideFrame>

@@ -1,4 +1,4 @@
-import type { ComponentType } from 'react'
+import type { ComponentType, ReactNode } from 'react'
 
 /** レジストリに登録可能なコンポーネントの型 */
 export type RegisteredComponent = ComponentType<Record<string, unknown>>
@@ -58,6 +58,12 @@ export function unregisterOwner(owner: string): void {
 /** コンポーネントを解決する（カスタム → デフォルト → フォールバックの優先順） */
 export function resolveComponent(name: string): RegisteredComponent {
   return customComponents.get(name) ?? defaultComponents.get(name) ?? FallbackComponent
+}
+
+/** 登録済みコンポーネントを name で解決し props を展開してレンダリングする（SlideRenderer/SlideMasterLayer 共通） */
+export function renderRegisteredComponent(name: string, props?: Record<string, unknown>): ReactNode {
+  const Component = resolveComponent(name)
+  return <Component {...(props ?? {})} name={name} />
 }
 
 /** 登録済みコンポーネント名一覧を取得する */

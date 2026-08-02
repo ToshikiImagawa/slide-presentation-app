@@ -1,4 +1,5 @@
 import type { FontSource, ThemeData } from './data'
+import { buildMasterCss, getMasterWarnings } from './masters'
 
 function hexToRgb(hex: string): string {
   const r = parseInt(hex.slice(1, 3), 16)
@@ -165,6 +166,17 @@ const themeFontToCssVar: Record<string, string> = {
   code: '--theme-font-code',
 }
 
+/** id の <style> 要素を作成（未存在時）または更新する（customCSS・master tokens CSS の注入で共通利用） */
+function upsertStyleElement(id: string, css: string): void {
+  let styleEl = document.getElementById(id) as HTMLStyleElement | null
+  if (!styleEl) {
+    styleEl = document.createElement('style')
+    styleEl.id = id
+    document.head.appendChild(styleEl)
+  }
+  styleEl.textContent = css
+}
+
 /** ThemeDataからCSS変数を適用する */
 export function applyThemeData(themeData: ThemeData): void {
   const root = document.documentElement
@@ -198,14 +210,12 @@ export function applyThemeData(themeData: ThemeData): void {
   }
 
   if (themeData.customCSS) {
-    const styleId = 'sdd-custom-theme-css'
-    let styleEl = document.getElementById(styleId) as HTMLStyleElement | null
-    if (!styleEl) {
-      styleEl = document.createElement('style')
-      styleEl.id = styleId
-      document.head.appendChild(styleEl)
-    }
-    styleEl.textContent = themeData.customCSS
+    upsertStyleElement('sdd-custom-theme-css', themeData.customCSS)
+  }
+
+  const masterCss = buildMasterCss(themeData.tokens)
+  if (masterCss) {
+    upsertStyleElement('sdd-master-tokens-css', masterCss)
   }
 }
 
@@ -233,6 +243,8 @@ export function getThemeWarnings(theme?: ThemeData): string[] {
     }
   }
 
+  warnings.push(...getMasterWarnings(theme))
+
   return warnings
 }
 
@@ -253,6 +265,7 @@ export function resetThemeOverrides(): void {
     root.style.removeProperty(cssVar)
   }
   document.getElementById('sdd-custom-theme-css')?.remove()
+  document.getElementById('sdd-master-tokens-css')?.remove()
   document.querySelectorAll('style[id^="sdd-font-face-"]').forEach((el) => el.remove())
   document.querySelectorAll('link[data-sdd-dynamic-font="true"]').forEach((el) => el.remove())
 }

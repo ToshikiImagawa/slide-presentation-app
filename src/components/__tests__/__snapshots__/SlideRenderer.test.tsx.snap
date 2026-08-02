@@ -32,7 +32,7 @@ exports[`SlideRenderer > SlideFrame統合後のDOM構造（属性スナップシ
 "section.slide-container
   div.master-layer-back
   div.master-body
-    h2.MuiTypography-root.MuiTypography-h2.slide-title.css-7bs1js-MuiTypography-root
+    h2.MuiTypography-root.MuiTypography-h2.slide-title.css-7a52pi-MuiTypography-root
     div.content-area.MuiBox-root.css-0
   div.master-layer-front
 "
@@ -42,7 +42,7 @@ exports[`SlideRenderer > SlideFrame統合後のDOM構造（属性スナップシ
 "section.slide-container
   div.master-layer-back
   div.master-body
-    h2.MuiTypography-root.MuiTypography-h2.slide-title.css-7bs1js-MuiTypography-root
+    h2.MuiTypography-root.MuiTypography-h2.slide-title.css-7a52pi-MuiTypography-root
     div.content-area.MuiBox-root.css-0
   div.master-layer-front
 "
@@ -61,7 +61,7 @@ exports[`SlideRenderer > SlideFrame統合後のDOM構造（属性スナップシ
 "section.slide-container
   div.master-layer-back
   div.master-body
-    h2.MuiTypography-root.MuiTypography-h2.slide-title.css-7bs1js-MuiTypography-root
+    h2.MuiTypography-root.MuiTypography-h2.slide-title.css-7a52pi-MuiTypography-root
     div.content-area.MuiBox-root.css-0
   div.master-layer-front
 "

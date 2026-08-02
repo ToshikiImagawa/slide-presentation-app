@@ -17,6 +17,18 @@ export type {
   FontDefinition,
   FontSource,
   ValidationError,
+  MasterAnchor,
+  MasterDecorationOnly,
+  MasterDecorationLayer,
+  LogoMasterDecoration,
+  BandMasterDecoration,
+  RuleMasterDecoration,
+  TextMasterDecoration,
+  ImageMasterDecoration,
+  ComponentMasterDecoration,
+  MasterDecoration,
+  MasterDefinition,
+  MasterRenderContext,
 } from './types'
 
 export { loadPresentationData, validatePresentationData, getValidationErrors, getFallbackPresentationData, getSampleUnavailablePresentationData, getBlankPresentationData } from './loader'
