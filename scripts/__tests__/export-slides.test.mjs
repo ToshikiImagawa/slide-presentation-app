@@ -156,6 +156,42 @@ describe('extractAssetPathsDeep（#170: meta.brandTheme 参照先を1段だけ�
     const paths = extractAssetPathsDeep({ meta: { logo: { src: 'image/logo.png' } } }, dir)
     expect(paths).toEqual(['image/logo.png'])
   })
+
+  it('#171: theme.fonts.sources の prohibited な src を書き出し対象から除外する', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    const paths = extractAssetPathsDeep(
+      {
+        theme: {
+          fonts: {
+            sources: [
+              { family: 'Corp', src: 'font/corp.woff2', redistribution: 'prohibited' },
+              { family: 'Open', src: 'font/open.woff2', redistribution: 'permitted' },
+            ],
+          },
+        },
+      },
+      dir,
+    )
+
+    expect(paths.sort()).toEqual(['font/open.woff2'])
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('font/corp.woff2'))
+    warnSpy.mockRestore()
+  })
+
+  it('#171: meta.brandTheme 参照先（2段目）の prohibited な src も除外する', () => {
+    mkdirSync(join(dir, 'theme'))
+    writeFileSync(
+      join(dir, 'theme', 'brand.json'),
+      JSON.stringify({ fonts: { sources: [{ family: 'Corp', src: 'font/corp.woff2', redistribution: 'prohibited' }] } }),
+    )
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    const paths = extractAssetPathsDeep({ meta: { brandTheme: 'theme/brand.json' } }, dir)
+
+    expect(paths.sort()).toEqual(['theme/brand.json'])
+    warnSpy.mockRestore()
+  })
 })
 
 describe('extractProhibitedFontPaths（#171: 再配布禁止フォントのゲート）', () => {
@@ -179,53 +215,5 @@ describe('extractProhibitedFontPaths（#171: 再配布禁止フォントのゲ�
   it('themeData/sources が無くても空集合を返す', () => {
     expect(extractProhibitedFontPaths(undefined)).toEqual(new Set())
     expect(extractProhibitedFontPaths({})).toEqual(new Set())
-  })
-})
-
-describe('extractAssetPathsDeep（#171: 再配布禁止フォントの除外）', () => {
-  let gateDir
-
-  beforeEach(() => {
-    gateDir = mkdtempSync(join(tmpdir(), 'export-slides-font-gate-test-'))
-  })
-
-  afterEach(() => {
-    rmSync(gateDir, { recursive: true, force: true })
-  })
-
-  it('theme.fonts.sources の prohibited な src を書き出し対象から除外する', () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-
-    const paths = extractAssetPathsDeep(
-      {
-        theme: {
-          fonts: {
-            sources: [
-              { family: 'Corp', src: 'font/corp.woff2', redistribution: 'prohibited' },
-              { family: 'Open', src: 'font/open.woff2', redistribution: 'permitted' },
-            ],
-          },
-        },
-      },
-      gateDir,
-    )
-
-    expect(paths.sort()).toEqual(['font/open.woff2'])
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('font/corp.woff2'))
-    warnSpy.mockRestore()
-  })
-
-  it('meta.brandTheme 参照先（2段目）の prohibited な src も除外する', () => {
-    mkdirSync(join(gateDir, 'theme'))
-    writeFileSync(
-      join(gateDir, 'theme', 'brand.json'),
-      JSON.stringify({ fonts: { sources: [{ family: 'Corp', src: 'font/corp.woff2', redistribution: 'prohibited' }] } }),
-    )
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-
-    const paths = extractAssetPathsDeep({ meta: { brandTheme: 'theme/brand.json' } }, gateDir)
-
-    expect(paths.sort()).toEqual(['theme/brand.json'])
-    warnSpy.mockRestore()
   })
 })

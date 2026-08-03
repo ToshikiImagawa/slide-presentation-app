@@ -632,8 +632,7 @@ fn extract_prohibited_font_paths(theme: &serde_json::Value) -> Vec<String> {
     return paths;
   };
   for source in sources {
-    let prohibited = source.get("redistribution").and_then(|r| r.as_str()) == Some("prohibited");
-    if !prohibited {
+    if source.get("redistribution").and_then(|r| r.as_str()) != Some("prohibited") {
       continue;
     }
     if let Some(src) = source.get("src").and_then(|s| s.as_str()) {
