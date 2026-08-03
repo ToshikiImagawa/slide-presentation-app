@@ -17,8 +17,12 @@ import { applyPresentationTheme } from '../applyTheme'
 import { getPackageAddonNames, resolveLocalAssetPaths } from '../localSlideLoader'
 import type { PresentationData, SlideData } from '../data'
 import type { GeneratedCandidate } from '../aiGenerate'
+import { pickBrandTemplate, loadBrandOverrides, saveBrandOverrides } from '../brand/io'
+import { mergeCompiledBrandTheme } from '../brand/compile'
+import type { BrandOverrides, BrandProfile, CompiledBrandTheme } from '../brand/types'
 import { parseSlides, serializeSlides, prettyPrintJson } from './slidesSerialize'
 import { AiGeneratePanel } from './AiGeneratePanel'
+import { BrandConfirmDialog } from './BrandConfirmDialog'
 import { GeneratedDiffDialog } from './GeneratedDiffDialog'
 import { ConfirmDialog } from './ConfirmDialog'
 import { SlideJsonEditor } from './SlideJsonEditor'
@@ -133,6 +137,8 @@ export function SlideEditor({
   // 外部からのオープン要求の破棄確認待ち（#105）。要求受信時点の dirty 判定をここに確定させ、
   // ダイアログの開閉を props と dirty の積から導出しない（onResolveOpen が必ず一度だけ返る形にする）
   const [confirmingOpen, setConfirmingOpen] = useState(false)
+  // ブランド取り込み確認待ち（#168）。抽出＋保存済み上書きの読み込みが終わるまでは null（ダイアログ未表示）
+  const [brandImport, setBrandImport] = useState<{ profile: BrandProfile; overrides: BrandOverrides } | null>(null)
 
   const { data, errors } = useMemo(() => parseSlides(text), [text])
   const hasSyntaxError = errors.some((e) => e.message.includes(JSON_SYNTAX_ERROR_MARK))
@@ -245,7 +251,7 @@ export function SlideEditor({
   // 未保存の変更があるか（保存済みの元テキストとの比較。#44: データ損失防止）
   const isDirty = text !== source.rawText
   // 既に開いているダイアログがあるか（Escape ガード用。MUI Dialog 自身の Escape 処理に委ね、二重発火を避ける）
-  const hasOpenDialog = pendingExit || pendingGenerated !== null || pendingDeleteBuiltin !== null || confirmingOpen || rootDialogOpen
+  const hasOpenDialog = pendingExit || pendingGenerated !== null || pendingDeleteBuiltin !== null || confirmingOpen || brandImport !== null || rootDialogOpen
 
   // 外部（OS のファイル関連付け）からのオープン要求。未保存の変更があれば確認を挟み、なければ即開く。
   // 要求を受けた時点の dirty で判断する（以降の編集で再発火させないため openRequestPath のみを依存にする）
@@ -341,6 +347,29 @@ export function SlideEditor({
     setPendingGenerated(null)
   }
 
+  // 「ブランドテーマを取り込む」導線（#168）。テンプレートを選んで抽出し、同一テンプレートの
+  // 前回の上書きがあれば読み込んでから確認ダイアログを開く（ここではまだ器に触れない）
+  const handleImportBrandTheme = async () => {
+    const profile = await pickBrandTemplate()
+    if (!profile) return
+    const overrides = await loadBrandOverrides(profile.templateHash)
+    setBrandImport({ profile, overrides })
+  }
+
+  // 確認ダイアログの [取り込む]。masters/masterMap/tokens/fonts のみ合成し（theme.colors には書き込まない・
+  // 12キーは compiled.colors 側で保持するだけ）、上書きはテンプレートハッシュをキーに保存して再取り込みに備える
+  const confirmImportBrandTheme = ({ overrides, compiled }: { overrides: BrandOverrides; compiled: CompiledBrandTheme }) => {
+    if (!brandImport) return
+    setText(serializeSlides({ ...validData, theme: mergeCompiledBrandTheme(validData.theme, compiled) }))
+    void saveBrandOverrides(brandImport.profile.templateHash, overrides)
+    setBrandImport(null)
+    setStatus({ kind: 'ok', message: t('brand.imported', 'ブランドテーマを取り込みました') })
+  }
+
+  const cancelImportBrandTheme = () => {
+    setBrandImport(null)
+  }
+
   const handleExport = async () => {
     if (!canExport) {
       setStatus({ kind: 'error', message: t('edit.exportBlocked', '検証エラーがあるため書き出せません') })
@@ -420,6 +449,20 @@ export function SlideEditor({
           onApply={confirmApplyGenerated}
           onCancel={cancelApplyGenerated}
         />
+
+        {/* ブランド抽出（#167）の並置比較・取り込み確認ダイアログ（#168）。currentSlide が無ければボタン自体を無効化しているため必ず存在する */}
+        {brandImport && currentSlide && (
+          <BrandConfirmDialog
+            open
+            profile={brandImport.profile}
+            initialOverrides={brandImport.overrides}
+            previewSlide={currentSlide}
+            previewLogo={previewData.meta?.logo}
+            previewTheme={previewData.theme}
+            onApply={confirmImportBrandTheme}
+            onCancel={cancelImportBrandTheme}
+          />
+        )}
 
         {/* 未保存の変更を破棄して編集を終了する前の確認（#44: データ損失防止） */}
         <ConfirmDialog
@@ -537,6 +580,9 @@ export function SlideEditor({
                 生成結果は applyGeneratedSlides で差分確認ダイアログへ渡す（①） */}
             <Box sx={{ minWidth: 0, minHeight: 0, overflow: 'auto' }}>
               <AiGeneratePanel currentText={text} onApply={applyGeneratedSlides} defaultExpanded={source.aiPanelExpanded} />
+              <Button variant="outlined" size="small" sx={{ m: 1 }} onClick={() => void handleImportBrandTheme()} disabled={!currentSlide}>
+                {t('brand.importButton', 'ブランドテーマを取り込む')}
+              </Button>
               {hasSyntaxError ? (
                 <Typography variant="body2" sx={{ p: 1, color: 'var(--fixed-primary)' }}>
                   {t('edit.formDisabled', 'JSON に構文エラーがあるためフォーム編集は無効です')}

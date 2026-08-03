@@ -11,7 +11,7 @@ import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import { alpha } from '@mui/material/styles'
 import { useTranslation } from '../i18n'
-import { getContrastRatio, TEXT_COLOR_KEYS } from '../applyTheme'
+import { getContrastRatio, TEXT_COLOR_KEYS, WCAG_AA_THRESHOLD } from '../applyTheme'
 import type { ColorPalette, ThemeData, ValidationError } from '../data/types'
 import { computeSlidesDiff, hasChanges, type FieldChange, type SlideChange } from './slidesDiff'
 import { prettyPrintJson } from './slidesSerialize'
@@ -44,9 +44,6 @@ const KIND_COLOR: Record<FieldChange['kind'], 'success' | 'warning' | 'error'> =
   removed: 'error',
 }
 
-/** WCAG AA（通常テキスト）の閾値 */
-const WCAG_AA_THRESHOLD = 4.5
-
 function jsonBlock(value: unknown): string {
   return JSON.stringify(value, null, 2)
 }
@@ -55,8 +52,8 @@ function formatRatio(ratio: number | null): string {
   return ratio === null ? '—' : `${ratio.toFixed(2)}:1`
 }
 
-/** 色見本（スウォッチ+hex値）。値が無ければ「—」を表示する */
-function ColorSwatch({ value }: { value?: string }) {
+/** 色見本（スウォッチ+hex値）。値が無ければ「—」を表示する（BrandConfirmDialog でも再利用・#168） */
+export function ColorSwatch({ value }: { value?: string }) {
   if (!value) {
     return (
       <Typography component="span" sx={{ color: 'var(--fixed-text-muted)', fontFamily: 'var(--fixed-font-code)', fontSize: 12 }}>

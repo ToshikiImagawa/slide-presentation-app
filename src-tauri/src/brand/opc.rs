@@ -17,7 +17,7 @@
 //! 信頼できない zip を読むため、既存の `.spkg` 展開（`lib.rs` の tar+gzip。自前で書き出したパッケージ前提で
 //! ディスクへ展開する）とは完全に別経路にし、上限とパス検査を必ず通す。**ディスクへは一切書き出さない。**
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::io::{Read, Seek, SeekFrom};
 
 use quick_xml::events::{BytesStart, Event};
@@ -33,6 +33,10 @@ const MAX_ARCHIVE_SIZE: u64 = 256 * 1024 * 1024;
 const MAX_ENTRIES: usize = 8_192;
 /// 1 part の展開後サイズ上限。theme / master / presentation XML は実測で数十 KB〜数百 KB
 const MAX_PART_SIZE: u64 = 8 * 1024 * 1024;
+
+/// 画像 part（サムネイル・ロゴ候補）の展開後サイズ上限。テキスト part より大きめに取るが、
+/// 超過時は当該画像だけを諦める（`Option` で握り潰す）ため抽出全体は失敗させない
+const MAX_IMAGE_PART_SIZE: u64 = 16 * 1024 * 1024;
 
 /// part 名の長さ上限（OPC 仕様の実用範囲を大きく超えるものは壊れているとみなす）
 const MAX_PART_NAME_LEN: usize = 512;
@@ -52,6 +56,11 @@ pub struct OpcPackage<R: Read + Seek> {
   /// `BTreeMap` なので走査順が名前順に決まる（同一入力から同一出力を出すための土台）
   parts: BTreeMap<String, String>,
   content_types: ContentTypes,
+  /// `read_text` のキャッシュ（小文字化した part 名がキー）。root の `_rels/.rels` やロゴ候補ごとの
+  /// slideMaster の `_rels` 等、1 回の抽出で同じ part を何度も読むため、zip の再展開を防ぐ
+  text_cache: HashMap<String, String>,
+  /// `relationships` のキャッシュ（小文字化した part 名がキー）。上記と同じ理由で XML の再解析も防ぐ
+  rels_cache: HashMap<String, Vec<Relationship>>,
 }
 
 impl<R: Read + Seek> OpcPackage<R> {
@@ -96,6 +105,8 @@ impl<R: Read + Seek> OpcPackage<R> {
       archive,
       parts,
       content_types,
+      text_cache: HashMap::new(),
+      rels_cache: HashMap::new(),
     })
   }
 
@@ -114,19 +125,65 @@ impl<R: Read + Seek> OpcPackage<R> {
       .collect()
   }
 
-  /// part を UTF-8 文字列として読む
+  /// part を UTF-8 文字列として読む。同じ part を 2 回目以降に読むときは zip の再展開をしない
+  /// （root の `_rels/.rels` やロゴ候補ごとの slideMaster `_rels` 等、1 回の抽出で何度も読まれる part があるため）
   pub fn read_text(&mut self, part: &str) -> Result<String, BrandError> {
-    read_part_text(&mut self.archive, &self.parts, part)
+    let key = part.to_ascii_lowercase();
+    if let Some(cached) = self.text_cache.get(&key) {
+      return Ok(cached.clone());
+    }
+    let text = read_part_text(&mut self.archive, &self.parts, part)?;
+    self.text_cache.insert(key, text.clone());
+    Ok(text)
   }
 
-  /// part の関係（`_rels`）を読む。関係ファイルを持たない part は空を返す（末端 part では正常）
+  /// part をバイト列として読む（画像等の非テキスト part 用。上限は `read_text` より大きめ）
+  pub fn read_bytes(&mut self, part: &str) -> Result<Vec<u8>, BrandError> {
+    read_part_bytes(&mut self.archive, &self.parts, part, MAX_IMAGE_PART_SIZE)
+  }
+
+  /// part の content type（`[Content_Types].xml` の Override → 拡張子 Default の順で解決）
+  pub fn content_type_of(&self, part: &str) -> Option<String> {
+    self.content_types.of(part).map(str::to_string)
+  }
+
+  /// part の関係（`_rels`）を読む。関係ファイルを持たない part は空を返す（末端 part では正常）。
+  /// `read_text` と同じ理由でキャッシュする（ロゴ候補ごとに同じ slideMaster の関係を読み直さない）
   fn relationships(&mut self, part: &str) -> Result<Vec<Relationship>, BrandError> {
-    let rels_part = rels_part_name(part);
-    if !self.has_part(&rels_part) {
-      return Ok(Vec::new());
+    let key = part.to_ascii_lowercase();
+    if let Some(cached) = self.rels_cache.get(&key) {
+      return Ok(cached.clone());
     }
-    let xml = self.read_text(&rels_part)?;
-    parse_relationships(&xml, base_dir(part))
+    let rels_part = rels_part_name(part);
+    let rels = if !self.has_part(&rels_part) {
+      Vec::new()
+    } else {
+      let xml = self.read_text(&rels_part)?;
+      parse_relationships(&xml, base_dir(part))?
+    };
+    self.rels_cache.insert(key, rels.clone());
+    Ok(rels)
+  }
+
+  /// `part` の関係のうち `Id` が `rel_id` に一致するものの Target を返す（`a:blip@r:embed` の解決に使う）。
+  /// Target が存在しない part を指す場合は `None`（壊れた参照はロゴ候補から静かに落とす）
+  pub fn resolve_relationship_id(
+    &mut self,
+    part: &str,
+    rel_id: &str,
+  ) -> Result<Option<String>, BrandError> {
+    let target = find_target_by(&self.relationships(part)?, |r| r.id == rel_id);
+    Ok(target.filter(|t| self.has_part(t)))
+  }
+
+  /// `part` の関係のうち種別が `kind` に一致するものの Target を返す（サムネイル等、種別で引く関係用）
+  pub fn find_relationship_target(
+    &mut self,
+    part: &str,
+    kind: &str,
+  ) -> Result<Option<String>, BrandError> {
+    let target = find_target(&self.relationships(part)?, kind);
+    Ok(target.filter(|t| self.has_part(t)))
   }
 
   /// theme part と slideMaster part を解決する（3 形式で共通の 1 経路）
@@ -160,6 +217,7 @@ impl<R: Read + Seek> OpcPackage<R> {
     Ok(BrandParts {
       theme,
       slide_master: slide_master.filter(|part| self.has_part(part)),
+      presentation: presentation.filter(|part| self.has_part(part)),
     })
   }
 
@@ -221,6 +279,46 @@ pub struct BrandParts {
   pub theme: String,
   /// theme 単体のパッケージでは存在しない（clrMap は標準写像で代替する）
   pub slide_master: Option<String>,
+  /// presentation 本体 part（`p:sldSz` を読むため）。theme 単体のパッケージでは存在しない
+  pub presentation: Option<String>,
+}
+
+/// スライドのサイズ（EMU）。ロゴ候補ランキング・帯検出の幾何判定の基準にする
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SlideSize {
+  pub width_emu: i64,
+  pub height_emu: i64,
+}
+
+/// presentation XML の `p:sldSz` を読む。存在しない・不正な場合は `None`
+pub fn parse_slide_size(xml: &str) -> Result<Option<SlideSize>, BrandError> {
+  let mut size = None;
+  let mut reader = Reader::from_str(xml);
+  reader.config_mut().trim_text(true);
+  loop {
+    match reader.read_event() {
+      Ok(Event::Eof) => break,
+      Ok(Event::Start(e)) | Ok(Event::Empty(e)) => {
+        if local_name(e.name()) == "sldSz" {
+          let cx = attr(&e, "cx").and_then(|v| v.trim().parse::<i64>().ok());
+          let cy = attr(&e, "cy").and_then(|v| v.trim().parse::<i64>().ok());
+          if let (Some(width_emu), Some(height_emu)) = (cx, cy) {
+            if width_emu > 0 && height_emu > 0 {
+              size = Some(SlideSize {
+                width_emu,
+                height_emu,
+              });
+            }
+          }
+          break;
+        }
+      }
+      Ok(_) => {}
+      Err(e) => return Err(BrandError::Xml(e.to_string())),
+    }
+  }
+  Ok(size)
 }
 
 /// `_rels` の 1 エントリ
@@ -286,6 +384,39 @@ fn read_part_text<R: Read + Seek>(
   String::from_utf8(bytes).map_err(|_| BrandError::Xml(format!("{part} が UTF-8 ではありません")))
 }
 
+/// part をバイト列として読む（`read_part_text` の UTF-8 版と同じ上限方式。画像等の非テキスト part 用）
+fn read_part_bytes<R: Read + Seek>(
+  archive: &mut ZipArchive<R>,
+  parts: &BTreeMap<String, String>,
+  part: &str,
+  max_size: u64,
+) -> Result<Vec<u8>, BrandError> {
+  let name = parts
+    .get(&part.to_ascii_lowercase())
+    .ok_or_else(|| BrandError::MissingPart(part.to_string()))?;
+  let mut entry = archive
+    .by_name(name)
+    .map_err(|e| BrandError::Archive(e.to_string()))?;
+  let too_large = || {
+    BrandError::TooLarge(format!(
+      "{part} の展開後サイズが上限（{max_size} バイト）を超えています"
+    ))
+  };
+  if entry.size() > max_size {
+    return Err(too_large());
+  }
+  let mut bytes = Vec::new();
+  entry
+    .by_ref()
+    .take(max_size + 1)
+    .read_to_end(&mut bytes)
+    .map_err(|e| BrandError::Io(e.to_string()))?;
+  if bytes.len() as u64 > max_size {
+    return Err(too_large());
+  }
+  Ok(bytes)
+}
+
 /// part の関係ファイル名（`ppt/presentation.xml` → `ppt/_rels/presentation.xml.rels`、ルート（空文字列）→ `_rels/.rels`）
 fn rels_part_name(part: &str) -> String {
   if part.is_empty() {
@@ -304,9 +435,17 @@ fn base_dir(part: &str) -> &str {
 
 /// 指定種別の関係の Target を記述順の先頭から返す
 fn find_target(relationships: &[Relationship], kind: &str) -> Option<String> {
+  find_target_by(relationships, |r| r.kind == kind)
+}
+
+/// 条件に一致する最初の関係の Target を返す（`find_target`/`resolve_relationship_id` が共有する）
+fn find_target_by(
+  relationships: &[Relationship],
+  pred: impl Fn(&Relationship) -> bool,
+) -> Option<String> {
   relationships
     .iter()
-    .find(|r| r.kind == kind)
+    .find(|r| pred(r))
     .map(|r| r.target.clone())
 }
 

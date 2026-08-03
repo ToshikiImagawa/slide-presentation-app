@@ -47,7 +47,12 @@ vi.mock('../../editModeSave', () => ({
   addBuiltinAddon: vi.fn(),
   removeBuiltinAddon: vi.fn(),
 }))
-vi.mock('../../applyTheme', () => ({ applyTheme: vi.fn().mockResolvedValue(undefined), applyThemeData: vi.fn(), resetThemeOverrides: vi.fn(), applyPresentationTheme: vi.fn().mockResolvedValue(true) }))
+// THEME_COLOR_TOKENS/getContrastRatio 等は SlideEditor 経由の brand/compile（#168）が使うため実装を残す（importOriginal）。
+// DOM を書き換える関数のみモックする
+vi.mock('../../applyTheme', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../applyTheme')>()
+  return { ...actual, applyTheme: vi.fn().mockResolvedValue(undefined), applyThemeData: vi.fn(), resetThemeOverrides: vi.fn(), applyPresentationTheme: vi.fn().mockResolvedValue(true) }
+})
 vi.mock('../../localSlideLoader', () => ({ resolveLocalAssetPaths: (v: unknown) => v, getPackageAddonNames: () => Promise.resolve([]), getPackageIdentity: () => Promise.resolve(null) }))
 
 import { AiGeneratePanel } from '../AiGeneratePanel'

@@ -14,6 +14,9 @@ const h = vi.hoisted(() => ({
   getPackageAddonNames: vi.fn(),
   removeBuiltinAddon: vi.fn(),
   buildBuiltinAddons: vi.fn(),
+  pickBrandTemplate: vi.fn(),
+  loadBrandOverrides: vi.fn(),
+  saveBrandOverrides: vi.fn(),
 }))
 vi.mock('../../editModeSave', () => ({
   saveSlidesJson: h.saveSlidesJson,
@@ -28,12 +31,19 @@ vi.mock('../../editModeSave', () => ({
   removeBuiltinAddon: h.removeBuiltinAddon,
   buildBuiltinAddons: h.buildBuiltinAddons,
 }))
-vi.mock('../../applyTheme', () => ({ applyTheme: vi.fn().mockResolvedValue(undefined), applyThemeData: vi.fn(), resetThemeOverrides: vi.fn(), applyPresentationTheme: vi.fn().mockResolvedValue(true) }))
+// getContrastRatio/normalizeHex は BrandConfirmDialog 経由の compile（#168）が使うため実装を残す（importOriginal）。
+// DOM を書き換える関数のみモックする
+vi.mock('../../applyTheme', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../applyTheme')>()
+  return { ...actual, applyTheme: vi.fn().mockResolvedValue(undefined), applyThemeData: vi.fn(), resetThemeOverrides: vi.fn(), applyPresentationTheme: vi.fn().mockResolvedValue(true) }
+})
 vi.mock('../../localSlideLoader', () => ({ resolveLocalAssetPaths: (v: unknown) => v, getPackageAddonNames: h.getPackageAddonNames }))
+vi.mock('../../brand/io', () => ({ pickBrandTemplate: h.pickBrandTemplate, loadBrandOverrides: h.loadBrandOverrides, saveBrandOverrides: h.saveBrandOverrides }))
 
 import { SlideEditor } from '../SlideEditor'
 import { I18nProvider } from '../../i18n'
 import type { LocaleResource } from '../../i18n'
+import type { BrandProfile } from '../../brand/types'
 
 // jsdom には ResizeObserver が無いので stub（SlidePreview が使用）
 class ResizeObserverStub {
@@ -690,5 +700,87 @@ describe('SlideEditor 設定ボタン（#126: 編集画面から設定ダイア�
       </Wrapper>,
     )
     expect(() => fireEvent.click(screen.getByTestId('settings-open'))).not.toThrow()
+  })
+})
+
+describe('SlideEditor ブランドテーマの取り込み（#168）', () => {
+  const brandProfile: BrandProfile = {
+    name: 'Corporate',
+    themePart: 'ppt/theme/theme1.xml',
+    slideMasterPart: 'ppt/slideMasters/slideMaster1.xml',
+    templateHash: 'a'.repeat(64),
+    slideSize: { widthEmu: 12_192_000, heightEmu: 6_858_000 },
+    thumbnail: null,
+    logoCandidates: [],
+    bandCandidates: [],
+    mappedColors: { bg1: '#ffffff', tx1: '#000000', bg2: null, tx2: null, accent1: '#1f4e79', accent2: null, accent3: null, accent4: null, accent5: null, accent6: null, hlink: null, folHlink: null },
+    fonts: { major: { latin: 'Trebuchet MS', ea: null, cs: null, jpan: null }, minor: { latin: null, ea: null, cs: null, jpan: null } },
+  }
+
+  function importButton(): HTMLButtonElement {
+    return screen.getByRole('button', { name: 'ブランドテーマを取り込む' }) as HTMLButtonElement
+  }
+
+  beforeEach(() => {
+    h.pickBrandTemplate.mockReset()
+    h.loadBrandOverrides.mockReset().mockResolvedValue({})
+    h.saveBrandOverrides.mockReset().mockResolvedValue(undefined)
+  })
+
+  it('選択をキャンセルすると確認ダイアログを開かない', async () => {
+    h.pickBrandTemplate.mockResolvedValue(null)
+    render(
+      <Wrapper>
+        <SlideEditor source={{ rawText: validJson, baseDir: '' }} onExit={() => {}} />
+      </Wrapper>,
+    )
+    fireEvent.click(importButton())
+    await waitFor(() => expect(h.pickBrandTemplate).toHaveBeenCalledTimes(1))
+    expect(h.loadBrandOverrides).not.toHaveBeenCalled()
+    expect(screen.queryByText('ブランドテーマの取り込み確認')).toBeNull()
+  })
+
+  it('テンプレートを抽出すると保存済み上書きを読み込んで確認ダイアログを開く', async () => {
+    h.pickBrandTemplate.mockResolvedValue(brandProfile)
+    render(
+      <Wrapper>
+        <SlideEditor source={{ rawText: validJson, baseDir: '' }} onExit={() => {}} />
+      </Wrapper>,
+    )
+    fireEvent.click(importButton())
+    await waitFor(() => expect(screen.getByText('ブランドテーマの取り込み確認')).toBeTruthy())
+    expect(h.loadBrandOverrides).toHaveBeenCalledWith(brandProfile.templateHash)
+  })
+
+  it('[取り込む] で上書きを保存し、器へ masters/masterMap/tokens を合成して反映する', async () => {
+    h.pickBrandTemplate.mockResolvedValue(brandProfile)
+    render(
+      <Wrapper>
+        <SlideEditor source={{ rawText: validJson, baseDir: '' }} onExit={() => {}} />
+      </Wrapper>,
+    )
+    fireEvent.click(importButton())
+    await waitFor(() => expect(screen.getByText('ブランドテーマの取り込み確認')).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: '取り込む' }))
+    await waitFor(() => expect(h.saveBrandOverrides).toHaveBeenCalledWith(brandProfile.templateHash, expect.anything()))
+    await waitFor(() => expect(screen.getByText('ブランドテーマを取り込みました')).toBeTruthy())
+    // ダイアログは閉じている
+    expect(screen.queryByText('ブランドテーマの取り込み確認')).toBeNull()
+    // masters に brand キーが合成され、center レイアウトに割り当てられている（SlideMetaForm のマスター選択セレクトの表示値で確認）
+    expect(screen.getByRole('combobox', { name: 'マスター: center' }).textContent).toBe('brand')
+  })
+
+  it('[キャンセル] では上書きを保存せずダイアログを閉じる', async () => {
+    h.pickBrandTemplate.mockResolvedValue(brandProfile)
+    render(
+      <Wrapper>
+        <SlideEditor source={{ rawText: validJson, baseDir: '' }} onExit={() => {}} />
+      </Wrapper>,
+    )
+    fireEvent.click(importButton())
+    await waitFor(() => expect(screen.getByText('ブランドテーマの取り込み確認')).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: 'キャンセル' }))
+    await waitFor(() => expect(screen.queryByText('ブランドテーマの取り込み確認')).toBeNull())
+    expect(h.saveBrandOverrides).not.toHaveBeenCalled()
   })
 })

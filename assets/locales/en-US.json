@@ -222,6 +222,26 @@
       "themeSection": "Theme",
       "contrastRatio": "Contrast ratio"
     },
+    "brand": {
+      "importButton": "Import brand theme",
+      "imported": "Brand theme imported",
+      "title": "Confirm brand theme import",
+      "subtitle": "Compare with the template's look and override any fields before importing",
+      "apply": "Import",
+      "thumbnailAlt": "Template thumbnail",
+      "noThumbnail": "No thumbnail available",
+      "previewLabel": "Preview after import",
+      "colorsSection": "Colors (12 keys)",
+      "logoSection": "Logo",
+      "logoNone": "No logo",
+      "bandsSection": "Bands",
+      "noBandCandidates": "No bands detected",
+      "reportSection": "Import result",
+      "statusOk": "OK",
+      "statusDerived": "Adjusted",
+      "statusFallback": "Default",
+      "statusMissing": "Not set"
+    },
     "shortcuts": {
       "title": "Keyboard shortcuts",
       "viewerSection": "Presentation viewer",

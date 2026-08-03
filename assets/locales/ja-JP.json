@@ -222,6 +222,26 @@
       "themeSection": "テーマ",
       "contrastRatio": "コントラスト比"
     },
+    "brand": {
+      "importButton": "ブランドテーマを取り込む",
+      "imported": "ブランドテーマを取り込みました",
+      "title": "ブランドテーマの取り込み確認",
+      "subtitle": "テンプレートと見た目を比較し、必要な項目を上書きしてから取り込みます",
+      "apply": "取り込む",
+      "thumbnailAlt": "テンプレートのサムネイル",
+      "noThumbnail": "サムネイルがありません",
+      "previewLabel": "取り込み後のプレビュー",
+      "colorsSection": "色（12キー）",
+      "logoSection": "ロゴ",
+      "logoNone": "ロゴなし",
+      "bandsSection": "帯",
+      "noBandCandidates": "帯は検出されませんでした",
+      "reportSection": "取り込み結果",
+      "statusOk": "OK",
+      "statusDerived": "自動調整",
+      "statusFallback": "既定値",
+      "statusMissing": "未設定"
+    },
     "shortcuts": {
       "title": "キーボードショートカット",
       "viewerSection": "プレゼンビューア",
