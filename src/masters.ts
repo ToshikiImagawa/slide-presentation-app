@@ -1,3 +1,4 @@
+import { hasComponent } from './components/ComponentRegistry'
 import type { MasterDecoration, MasterDefinition, ThemeData } from './data'
 
 const MASTER_DECORATION_TYPES = ['logo', 'band', 'rule', 'text', 'image', 'component'] as const
@@ -87,6 +88,9 @@ export function getMasterWarnings(theme?: ThemeData): string[] {
       }
       if (decoration.layer && !MASTER_DECORATION_LAYER.includes(decoration.layer)) {
         warnings.push(`${path}.layer: 不明な値 "${decoration.layer}" です`)
+      }
+      if (decoration.type === 'component' && !hasComponent(decoration.name)) {
+        warnings.push(`${path}.name: 未登録のコンポーネント "${decoration.name}" が指定されています（該当箇所は描画をスキップします）`)
       }
     }
   }

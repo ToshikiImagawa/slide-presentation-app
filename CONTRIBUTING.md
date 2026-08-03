@@ -87,6 +87,15 @@ npm run build:addons
 }
 ```
 
+### Unresolved component references
+
+If a slide master's `component` decoration (`theme.masters.*.decorations`) references a name that isn't
+registered in `ComponentRegistry` (missing addon, addon rejected by the trust prompt, typo, etc.), that
+decoration is silently skipped instead of falling back to a "Component not found" placeholder — otherwise
+every slide using that master would show a dashed-border placeholder. The mismatch is instead surfaced once
+as a warning toast on normal load (via `getMasterWarnings`/`getThemeWarnings`), so the deck still opens with
+its plain theme and the user gets a single actionable notice rather than a broken deck with no explanation.
+
 ## Static Assets
 
 Files placed in the `public/` directory are accessible at the root path after building.

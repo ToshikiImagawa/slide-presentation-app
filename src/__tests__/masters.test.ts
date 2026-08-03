@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import { resolveMaster, buildMasterCss, getMasterWarnings } from '../masters'
+import { clearRegistry, registerDefaultComponent } from '../components/ComponentRegistry'
 import type { ThemeData } from '../data'
 
 describe('resolveMaster', () => {
@@ -137,5 +138,23 @@ describe('getMasterWarnings', () => {
       tokens: { standard: { color: '#fff' } },
     }
     expect(getMasterWarnings(theme)).toEqual([])
+  })
+
+  describe('component decoration の存在判定', () => {
+    beforeEach(() => {
+      clearRegistry()
+    })
+
+    it('未登録コンポーネントを参照する場合に警告する', () => {
+      const theme: ThemeData = { masters: { standard: { decorations: [{ type: 'component', anchor: 'top-left', name: 'Unregistered' }] } } }
+      const warnings = getMasterWarnings(theme)
+      expect(warnings.some((w) => w.includes('.name: 未登録のコンポーネント "Unregistered"'))).toBe(true)
+    })
+
+    it('登録済みコンポーネントを参照する場合は警告しない', () => {
+      registerDefaultComponent('Registered', () => null)
+      const theme: ThemeData = { masters: { standard: { decorations: [{ type: 'component', anchor: 'top-left', name: 'Registered' }] } } }
+      expect(getMasterWarnings(theme)).toEqual([])
+    })
   })
 })

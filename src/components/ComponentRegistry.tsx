@@ -60,6 +60,11 @@ export function resolveComponent(name: string): RegisteredComponent {
   return customComponents.get(name) ?? defaultComponents.get(name) ?? FallbackComponent
 }
 
+/** name がカスタム・デフォルトのいずれかに登録済みかを判定する（Fallback落ち防止のための事前確認用） */
+export function hasComponent(name: string): boolean {
+  return customComponents.has(name) || defaultComponents.has(name)
+}
+
 /** 登録済みコンポーネントを name で解決し props を展開してレンダリングする（SlideRenderer/SlideMasterLayer 共通） */
 export function renderRegisteredComponent(name: string, props?: Record<string, unknown>): ReactNode {
   const Component = resolveComponent(name)
