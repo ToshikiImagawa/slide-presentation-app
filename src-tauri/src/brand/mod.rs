@@ -1,26 +1,31 @@
-//! 配布された OOXML テンプレート（`.pptx` / `.potx` / `.thmx`）からブランド情報を決定的に抽出する（#167）。
+//! 配布された OOXML テンプレート（`.pptx` / `.potx` / `.thmx`）からブランド情報を抽出する（#167 / #168）。
 //!
 //! 目視転写では構造的に落ちる情報（`p:clrMap` の `bg1`/`tx1` 割当、`a:font script="Jpan"` の和文書体、
 //! `p:txStyles/…/a:defRPr@sz` の実 pt）を XML として読む。バイナリ読取は権限方針上 Rust 側に閉じる。
 //!
-//! - 出力は宣言的データ（12 キーの色・書体名・pt）のみで、**生成 CSS 文字列は含めない**（Epic #173 の方針）。
-//!   受け皿（`ThemeData` の `colors` / `fonts` / `tokens` / `masters`）へ写すのは呼び出し側（#168）の責務。
-//! - 同一入力から必ず同一出力になる（ネットワーク・時刻・乱数・`HashMap` の走査順に依存しない）。
-//! - ヒューリスティクス（帯検出・ロゴ候補ランキング等）はここに置かない。決定的に読める範囲だけを扱う。
+//! - 12 キー・書体名・pt は決定的抽出（#167）。同一入力から必ず同一出力になる
+//!   （ネットワーク・時刻・乱数・`HashMap` の走査順に依存しない）。
+//! - ロゴ候補・帯候補（`logo_candidates` / `band_candidates`）はヒューリスティクス（#168）の出力で、
+//!   誤爆しうる前提の**候補**にすぎない。採否・上書きは並置比較ダイアログで人が決める（自動確定しない）。
+//! - 出力は宣言的データ（12 キーの色・書体名・pt・候補の幾何と画像バイト列）のみで、
+//!   **生成 CSS 文字列は含めない**（Epic #173 の方針）。受け皿（`ThemeData` の `colors` / `fonts` / `tokens` /
+//!   `masters`）へ写すのは呼び出し側（フロントの `compile()`）の責務。
 
 use std::fs::File;
 use std::io::{BufReader, Read, Seek};
 use std::path::Path;
 
 mod color;
+mod heuristics;
 mod master_xml;
 mod opc;
+mod shapes;
 mod theme_xml;
 mod xml;
 
 use color::{apply_transforms, ColorRef, ColorSpec, Rgb};
 use master_xml::{ClrMap, MasterInfo};
-use opc::OpcPackage;
+use opc::{OpcPackage, SlideSize};
 use theme_xml::{ClrScheme, FontScheme};
 
 /// 抽出エラー。UI へは `to_string()` で返すため、内部パス等を含めない
@@ -95,7 +100,41 @@ pub struct TextStyles {
   pub other: TextStyle,
 }
 
-/// 決定的抽出の結果。すべての色は `#rrggbb` に確定済み
+/// base64 / 画像バイト列（サムネイル・ロゴ候補）。IPC は JSON なので生バイト列は載せられない
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MediaAsset {
+  pub content_type: String,
+  pub base64: String,
+}
+
+/// ロゴ候補（#168 のヒューリスティクス出力）。並置比較ダイアログで人が選ぶ・上書きする前提の**候補**であり、
+/// 自動確定はしない
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LogoCandidate {
+  /// `p:cNvPr@name`（"Company Logo" 等）。ランキングの name hint にも使った値をそのまま見せる
+  pub name_hint: Option<String>,
+  pub image: MediaAsset,
+  pub width_emu: i64,
+  pub height_emu: i64,
+  pub x_emu: i64,
+  pub y_emu: i64,
+}
+
+/// 帯候補（#168 のヒューリスティクス出力）。`anchor`/`orientation` はフロントの
+/// `BandMasterDecoration`（`src/data/types.ts`）とそのまま対応する
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BandCandidate {
+  pub orientation: String,
+  pub anchor: String,
+  pub color_hex: String,
+  pub thickness_emu: i64,
+}
+
+/// 決定的抽出の結果。色はすべて `#rrggbb` に確定済み。ロゴ・帯候補はヒューリスティクスの出力であり、
+/// 誤爆しうる前提の**候補**（採否は #168 の確認ダイアログで人が決める）
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BrandProfile {
@@ -105,6 +144,16 @@ pub struct BrandProfile {
   pub theme_part: String,
   /// 読んだ slideMaster part 名（theme 単体のパッケージでは `null`）
   pub slide_master_part: Option<String>,
+  /// テンプレートファイル本体の sha256（hex）。同一テンプレートの再取り込みで人の上書きを引き継ぐキーにする
+  pub template_hash: String,
+  /// presentation 本体から読んだスライドサイズ（EMU）。ロゴ候補ランキング・帯検出の幾何判定の基準
+  pub slide_size: Option<SlideSize>,
+  /// パッケージの埋め込みサムネイル（`docProps/thumbnail.jpeg` 等）。並置比較ダイアログの左パネルに使う
+  pub thumbnail: Option<MediaAsset>,
+  /// ランキング済みのロゴ候補（先頭が最有力）
+  pub logo_candidates: Vec<LogoCandidate>,
+  /// 検出した帯候補
+  pub band_candidates: Vec<BandCandidate>,
   /// `a:clrScheme` の 12 スロット
   pub colors: ClrScheme,
   /// `p:clrMap`（12 キーが clrScheme のどのスロットを指すか）
@@ -123,7 +172,8 @@ pub fn extract_brand_profile(path: &Path) -> Result<BrandProfile, BrandError> {
 }
 
 /// リーダから抽出する（テストがメモリ上の zip を渡せるように分けている）
-fn extract<R: Read + Seek>(reader: R) -> Result<BrandProfile, BrandError> {
+fn extract<R: Read + Seek>(mut reader: R) -> Result<BrandProfile, BrandError> {
+  let template_hash = hash_reader(&mut reader)?;
   let mut package = OpcPackage::open(reader)?;
   let parts = package.locate_brand_parts()?;
 
@@ -134,10 +184,43 @@ fn extract<R: Read + Seek>(reader: R) -> Result<BrandProfile, BrandError> {
     None => MasterInfo::default(),
   };
 
+  let slide_size = match &parts.presentation {
+    Some(part) => opc::parse_slide_size(&package.read_text(part)?)?,
+    None => None,
+  };
+
+  let (logo_candidates, band_candidates) = match (&parts.slide_master, slide_size) {
+    (Some(master_part), Some(size)) => {
+      let raw = shapes::parse_shapes(&package.read_text(master_part)?)?;
+      let logos = heuristics::rank_logo_candidates(&raw.pics, size)
+        .into_iter()
+        .filter_map(|ranked| resolve_logo_candidate(&mut package, master_part, ranked))
+        .collect();
+      let bands = heuristics::classify_bands(&raw.shapes, &theme.colors, &master.color_map, size)
+        .into_iter()
+        .map(|b| BandCandidate {
+          orientation: b.orientation.to_string(),
+          anchor: b.anchor.to_string(),
+          color_hex: b.color.to_hex(),
+          thickness_emu: b.thickness_emu,
+        })
+        .collect();
+      (logos, bands)
+    }
+    _ => (Vec::new(), Vec::new()),
+  };
+
+  let thumbnail = extract_thumbnail(&mut package);
+
   Ok(BrandProfile {
     name: theme.name,
     theme_part: parts.theme,
     slide_master_part: parts.slide_master,
+    template_hash,
+    slide_size,
+    thumbnail,
+    logo_candidates,
+    band_candidates,
     mapped_colors: map_colors(&theme.colors, &master.color_map),
     text_styles: TextStyles {
       title: resolve_text_style(&master.title, &theme.colors, &master.color_map),
@@ -148,6 +231,73 @@ fn extract<R: Read + Seek>(reader: R) -> Result<BrandProfile, BrandError> {
     color_map: master.color_map,
     fonts: theme.fonts,
   })
+}
+
+/// テンプレートファイル本体の sha256（hex）。読み終えたら先頭へ戻す（後続の zip オープンに同じ reader を使うため）
+fn hash_reader<R: Read + Seek>(reader: &mut R) -> Result<String, BrandError> {
+  use sha2::{Digest, Sha256};
+  reader.rewind().map_err(|e| BrandError::Io(e.to_string()))?;
+  let mut hasher = Sha256::new();
+  let mut buf = [0u8; 64 * 1024];
+  loop {
+    let read = reader
+      .read(&mut buf)
+      .map_err(|e| BrandError::Io(e.to_string()))?;
+    if read == 0 {
+      break;
+    }
+    hasher.update(&buf[..read]);
+  }
+  reader.rewind().map_err(|e| BrandError::Io(e.to_string()))?;
+  Ok(format!("{:x}", hasher.finalize()))
+}
+
+/// ランキング済みロゴ候補の `r:embed` を media part へ解決し、バイト列を読む。
+/// 参照が壊れている・上限超過・content type 不明のいずれでも、その 1 件だけを諦めて `None` を返す
+/// （1 件の画像事故で並置比較ダイアログ全体を失敗させない）
+fn resolve_logo_candidate(
+  package: &mut OpcPackage<impl Read + Seek>,
+  master_part: &str,
+  ranked: heuristics::RankedLogo,
+) -> Option<LogoCandidate> {
+  let media_part = package
+    .resolve_relationship_id(master_part, &ranked.embed_rid)
+    .ok()??;
+  let bytes = package.read_bytes(&media_part).ok()?;
+  let content_type = package
+    .content_type_of(&media_part)
+    .unwrap_or_else(|| "application/octet-stream".to_string());
+  Some(LogoCandidate {
+    name_hint: ranked.name_hint,
+    image: MediaAsset {
+      content_type,
+      base64: encode_base64(&bytes),
+    },
+    width_emu: ranked.width_emu,
+    height_emu: ranked.height_emu,
+    x_emu: ranked.x_emu,
+    y_emu: ranked.y_emu,
+  })
+}
+
+/// パッケージの埋め込みサムネイル（root の `_rels/.rels` にある `metadata/thumbnail` 関係）。
+/// 無い・壊れているテンプレートは多い（自己生成しない編集ソフトもある）ため、無ければ黙って `None`
+fn extract_thumbnail(package: &mut OpcPackage<impl Read + Seek>) -> Option<MediaAsset> {
+  let part = package.find_relationship_target("", "thumbnail").ok()??;
+  let bytes = package.read_bytes(&part).ok()?;
+  let content_type = package
+    .content_type_of(&part)
+    .unwrap_or_else(|| "image/jpeg".to_string());
+  Some(MediaAsset {
+    content_type,
+    base64: encode_base64(&bytes),
+  })
+}
+
+fn encode_base64(bytes: &[u8]) -> String {
+  use base64::engine::general_purpose::STANDARD;
+  use base64::Engine as _;
+  STANDARD.encode(bytes)
 }
 
 /// clrMap を通して 12 キーを確定させる
@@ -184,8 +334,13 @@ fn resolve_text_style(
 }
 
 /// 未解決の色指定を確定色へ解決する。
-/// `schemeClr` は clrMap → clrScheme の 2 段で引き、変換（lumMod/lumOff/tint/shade）を出現順に適用する
-fn resolve_color_spec(spec: &ColorSpec, scheme: &ClrScheme, map: &ClrMap) -> Option<Rgb> {
+/// `schemeClr` は clrMap → clrScheme の 2 段で引き、変換（lumMod/lumOff/tint/shade）を出現順に適用する。
+/// `heuristics::classify_bands`（帯の塗り解決）からも使うため `pub(super)`
+pub(super) fn resolve_color_spec(
+  spec: &ColorSpec,
+  scheme: &ClrScheme,
+  map: &ClrMap,
+) -> Option<Rgb> {
   let base = match &spec.base {
     ColorRef::Fixed(rgb) => *rgb,
     ColorRef::Scheme(name) => scheme.slot(map.resolve(name))?,
@@ -566,6 +721,146 @@ mod tests {
   fn extraction_is_deterministic() {
     // 同一入力から必ず同一出力になる（受け入れ基準の再現性）
     let bytes = pptx_package();
+    let first = serde_json::to_string(&extract_bytes(&bytes).unwrap()).unwrap();
+    for _ in 0..5 {
+      assert_eq!(
+        serde_json::to_string(&extract_bytes(&bytes).unwrap()).unwrap(),
+        first
+      );
+    }
+  }
+
+  #[test]
+  fn template_hash_is_deterministic_and_input_sensitive() {
+    let bytes = pptx_package();
+    let hash = extract_bytes(&bytes).unwrap().template_hash;
+    assert_eq!(hash.len(), 64);
+    assert!(hash.bytes().all(|b| b.is_ascii_hexdigit()));
+    assert_eq!(extract_bytes(&bytes).unwrap().template_hash, hash);
+    // 中身が違う（decoy の accent1 が違う）テンプレートは別ハッシュになる
+    assert_ne!(extract_bytes(&thmx_package()).unwrap().template_hash, hash);
+  }
+
+  /// presentation の `p:sldSz`・slideMaster の spTree（帯・ロゴ）・root のサムネイル関係を持つパッケージ（#168）
+  fn pptx_package_with_shapes_and_thumbnail() -> Vec<u8> {
+    const PRESENTATION_WITH_SIZE: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
+<p:presentation xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <p:sldMasterIdLst><p:sldMasterId id="2147483696" r:id="rId1"/></p:sldMasterIdLst>
+  <p:sldSz cx="12192000" cy="6858000"/>
+</p:presentation>"#;
+    const MASTER_WITH_SHAPES: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
+<p:sldMaster xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <p:cSld>
+    <p:spTree>
+      <p:sp>
+        <p:nvSpPr><p:cNvPr id="2" name="Title Placeholder 1"/></p:nvSpPr>
+        <p:spPr/>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr><p:cNvPr id="3" name="Top Band"/></p:nvSpPr>
+        <p:spPr>
+          <a:xfrm><a:off x="0" y="0"/><a:ext cx="12192000" cy="457200"/></a:xfrm>
+          <a:solidFill><a:srgbClr val="1F4E79"/></a:solidFill>
+        </p:spPr>
+      </p:sp>
+      <p:pic>
+        <p:nvPicPr><p:cNvPr id="4" name="Company Logo"/></p:nvPicPr>
+        <p:blipFill><a:blip r:embed="rId9"/></p:blipFill>
+        <p:spPr><a:xfrm><a:off x="10500000" y="6400000"/><a:ext cx="900000" cy="300000"/></a:xfrm></p:spPr>
+      </p:pic>
+    </p:spTree>
+  </p:cSld>
+  <p:clrMap bg1="lt1" tx1="dk1" bg2="lt2" tx2="dk2" accent1="accent1" accent2="accent2" accent3="accent3" accent4="accent4" accent5="accent5" accent6="accent6" hlink="hlink" folHlink="folHlink"/>
+</p:sldMaster>"#;
+
+    let types = content_types(&[
+      ("/ppt/presentation.xml", CT_PRESENTATION),
+      ("/ppt/slideMasters/slideMaster1.xml", CT_SLIDE_MASTER),
+      ("/ppt/theme/theme1.xml", CT_THEME),
+      ("/docProps/thumbnail.jpeg", "image/jpeg"),
+      ("/ppt/media/image1.png", "image/png"),
+    ]);
+    let root_rels = relationships(&[
+      ("rId1", "officeDocument", "ppt/presentation.xml"),
+      ("rId2", "metadata/thumbnail", "docProps/thumbnail.jpeg"),
+    ]);
+    let pres_rels = relationships(&[("rId1", "slideMaster", "slideMasters/slideMaster1.xml")]);
+    let master_rels = relationships(&[
+      ("rId12", "theme", "../theme/theme1.xml"),
+      ("rId9", "image", "../media/image1.png"),
+    ]);
+    let theme = theme_part("Corporate", "1F4E79");
+    build_zip(&[
+      ("[Content_Types].xml", &types),
+      ("_rels/.rels", &root_rels),
+      ("ppt/presentation.xml", PRESENTATION_WITH_SIZE),
+      ("ppt/_rels/presentation.xml.rels", &pres_rels),
+      ("ppt/slideMasters/slideMaster1.xml", MASTER_WITH_SHAPES),
+      ("ppt/slideMasters/_rels/slideMaster1.xml.rels", &master_rels),
+      ("ppt/theme/theme1.xml", &theme),
+      ("ppt/media/image1.png", "fake-logo-bytes"),
+      ("docProps/thumbnail.jpeg", "fake-thumbnail-bytes"),
+    ])
+  }
+
+  #[test]
+  fn extracts_slide_size_from_presentation() {
+    let profile = extract_bytes(&pptx_package_with_shapes_and_thumbnail()).unwrap();
+    assert_eq!(
+      profile.slide_size,
+      Some(SlideSize {
+        width_emu: 12_192_000,
+        height_emu: 6_858_000
+      })
+    );
+  }
+
+  #[test]
+  fn extracts_thumbnail_via_root_relationship() {
+    let profile = extract_bytes(&pptx_package_with_shapes_and_thumbnail()).unwrap();
+    let thumbnail = profile.thumbnail.expect("thumbnail");
+    assert_eq!(thumbnail.content_type, "image/jpeg");
+    use base64::Engine as _;
+    assert_eq!(
+      base64::engine::general_purpose::STANDARD
+        .decode(&thumbnail.base64)
+        .unwrap(),
+      b"fake-thumbnail-bytes"
+    );
+  }
+
+  #[test]
+  fn extracts_and_ranks_logo_candidate_with_resolved_image_bytes() {
+    let profile = extract_bytes(&pptx_package_with_shapes_and_thumbnail()).unwrap();
+    assert_eq!(profile.logo_candidates.len(), 1);
+    let logo = &profile.logo_candidates[0];
+    assert_eq!(logo.name_hint.as_deref(), Some("Company Logo"));
+    assert_eq!(logo.width_emu, 900_000);
+    assert_eq!(logo.height_emu, 300_000);
+    assert_eq!(logo.image.content_type, "image/png");
+    use base64::Engine as _;
+    assert_eq!(
+      base64::engine::general_purpose::STANDARD
+        .decode(&logo.image.base64)
+        .unwrap(),
+      b"fake-logo-bytes"
+    );
+  }
+
+  #[test]
+  fn detects_top_band_candidate_from_master_shapes() {
+    let profile = extract_bytes(&pptx_package_with_shapes_and_thumbnail()).unwrap();
+    assert_eq!(profile.band_candidates.len(), 1);
+    let band = &profile.band_candidates[0];
+    assert_eq!(band.orientation, "horizontal");
+    assert_eq!(band.anchor, "top-center");
+    assert_eq!(band.color_hex, "#1f4e79");
+    assert_eq!(band.thickness_emu, 457_200);
+  }
+
+  #[test]
+  fn shapes_and_thumbnail_extraction_is_deterministic() {
+    let bytes = pptx_package_with_shapes_and_thumbnail();
     let first = serde_json::to_string(&extract_bytes(&bytes).unwrap()).unwrap();
     for _ in 0..5 {
       assert_eq!(

@@ -7,6 +7,7 @@ use tauri_plugin_fs::FsExt;
 
 mod bin_resolve;
 mod brand;
+mod brand_overrides;
 mod claude_cli_config;
 mod generation;
 mod update_check;
@@ -93,6 +94,25 @@ fn extract_slide_package(app: tauri::AppHandle, package_path: String) -> Result<
 #[tauri::command]
 fn extract_brand_profile(template_path: String) -> Result<brand::BrandProfile, String> {
   brand::extract_brand_profile(Path::new(&template_path)).map_err(|e| e.to_string())
+}
+
+/// 並置比較ダイアログ（#168）の人の上書きを、テンプレートハッシュをキーに保存する
+#[tauri::command]
+fn save_brand_overrides(
+  app: tauri::AppHandle,
+  template_hash: String,
+  overrides: serde_json::Value,
+) -> Result<(), String> {
+  brand_overrides::save_brand_overrides(&app, &template_hash, overrides)
+}
+
+/// 保存済みの上書きを取得する（未保存なら `null`）。同一テンプレートの再取り込みで人手修正を復元するために使う
+#[tauri::command]
+fn load_brand_overrides(
+  app: tauri::AppHandle,
+  template_hash: String,
+) -> Result<Option<serde_json::Value>, String> {
+  brand_overrides::load_brand_overrides(&app, &template_hash)
 }
 
 /// WebView 初期化前に届いた OS のオープン要求を保持する（Finder/エクスプローラからの起動は
@@ -1143,6 +1163,8 @@ pub fn run() {
       allow_asset_dir,
       extract_slide_package,
       extract_brand_profile,
+      save_brand_overrides,
+      load_brand_overrides,
       download_slide_package,
       set_edit_mode,
       save_slides_json,

@@ -52,3 +52,7 @@ url = "2"
 zip = { version = "4", default-features = false, features = ["deflate-flate2"] }
 # OOXML の pull パーサ。DOM を組まずストリームで読み、巨大 XML でもメモリ上限内に収める
 quick-xml = "0.41"
+# ブランド抽出の並置比較ダイアログ（#168）: サムネイル・ロゴ候補の画像バイト列を IPC の JSON へ載せるため base64 化する
+base64 = "0.22"
+# 同一テンプレートの再取り込みで人の上書きを引き継ぐためのキー（#168）。ファイル内容から決定的に導出する
+sha2 = "0.10"

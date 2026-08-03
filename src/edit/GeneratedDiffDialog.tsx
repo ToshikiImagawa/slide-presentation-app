@@ -55,8 +55,8 @@ function formatRatio(ratio: number | null): string {
   return ratio === null ? '—' : `${ratio.toFixed(2)}:1`
 }
 
-/** 色見本（スウォッチ+hex値）。値が無ければ「—」を表示する */
-function ColorSwatch({ value }: { value?: string }) {
+/** 色見本（スウォッチ+hex値）。値が無ければ「—」を表示する（BrandConfirmDialog でも再利用・#168） */
+export function ColorSwatch({ value }: { value?: string }) {
   if (!value) {
     return (
       <Typography component="span" sx={{ color: 'var(--fixed-text-muted)', fontFamily: 'var(--fixed-font-code)', fontSize: 12 }}>

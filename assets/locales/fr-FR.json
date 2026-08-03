@@ -222,6 +222,26 @@
       "themeSection": "Thème",
       "contrastRatio": "Rapport de contraste"
     },
+    "brand": {
+      "importButton": "Importer le thème de marque",
+      "imported": "Thème de marque importé",
+      "title": "Confirmer l'import du thème de marque",
+      "subtitle": "Comparez avec l'aspect du modèle et corrigez les valeurs avant d'importer",
+      "apply": "Importer",
+      "thumbnailAlt": "Vignette du modèle",
+      "noThumbnail": "Aucune vignette disponible",
+      "previewLabel": "Aperçu après import",
+      "colorsSection": "Couleurs (12 clés)",
+      "logoSection": "Logo",
+      "logoNone": "Aucun logo",
+      "bandsSection": "Bandes",
+      "noBandCandidates": "Aucune bande détectée",
+      "reportSection": "Résultat de l'import",
+      "statusOk": "OK",
+      "statusDerived": "Ajusté",
+      "statusFallback": "Par défaut",
+      "statusMissing": "Non défini"
+    },
     "shortcuts": {
       "title": "Raccourcis clavier",
       "viewerSection": "Visionneuse de présentation",
