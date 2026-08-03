@@ -6,6 +6,7 @@ use tauri::{Emitter, Manager};
 use tauri_plugin_fs::FsExt;
 
 mod bin_resolve;
+mod brand;
 mod claude_cli_config;
 mod generation;
 mod update_check;
@@ -83,6 +84,15 @@ fn extract_slide_package(app: tauri::AppHandle, package_path: String) -> Result<
     .to_str()
     .map(|s| s.to_string())
     .ok_or_else(|| "抽出先パスの文字列化に失敗しました".to_string())
+}
+
+/// 配布された OOXML テンプレート（.pptx/.potx/.thmx）からブランド情報（12 キーの色・書体名・実 pt）を
+/// 決定的に抽出する（#167）。読み取り専用で、ネットワークアクセスもディスクへの書き出しも行わない。
+/// 上の extract_slide_package（自前で書き出した .spkg を tar+gzip で展開する）とは別経路で、
+/// 信頼できない zip 向けに上限とパス検査を課している（brand/opc.rs 参照）
+#[tauri::command]
+fn extract_brand_profile(template_path: String) -> Result<brand::BrandProfile, String> {
+  brand::extract_brand_profile(Path::new(&template_path)).map_err(|e| e.to_string())
 }
 
 /// WebView 初期化前に届いた OS のオープン要求を保持する（Finder/エクスプローラからの起動は
@@ -1132,6 +1142,7 @@ pub fn run() {
     .invoke_handler(tauri::generate_handler![
       allow_asset_dir,
       extract_slide_package,
+      extract_brand_profile,
       download_slide_package,
       set_edit_mode,
       save_slides_json,
