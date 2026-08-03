@@ -1,6 +1,10 @@
 import Box from '@mui/material/Box'
+import FormControl from '@mui/material/FormControl'
+import MenuItem from '@mui/material/MenuItem'
+import Select from '@mui/material/Select'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
+import { ALLOWED_LAYOUTS } from '../data/slideContentSchema'
 import type { ColorPalette, PresentationData, PresentationMeta, ThemeData } from '../data/types'
 import { useTranslation } from '../i18n'
 
@@ -23,8 +27,15 @@ export function SlideMetaForm({ value, onChange }: SlideMetaFormProps) {
   const updateMeta = (patch: Partial<PresentationMeta>) => onChange({ ...value, meta: { ...value.meta, ...patch } })
   const updateTheme = (patch: Partial<ThemeData>) => onChange({ ...value, theme: { ...(value.theme ?? {}), ...patch } })
   const updateColors = (patch: Partial<ColorPalette>) => onChange({ ...value, theme: { ...(value.theme ?? {}), colors: { ...(value.theme?.colors ?? {}), ...patch } } })
+  const updateMasterMap = (layout: string, masterKey: string) => {
+    const nextMasterMap = { ...(value.theme?.masterMap ?? {}) }
+    if (masterKey) nextMasterMap[layout] = masterKey
+    else delete nextMasterMap[layout]
+    onChange({ ...value, theme: { ...(value.theme ?? {}), masterMap: nextMasterMap } })
+  }
 
   const colors = value.theme?.colors ?? {}
+  const masterKeys = Object.keys(value.theme?.masters ?? {})
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, p: 1 }}>
@@ -54,6 +65,31 @@ export function SlideMetaForm({ value, onChange }: SlideMetaFormProps) {
         fullWidth
         slotProps={{ htmlInput: { style: { fontFamily: 'var(--fixed-font-code)', fontSize: 12 } } }}
       />
+
+      <Typography variant="subtitle2" sx={{ color: 'var(--fixed-text-heading)', fontWeight: 600, mt: 1 }}>
+        {t('edit.masterSection', 'マスター')}
+      </Typography>
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 1, alignItems: 'center' }}>
+        {ALLOWED_LAYOUTS.map((layout) => (
+          <Box key={layout} sx={{ display: 'contents' }}>
+            <Typography component="span" sx={{ fontFamily: 'var(--fixed-font-code)', fontSize: 13 }}>
+              {layout}
+            </Typography>
+            <FormControl size="small" fullWidth>
+              <Select value={value.theme?.masterMap?.[layout] ?? ''} onChange={(e) => updateMasterMap(layout, e.target.value)} displayEmpty SelectDisplayProps={{ 'aria-label': `${t('edit.masterSection', 'マスター')}: ${layout}` }}>
+                <MenuItem value="">
+                  <em>{t('edit.masterNone', 'なし')}</em>
+                </MenuItem>
+                {masterKeys.map((key) => (
+                  <MenuItem key={key} value={key}>
+                    {key}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Box>
+        ))}
+      </Box>
     </Box>
   )
 }

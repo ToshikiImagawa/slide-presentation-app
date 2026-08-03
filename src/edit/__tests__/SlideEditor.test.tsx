@@ -28,7 +28,7 @@ vi.mock('../../editModeSave', () => ({
   removeBuiltinAddon: h.removeBuiltinAddon,
   buildBuiltinAddons: h.buildBuiltinAddons,
 }))
-vi.mock('../../applyTheme', () => ({ applyTheme: vi.fn().mockResolvedValue(undefined), applyThemeData: vi.fn(), resetThemeOverrides: vi.fn() }))
+vi.mock('../../applyTheme', () => ({ applyTheme: vi.fn().mockResolvedValue(undefined), applyThemeData: vi.fn(), resetThemeOverrides: vi.fn(), applyPresentationTheme: vi.fn().mockResolvedValue(true) }))
 vi.mock('../../localSlideLoader', () => ({ resolveLocalAssetPaths: (v: unknown) => v, getPackageAddonNames: h.getPackageAddonNames }))
 
 import { SlideEditor } from '../SlideEditor'

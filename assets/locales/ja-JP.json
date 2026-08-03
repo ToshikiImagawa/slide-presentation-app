@@ -94,6 +94,8 @@
       "themeBackground": "背景色",
       "themeText": "文字色",
       "themeCustomCss": "カスタム CSS",
+      "masterSection": "マスター",
+      "masterNone": "なし",
       "includeAddons": "同梱アドオン",
       "packageAddonRemoveAria": "{name} をパッケージから除外",
       "packageAddonRemoveNote": "×またはチェック解除でパッケージから除外されます（再チェックで復帰可）。反映には「.spkg 書き出し」が必要です",
@@ -216,7 +218,9 @@
       "slidesSection": "スライド",
       "before": "変更前",
       "after": "変更後",
-      "unparseable": "構造を解析できないため、全体を置換します。以下が適用後の内容です。"
+      "unparseable": "構造を解析できないため、全体を置換します。以下が適用後の内容です。",
+      "themeSection": "テーマ",
+      "contrastRatio": "コントラスト比"
     },
     "shortcuts": {
       "title": "キーボードショートカット",

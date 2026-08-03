@@ -50,6 +50,9 @@ export const THEME_COLOR_TOKENS: Record<string, string> = {
   success: '--theme-success',
 }
 
+/** THEME_COLOR_TOKENS のうち、文字色として使われるキー（帯・線等の装飾色は対象外）。背景色に対するコントラスト比の算出対象を絞るのに使う */
+export const TEXT_COLOR_KEYS: readonly string[] = ['text', 'textHeading', 'textBody', 'textSubtitle', 'textMuted', 'codeText']
+
 /** CSS 変数へ色を適用する。`-rgb` companion は normalizeHex で解釈できた場合のみ設定する */
 function setColorVar(root: HTMLElement, cssVar: string, value: string): void {
   root.style.setProperty(cssVar, value)
@@ -253,6 +256,36 @@ const RESETTABLE_COLOR_VARS = [...new Set(Object.values(THEME_COLOR_TOKENS))].fl
 
 /** applyTheme/applyThemeData が設定する CSS 変数の一覧（リセット対象） */
 const RESETTABLE_CSS_VARS: string[] = [...RESETTABLE_COLOR_VARS, ...Object.values(themeFontToCssVar), '--theme-font-size-base', ...Object.keys(fontSizeRatios)]
+
+/** sRGB の 0-255 値を WCAG の相対輝度換算用に線形化する */
+function linearizeChannel(value: number): number {
+  const c = value / 255
+  return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)
+}
+
+/** 6桁hex（#rrggbb）の相対輝度（WCAG 2.x の算出式） */
+function relativeLuminance(hex: string): number {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return 0.2126 * linearizeChannel(r) + 0.7152 * linearizeChannel(g) + 0.0722 * linearizeChannel(b)
+}
+
+/**
+ * 2色間の WCAG コントラスト比（1〜21）を算出する。
+ * どちらかが未指定、または色として解釈できない場合は null を返す（呼び出し元は「—」等で表示する）。
+ */
+export function getContrastRatio(colorA?: string, colorB?: string): number | null {
+  if (!colorA || !colorB) return null
+  const hexA = normalizeHex(colorA)
+  const hexB = normalizeHex(colorB)
+  if (!hexA || !hexB) return null
+  const lA = relativeLuminance(hexA)
+  const lB = relativeLuminance(hexB)
+  const lighter = Math.max(lA, lB)
+  const darker = Math.min(lA, lB)
+  return (lighter + 0.05) / (darker + 0.05)
+}
 
 /**
  * 前のプレゼンテーションで適用したテーマの上書きをすべて解除する。

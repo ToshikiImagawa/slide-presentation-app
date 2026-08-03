@@ -94,6 +94,8 @@
       "themeBackground": "Background color",
       "themeText": "Text color",
       "themeCustomCss": "Custom CSS",
+      "masterSection": "Master",
+      "masterNone": "None",
       "includeAddons": "Bundled add-ons",
       "packageAddonRemoveAria": "Exclude {name} from the package",
       "packageAddonRemoveNote": "Use × or uncheck to exclude from the package (re-check to restore). Re-export the .spkg to apply the change",
@@ -216,7 +218,9 @@
       "slidesSection": "Slides",
       "before": "Before",
       "after": "After",
-      "unparseable": "The structure could not be parsed, so the entire content will be replaced. The result to be applied is shown below."
+      "unparseable": "The structure could not be parsed, so the entire content will be replaced. The result to be applied is shown below.",
+      "themeSection": "Theme",
+      "contrastRatio": "Contrast ratio"
     },
     "shortcuts": {
       "title": "Keyboard shortcuts",

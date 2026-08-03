@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { applyTheme, applyPresentationTheme, applyThemeData, applyBaseFontSize, loadFontSources, resetThemeOverrides, normalizeHex, getThemeWarnings } from '../applyTheme'
+import { applyTheme, applyPresentationTheme, applyThemeData, applyBaseFontSize, loadFontSources, resetThemeOverrides, normalizeHex, getThemeWarnings, getContrastRatio } from '../applyTheme'
 import type { ThemeData } from '../data'
 
 describe('applyTheme', () => {
@@ -390,6 +390,29 @@ describe('getThemeWarnings', () => {
 
   it('fonts.sources に src/url/localName のいずれかがあれば警告しない', () => {
     expect(getThemeWarnings({ fonts: { sources: [{ family: 'X', localName: 'Arial' }] } })).toEqual([])
+  })
+})
+
+describe('getContrastRatio（WCAG コントラスト比・#166）', () => {
+  it('黒背景に白文字は最大値 21:1 に近いコントラスト比になる', () => {
+    expect(getContrastRatio('#ffffff', '#000000')).toBeCloseTo(21, 0)
+  })
+
+  it('同色同士は 1:1 になる', () => {
+    expect(getContrastRatio('#336699', '#336699')).toBeCloseTo(1, 5)
+  })
+
+  it('引数の順序に依存しない（明暗どちらが先でも同じ値）', () => {
+    expect(getContrastRatio('#ffffff', '#000000')).toBeCloseTo(getContrastRatio('#000000', '#ffffff')!, 5)
+  })
+
+  it('どちらかが未指定なら null を返す', () => {
+    expect(getContrastRatio(undefined, '#000000')).toBeNull()
+    expect(getContrastRatio('#ffffff', undefined)).toBeNull()
+  })
+
+  it('解釈できない色値なら null を返す', () => {
+    expect(getContrastRatio('not-a-color', '#000000')).toBeNull()
   })
 })
 

@@ -94,6 +94,8 @@
       "themeBackground": "Couleur de fond",
       "themeText": "Couleur du texte",
       "themeCustomCss": "CSS personnalisé",
+      "masterSection": "Maître",
+      "masterNone": "Aucun",
       "includeAddons": "Modules intégrés au paquet",
       "packageAddonRemoveAria": "Exclure {name} du paquet",
       "packageAddonRemoveNote": "Utilisez × ou décochez pour exclure du paquet (recochez pour restaurer). Réexportez le .spkg pour appliquer le changement",
@@ -216,7 +218,9 @@
       "slidesSection": "Diapositives",
       "before": "Avant",
       "after": "Après",
-      "unparseable": "La structure n'a pas pu être analysée ; tout le contenu sera remplacé. Le résultat à appliquer est affiché ci-dessous."
+      "unparseable": "La structure n'a pas pu être analysée ; tout le contenu sera remplacé. Le résultat à appliquer est affiché ci-dessous.",
+      "themeSection": "Thème",
+      "contrastRatio": "Rapport de contraste"
     },
     "shortcuts": {
       "title": "Raccourcis clavier",

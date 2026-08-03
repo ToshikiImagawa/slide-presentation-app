@@ -47,7 +47,7 @@ vi.mock('../../editModeSave', () => ({
   addBuiltinAddon: vi.fn(),
   removeBuiltinAddon: vi.fn(),
 }))
-vi.mock('../../applyTheme', () => ({ applyTheme: vi.fn().mockResolvedValue(undefined), applyThemeData: vi.fn(), resetThemeOverrides: vi.fn() }))
+vi.mock('../../applyTheme', () => ({ applyTheme: vi.fn().mockResolvedValue(undefined), applyThemeData: vi.fn(), resetThemeOverrides: vi.fn(), applyPresentationTheme: vi.fn().mockResolvedValue(true) }))
 vi.mock('../../localSlideLoader', () => ({ resolveLocalAssetPaths: (v: unknown) => v, getPackageAddonNames: () => Promise.resolve([]), getPackageIdentity: () => Promise.resolve(null) }))
 
 import { AiGeneratePanel } from '../AiGeneratePanel'

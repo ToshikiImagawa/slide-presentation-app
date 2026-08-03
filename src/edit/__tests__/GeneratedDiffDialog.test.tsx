@@ -73,6 +73,28 @@ describe('GeneratedDiffDialog（①構造サマリ差分）', () => {
     expect(screen.queryByText(/検証エラー/)).toBeNull()
   })
 
+  it('テーマの変更は before → after の色見本とWCAGコントラスト比を展開表示する（#166）', () => {
+    const beforeWithTheme = JSON.stringify({
+      meta: { title: '旧タイトル' },
+      theme: { colors: { textBody: '#000000', background: '#ffffff' } },
+      slides: [{ id: 's1', layout: 'center', content: { title: '旧' } }],
+    })
+    const afterWithTheme = JSON.stringify({
+      meta: { title: '旧タイトル' },
+      theme: { colors: { textBody: '#dddddd', background: '#ffffff' } },
+      slides: [{ id: 's1', layout: 'center', content: { title: '旧' } }],
+    })
+    render(wrap(<GeneratedDiffDialog open beforeText={beforeWithTheme} afterText={afterWithTheme} validationErrors={[]} onApply={() => {}} onCancel={() => {}} />))
+
+    // theme 変更は「メタ情報」の Chip 一覧ではなく専用の展開表示になる
+    expect(screen.queryByText('theme: 変更')).toBeNull()
+    expect(screen.getByText('#000000')).toBeTruthy()
+    expect(screen.getByText('#dddddd')).toBeTruthy()
+    // 変更前は黒地に白背景でAA適格（21:1）、変更後は薄いグレーでAA不適格（1.36:1）になる
+    expect(screen.getByText(/コントラスト比: 21\.00:1 → 1\.36:1/)).toBeTruthy()
+    expect(screen.getByText('AA ×')).toBeTruthy()
+  })
+
   it('changed のスライドは git diff 風の行単位表示（追加=+/削除=-）になる', () => {
     // MUI Dialog は Portal で document.body 直下に描画されるため container ではなく document から探す
     render(wrap(<GeneratedDiffDialog open beforeText={BEFORE} afterText={AFTER} validationErrors={[]} onApply={() => {}} onCancel={() => {}} />))

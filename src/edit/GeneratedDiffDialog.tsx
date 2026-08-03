@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import { diffLines } from 'diff'
 import Dialog from '@mui/material/Dialog'
 import DialogTitle from '@mui/material/DialogTitle'
@@ -11,7 +11,8 @@ import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import { alpha } from '@mui/material/styles'
 import { useTranslation } from '../i18n'
-import type { ValidationError } from '../data/types'
+import { getContrastRatio, TEXT_COLOR_KEYS } from '../applyTheme'
+import type { ColorPalette, ThemeData, ValidationError } from '../data/types'
 import { computeSlidesDiff, hasChanges, type FieldChange, type SlideChange } from './slidesDiff'
 import { prettyPrintJson } from './slidesSerialize'
 import { ValidationErrorList } from './ValidationErrorList'
@@ -43,8 +44,34 @@ const KIND_COLOR: Record<FieldChange['kind'], 'success' | 'warning' | 'error'> =
   removed: 'error',
 }
 
+/** WCAG AA（通常テキスト）の閾値 */
+const WCAG_AA_THRESHOLD = 4.5
+
 function jsonBlock(value: unknown): string {
   return JSON.stringify(value, null, 2)
+}
+
+function formatRatio(ratio: number | null): string {
+  return ratio === null ? '—' : `${ratio.toFixed(2)}:1`
+}
+
+/** 色見本（スウォッチ+hex値）。値が無ければ「—」を表示する */
+function ColorSwatch({ value }: { value?: string }) {
+  if (!value) {
+    return (
+      <Typography component="span" sx={{ color: 'var(--fixed-text-muted)', fontFamily: 'var(--fixed-font-code)', fontSize: 12 }}>
+        —
+      </Typography>
+    )
+  }
+  return (
+    <Stack direction="row" spacing={0.5} alignItems="center">
+      <Box sx={{ width: 12, height: 12, borderRadius: '2px', border: '1px solid var(--fixed-border)', backgroundColor: value, flexShrink: 0 }} />
+      <Typography component="span" sx={{ fontFamily: 'var(--fixed-font-code)', fontSize: 12 }}>
+        {value}
+      </Typography>
+    </Stack>
+  )
 }
 
 /** before/after の整形済み JSON を git diff 風の行単位表示（追加=緑/削除=赤）に変換する。 */
@@ -79,33 +106,107 @@ export function GeneratedDiffDialog({ open, beforeText, afterText, validationErr
 
   const kindLabel = (kind: FieldChange['kind']) => (kind === 'added' ? t('diff.added', '追加') : kind === 'removed' ? t('diff.removed', '削除') : t('diff.changed', '変更'))
 
-  const renderSlideDetail = (c: SlideChange) => (
-    <Box component="details" key={c.id} sx={{ border: '1px solid var(--fixed-border)', borderRadius: 1, mb: 0.5, overflow: 'hidden' }}>
-      <Box component="summary" sx={{ px: 1, py: 0.75, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 1, listStyle: 'none', '&::-webkit-details-marker': { display: 'none' } }}>
-        <Chip size="small" color={KIND_COLOR[c.kind]} label={kindLabel(c.kind)} />
-        <Typography component="span" sx={{ fontFamily: 'var(--fixed-font-code)' }}>
-          {c.id}
+  // theme は otherChanges の他フィールドと違い、色・コントラスト比を専用UIで展開表示する（Chip一覧からは除く）
+  const themeChange = diff?.otherChanges.find((m) => m.key === 'theme')
+  const otherChangesExceptTheme = diff?.otherChanges.filter((m) => m.key !== 'theme') ?? []
+
+  // 色キーごとの比較行。getContrastRatio は DOM 操作を伴うため、theme 変更が無関係な再レンダーでは再計算しない
+  const themeColorRows = useMemo(() => {
+    const beforeColors: ColorPalette = (themeChange?.before as ThemeData | undefined)?.colors ?? {}
+    const afterColors: ColorPalette = (themeChange?.after as ThemeData | undefined)?.colors ?? {}
+    const colorKeys = [...new Set([...Object.keys(beforeColors), ...Object.keys(afterColors)])]
+    return colorKeys.map((key) => {
+      const isTextKey = TEXT_COLOR_KEYS.includes(key)
+      return {
+        key,
+        before: beforeColors[key],
+        after: afterColors[key],
+        isTextKey,
+        ratioBefore: isTextKey ? getContrastRatio(beforeColors[key], beforeColors.background) : null,
+        ratioAfter: isTextKey ? getContrastRatio(afterColors[key], afterColors.background) : null,
+      }
+    })
+  }, [themeChange])
+
+  // 追加/削除/変更の本文表示（git diff 風の行単位表示、または before/after 単独ブロック）。スライド・テーマ両方の詳細表示で共通
+  const renderChangeBody = (kind: FieldChange['kind'], before: unknown, after: unknown) =>
+    kind === 'changed' ? (
+      // git diff 風の行単位表示（追加=緑/削除=赤）。左右の全文並列より変更箇所が一目で分かる
+      <Box component="pre" sx={{ m: 0, p: 1, fontSize: 12, overflow: 'auto', maxHeight: 360, backgroundColor: 'var(--fixed-background-alt)', borderRadius: 1, fontFamily: 'var(--fixed-font-code)' }}>
+        {renderLineDiff(before, after)}
+      </Box>
+    ) : (
+      <Box>
+        <Typography variant="caption" sx={{ color: 'var(--fixed-text-muted)' }}>
+          {kind === 'removed' ? t('diff.before', '変更前') : t('diff.after', '変更後')}
         </Typography>
+        <Box component="pre" sx={{ m: 0, p: 1, fontSize: 12, overflow: 'auto', maxHeight: 220, backgroundColor: 'var(--fixed-background-alt)', borderRadius: 1, fontFamily: 'var(--fixed-font-code)' }}>
+          {jsonBlock(kind === 'removed' ? before : after)}
+        </Box>
       </Box>
-      <Box sx={{ px: 1, pb: 1 }}>
-        {c.kind === 'changed' ? (
-          // git diff 風の行単位表示（追加=緑/削除=赤）。左右の全文並列より変更箇所が一目で分かる
-          <Box component="pre" sx={{ m: 0, p: 1, fontSize: 12, overflow: 'auto', maxHeight: 360, backgroundColor: 'var(--fixed-background-alt)', borderRadius: 1, fontFamily: 'var(--fixed-font-code)' }}>
-            {renderLineDiff(c.before, c.after)}
-          </Box>
-        ) : (
-          <Box>
-            <Typography variant="caption" sx={{ color: 'var(--fixed-text-muted)' }}>
-              {c.kind === 'removed' ? t('diff.before', '変更前') : t('diff.after', '変更後')}
-            </Typography>
-            <Box component="pre" sx={{ m: 0, p: 1, fontSize: 12, overflow: 'auto', maxHeight: 220, backgroundColor: 'var(--fixed-background-alt)', borderRadius: 1, fontFamily: 'var(--fixed-font-code)' }}>
-              {jsonBlock(c.kind === 'removed' ? c.before : c.after)}
-            </Box>
-          </Box>
-        )}
+    )
+
+  // 展開カード（Chip + タイトル の summary、本文は details/summary 内）。スライド・テーマ両方の詳細表示で共通
+  const renderDetailCard = (key: string, kind: FieldChange['kind'], title: ReactNode, body: ReactNode) => (
+    <Box component="details" key={key} sx={{ border: '1px solid var(--fixed-border)', borderRadius: 1, mb: 0.5, overflow: 'hidden' }}>
+      <Box component="summary" sx={{ px: 1, py: 0.75, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 1, listStyle: 'none', '&::-webkit-details-marker': { display: 'none' } }}>
+        <Chip size="small" color={KIND_COLOR[kind]} label={kindLabel(kind)} />
+        {title}
       </Box>
+      <Box sx={{ px: 1, pb: 1 }}>{body}</Box>
     </Box>
   )
+
+  const renderThemeDetail = (m: FieldChange) => {
+    const body = (
+      <>
+        {themeColorRows.length > 0 && (
+          <Stack spacing={0.5} sx={{ mb: 1 }}>
+            {themeColorRows.map(({ key, before, after, isTextKey, ratioBefore, ratioAfter }) => {
+              const isAA = ratioAfter !== null && ratioAfter >= WCAG_AA_THRESHOLD
+              return (
+                <Stack key={key} direction="row" spacing={1} alignItems="center" sx={{ flexWrap: 'wrap' }}>
+                  <Typography component="span" sx={{ width: 100, flexShrink: 0, fontFamily: 'var(--fixed-font-code)', fontSize: 12 }}>
+                    {key}
+                  </Typography>
+                  <ColorSwatch value={before} />
+                  <Typography component="span" sx={{ color: 'var(--fixed-text-muted)' }}>
+                    →
+                  </Typography>
+                  <ColorSwatch value={after} />
+                  {isTextKey && (
+                    <Typography component="span" sx={{ color: 'var(--fixed-text-muted)', fontSize: 12 }}>
+                      {t('diff.contrastRatio', 'コントラスト比')}: {formatRatio(ratioBefore)} → {formatRatio(ratioAfter)}
+                    </Typography>
+                  )}
+                  {ratioAfter !== null && <Chip size="small" color={isAA ? 'success' : 'error'} label={isAA ? 'AA ✓' : 'AA ×'} />}
+                </Stack>
+              )
+            })}
+          </Stack>
+        )}
+        {renderChangeBody(m.kind, m.before, m.after)}
+      </>
+    )
+    return renderDetailCard(
+      m.key,
+      m.kind,
+      <Typography component="span" sx={{ fontFamily: 'var(--fixed-font-code)' }}>
+        {t('diff.themeSection', 'テーマ')}
+      </Typography>,
+      body,
+    )
+  }
+
+  const renderSlideDetail = (c: SlideChange) =>
+    renderDetailCard(
+      c.id,
+      c.kind,
+      <Typography component="span" sx={{ fontFamily: 'var(--fixed-font-code)' }}>
+        {c.id}
+      </Typography>,
+      renderChangeBody(c.kind, c.before, c.after),
+    )
 
   return (
     <Dialog open={open} onClose={onCancel} maxWidth="md" fullWidth aria-labelledby="generated-diff-title">
@@ -136,19 +237,22 @@ export function GeneratedDiffDialog({ open, beforeText, afterText, validationErr
               </Typography>
             )}
 
-            {/* メタ／その他トップレベルの変更 */}
-            {(diff.metaChanges.length > 0 || diff.otherChanges.length > 0) && (
+            {/* メタ／その他トップレベルの変更（theme は専用UIで下に展開表示するため除く） */}
+            {(diff.metaChanges.length > 0 || otherChangesExceptTheme.length > 0) && (
               <Box>
                 <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
                   {t('diff.metaSection', 'メタ情報')}
                 </Typography>
                 <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
-                  {[...diff.metaChanges, ...diff.otherChanges].map((m) => (
+                  {[...diff.metaChanges, ...otherChangesExceptTheme].map((m) => (
                     <Chip key={m.key} size="small" color={KIND_COLOR[m.kind]} variant="outlined" label={`${m.key}: ${kindLabel(m.kind)}`} />
                   ))}
                 </Stack>
               </Box>
             )}
+
+            {/* テーマの変更（色・WCAGコントラスト比を展開表示） */}
+            {themeChange && <Box>{renderThemeDetail(themeChange)}</Box>}
 
             {/* スライドの追加/変更/削除（展開で before/after 詳細） */}
             {diff.slideChanges.length > 0 && (
