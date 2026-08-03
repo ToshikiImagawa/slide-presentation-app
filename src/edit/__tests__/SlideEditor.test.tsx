@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
@@ -17,6 +17,7 @@ const h = vi.hoisted(() => ({
   pickBrandTemplate: vi.fn(),
   loadBrandOverrides: vi.fn(),
   saveBrandOverrides: vi.fn(),
+  resolveBrandTheme: vi.fn().mockResolvedValue(undefined),
 }))
 vi.mock('../../editModeSave', () => ({
   saveSlidesJson: h.saveSlidesJson,
@@ -37,7 +38,7 @@ vi.mock('../../applyTheme', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../applyTheme')>()
   return { ...actual, applyTheme: vi.fn().mockResolvedValue(undefined), applyThemeData: vi.fn(), resetThemeOverrides: vi.fn(), applyPresentationTheme: vi.fn().mockResolvedValue(true) }
 })
-vi.mock('../../localSlideLoader', () => ({ resolveLocalAssetPaths: (v: unknown) => v, getPackageAddonNames: h.getPackageAddonNames, resolveBrandTheme: vi.fn().mockResolvedValue(undefined) }))
+vi.mock('../../localSlideLoader', () => ({ resolveLocalAssetPaths: (v: unknown) => v, getPackageAddonNames: h.getPackageAddonNames, resolveBrandTheme: h.resolveBrandTheme }))
 vi.mock('../../brand/io', () => ({ pickBrandTemplate: h.pickBrandTemplate, loadBrandOverrides: h.loadBrandOverrides, saveBrandOverrides: h.saveBrandOverrides }))
 
 import { SlideEditor } from '../SlideEditor'
@@ -782,5 +783,64 @@ describe('SlideEditor ブランドテーマの取り込み（#168）', () => {
     fireEvent.click(screen.getByRole('button', { name: 'キャンセル' }))
     await waitFor(() => expect(screen.queryByText('ブランドテーマの取り込み確認')).toBeNull())
     expect(h.saveBrandOverrides).not.toHaveBeenCalled()
+  })
+})
+
+describe('SlideEditor themeColors 委譲（#172）', () => {
+  const themeColorsJson = JSON.stringify({ meta: { title: 'T', themeColors: '/theme/theme-colors.json' }, slides: [{ id: 's1', layout: 'center', content: { title: 'T' } }] }, null, 2)
+  const themeColorsWithBrandJson = JSON.stringify({ meta: { title: 'T', themeColors: '/theme/theme-colors.json', brandTheme: '/theme/brand.json' }, slides: [{ id: 's1', layout: 'center', content: { title: 'T' } }] }, null, 2)
+
+  beforeEach(() => {
+    h.resolveBrandTheme.mockReset().mockResolvedValue(undefined)
+    h.saveSlidesJson.mockReset()
+    h.chooseSlidesSavePath.mockReset().mockResolvedValue('/tmp/slides.json')
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ primary: '#112233', accent: '#445566' }) }))
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('meta.themeColors が無ければレポートを表示しない', async () => {
+    render(
+      <Wrapper>
+        <SlideEditor source={{ rawText: validJson, baseDir: '' }} onExit={() => {}} />
+      </Wrapper>,
+    )
+    expect(screen.queryByText(/このデッキが自前指定していて組織テーマが効かない項目/)).toBeNull()
+  })
+
+  it('meta.themeColors のキー数をレポートし、brand 未解決の間は委譲ボタンを無効化する', async () => {
+    render(
+      <Wrapper>
+        <SlideEditor source={{ rawText: themeColorsJson, baseDir: '' }} onExit={() => {}} />
+      </Wrapper>,
+    )
+    await waitFor(() => expect(screen.getByText(/2件/)).toBeTruthy())
+    expect((screen.getByRole('button', { name: 'themeColors を委譲する' }) as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  it('brand 解決済みなら [themeColors を委譲する] で brand と異なるキーだけ theme.colors へ残し、meta.themeColors を撤去する', async () => {
+    h.resolveBrandTheme.mockResolvedValue({ colors: { primary: '#112233' } })
+    render(
+      <Wrapper>
+        <SlideEditor source={{ rawText: themeColorsWithBrandJson, baseDir: '' }} onExit={() => {}} />
+      </Wrapper>,
+    )
+    await waitFor(() => expect(screen.getByText(/2件/)).toBeTruthy())
+    const button = await waitFor(() => {
+      const el = screen.getByRole('button', { name: 'themeColors を委譲する' }) as HTMLButtonElement
+      expect(el.disabled).toBe(false)
+      return el
+    })
+    fireEvent.click(button)
+    await waitFor(() => expect(screen.getByText('themeColors を組織テーマへ委譲しました')).toBeTruthy())
+
+    fireEvent.click(saveButton())
+    await waitFor(() => expect(h.saveSlidesJson).toHaveBeenCalled())
+    const savedText = h.saveSlidesJson.mock.calls[0][1] as string
+    const savedData = JSON.parse(savedText)
+    expect(savedData.meta.themeColors).toBeUndefined()
+    expect(savedData.theme.colors).toEqual({ accent: '#445566' })
   })
 })

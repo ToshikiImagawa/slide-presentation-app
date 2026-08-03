@@ -242,6 +242,12 @@
       "statusFallback": "既定値",
       "statusMissing": "未設定"
     },
+    "brandMigration": {
+      "notice": "このデッキが自前指定していて組織テーマが効かない項目: {count}件",
+      "delegateButton": "themeColors を委譲する",
+      "needsBrandTheme": "meta.brandTheme を設定すると委譲できます",
+      "delegated": "themeColors を組織テーマへ委譲しました"
+    },
     "shortcuts": {
       "title": "キーボードショートカット",
       "viewerSection": "プレゼンビューア",

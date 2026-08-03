@@ -70,7 +70,7 @@ function setColorVar(root: HTMLElement, cssVar: string, value: string): void {
  * （開発サーバー等の SPA フォールバックで 200 + HTML が返り JSON パースに失敗するケースも同様に扱う）。
  * path 指定時は取得・パースに失敗すると ok: false を返す（呼び出し元でユーザーへの通知に使う）。
  */
-async function fetchColorPalette(path?: string): Promise<{ palette?: Record<string, string>; ok: boolean }> {
+export async function fetchColorPalette(path?: string): Promise<{ palette?: Record<string, string>; ok: boolean }> {
   const isDefaultPath = path === undefined
   let res: Response
   try {

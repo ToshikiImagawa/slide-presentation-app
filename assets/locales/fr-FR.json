@@ -242,6 +242,12 @@
       "statusFallback": "Par défaut",
       "statusMissing": "Non défini"
     },
+    "brandMigration": {
+      "notice": "Éléments propres à ce deck qui ne reflètent pas le thème de l'organisation : {count}",
+      "delegateButton": "Déléguer themeColors",
+      "needsBrandTheme": "Définissez meta.brandTheme pour activer la délégation",
+      "delegated": "themeColors délégué au thème de l'organisation"
+    },
     "shortcuts": {
       "title": "Raccourcis clavier",
       "viewerSection": "Visionneuse de présentation",

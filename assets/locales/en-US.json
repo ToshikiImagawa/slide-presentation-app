@@ -242,6 +242,12 @@
       "statusFallback": "Default",
       "statusMissing": "Not set"
     },
+    "brandMigration": {
+      "notice": "Items this deck overrides that won't reflect the org theme: {count}",
+      "delegateButton": "Delegate themeColors",
+      "needsBrandTheme": "Set meta.brandTheme to enable delegation",
+      "delegated": "Delegated themeColors to the org theme"
+    },
     "shortcuts": {
       "title": "Keyboard shortcuts",
       "viewerSection": "Presentation viewer",
