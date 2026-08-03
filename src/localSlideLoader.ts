@@ -4,7 +4,7 @@ import { convertFileSrc, invoke } from '@tauri-apps/api/core'
 import { dirname } from '@tauri-apps/api/path'
 import { LazyStore } from '@tauri-apps/plugin-store'
 import { validatePresentationData } from './data'
-import type { PresentationData } from './data'
+import type { PresentationData, ThemeData } from './data'
 import { SLIDE_PACKAGE_ARCHIVE_EXTENSIONS, isSlidePackageArchivePath } from './slidePackageArchive'
 
 const ASSET_PATH_PREFIXES = ['image/', 'voice/', 'theme/', 'font/']
@@ -290,6 +290,28 @@ async function resolvePackageEntry(selectedPath: string, download?: SlidePackage
   return { slidesJsonPath: selectedPath, baseDir: await dirname(selectedPath) }
 }
 
+/**
+ * meta.brandTheme（外部 ThemeData 参照）を読み込む。https URL 参照は fetch、それ以外は baseDir 基準のローカルファイルとして読む。
+ * resolveLocalAssetPaths に1段だけ乗せることで、参照先 JSON 内のロゴ画像・フォントファイル等のアセット参照も同じ規則で
+ * asset URL 化する（DC-003: baseDir 基準のアセット解決規則を単一真実源に保つ）。取得・パースに失敗した場合は undefined
+ * を返し、テーマ下地なしで続行する（ブランドテーマは装飾であり、失敗させてスライド自体を開けなくしない）。
+ */
+export async function resolveBrandTheme(brandPath: string | undefined, baseDir: string): Promise<ThemeData | undefined> {
+  if (!brandPath) return undefined
+  try {
+    if (isRemoteUrl(brandPath)) {
+      const res = await fetch(brandPath)
+      if (!res.ok) return undefined
+      return (await res.json()) as ThemeData
+    }
+    const raw = await readTextFile(`${baseDir}/${brandPath.replace(/^\//, '')}`)
+    return resolveLocalAssetPaths(JSON.parse(raw), baseDir)
+  } catch (error) {
+    console.warn('[localSlideLoader] meta.brandTheme の読み込みに失敗しました（テーマ下地なしで続行）', error)
+    return undefined
+  }
+}
+
 /** baseDir/addons/manifest.json を読み、宣言されたバンドルを asset URL 化して返す。manifest 不在・不正時は空配列 */
 async function resolvePackageAddons(baseDir: string): Promise<string[]> {
   try {
@@ -315,12 +337,15 @@ async function loadSlidePackage(selectedPath: string, download?: SlidePackageDow
     throw new Error('スライドデータの形式が正しくありません（meta.title、slides 配列などを確認してください）')
   }
 
-  // allow_asset_dir 完了後に同梱アドオンと書き出し用 identity を解決する（互いに独立した読み取りなので並列）。
+  // allow_asset_dir 完了後に同梱アドオンと書き出し用 identity・brandTheme を解決する（互いに独立した読み取りなので並列）。
   // owner はパッケージ単位で一意な baseDir
-  const [addonScripts, identity] = await Promise.all([resolvePackageAddons(baseDir), getPackageIdentity(baseDir)])
+  const [addonScripts, identity, resolvedBrandTheme] = await Promise.all([resolvePackageAddons(baseDir), getPackageIdentity(baseDir), resolveBrandTheme(parsed.meta?.brandTheme, baseDir)])
+
+  const data = resolveLocalAssetPaths(parsed, baseDir)
+  if (resolvedBrandTheme) data.resolvedBrandTheme = resolvedBrandTheme
 
   return {
-    data: resolveLocalAssetPaths(parsed, baseDir),
+    data,
     rawText: raw,
     baseDir,
     sourcePath: selectedPath,

@@ -1,4 +1,4 @@
-import type { FontSource, ThemeData } from './data'
+import type { ColorPalette, FontDefinition, FontSource, ThemeData } from './data'
 import { buildMasterCss, getMasterWarnings } from './masters'
 
 /** 6桁hex（#rrggbb）を [r, g, b] へ分解する（hexToRgb・relativeLuminance・brand/compile.ts の mix 計算が共有する） */
@@ -65,37 +65,100 @@ function setColorVar(root: HTMLElement, cssVar: string, value: string): void {
 }
 
 /**
- * テーマカラー定義（JSON）を取得して CSS 変数へ適用する。
- * path 省略時はデフォルトの `/theme-colors.json` を読む。存在しないのはカスタムテーマ未使用の正常系なので false は返さない
+ * meta.themeColors（12キーのフラット色定義 JSON）を取得する。path 省略時はデフォルトの `/theme-colors.json` を読む。
+ * 存在しないのはカスタムテーマ未使用の正常系なので ok は false にしない
  * （開発サーバー等の SPA フォールバックで 200 + HTML が返り JSON パースに失敗するケースも同様に扱う）。
- * path 指定時は取得・パースに失敗すると false を返す（呼び出し元でユーザーへの通知に使う）。
- * @returns 適用に成功したか（path 未指定でファイルが存在しない場合も true）
+ * path 指定時は取得・パースに失敗すると ok: false を返す（呼び出し元でユーザーへの通知に使う）。
  */
-export async function applyTheme(path?: string): Promise<boolean> {
+async function fetchColorPalette(path?: string): Promise<{ palette?: Record<string, string>; ok: boolean }> {
   const isDefaultPath = path === undefined
   let res: Response
   try {
     res = await fetch(path ?? '/theme-colors.json')
   } catch {
-    return isDefaultPath
+    return { ok: isDefaultPath }
   }
-  if (!res.ok) return isDefaultPath
+  if (!res.ok) return { ok: isDefaultPath }
 
-  let theme: Record<string, string>
   try {
-    theme = await res.json()
+    return { palette: await res.json(), ok: true }
   } catch {
-    return isDefaultPath
+    return { ok: isDefaultPath }
   }
+}
 
-  const root = document.documentElement
-  for (const [key, value] of Object.entries(theme)) {
-    const cssVar = THEME_COLOR_TOKENS[key]
-    if (cssVar) {
-      setColorVar(root, cssVar, value)
+/**
+ * テーマカラー定義（JSON）を取得して CSS 変数へ適用する。
+ * @returns 適用に成功したか（path 未指定でファイルが存在しない場合も true）
+ */
+export async function applyTheme(path?: string): Promise<boolean> {
+  const { palette, ok } = await fetchColorPalette(path)
+  if (palette) {
+    const root = document.documentElement
+    for (const [key, value] of Object.entries(palette)) {
+      const cssVar = THEME_COLOR_TOKENS[key]
+      if (cssVar) {
+        setColorVar(root, cssVar, value)
+      }
     }
   }
-  return true
+  return ok
+}
+
+/**
+ * 外部 JSON から ThemeData 全体（meta.brandTheme の参照先）を取得する。theme-colors.json（12キーのみ）とは異なり、
+ * fonts/masters/masterMap/tokens/customCSS を含む ThemeData 構造をそのまま返す。取得・パースに失敗した場合は undefined
+ */
+export async function fetchThemeData(path: string): Promise<ThemeData | undefined> {
+  try {
+    const res = await fetch(path)
+    if (!res.ok) return undefined
+    return (await res.json()) as ThemeData
+  } catch {
+    return undefined
+  }
+}
+
+/** オブジェクト2つをキー単位でマージする（後勝ち）。両方未指定なら undefined */
+function mergeRecord<T>(a?: Record<string, T>, b?: Record<string, T>): Record<string, T> | undefined {
+  if (!a && !b) return undefined
+  return { ...a, ...b }
+}
+
+/** masterKey 単位、かつその内側の CSS 変数キー単位でマージする（tokens 用） */
+function mergeTokens(a?: Record<string, Record<string, string>>, b?: Record<string, Record<string, string>>): Record<string, Record<string, string>> | undefined {
+  if (!a && !b) return undefined
+  const result: Record<string, Record<string, string>> = {}
+  for (const key of new Set([...Object.keys(a ?? {}), ...Object.keys(b ?? {})])) {
+    result[key] = { ...a?.[key], ...b?.[key] }
+  }
+  return result
+}
+
+/** sources は連結（重複登録は loadFontSources 側の styleId 判定でスキップされる）、他のキーは後勝ち */
+function mergeFonts(a?: FontDefinition, b?: FontDefinition): FontDefinition | undefined {
+  if (!a && !b) return undefined
+  const sources = [...(a?.sources ?? []), ...(b?.sources ?? [])]
+  return { ...a, ...b, ...(sources.length > 0 ? { sources } : {}) }
+}
+
+/**
+ * brand（組織/ブランドテーマ・下地）と theme（デッキ固有・上書き）を合成する（純粋関数）。
+ * colors/fonts/masters/masterMap/tokens はキー単位でマージし、同名キーは theme 側が優先する。
+ * customCSS は brand→theme の順で連結する（CSS の後方優先規則により theme 側の指定が効く）。
+ * SlideRenderer（本編・PDF・発表者ビュー・編集プレビューの4経路）が masters/masterMap を直接参照するため、
+ * CSS 変数適用（applyThemeData）だけでなく描画に渡す theme 自体をこの関数で合成する必要がある。
+ */
+export function mergeThemeData(brand?: ThemeData, theme?: ThemeData): ThemeData | undefined {
+  if (!brand && !theme) return undefined
+  return {
+    colors: mergeRecord<string | undefined>(brand?.colors, theme?.colors),
+    fonts: mergeFonts(brand?.fonts, theme?.fonts),
+    customCSS: [brand?.customCSS, theme?.customCSS].filter(Boolean).join('\n') || undefined,
+    masters: mergeRecord(brand?.masters, theme?.masters),
+    masterMap: mergeRecord(brand?.masterMap, theme?.masterMap),
+    tokens: mergeTokens(brand?.tokens, theme?.tokens),
+  }
 }
 
 /** フォントサイズ比率（body1 = 1.0 基準） */
@@ -307,15 +370,29 @@ export function resetThemeOverrides(): void {
 }
 
 /**
- * プレゼンテーションのテーマを一括適用する（本編・発表者ビューの両エントリで共通の手順）。
- * 前のテーマの上書きが残らないよう、必ずリセットしてから themeColors → theme の順に適用する。
- * @returns テーマカラーの適用に成功したか（呼び出し元でユーザーへの通知に使う）
+ * プレゼンテーションのテーマを一括適用する（本編・発表者ビュー・編集モードの各エントリで共通の手順）。
+ * 前のテーマの上書きが残らないよう必ずリセットしてから、reset → brand（組織/ブランドの下地） →
+ * themeColors（12キー） → theme（デッキ固有の上書き）の4段カスケードで合成・適用する。
+ * customCSS/masters/masterMap/tokens は丸ごと置換の性質を持つため、mergeThemeData で
+ * 事前に1つの ThemeData へ合成した上で一度だけ applyThemeData する（2回適用すると先の層が消えてしまう）。
+ * @returns テーマカラー（themeColors）の取得に成功したか（呼び出し元でユーザーへの通知に使う）
  */
-export async function applyPresentationTheme(themeColors?: string, theme?: ThemeData): Promise<boolean> {
+export async function applyPresentationTheme(themeColors?: string, theme?: ThemeData, brand?: ThemeData): Promise<boolean> {
   resetThemeOverrides()
-  const ok = await applyTheme(themeColors)
-  if (theme) {
-    applyThemeData(theme)
+
+  let themeColorsPalette: ColorPalette | undefined
+  let ok = true
+  if (themeColors) {
+    const result = await fetchColorPalette(themeColors)
+    themeColorsPalette = result.palette
+    ok = result.ok
+  }
+
+  // brand → themeColors → theme の順で1層ずつ合成する（各層が後勝ちで前層を上書きする）
+  const layers: (ThemeData | undefined)[] = [brand, themeColorsPalette ? { colors: themeColorsPalette } : undefined, theme]
+  const merged = layers.reduce<ThemeData | undefined>((acc, layer) => mergeThemeData(acc, layer), undefined)
+  if (merged) {
+    applyThemeData(merged)
   }
   return ok
 }

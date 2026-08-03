@@ -9,7 +9,7 @@ import { HomeScreen } from './components/HomeScreen'
 import { SettingsWindow } from './components/SettingsWindow'
 import { ShortcutsDialog } from './components/ShortcutsDialog'
 import { UpdateDialog } from './components/UpdateDialog'
-import { applyPresentationTheme, applyTheme, getThemeWarnings } from './applyTheme'
+import { applyPresentationTheme, applyTheme, fetchThemeData, getThemeWarnings } from './applyTheme'
 import { loadAddonScripts, loadBuiltinAddons } from './addonLoader'
 import { unregisterOwner } from './components/ComponentRegistry'
 import { getBlankPresentationData, getSampleUnavailablePresentationData } from './data'
@@ -43,6 +43,17 @@ import { enterEditMode, exitEditMode } from './editModeSave'
 
 type View = 'home' | 'presentation' | 'edit'
 
+/**
+ * 表示用の brand ThemeData を解決する。ローカル .spkg パッケージは localSlideLoader.ts が
+ * baseDir 基準で解決済みの resolvedBrandTheme を持つため、それを優先する。
+ * 無ければ（Web/ビルド同梱経由）meta.brandTheme のパスから直接 fetch する。
+ */
+async function resolveBrandThemeForDisplay(data: PresentationData): Promise<ThemeData | undefined> {
+  if (data.resolvedBrandTheme) return data.resolvedBrandTheme
+  if (data.meta?.brandTheme) return fetchThemeData(data.meta.brandTheme)
+  return undefined
+}
+
 /** ホーム画面とプレゼンテーション画面を切り替える（I18nProvider の内側で useI18n を使うための内側コンポーネント） */
 function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentSlidePackageEntry[] }) {
   const { locale, t } = useI18n()
@@ -50,6 +61,8 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
   const [view, setView] = useState<View>('home')
   const [presentationData, setPresentationData] = useState<PresentationData | undefined>(undefined)
   const [presentationKey, setPresentationKey] = useState(0)
+  // 表示中プレゼンの組織/ブランドテーマ（4段カスケードの下地）。showPresentation で解決し、本編・発表者ビューへ配線する
+  const [brandTheme, setBrandTheme] = useState<ThemeData | undefined>(undefined)
   const [recentPackages, setRecentPackages] = useState(initialRecentPackages)
   // 発表者ビューへ伝搬する現在のアドオン情報（パッケージ単位。組み込みアドオンは含めない）
   const [addonInfo, setAddonInfo] = useState<{ owner: string; scripts: string[] }>({ owner: '', scripts: [] })
@@ -100,8 +113,8 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
 
   // テーマを適用し、失敗した場合はトースト通知する（showPresentation・handleExitEdit の両方から使う共通処理）
   const applyThemeAndNotify = useCallback(
-    async (themeColors?: string, theme?: ThemeData) => {
-      const themeApplied = await applyPresentationTheme(themeColors, theme)
+    async (themeColors?: string, theme?: ThemeData, brand?: ThemeData) => {
+      const themeApplied = await applyPresentationTheme(themeColors, theme, brand)
       if (!themeApplied) {
         showToast(t('theme.applyFailed'))
       } else if (getThemeWarnings(theme).length > 0) {
@@ -117,7 +130,9 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
       applyPresentationData(data)
       setView('presentation')
 
-      await applyThemeAndNotify(data.meta?.themeColors, data.theme)
+      const brand = await resolveBrandThemeForDisplay(data)
+      setBrandTheme(brand)
+      await applyThemeAndNotify(data.meta?.themeColors, data.theme, brand)
     },
     [applyPresentationData, applyThemeAndNotify],
   )
@@ -220,6 +235,7 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
     // ホーム復帰時はパッケージ由来のカスタム登録をクリアする
     clearPackageAddons()
     setEditSource(null)
+    setBrandTheme(undefined)
     // プレゼンテーション固有のテーマを持ち越さず、ホーム画面はアプリのデフォルトテーマで表示する
     void applyPresentationTheme()
     setView('home')
@@ -248,10 +264,10 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
 
   const handleExitEdit = useCallback(() => {
     closeEditGate()
-    // 編集中に適用したテーマを、表示中プレゼンのテーマへ戻す
-    void applyThemeAndNotify(presentationData?.meta?.themeColors, presentationData?.theme)
+    // 編集中に適用したテーマを、表示中プレゼンのテーマへ戻す（brandTheme は showPresentation 時点で解決済みのものを再利用）
+    void applyThemeAndNotify(presentationData?.meta?.themeColors, presentationData?.theme, brandTheme)
     setView('presentation')
-  }, [closeEditGate, presentationData, applyThemeAndNotify])
+  }, [closeEditGate, presentationData, brandTheme, applyThemeAndNotify])
 
   const handleOpenAssociated = useCallback(
     async (path: string) => {
@@ -315,6 +331,7 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
         scrollSpeed={scrollSpeed}
         onScrollSpeedChange={setScrollSpeed}
         onOpenSettings={openSettings}
+        brandTheme={brandTheme}
       />
     )
   }

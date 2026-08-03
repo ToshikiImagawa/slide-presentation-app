@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { applyTheme, applyPresentationTheme, applyThemeData, applyBaseFontSize, loadFontSources, resetThemeOverrides, normalizeHex, getThemeWarnings, getContrastRatio } from '../applyTheme'
+import { applyTheme, applyPresentationTheme, applyThemeData, applyBaseFontSize, loadFontSources, resetThemeOverrides, normalizeHex, getThemeWarnings, getContrastRatio, mergeThemeData, fetchThemeData } from '../applyTheme'
 import type { ThemeData } from '../data'
 
 describe('applyTheme', () => {
@@ -93,6 +93,123 @@ describe('applyPresentationTheme', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ primary: '#112233' }) }))
 
     await expect(applyPresentationTheme('/pkg/theme-colors.json')).resolves.toBe(true)
+  })
+
+  it('4段カスケード（brand → themeColors → theme）で同名キーは後段が優先される', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ primary: '#111111', background: '#aaaaaa' }) }))
+
+    await applyPresentationTheme('/pkg/theme-colors.json', { colors: { primary: '#333333' } }, { colors: { primary: '#000000', background: '#bbbbbb' } })
+
+    // primary: brand(#000000) → themeColors(#111111) → theme(#333333) の順で上書きされ、最終的に theme の値が残る
+    expect(document.documentElement.style.getPropertyValue('--theme-primary')).toBe('#333333')
+    // background: brand(#bbbbbb) → themeColors(#aaaaaa) の順で上書きされ、theme に指定がないため themeColors の値が残る
+    expect(document.documentElement.style.getPropertyValue('--theme-background')).toBe('#aaaaaa')
+  })
+
+  it('brand のみ指定時は brand の masters/masterMap/tokens が CSS として反映される', async () => {
+    const brand: ThemeData = { masters: { corp: { decorations: [] } }, masterMap: { center: 'corp' }, tokens: { corp: { 'band-color': '#ff0000' } } }
+
+    await applyPresentationTheme(undefined, undefined, brand)
+
+    expect(document.getElementById('sdd-master-tokens-css')?.textContent).toContain('--band-color: #ff0000;')
+  })
+})
+
+describe('fetchThemeData', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('取得・パースに成功した場合は ThemeData を返す', async () => {
+    const theme: ThemeData = { colors: { primary: '#112233' }, fonts: { heading: 'Foo' } }
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => theme }))
+
+    await expect(fetchThemeData('/theme/brand.json')).resolves.toEqual(theme)
+  })
+
+  it('404 の場合は undefined を返す', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 404 }))
+
+    await expect(fetchThemeData('/theme/brand.json')).resolves.toBeUndefined()
+  })
+
+  it('fetch が例外を投げた場合は undefined を返す', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network')))
+
+    await expect(fetchThemeData('/theme/brand.json')).resolves.toBeUndefined()
+  })
+
+  it('JSON パースに失敗した場合は undefined を返す', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => {
+          throw new SyntaxError('invalid json')
+        },
+      }),
+    )
+
+    await expect(fetchThemeData('/theme/brand.json')).resolves.toBeUndefined()
+  })
+})
+
+describe('mergeThemeData（brand→deck の合成・#170）', () => {
+  it('両方未指定なら undefined を返す', () => {
+    expect(mergeThemeData(undefined, undefined)).toBeUndefined()
+  })
+
+  it('colors はキー単位でマージし、同名キーは theme（第2引数）が優先される', () => {
+    const merged = mergeThemeData({ colors: { primary: '#000000', background: '#bbbbbb' } }, { colors: { primary: '#333333' } })
+
+    expect(merged?.colors?.primary).toBe('#333333')
+    expect(merged?.colors?.background).toBe('#bbbbbb')
+  })
+
+  it('masters/masterMap はキー単位でマージし、同名キーは theme が優先される', () => {
+    const brand: ThemeData = { masters: { corp: { decorations: [] } }, masterMap: { center: 'corp', content: 'corp' } }
+    const theme: ThemeData = { masters: { deck: { decorations: [] } }, masterMap: { content: 'deck' } }
+
+    const merged = mergeThemeData(brand, theme)
+
+    expect(Object.keys(merged?.masters ?? {})).toEqual(expect.arrayContaining(['corp', 'deck']))
+    expect(merged?.masterMap?.center).toBe('corp')
+    expect(merged?.masterMap?.content).toBe('deck')
+  })
+
+  it('tokens は masterKey 単位・内側の CSS 変数キー単位でマージする', () => {
+    const brand: ThemeData = { tokens: { corp: { '--a': '1', '--b': '2' } } }
+    const theme: ThemeData = { tokens: { corp: { '--b': '20' }, deck: { '--c': '3' } } }
+
+    const merged = mergeThemeData(brand, theme)
+
+    expect(merged?.tokens?.corp).toEqual({ '--a': '1', '--b': '20' })
+    expect(merged?.tokens?.deck).toEqual({ '--c': '3' })
+  })
+
+  it('fonts.sources は連結し、他のキーは theme が優先される', () => {
+    const brand: ThemeData = { fonts: { heading: 'BrandHeading', sources: [{ family: 'BrandFont', src: '/brand.woff2' }] } }
+    const theme: ThemeData = { fonts: { heading: 'DeckHeading', sources: [{ family: 'DeckFont', src: '/deck.woff2' }] } }
+
+    const merged = mergeThemeData(brand, theme)
+
+    expect(merged?.fonts?.heading).toBe('DeckHeading')
+    expect(merged?.fonts?.sources).toEqual([
+      { family: 'BrandFont', src: '/brand.woff2' },
+      { family: 'DeckFont', src: '/deck.woff2' },
+    ])
+  })
+
+  it('customCSS は brand→theme の順で連結する', () => {
+    const merged = mergeThemeData({ customCSS: '.brand {}' }, { customCSS: '.deck {}' })
+
+    expect(merged?.customCSS).toBe('.brand {}\n.deck {}')
+  })
+
+  it('brand のみ指定時はそのまま反映される', () => {
+    const brand: ThemeData = { colors: { primary: '#000000' } }
+
+    expect(mergeThemeData(brand, undefined)).toEqual({ colors: { primary: '#000000' }, fonts: undefined, customCSS: undefined, masters: undefined, masterMap: undefined, tokens: undefined })
   })
 })
 

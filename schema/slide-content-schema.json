@@ -120,7 +120,8 @@
         "height": { "type": "number", "description": "デフォルト40" }
       }
     },
-    "themeColors": { "type": "string" }
+    "themeColors": { "type": "string" },
+    "brandTheme": { "type": "string", "description": "組織/ブランドテーマ（外部 ThemeData JSON への参照パス）。reset→brandTheme→themeColors→theme の順で下地として適用される" }
   },
   "slideMeta": {
     "description": "各スライド共通のmeta（オプション）",

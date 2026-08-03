@@ -21,6 +21,8 @@ export interface UsePresenterViewOptions {
   themeColors?: string
   /** 本編に適用中のテーマデータ（発表者ビューへ伝搬して同じ配色を適用させる） */
   theme?: ThemeData
+  /** 本編に適用中の組織/ブランドテーマ（4段カスケードの下地。発表者ビュー側で theme と合成させる） */
+  brand?: ThemeData
   /** 本編に適用中のロゴ設定（発表者ビューへ伝搬して同じロゴを表示させる） */
   logo?: LogoConfig
   onNavigate?: (direction: 'prev' | 'next') => void
@@ -45,6 +47,7 @@ export function usePresenterView({
   addonScripts = [],
   themeColors,
   theme,
+  brand,
   logo,
   onNavigate,
   onAudioToggle,
@@ -85,7 +88,7 @@ export function usePresenterView({
 
   // 現在のテーマ・アドオンを発表者ビューへ伝搬する（マウント時・presenterViewReady 受信時の両方で使う）
   const emitThemeAndAddons = () => {
-    const themeMessage: PresenterViewMessage = { type: 'themeChanged', payload: { themeColors, theme, logo } }
+    const themeMessage: PresenterViewMessage = { type: 'themeChanged', payload: { themeColors, theme, brand, logo } }
     void emit(EVENT_NAME, themeMessage)
     const addonMessage: PresenterViewMessage = { type: 'addonsChanged', payload: { owner: addonOwner, scripts: addonScripts } }
     void emit(EVENT_NAME, addonMessage)
