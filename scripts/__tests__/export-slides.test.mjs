@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { parseArgs, rewriteAddonManifestBundles, buildFilesField, extractAssetPaths, extractAssetPathsDeep, selectAddons } from '../export-slides.mjs'
+import { parseArgs, rewriteAddonManifestBundles, buildFilesField, extractAssetPaths, extractAssetPathsDeep, extractProhibitedFontPaths, selectAddons } from '../export-slides.mjs'
 
 describe('parseArgs', () => {
   it('--addons フラグを解釈する', () => {
@@ -155,5 +155,65 @@ describe('extractAssetPathsDeep（#170: meta.brandTheme 参照先を1段だけ�
   it('brandTheme 未参照の通常デッキは1パス目のみで完了する', () => {
     const paths = extractAssetPathsDeep({ meta: { logo: { src: 'image/logo.png' } } }, dir)
     expect(paths).toEqual(['image/logo.png'])
+  })
+
+  it('#171: theme.fonts.sources の prohibited な src を書き出し対象から除外する', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    const paths = extractAssetPathsDeep(
+      {
+        theme: {
+          fonts: {
+            sources: [
+              { family: 'Corp', src: 'font/corp.woff2', redistribution: 'prohibited' },
+              { family: 'Open', src: 'font/open.woff2', redistribution: 'permitted' },
+            ],
+          },
+        },
+      },
+      dir,
+    )
+
+    expect(paths.sort()).toEqual(['font/open.woff2'])
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('font/corp.woff2'))
+    warnSpy.mockRestore()
+  })
+
+  it('#171: meta.brandTheme 参照先（2段目）の prohibited な src も除外する', () => {
+    mkdirSync(join(dir, 'theme'))
+    writeFileSync(
+      join(dir, 'theme', 'brand.json'),
+      JSON.stringify({ fonts: { sources: [{ family: 'Corp', src: 'font/corp.woff2', redistribution: 'prohibited' }] } }),
+    )
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    const paths = extractAssetPathsDeep({ meta: { brandTheme: 'theme/brand.json' } }, dir)
+
+    expect(paths.sort()).toEqual(['theme/brand.json'])
+    warnSpy.mockRestore()
+  })
+})
+
+describe('extractProhibitedFontPaths（#171: 再配布禁止フォントのゲート）', () => {
+  it('redistribution: "prohibited" な src のみを収集する（先頭スラッシュは除去、src の無いソースは無視）', () => {
+    // src-tauri/src/lib.rs の extract_prohibited_font_paths_collects_only_prohibited_src と同じ入力（パリティ）
+    const themeData = {
+      fonts: {
+        sources: [
+          { family: 'Corp', src: 'font/corp.woff2', redistribution: 'prohibited' },
+          { family: 'Open', src: 'font/open.woff2', redistribution: 'permitted' },
+          { family: 'Internal', src: 'font/internal.woff2', redistribution: 'internal-only' },
+          { family: 'Legacy', src: '/font/legacy.woff2', redistribution: 'prohibited' },
+          { family: 'NoSrc', localName: 'Arial', redistribution: 'prohibited' },
+        ],
+      },
+    }
+
+    expect(extractProhibitedFontPaths(themeData)).toEqual(new Set(['font/corp.woff2', 'font/legacy.woff2']))
+  })
+
+  it('themeData/sources が無くても空集合を返す', () => {
+    expect(extractProhibitedFontPaths(undefined)).toEqual(new Set())
+    expect(extractProhibitedFontPaths({})).toEqual(new Set())
   })
 })
