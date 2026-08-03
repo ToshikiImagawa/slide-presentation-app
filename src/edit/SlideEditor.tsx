@@ -13,7 +13,7 @@ import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import { editorUiTheme, theme } from '../theme'
 import { useTranslation } from '../i18n'
-import { applyTheme, applyThemeData, resetThemeOverrides } from '../applyTheme'
+import { applyPresentationTheme } from '../applyTheme'
 import { getPackageAddonNames, resolveLocalAssetPaths } from '../localSlideLoader'
 import type { PresentationData, SlideData } from '../data'
 import type { GeneratedCandidate } from '../aiGenerate'
@@ -145,9 +145,7 @@ export function SlideEditor({
   // プレビュー用にテーマを適用（設計 §9.1 の初期方針: 同一 document。テーマ編集で live 反映）
   const themeKey = JSON.stringify({ theme: validData.theme, themeColors: validData.meta?.themeColors })
   useEffect(() => {
-    resetThemeOverrides()
-    void applyTheme(validData.meta?.themeColors)
-    if (validData.theme) applyThemeData(validData.theme)
+    void applyPresentationTheme(validData.meta?.themeColors, validData.theme)
     // themeKey が変わったときだけ再適用する
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [themeKey])
