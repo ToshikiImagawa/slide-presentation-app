@@ -50,6 +50,9 @@ export const THEME_COLOR_TOKENS: Record<string, string> = {
   success: '--theme-success',
 }
 
+/** THEME_COLOR_TOKENS のうち、文字色として使われるキー（帯・線等の装飾色は対象外）。背景色に対するコントラスト比の算出対象を絞るのに使う */
+export const TEXT_COLOR_KEYS: readonly string[] = ['text', 'textHeading', 'textBody', 'textSubtitle', 'textMuted', 'codeText']
+
 /** CSS 変数へ色を適用する。`-rgb` companion は normalizeHex で解釈できた場合のみ設定する */
 function setColorVar(root: HTMLElement, cssVar: string, value: string): void {
   root.style.setProperty(cssVar, value)
