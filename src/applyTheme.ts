@@ -152,7 +152,7 @@ function mergeFonts(a?: FontDefinition, b?: FontDefinition): FontDefinition | un
 export function mergeThemeData(brand?: ThemeData, theme?: ThemeData): ThemeData | undefined {
   if (!brand && !theme) return undefined
   return {
-    colors: mergeRecord<string | undefined>(brand?.colors, theme?.colors) as ColorPalette | undefined,
+    colors: mergeRecord<string | undefined>(brand?.colors, theme?.colors),
     fonts: mergeFonts(brand?.fonts, theme?.fonts),
     customCSS: [brand?.customCSS, theme?.customCSS].filter(Boolean).join('\n') || undefined,
     masters: mergeRecord(brand?.masters, theme?.masters),
@@ -388,7 +388,9 @@ export async function applyPresentationTheme(themeColors?: string, theme?: Theme
     ok = result.ok
   }
 
-  const merged = mergeThemeData(mergeThemeData(brand, themeColorsPalette ? { colors: themeColorsPalette } : undefined), theme)
+  // brand → themeColors → theme の順で1層ずつ合成する（各層が後勝ちで前層を上書きする）
+  const layers: (ThemeData | undefined)[] = [brand, themeColorsPalette ? { colors: themeColorsPalette } : undefined, theme]
+  const merged = layers.reduce<ThemeData | undefined>((acc, layer) => mergeThemeData(acc, layer), undefined)
   if (merged) {
     applyThemeData(merged)
   }

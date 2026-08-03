@@ -70,26 +70,29 @@ export function extractAssetPaths(obj) {
   return [...paths]
 }
 
-// --- theme/ 配下の参照 JSON（meta.brandTheme 等）を1段だけ辿り、その中のアセット参照も合成する ---
+// --- meta.brandTheme の参照先 JSON を1段だけ辿り、その中のアセット参照も合成する ---
+// ランタイム側の解決（src/localSlideLoader.ts の resolveBrandTheme）と対称に、meta.brandTheme
+// フィールドだけを対象にする（theme/ 配下の JSON という見た目だけで判定すると meta.themeColors
+// の参照先まで誤って2段目の探索対象になってしまう）
 export function extractAssetPathsDeep(obj, sourceDir, { strict = false } = {}) {
-  const direct = extractAssetPaths(obj)
-  const paths = new Set(direct)
+  const paths = new Set(extractAssetPaths(obj))
 
-  for (const assetPath of direct) {
-    if (!assetPath.startsWith('theme/') || !assetPath.endsWith('.json')) continue
-    const themeJsonPath = resolve(sourceDir, assetPath)
+  const brandThemePath = obj?.meta?.brandTheme
+  if (typeof brandThemePath === 'string') {
+    const themeJsonPath = resolve(sourceDir, brandThemePath.replace(/^\//, ''))
     // 欠落（ファイル自体が無い）は後段の missingAssets 検出に委ね、ここでは2段目の探索のみスキップする
-    if (!existsSync(themeJsonPath)) continue
-    try {
-      const themeData = JSON.parse(readFileSync(themeJsonPath, 'utf-8'))
-      for (const nested of extractAssetPaths(themeData)) paths.add(nested)
-    } catch (error) {
-      const message = `${themeJsonPath} の読み込みに失敗しました（参照アセットの2段目探索をスキップ）: ${error.message}`
-      if (strict) {
-        console.error(`Error: ${message}`)
-        process.exit(1)
+    if (existsSync(themeJsonPath)) {
+      try {
+        const themeData = JSON.parse(readFileSync(themeJsonPath, 'utf-8'))
+        for (const nested of extractAssetPaths(themeData)) paths.add(nested)
+      } catch (error) {
+        const message = `${themeJsonPath} の読み込みに失敗しました（参照アセットの2段目探索をスキップ）: ${error.message}`
+        if (strict) {
+          console.error(`Error: ${message}`)
+          process.exit(1)
+        }
+        console.warn(`Warning: ${message}`)
       }
-      console.warn(`Warning: ${message}`)
     }
   }
 
