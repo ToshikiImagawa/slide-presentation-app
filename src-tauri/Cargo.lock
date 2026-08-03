@@ -71,6 +71,7 @@ dependencies = [
  "async-trait",
  "flate2",
  "log",
+ "quick-xml",
  "reqwest 0.12.28",
  "serde",
  "serde_json",
@@ -85,6 +86,7 @@ dependencies = [
  "tauri-plugin-updater",
  "tokio",
  "url",
+ "zip",
 ]
 
 [[package]]
@@ -5648,6 +5650,7 @@ checksum = "caa8cd6af31c3b31c6631b8f483848b91589021b28fffe50adada48d4f4d2ed1"
 dependencies = [
  "arbitrary",
  "crc32fast",
+ "flate2",
  "indexmap 2.14.0",
  "memchr",
 ]

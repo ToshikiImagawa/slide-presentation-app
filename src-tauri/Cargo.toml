@@ -6,7 +6,9 @@ authors = ["you"]
 license = ""
 repository = ""
 edition = "2021"
-rust-version = "1.77.2"
+# OOXML ブランド抽出（#167）で直接依存へ昇格した zip 4.x が 1.82 を要求する（quick-xml 0.41 も 1.79 を要求するため、
+# tauri 由来の 1.77.2 は元より維持できない）。信頼できない zip を読む以上、脆弱性修正を受け取れる最新系を使う方を優先する
+rust-version = "1.82.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -44,3 +46,9 @@ async-trait = "0.1"
 tokio = { version = "1", features = ["time", "process", "io-util", "macros", "rt", "fs", "sync"] }
 # 自動アップデート（#121）: GitHub API で解決した latest.json アセット URL を updater の endpoints に渡す
 url = "2"
+# OOXML ブランド抽出（#167）: .pptx/.potx/.thmx を OPC（zip）として読む。
+# deflate バックエンドを既存の直接依存 flate2 に固定し、bzip2/zstd/lzma/AES 等のネイティブ依存を持ち込まない
+# （プラットフォームごとのビルド条件を増やさない）。.spkg の tar+gzip 展開とは別経路（brand/opc.rs 参照）
+zip = { version = "4", default-features = false, features = ["deflate-flate2"] }
+# OOXML の pull パーサ。DOM を組まずストリームで読み、巨大 XML でもメモリ上限内に収める
+quick-xml = "0.41"
