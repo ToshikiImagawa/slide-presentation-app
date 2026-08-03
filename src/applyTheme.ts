@@ -120,7 +120,7 @@ export async function fetchThemeData(path: string): Promise<ThemeData | undefine
 }
 
 /** オブジェクト2つをキー単位でマージする（後勝ち）。両方未指定なら undefined */
-function mergeRecord<T>(a?: Record<string, T>, b?: Record<string, T>): Record<string, T> | undefined {
+export function mergeRecord<T>(a?: Record<string, T>, b?: Record<string, T>): Record<string, T> | undefined {
   if (!a && !b) return undefined
   return { ...a, ...b }
 }

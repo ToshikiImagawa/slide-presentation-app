@@ -1,4 +1,4 @@
-import { normalizeHex } from './applyTheme'
+import { mergeRecord, normalizeHex } from './applyTheme'
 import type { ColorPalette, PresentationData } from './data/types'
 
 /**
@@ -58,6 +58,6 @@ export function delegateThemeColors(data: PresentationData, themeColorsPalette: 
   return {
     ...data,
     meta: nextMeta,
-    theme: { ...(data.theme ?? {}), colors: { ...preserved, ...(data.theme?.colors ?? {}) } },
+    theme: { ...(data.theme ?? {}), colors: mergeRecord(preserved, data.theme?.colors) },
   }
 }
