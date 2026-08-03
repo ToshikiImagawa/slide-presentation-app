@@ -13,13 +13,14 @@ import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import { editorUiTheme, theme } from '../theme'
 import { useTranslation } from '../i18n'
-import { applyPresentationTheme, mergeThemeData } from '../applyTheme'
+import { applyPresentationTheme, fetchColorPalette, mergeThemeData } from '../applyTheme'
 import { getPackageAddonNames, resolveBrandTheme, resolveLocalAssetPaths } from '../localSlideLoader'
-import type { PresentationData, SlideData, ThemeData } from '../data'
+import type { ColorPalette, PresentationData, SlideData, ThemeData } from '../data'
 import type { GeneratedCandidate } from '../aiGenerate'
 import { pickBrandTemplate, loadBrandOverrides, saveBrandOverrides } from '../brand/io'
 import { mergeCompiledBrandTheme } from '../brand/compile'
 import type { BrandOverrides, BrandProfile, CompiledBrandTheme } from '../brand/types'
+import { delegateThemeColors } from '../brandMigration'
 import { parseSlides, serializeSlides, prettyPrintJson } from './slidesSerialize'
 import { AiGeneratePanel } from './AiGeneratePanel'
 import { BrandConfirmDialog } from './BrandConfirmDialog'
@@ -28,6 +29,7 @@ import { ConfirmDialog } from './ConfirmDialog'
 import { SlideJsonEditor } from './SlideJsonEditor'
 import { SlideMetaForm } from './SlideMetaForm'
 import { SlidePreview } from './SlidePreview'
+import { ThemeColorsMigrationNotice } from './ThemeColorsMigrationNotice'
 import { addBuiltinAddon, buildBuiltinAddons, chooseExportDir, chooseSlidesSavePath, exportSlidePackage, listBuiltinAddons, listBuiltinDistAddons, removeBuiltinAddon, saveSlidesJson } from '../editModeSave'
 import { isTypingTarget } from '../keyboardTarget'
 import { SettingsButton } from '../components/SettingsButton'
@@ -164,6 +166,24 @@ export function SlideEditor({
       cancelled = true
     }
   }, [brandThemePath, source.baseDir])
+
+  // meta.themeColors（デッキ固有の12キー色パレット）を取得する。brand と比較し、委譲（#172）の
+  // レポート・可否判定に使う。未設定なら何もしない
+  const themeColorsPath = validData.meta?.themeColors
+  const [themeColorsPalette, setThemeColorsPalette] = useState<ColorPalette | undefined>(undefined)
+  useEffect(() => {
+    if (!themeColorsPath) {
+      setThemeColorsPalette(undefined)
+      return
+    }
+    let cancelled = false
+    void fetchColorPalette(themeColorsPath).then(({ palette }) => {
+      if (!cancelled) setThemeColorsPalette(palette)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [themeColorsPath])
 
   // プレビュー用にテーマを適用（設計 §9.1 の初期方針: 同一 document。テーマ編集で live 反映）
   const themeKey = JSON.stringify({ theme: validData.theme, themeColors: validData.meta?.themeColors, brandTheme: brandThemePath })
@@ -389,6 +409,14 @@ export function SlideEditor({
     setBrandImport(null)
   }
 
+  // themeColors 委譲ボタン（#172）。brand と同一色のキーは削除（brand へ委譲）、異なるキーは
+  // デッキ固有の意図的な上書きとして theme.colors へ移し、meta.themeColors を撤去する
+  const handleDelegateThemeColors = () => {
+    if (!themeColorsPalette || !brandTheme?.colors) return
+    setText(serializeSlides(delegateThemeColors(validData, themeColorsPalette, brandTheme.colors)))
+    setStatus({ kind: 'ok', message: t('brandMigration.delegated', 'themeColors を組織テーマへ委譲しました') })
+  }
+
   const handleExport = async () => {
     if (!canExport) {
       setStatus({ kind: 'error', message: t('edit.exportBlocked', '検証エラーがあるため書き出せません') })
@@ -598,6 +626,7 @@ export function SlideEditor({
                 AI 生成パネル（#14）はフォームの上（＝プレビューの左）に配置する（#33）。
                 生成結果は applyGeneratedSlides で差分確認ダイアログへ渡す（①） */}
             <Box sx={{ minWidth: 0, minHeight: 0, overflow: 'auto' }}>
+              {themeColorsPalette && <ThemeColorsMigrationNotice themeColorsPalette={themeColorsPalette} brandColors={brandTheme?.colors} onDelegate={handleDelegateThemeColors} />}
               <AiGeneratePanel currentText={text} onApply={applyGeneratedSlides} defaultExpanded={source.aiPanelExpanded} />
               <Button variant="outlined" size="small" sx={{ m: 1 }} onClick={() => void handleImportBrandTheme()} disabled={!currentSlide}>
                 {t('brand.importButton', 'ブランドテーマを取り込む')}
