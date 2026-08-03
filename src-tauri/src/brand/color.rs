@@ -100,14 +100,17 @@ impl ColorSpec {
 }
 
 /// 変換列を出現順に適用する。
-/// `lumMod` → `lumOff` は「L を 60% にしてから 40% 足す」を意味し、逆順に適用すると別の色になるため順序を守る
+/// `lumMod` → `lumOff` は「L を 60% にしてから 40% 足す」を意味し、逆順に適用すると別の色になるため順序を守る。
+///
+/// 適用する色空間が変換ごとに違うのは ECMA-376 の定義差に従っているためで、**片方に揃えてはいけない**:
+/// `lumMod` / `lumOff` は HSL の輝度成分に対する操作、`tint` / `shade` は線形 RGB での白 / 黒との混色として
+/// 定義されている（gamma 補正済みの値のまま混ぜると暗部が持ち上がり、PowerPoint の表示と食い違う）
 pub fn apply_transforms(base: Rgb, transforms: &[ColorTransform]) -> Rgb {
   transforms
     .iter()
     .fold(base, |color, transform| match *transform {
       ColorTransform::LumMod(ratio) => map_luminance(color, |l| l * ratio),
       ColorTransform::LumOff(ratio) => map_luminance(color, |l| l + ratio),
-      // tint/shade は ECMA-376 の定義どおり線形 RGB 上で混色する（gamma 補正済みの値のまま混ぜると暗部が持ち上がる）
       ColorTransform::Tint(ratio) => map_linear(color, |c| c * ratio + (1.0 - ratio)),
       ColorTransform::Shade(ratio) => map_linear(color, |c| c * ratio),
     })
@@ -328,6 +331,18 @@ mod tests {
     let shaded = apply_transforms(rgb(0x80, 0x40, 0x20), &[ColorTransform::Shade(0.4)]);
     assert!(tinted.r > 0x80 && tinted.g > 0x40 && tinted.b > 0x20);
     assert!(shaded.r < 0x80 && shaded.g < 0x40 && shaded.b < 0x20);
+  }
+
+  #[test]
+  fn matches_powerpoint_lighter_15_percent_variant() {
+    // 実物の Parcel.thmx の titleStyle は tx1（= dk1 = 黒）に lumMod 85% + lumOff 15% を当てており、
+    // PowerPoint の色見本「テキスト 1、白 + 基本色 15%」＝ #262626 と一致する。
+    // lumMod/lumOff を線形 RGB 側へ移すとこの値からずれるので、色空間の取り違えをここで検出する
+    let lightened = apply_transforms(
+      rgb(0, 0, 0),
+      &[ColorTransform::LumMod(0.85), ColorTransform::LumOff(0.15)],
+    );
+    assert_eq!(lightened.to_hex(), "#262626");
   }
 
   #[test]

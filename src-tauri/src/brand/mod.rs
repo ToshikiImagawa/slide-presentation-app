@@ -12,17 +12,11 @@ use std::fs::File;
 use std::io::{BufReader, Read, Seek};
 use std::path::Path;
 
-use quick_xml::events::BytesStart;
-use quick_xml::name::QName;
-use quick_xml::XmlVersion;
-
-/// OOXML の part はすべて `<?xml version="1.0"?>` を宣言する。属性値の正規化規則はこのバージョンに従う
-const XML_VERSION: XmlVersion = XmlVersion::Explicit1_0;
-
 mod color;
 mod master_xml;
 mod opc;
 mod theme_xml;
+mod xml;
 
 use color::{apply_transforms, ColorRef, ColorSpec, Rgb};
 use master_xml::{ClrMap, MasterInfo};
@@ -199,36 +193,6 @@ fn resolve_color_spec(spec: &ColorSpec, scheme: &ClrScheme, map: &ClrMap) -> Opt
   Some(apply_transforms(base, &spec.transforms))
 }
 
-// ---- 各パーサが共有する XML の読み取り補助 ----
-
-/// 名前空間接頭辞を除いた要素名。OOXML の接頭辞（`a:` / `p:`）は仕様上固定されないため名前で比較しない
-fn local_name(name: QName<'_>) -> String {
-  String::from_utf8_lossy(name.local_name().as_ref()).into_owned()
-}
-
-/// 属性をローカル名で引く（`r:id` のように接頭辞つきの属性と衝突する場面では専用の読み取りを使う）
-fn attr(e: &BytesStart, name: &str) -> Option<String> {
-  e.attributes()
-    .flatten()
-    .find(|a| a.key.local_name().as_ref() == name.as_bytes())
-    .and_then(|a| a.normalized_value(XML_VERSION).ok())
-    .map(|value| value.into_owned())
-}
-
-/// ルート要素を除いた相対パス（`a:theme` / `a:themeOverride` のようにルート名が揺れても比較できるようにする）
-fn rel(stack: &[String]) -> &[String] {
-  stack.get(1..).unwrap_or_default()
-}
-
-/// パスが期待どおりかを比較する
-fn path_eq(path: &[String], expected: &[&str]) -> bool {
-  path.len() == expected.len()
-    && path
-      .iter()
-      .zip(expected)
-      .all(|(actual, want)| actual == want)
-}
-
 #[cfg(test)]
 mod tests {
   use super::*;
@@ -317,13 +281,13 @@ mod tests {
     )
   }
 
-  fn build_zip(entries: &[(&str, &[u8])]) -> Vec<u8> {
+  fn build_zip(entries: &[(&str, &str)]) -> Vec<u8> {
     let mut writer = ZipWriter::new(Cursor::new(Vec::new()));
     // Stored 固定にして圧縮方式の feature に依存しないテストにする
     let options = SimpleFileOptions::default().compression_method(CompressionMethod::Stored);
     for (name, content) in entries {
       writer.start_file(*name, options).unwrap();
-      writer.write_all(content).unwrap();
+      writer.write_all(content.as_bytes()).unwrap();
     }
     writer.finish().unwrap().into_inner()
   }
@@ -337,26 +301,29 @@ mod tests {
       ("/ppt/theme/theme2.xml", CT_THEME),
     ]);
     let root_rels = relationships(&[("rId1", "officeDocument", "ppt/presentation.xml")]);
-    let pres_rels = relationships(&[("rId1", "slideMaster", "slideMasters/slideMaster1.xml")]);
+    // 実物と同じく presentation 側にも theme 関係が付く（こちらは decoy を指す）。
+    // マスター側の theme が優先されることを固定する
+    let pres_rels = relationships(&[
+      ("rId1", "slideMaster", "slideMasters/slideMaster1.xml"),
+      ("rId2", "theme", "theme/theme1.xml"),
+    ]);
     let master_rels = relationships(&[("rId12", "theme", "../theme/theme2.xml")]);
     let decoy = theme_part("Decoy", "FF0000");
     let real = theme_part("Corporate", "1F4E79");
     build_zip(&[
-      ("[Content_Types].xml", types.as_bytes()),
-      ("_rels/.rels", root_rels.as_bytes()),
-      ("ppt/presentation.xml", PRESENTATION_PART.as_bytes()),
-      ("ppt/_rels/presentation.xml.rels", pres_rels.as_bytes()),
-      ("ppt/slideMasters/slideMaster1.xml", MASTER_PART.as_bytes()),
-      (
-        "ppt/slideMasters/_rels/slideMaster1.xml.rels",
-        master_rels.as_bytes(),
-      ),
-      ("ppt/theme/theme1.xml", decoy.as_bytes()),
-      ("ppt/theme/theme2.xml", real.as_bytes()),
+      ("[Content_Types].xml", &types),
+      ("_rels/.rels", &root_rels),
+      ("ppt/presentation.xml", PRESENTATION_PART),
+      ("ppt/_rels/presentation.xml.rels", &pres_rels),
+      ("ppt/slideMasters/slideMaster1.xml", MASTER_PART),
+      ("ppt/slideMasters/_rels/slideMaster1.xml.rels", &master_rels),
+      ("ppt/theme/theme1.xml", &decoy),
+      ("ppt/theme/theme2.xml", &real),
     ])
   }
 
-  /// `.thmx` 形（officeDocument が themeManager を指し、バリアントの theme part も同梱される）のパッケージ
+  /// `.thmx` 形（officeDocument が themeManager を指し、バリアントの theme part も同梱される）のパッケージ。
+  /// 関係の張り方は実物の Office テーマ（`Parcel.thmx` 等）と同じ
   fn thmx_package() -> Vec<u8> {
     let types = content_types(&[
       ("/theme/theme/themeManager.xml", CT_THEME_MANAGER),
@@ -371,30 +338,26 @@ mod tests {
       ("rId5", "officeDocument", "../presentation.xml"),
     ]);
     let pres_rels = relationships(&[("rId1", "slideMaster", "slideMasters/slideMaster1.xml")]);
+    let master_rels = relationships(&[("rId12", "theme", "../theme/theme1.xml")]);
     let real = theme_part("Corporate", "1F4E79");
     let variant = theme_part("Variant", "00FF00");
     build_zip(&[
-      ("[Content_Types].xml", types.as_bytes()),
-      ("_rels/.rels", root_rels.as_bytes()),
+      ("[Content_Types].xml", &types),
+      ("_rels/.rels", &root_rels),
       (
         "theme/theme/themeManager.xml",
-        b"<a:themeManager xmlns:a=\"a\"/>",
+        r#"<a:themeManager xmlns:a="a"/>"#,
       ),
+      ("theme/theme/_rels/themeManager.xml.rels", &manager_rels),
+      ("theme/theme/theme1.xml", &real),
+      ("theme/presentation.xml", PRESENTATION_PART),
+      ("theme/_rels/presentation.xml.rels", &pres_rels),
+      ("theme/slideMasters/slideMaster1.xml", MASTER_PART),
       (
-        "theme/theme/_rels/themeManager.xml.rels",
-        manager_rels.as_bytes(),
+        "theme/slideMasters/_rels/slideMaster1.xml.rels",
+        &master_rels,
       ),
-      ("theme/theme/theme1.xml", real.as_bytes()),
-      ("theme/presentation.xml", PRESENTATION_PART.as_bytes()),
-      ("theme/_rels/presentation.xml.rels", pres_rels.as_bytes()),
-      (
-        "theme/slideMasters/slideMaster1.xml",
-        MASTER_PART.as_bytes(),
-      ),
-      (
-        "themeVariants/variant1/theme/theme/theme1.xml",
-        variant.as_bytes(),
-      ),
+      ("themeVariants/variant1/theme/theme/theme1.xml", &variant),
     ])
   }
 
@@ -517,8 +480,8 @@ mod tests {
     let types = content_types(&[("/ppt/theme/theme1.xml", CT_THEME)]);
     let theme = theme_part("Bare", "1F4E79");
     let bytes = build_zip(&[
-      ("[Content_Types].xml", types.as_bytes()),
-      ("ppt/theme/theme1.xml", theme.as_bytes()),
+      ("[Content_Types].xml", &types),
+      ("ppt/theme/theme1.xml", &theme),
     ]);
     let profile = extract_bytes(&bytes).unwrap();
     assert_eq!(profile.theme_part, "ppt/theme/theme1.xml");
@@ -538,7 +501,7 @@ mod tests {
   #[test]
   fn missing_theme_part_is_an_error() {
     let types = content_types(&[]);
-    let bytes = build_zip(&[("[Content_Types].xml", types.as_bytes())]);
+    let bytes = build_zip(&[("[Content_Types].xml", &types)]);
     assert!(matches!(
       extract_bytes(&bytes),
       Err(BrandError::MissingPart(_))
@@ -547,7 +510,7 @@ mod tests {
 
   #[test]
   fn missing_content_types_is_an_error() {
-    let bytes = build_zip(&[("ppt/theme/theme1.xml", theme_part("X", "000000").as_bytes())]);
+    let bytes = build_zip(&[("ppt/theme/theme1.xml", &theme_part("X", "000000"))]);
     assert!(matches!(
       extract_bytes(&bytes),
       Err(BrandError::MissingPart(_))
@@ -567,9 +530,9 @@ mod tests {
   fn entry_with_unsafe_path_is_rejected() {
     let types = content_types(&[("/ppt/theme/theme1.xml", CT_THEME)]);
     let bytes = build_zip(&[
-      ("[Content_Types].xml", types.as_bytes()),
-      ("ppt/theme/theme1.xml", theme_part("X", "000000").as_bytes()),
-      ("../../etc/passwd", b"root:x:0:0"),
+      ("[Content_Types].xml", &types),
+      ("ppt/theme/theme1.xml", &theme_part("X", "000000")),
+      ("../../etc/passwd", "root:x:0:0"),
     ]);
     assert!(matches!(
       extract_bytes(&bytes),
@@ -580,10 +543,7 @@ mod tests {
   #[test]
   fn too_many_entries_is_rejected() {
     let names: Vec<String> = (0..9_000).map(|i| format!("filler/{i}.bin")).collect();
-    let entries: Vec<(&str, &[u8])> = names
-      .iter()
-      .map(|name| (name.as_str(), b"" as &[u8]))
-      .collect();
+    let entries: Vec<(&str, &str)> = names.iter().map(|name| (name.as_str(), "")).collect();
     let bytes = build_zip(&entries);
     assert!(matches!(
       extract_bytes(&bytes),
@@ -594,8 +554,8 @@ mod tests {
   #[test]
   fn oversized_part_is_rejected() {
     // 展開後 9MiB の part は上限（8MiB）を超えるので読む前に弾く
-    let huge = vec![b'a'; 9 * 1024 * 1024];
-    let bytes = build_zip(&[("[Content_Types].xml", huge.as_slice())]);
+    let huge = "a".repeat(9 * 1024 * 1024);
+    let bytes = build_zip(&[("[Content_Types].xml", &huge)]);
     assert!(matches!(
       extract_bytes(&bytes),
       Err(BrandError::TooLarge(_))
@@ -642,23 +602,13 @@ mod tests {
     let profile = extract_brand_profile(Path::new(&path)).expect("抽出に失敗しました");
     println!("{}", serde_json::to_string_pretty(&profile).unwrap());
 
-    let mapped = &profile.mapped_colors;
-    let keys: [(&str, Option<Rgb>); 12] = [
-      ("bg1", mapped.bg1),
-      ("tx1", mapped.tx1),
-      ("bg2", mapped.bg2),
-      ("tx2", mapped.tx2),
-      ("accent1", mapped.accent1),
-      ("accent2", mapped.accent2),
-      ("accent3", mapped.accent3),
-      ("accent4", mapped.accent4),
-      ("accent5", mapped.accent5),
-      ("accent6", mapped.accent6),
-      ("hlink", mapped.hlink),
-      ("folHlink", mapped.fol_hlink),
-    ];
-    for (key, value) in keys {
-      assert!(value.is_some(), "{key} が解決できていません");
+    // 12 キーすべてが解決できていること。キー名を手で並べず serde 出力を走査するので、
+    // MappedColors を増減してもこの検証が静かに 11 キー検証へ劣化しない
+    let mapped = serde_json::to_value(&profile.mapped_colors).unwrap();
+    let mapped = mapped.as_object().expect("mappedColors はオブジェクト");
+    assert_eq!(mapped.len(), 12, "12 キーそろっていません");
+    for (key, value) in mapped {
+      assert!(!value.is_null(), "{key} が解決できていません");
     }
     assert!(
       profile.fonts.major.latin.is_some()

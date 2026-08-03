@@ -3,14 +3,16 @@
 //! `.pptx` / `.potx` / `.thmx` を 1 経路で扱う。3 形式は内部レイアウトが違うが、関係（`_rels`）を辿れば一本化できる:
 //!
 //! ```text
-//! _rels/.rels の officeDocument
-//!   ├─ themeManager（.thmx）→ その rels の theme と officeDocument を辿る
-//!   └─ presentation（.pptx / .potx）→ そのまま presentation
-//! presentation → p:sldMasterIdLst 先頭の r:id → slideMaster → その rels の theme
+//! _rels/.rels の officeDocument を「slideMaster 関係を持つ part」に着くまで辿る
+//!   .pptx / .potx … 1 ホップ（officeDocument が presentation 本体）
+//!   .thmx         … 2 ホップ（officeDocument が themeManager を挟む）
+//! → p:sldMasterIdLst 先頭の r:id → slideMaster → その rels の theme
 //! ```
 //!
-//! part の種類判定は `[Content_Types].xml` に委ね、パス名から推測しない。
-//! 実物の `.thmx` は theme part を 8 個（本体＋バリアント 7）持つため、`theme1.xml` を名前で探すと取り違える。
+//! 形式を content type で判別しないのが要点。判別を列挙で持つと外れたときに
+//! slideMaster が見つからず、clrMap が標準写像へ静かに落ちてダークテーマが反転する。
+//! part を名前で探さないのも同じ理由で、実物の `.thmx` は theme part を 8 個
+//! （本体＋バリアント 7）持つため `theme1.xml` を名前で引くと取り違える。
 //!
 //! 信頼できない zip を読むため、既存の `.spkg` 展開（`lib.rs` の tar+gzip。自前で書き出したパッケージ前提で
 //! ディスクへ展開する）とは完全に別経路にし、上限とパス検査を必ず通す。**ディスクへは一切書き出さない。**
@@ -22,7 +24,8 @@ use quick_xml::events::{BytesStart, Event};
 use quick_xml::Reader;
 use zip::ZipArchive;
 
-use super::{attr, local_name, BrandError};
+use super::xml::{attr, local_name};
+use super::BrandError;
 
 /// アーカイブ自体のサイズ上限。動画入りの配布テンプレートでも数十 MB に収まる
 const MAX_ARCHIVE_SIZE: u64 = 256 * 1024 * 1024;
@@ -36,20 +39,11 @@ const MAX_PART_NAME_LEN: usize = 512;
 
 const CONTENT_TYPES_PART: &str = "[Content_Types].xml";
 
-/// theme part（`a:theme`）の content type
-pub const CONTENT_TYPE_THEME: &str = "application/vnd.openxmlformats-officedocument.theme+xml";
-/// `.thmx` のルート part（`a:themeManager`）の content type
-const CONTENT_TYPE_THEME_MANAGER: &str =
-  "application/vnd.openxmlformats-officedocument.themeManager+xml";
-/// presentation 本体 part の content type（`.pptx` / `.potx` / `.ppsx` とそれぞれのマクロ有効版）
-const PRESENTATION_CONTENT_TYPES: [&str; 6] = [
-  "application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml",
-  "application/vnd.openxmlformats-officedocument.presentationml.template.main+xml",
-  "application/vnd.openxmlformats-officedocument.presentationml.slideshow.main+xml",
-  "application/vnd.ms-powerpoint.presentation.macroEnabled.main+xml",
-  "application/vnd.ms-powerpoint.template.macroEnabled.main+xml",
-  "application/vnd.ms-powerpoint.slideshow.macroEnabled.main+xml",
-];
+/// theme part（`a:theme`）の content type。関係を辿れないパッケージ向けのフォールバックでのみ使う
+const CONTENT_TYPE_THEME: &str = "application/vnd.openxmlformats-officedocument.theme+xml";
+
+/// `officeDocument` 関係を辿るホップ数の上限（`.thmx` の 2 ホップに余裕を持たせた値）
+const MAX_OFFICE_DOCUMENT_HOPS: usize = 4;
 
 /// 上限とパス検査を通した OPC パッケージ
 pub struct OpcPackage<R: Read + Seek> {
@@ -106,21 +100,16 @@ impl<R: Read + Seek> OpcPackage<R> {
   }
 
   /// part が存在するか
-  pub fn has_part(&self, part: &str) -> bool {
+  fn has_part(&self, part: &str) -> bool {
     self.parts.contains_key(&part.to_ascii_lowercase())
   }
 
-  /// part の content type（Override → 拡張子の Default の順に引く）
-  pub fn content_type(&self, part: &str) -> Option<&str> {
-    self.content_types.of(part)
-  }
-
-  /// 指定 content type の part を名前順に返す
-  pub fn parts_with_content_type(&self, content_type: &str) -> Vec<String> {
+  /// 指定 content type の part を名前順に返す（content type は Override → 拡張子の Default の順に引く）
+  fn parts_with_content_type(&self, content_type: &str) -> Vec<String> {
     self
       .parts
       .values()
-      .filter(|name| self.content_type(name) == Some(content_type))
+      .filter(|name| self.content_types.of(name) == Some(content_type))
       .cloned()
       .collect()
   }
@@ -131,7 +120,7 @@ impl<R: Read + Seek> OpcPackage<R> {
   }
 
   /// part の関係（`_rels`）を読む。関係ファイルを持たない part は空を返す（末端 part では正常）
-  pub fn relationships(&mut self, part: &str) -> Result<Vec<Relationship>, BrandError> {
+  fn relationships(&mut self, part: &str) -> Result<Vec<Relationship>, BrandError> {
     let rels_part = rels_part_name(part);
     if !self.has_part(&rels_part) {
       return Ok(Vec::new());
@@ -142,37 +131,22 @@ impl<R: Read + Seek> OpcPackage<R> {
 
   /// theme part と slideMaster part を解決する（3 形式で共通の 1 経路）
   pub fn locate_brand_parts(&mut self) -> Result<BrandParts, BrandError> {
-    let root_rels = self.relationships("")?;
-    let mut theme = None;
-    let mut presentation = None;
-
-    if let Some(root) = find_target(&root_rels, "officeDocument") {
-      match self.content_type(&root).map(str::to_string) {
-        // .thmx: officeDocument は themeManager を指し、theme と presentation はその rels から辿れる
-        Some(ct) if ct == CONTENT_TYPE_THEME_MANAGER => {
-          let rels = self.relationships(&root)?;
-          theme = find_target(&rels, "theme");
-          presentation = find_target(&rels, "officeDocument");
-        }
-        // .pptx / .potx: officeDocument が presentation 本体
-        Some(ct) if PRESENTATION_CONTENT_TYPES.contains(&ct.as_str()) => presentation = Some(root),
-        _ => {}
-      }
-    }
-
-    let slide_master = match presentation {
-      Some(part) => self.resolve_first_slide_master(&part)?,
+    let presentation = self.resolve_presentation_part()?;
+    let slide_master = match &presentation {
+      Some(part) => self.resolve_first_slide_master(part)?,
+      None => None,
+    };
+    // theme は必ず「選んだ slideMaster の関係」から引く。presentation 側にも theme 関係は付くが、
+    // 複数マスターのデッキではマスターごとに theme が違うため、マスター側が唯一の正解
+    let theme = match &slide_master {
+      Some(master) => find_target(&self.relationships(master)?, "theme"),
       None => None,
     };
 
-    if theme.is_none() {
-      if let Some(master) = &slide_master {
-        theme = find_target(&self.relationships(master)?, "theme");
-      }
-    }
-
-    // 関係を辿れない（rels が壊れている・未知の派生形式）場合は content type 検索の名前順先頭へ落とす。
-    // 実物では本体テーマが名前順で先に来る（.thmx: `theme/…` < `themeVariants/…`、.pptx: `theme1.xml` < `theme2.xml`）
+    // 関係を辿れないパッケージ（theme 単体・rels が壊れている）向けの最後の手段。
+    // 名前順先頭を採るのは決定性を保つためで、正しさは保証しない
+    // （実物では本体テーマが名前順で先に来るが、それに依存した設計にはしない）。
+    // 取り違えても `BrandProfile.theme_part` として出力し、#168 の並置比較ダイアログで人が最終確認できる
     let theme = theme
       .filter(|part| self.has_part(part))
       .or_else(|| {
@@ -189,25 +163,53 @@ impl<R: Read + Seek> OpcPackage<R> {
     })
   }
 
-  /// `p:sldMasterIdLst` 先頭の `r:id` から slideMaster part を引く。
-  /// 記述順の先頭が「1 枚目のマスター」であり、`rId` の番号順とは一致しないため XML の順序を使う
+  /// `officeDocument` 関係を「`slideMaster` 関係を持つ part」に着くまで辿り、presentation 本体を返す。
+  /// `.pptx` / `.potx` は 1 ホップ、`.thmx` は themeManager を挟むので 2 ホップで着く。
+  /// content type で形式を判別しないため、マクロ有効版（`.pptm` / `.potm`）や未知の派生形式でも同じ経路で通る
+  /// （形式を列挙で判別すると、外れたときに clrMap が標準写像へ静かに落ちてダークテーマが反転する）
+  fn resolve_presentation_part(&mut self) -> Result<Option<String>, BrandError> {
+    let mut current = find_target(&self.relationships("")?, "officeDocument");
+    let mut visited: Vec<String> = Vec::new();
+    while let Some(part) = current.take() {
+      // 壊れた rels が循環していても止まる
+      if visited.len() >= MAX_OFFICE_DOCUMENT_HOPS || visited.contains(&part) {
+        break;
+      }
+      let rels = self.relationships(&part)?;
+      if rels.iter().any(|r| r.kind == "slideMaster") {
+        return Ok(Some(part));
+      }
+      visited.push(part);
+      current = find_target(&rels, "officeDocument");
+    }
+    Ok(None)
+  }
+
+  /// presentation から 1 枚目の slideMaster part を引く
   fn resolve_first_slide_master(
     &mut self,
     presentation: &str,
   ) -> Result<Option<String>, BrandError> {
     let rels = self.relationships(presentation)?;
+    let mut targets: Vec<String> = rels
+      .iter()
+      .filter(|r| r.kind == "slideMaster")
+      .map(|r| r.target.clone())
+      .collect();
+    // マスターが 1 個なら記述順は関係ない。presentation XML を読まずに確定させる
+    if targets.len() <= 1 {
+      return Ok(targets.into_iter().next());
+    }
+
+    // 複数ある場合は `p:sldMasterIdLst` の記述順の先頭が「1 枚目のマスター」であり、
+    // `rId` の番号順とは一致しないため XML の順序を使う
     let xml = self.read_text(presentation)?;
     if let Some(id) = first_slide_master_rel_id(&xml)? {
       if let Some(found) = rels.iter().find(|r| r.id == id) {
         return Ok(Some(found.target.clone()));
       }
     }
-    // sldMasterIdLst が無い/読めない場合は slideMaster 関係の名前順先頭へ落とす
-    let mut targets: Vec<String> = rels
-      .iter()
-      .filter(|r| r.kind == "slideMaster")
-      .map(|r| r.target.clone())
-      .collect();
+    // sldMasterIdLst が読めない場合は名前順先頭へ落とす
     targets.sort();
     Ok(targets.into_iter().next())
   }
@@ -223,12 +225,12 @@ pub struct BrandParts {
 
 /// `_rels` の 1 エントリ
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Relationship {
-  pub id: String,
+struct Relationship {
+  id: String,
   /// 関係タイプ URI の末尾セグメント（`officeDocument` / `slideMaster` / `theme` 等）
-  pub kind: String,
+  kind: String,
   /// パッケージルートからの part 名（先頭 `/` なし・`..` 解決済み）
-  pub target: String,
+  target: String,
 }
 
 /// zip エントリ名が OPC の part 名として妥当かを判定する。
@@ -263,10 +265,13 @@ fn read_part_text<R: Read + Seek>(
   let mut entry = archive
     .by_name(name)
     .map_err(|e| BrandError::Archive(e.to_string()))?;
-  if entry.size() > MAX_PART_SIZE {
-    return Err(BrandError::TooLarge(format!(
+  let too_large = || {
+    BrandError::TooLarge(format!(
       "{part} の展開後サイズが上限（{MAX_PART_SIZE} バイト）を超えています"
-    )));
+    ))
+  };
+  if entry.size() > MAX_PART_SIZE {
+    return Err(too_large());
   }
   // 宣言サイズを信用せず take でも打ち切る（宣言と実体が食い違う zip bomb への二重の歯止め）
   let mut bytes = Vec::new();
@@ -276,9 +281,7 @@ fn read_part_text<R: Read + Seek>(
     .read_to_end(&mut bytes)
     .map_err(|e| BrandError::Io(e.to_string()))?;
   if bytes.len() as u64 > MAX_PART_SIZE {
-    return Err(BrandError::TooLarge(format!(
-      "{part} の展開後サイズが上限（{MAX_PART_SIZE} バイト）を超えています"
-    )));
+    return Err(too_large());
   }
   String::from_utf8(bytes).map_err(|_| BrandError::Xml(format!("{part} が UTF-8 ではありません")))
 }
@@ -402,7 +405,7 @@ fn relationship_id(e: &BytesStart) -> Option<String> {
   e.attributes()
     .flatten()
     .find(|a| a.key.as_ref().ends_with(b":id"))
-    .and_then(|a| a.normalized_value(super::XML_VERSION).ok())
+    .and_then(|a| a.normalized_value(super::xml::XML_VERSION).ok())
     .map(|value| value.into_owned())
 }
 

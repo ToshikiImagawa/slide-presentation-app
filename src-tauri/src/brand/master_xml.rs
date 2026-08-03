@@ -6,11 +6,11 @@
 //!   テンプレートによって `bg1="lt1"` と `bg1="dk1"` が入れ替わる（ダークテーマ）。写像を飛ばすと背景と文字色が反転する。
 //! - `p:txStyles/…/a:lvl1pPr/a:defRPr@sz` は 1/100pt 単位の実サイズ。目視では比率しか分からない情報。
 
-use quick_xml::events::{BytesStart, Event};
-use quick_xml::Reader;
+use quick_xml::events::BytesStart;
 
-use super::color::{parse_hex, ColorRef, ColorSpec, ColorTransform};
-use super::{attr, local_name, path_eq, rel, BrandError};
+use super::color::{ColorSpec, ColorTransform};
+use super::xml::{attr, base_color_ref, child_of, rel, walk_elements};
+use super::BrandError;
 
 /// `p:clrMap` の 12 キー。値は clrScheme のスロット名（`lt1` / `dk1` / `accent1` …）
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
@@ -118,29 +118,7 @@ pub struct MasterInfo {
 /// 拾う位置はパスで確定させる
 pub fn parse(xml: &str) -> Result<MasterInfo, BrandError> {
   let mut info = MasterInfo::default();
-  let mut reader = Reader::from_str(xml);
-  reader.config_mut().trim_text(true);
-  let mut stack: Vec<String> = Vec::new();
-
-  loop {
-    match reader.read_event() {
-      Ok(Event::Eof) => break,
-      Ok(Event::Start(e)) => {
-        let name = local_name(e.name());
-        visit(&mut info, &stack, &name, &e);
-        stack.push(name);
-      }
-      Ok(Event::Empty(e)) => {
-        let name = local_name(e.name());
-        visit(&mut info, &stack, &name, &e);
-      }
-      Ok(Event::End(_)) => {
-        stack.pop();
-      }
-      Ok(_) => {}
-      Err(e) => return Err(BrandError::Xml(e.to_string())),
-    }
-  }
+  walk_elements(xml, |stack, name, e| visit(&mut info, stack, name, e))?;
   Ok(info)
 }
 
@@ -153,28 +131,28 @@ fn visit(info: &mut MasterInfo, stack: &[String], name: &str, e: &BytesStart) {
   }
 
   // txStyles/<titleStyle|bodyStyle|otherStyle>/lvl1pPr 配下のみ（lvl2 以降は受け皿に対応する概念がない）
-  if parent.len() < 3 || parent[0] != "txStyles" || parent[2] != "lvl1pPr" {
+  let Some((style_kind, inner)) = split_lvl1_path(parent) else {
     return;
-  }
-  let style = match parent[1].as_str() {
+  };
+  let style = match style_kind {
     "titleStyle" => &mut info.title,
     "bodyStyle" => &mut info.body,
     "otherStyle" => &mut info.other,
     _ => return,
   };
 
-  let inner = &parent[3..];
   if inner.is_empty() && name == "defRPr" {
     // sz は 1/100pt。0 以下は不正値として捨てる
     style.size_pt = attr(e, "sz")
       .and_then(|v| v.trim().parse::<f64>().ok())
       .filter(|v| *v > 0.0)
       .map(|v| v / 100.0);
-  } else if path_eq(inner, &["defRPr", "solidFill"]) {
-    if let Some(base) = base_ref(name, e) {
+  } else if inner == ["defRPr", "solidFill"] {
+    if let Some(base) = base_color_ref(name, e) {
       style.color = Some(ColorSpec::new(base));
     }
-  } else if inner.len() == 3 && path_eq(&inner[..2], &["defRPr", "solidFill"]) {
+  } else if child_of(inner, &["defRPr", "solidFill"]).is_some() {
+    // 基準色要素の子＝色変換（lumMod/lumOff/tint/shade）
     let transform = attr(e, "val").and_then(|v| ColorTransform::from_element(name, &v));
     if let (Some(transform), Some(spec)) = (transform, style.color.as_mut()) {
       spec.transforms.push(transform);
@@ -182,28 +160,18 @@ fn visit(info: &mut MasterInfo, stack: &[String], name: &str, e: &BytesStart) {
   }
 }
 
-/// `a:solidFill` 直下の色要素から基準色の参照を読む
-fn base_ref(name: &str, e: &BytesStart) -> Option<ColorRef> {
-  match name {
-    "srgbClr" => attr(e, "val")
-      .as_deref()
-      .and_then(parse_hex)
-      .map(ColorRef::Fixed),
-    "sysClr" => attr(e, "lastClr")
-      .as_deref()
-      .and_then(parse_hex)
-      .map(ColorRef::Fixed),
-    "schemeClr" => attr(e, "val")
-      .filter(|v| !v.is_empty())
-      .map(ColorRef::Scheme),
-    _ => None,
-  }
+/// パスが `txStyles / <スタイル名> / lvl1pPr / <残り…>` の形なら、スタイル名と残りのパスを返す
+fn split_lvl1_path(path: &[String]) -> Option<(&str, &[String])> {
+  let [tx_styles, style_kind, lvl, inner @ ..] = path else {
+    return None;
+  };
+  (tx_styles == "txStyles" && lvl == "lvl1pPr").then_some((style_kind.as_str(), inner))
 }
 
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::brand::color::Rgb;
+  use crate::brand::color::{ColorRef, Rgb};
 
   /// 実物の slideMaster1.xml と同じ入れ子（cSld 配下のノイズ入り）を最小構成で再現する
   const MASTER_XML: &str = r#"<?xml version="1.0" encoding="UTF-8"?>

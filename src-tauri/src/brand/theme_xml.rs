@@ -6,11 +6,11 @@
 //! 和文書体は `a:ea@typeface` と `a:font script="Jpan"@typeface` の 2 箇所に分かれて入り、
 //! テンプレートによってどちらか一方しか書かれていないため両方を拾う（目視転写で必ず落ちる情報）。
 
-use quick_xml::events::{BytesStart, Event};
-use quick_xml::Reader;
+use quick_xml::events::BytesStart;
 
-use super::color::{parse_hex, Rgb};
-use super::{attr, local_name, path_eq, rel, BrandError};
+use super::color::{ColorRef, Rgb};
+use super::xml::{attr, base_color_ref, child_of, rel, walk_elements};
+use super::BrandError;
 
 /// `a:clrScheme` の 12 スロット。キー名と並びは OOXML の定義順（dk1/lt1/dk2/lt2/accent1-6/hlink/folHlink）に揃える。
 /// 値が取れなかったスロットは `null` として残す（#168 の並置比較で「欠落」を項目単位に出せるようにする）
@@ -107,33 +107,13 @@ pub struct ThemeInfo {
 /// theme XML をパースする。位置が合わない同名要素は無視するため、未知の拡張が混ざっても結果は変わらない
 pub fn parse(xml: &str) -> Result<ThemeInfo, BrandError> {
   let mut info = ThemeInfo::default();
-  let mut reader = Reader::from_str(xml);
-  reader.config_mut().trim_text(true);
-  let mut stack: Vec<String> = Vec::new();
-
-  loop {
-    match reader.read_event() {
-      Ok(Event::Eof) => break,
-      Ok(Event::Start(e)) => {
-        let name = local_name(e.name());
-        // ルート要素（a:theme / a:themeOverride）の属性から名前を取る
-        if stack.is_empty() {
-          info.name = attr(&e, "name").filter(|v| !v.is_empty());
-        }
-        visit(&mut info, &stack, &name, &e);
-        stack.push(name);
-      }
-      Ok(Event::Empty(e)) => {
-        let name = local_name(e.name());
-        visit(&mut info, &stack, &name, &e);
-      }
-      Ok(Event::End(_)) => {
-        stack.pop();
-      }
-      Ok(_) => {}
-      Err(e) => return Err(BrandError::Xml(e.to_string())),
+  walk_elements(xml, |stack, name, e| {
+    // ルート要素（a:theme / a:themeOverride）の属性から名前を取る
+    if stack.is_empty() {
+      info.name = attr(e, "name").filter(|v| !v.is_empty());
     }
-  }
+    visit(&mut info, stack, name, e);
+  })?;
   Ok(info)
 }
 
@@ -142,16 +122,17 @@ fn visit(info: &mut ThemeInfo, stack: &[String], name: &str, e: &BytesStart) {
   let parent = rel(stack);
 
   // themeElements/clrScheme/<スロット>/srgbClr|sysClr
-  if parent.len() == 3 && path_eq(&parent[..2], &["themeElements", "clrScheme"]) {
-    if let Some(color) = base_color(name, e) {
-      info.colors.set(&parent[2], color);
+  if let Some(slot) = child_of(parent, &["themeElements", "clrScheme"]) {
+    // スロット直下は確定色のみ（schemeClr は現れない）
+    if let Some(ColorRef::Fixed(color)) = base_color_ref(name, e) {
+      info.colors.set(slot, color);
     }
     return;
   }
 
   // themeElements/fontScheme/majorFont|minorFont/latin|ea|cs|font
-  if parent.len() == 3 && path_eq(&parent[..2], &["themeElements", "fontScheme"]) {
-    let face = match parent[2].as_str() {
+  if let Some(font_kind) = child_of(parent, &["themeElements", "fontScheme"]) {
+    let face = match font_kind {
       "majorFont" => &mut info.fonts.major,
       "minorFont" => &mut info.fonts.minor,
       _ => return,
@@ -167,15 +148,6 @@ fn visit(info: &mut ThemeInfo, stack: &[String], name: &str, e: &BytesStart) {
       "font" if attr(e, "script").as_deref() == Some("Jpan") => face.jpan = Some(typeface),
       _ => {}
     }
-  }
-}
-
-/// `a:srgbClr@val` / `a:sysClr@lastClr` から確定色を読む。clrScheme のスロット直下は必ずこの 2 種
-fn base_color(name: &str, e: &BytesStart) -> Option<Rgb> {
-  match name {
-    "srgbClr" => attr(e, "val").as_deref().and_then(parse_hex),
-    "sysClr" => attr(e, "lastClr").as_deref().and_then(parse_hex),
-    _ => None,
   }
 }
 
