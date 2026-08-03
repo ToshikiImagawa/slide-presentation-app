@@ -70,12 +70,25 @@ export function extractAssetPaths(obj) {
   return [...paths]
 }
 
+// --- ThemeData.fonts.sources のうち redistribution: 'prohibited' なフォントの src パスを収集する ---
+// （#171: 商用フォント等の再配布禁止をパッケージ書き出し時に機械的にゲートする。src-tauri/src/lib.rs の
+// extract_prohibited_font_paths と同一規則を単一真実源として移植する）
+export function extractProhibitedFontPaths(themeData) {
+  const paths = new Set()
+  for (const source of themeData?.fonts?.sources ?? []) {
+    if (source?.redistribution !== 'prohibited') continue
+    if (typeof source.src === 'string') paths.add(source.src.replace(/^\//, ''))
+  }
+  return paths
+}
+
 // --- meta.brandTheme の参照先 JSON を1段だけ辿り、その中のアセット参照も合成する ---
 // ランタイム側の解決（src/localSlideLoader.ts の resolveBrandTheme）と対称に、meta.brandTheme
 // フィールドだけを対象にする（theme/ 配下の JSON という見た目だけで判定すると meta.themeColors
 // の参照先まで誤って2段目の探索対象になってしまう）
 export function extractAssetPathsDeep(obj, sourceDir, { strict = false } = {}) {
   const paths = new Set(extractAssetPaths(obj))
+  const prohibited = new Set(extractProhibitedFontPaths(obj?.theme))
 
   const brandThemePath = obj?.meta?.brandTheme
   if (typeof brandThemePath === 'string') {
@@ -85,6 +98,7 @@ export function extractAssetPathsDeep(obj, sourceDir, { strict = false } = {}) {
       try {
         const themeData = JSON.parse(readFileSync(themeJsonPath, 'utf-8'))
         for (const nested of extractAssetPaths(themeData)) paths.add(nested)
+        for (const p of extractProhibitedFontPaths(themeData)) prohibited.add(p)
       } catch (error) {
         const message = `${themeJsonPath} の読み込みに失敗しました（参照アセットの2段目探索をスキップ）: ${error.message}`
         if (strict) {
@@ -93,6 +107,12 @@ export function extractAssetPathsDeep(obj, sourceDir, { strict = false } = {}) {
         }
         console.warn(`Warning: ${message}`)
       }
+    }
+  }
+
+  for (const p of prohibited) {
+    if (paths.delete(p)) {
+      console.warn(`Warning: ${p} は redistribution: 'prohibited' のため書き出し対象から除外しました`)
     }
   }
 

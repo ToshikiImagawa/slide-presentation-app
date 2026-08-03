@@ -619,6 +619,33 @@ fn walk_asset_paths(value: &serde_json::Value, prefixes: &[&str], paths: &mut Ve
   }
 }
 
+/// ThemeData.fonts.sources のうち redistribution: "prohibited" なフォントの src パスを収集する
+/// （#171: 商用フォント等の再配布禁止をパッケージ書き出し時に機械的にゲートする。
+/// scripts/export-slides.mjs の extractProhibitedFontPaths と同一規則を単一真実源として移植する）
+fn extract_prohibited_font_paths(theme: &serde_json::Value) -> Vec<String> {
+  let mut paths: Vec<String> = Vec::new();
+  let sources = theme
+    .get("fonts")
+    .and_then(|f| f.get("sources"))
+    .and_then(|s| s.as_array());
+  let Some(sources) = sources else {
+    return paths;
+  };
+  for source in sources {
+    let prohibited = source.get("redistribution").and_then(|r| r.as_str()) == Some("prohibited");
+    if !prohibited {
+      continue;
+    }
+    if let Some(src) = source.get("src").and_then(|s| s.as_str()) {
+      let normalized = src.strip_prefix('/').unwrap_or(src).to_string();
+      if !paths.contains(&normalized) {
+        paths.push(normalized);
+      }
+    }
+  }
+  paths
+}
+
 /// package.json の files フィールドを組み立てる（export-slides.mjs の buildFilesField 相当）
 fn build_files_field(asset_paths: &[String], include_addons: bool) -> Vec<String> {
   let mut files = vec!["slides.json".to_string()];
@@ -761,7 +788,12 @@ fn build_slide_package_gated(
   validate_version(version)?;
 
   let value: serde_json::Value = serde_json::from_str(json).map_err(|e| e.to_string())?;
-  let asset_paths = extract_asset_paths(&value);
+  let mut asset_paths = extract_asset_paths(&value);
+  // redistribution: "prohibited" なフォントの src はバイナリを同梱しない（#171）
+  if let Some(theme) = value.get("theme") {
+    let prohibited = extract_prohibited_font_paths(theme);
+    asset_paths.retain(|p| !prohibited.contains(p));
+  }
   let base = Path::new(base_dir);
 
   // 選択アドオンを層B（base_dir/addons）＋層A（組み込み dist・dev のみ）から集約して同梱する（FR-009・②）。
@@ -1353,6 +1385,84 @@ mod tests {
         "font/f.woff".to_string(),
       ]
     );
+  }
+
+  #[test]
+  fn extract_prohibited_font_paths_collects_only_prohibited_src() {
+    // scripts/__tests__/export-slides.test.mjs の extractProhibitedFontPaths と同じ入力で
+    // 同一結果になることを検証（#171・パリティ）
+    let theme: serde_json::Value = serde_json::from_str(
+      r#"{"fonts":{"sources":[
+        {"family":"Corp","src":"font/corp.woff2","redistribution":"prohibited"},
+        {"family":"Open","src":"font/open.woff2","redistribution":"permitted"},
+        {"family":"Internal","src":"font/internal.woff2","redistribution":"internal-only"},
+        {"family":"Legacy","src":"/font/legacy.woff2","redistribution":"prohibited"},
+        {"family":"NoSrc","localName":"Arial","redistribution":"prohibited"}
+      ]}}"#,
+    )
+    .unwrap();
+
+    let paths = extract_prohibited_font_paths(&theme);
+
+    // permitted/internal-only は対象外、先頭スラッシュは除去、src の無いソースは無視
+    assert_eq!(
+      paths,
+      vec![
+        "font/corp.woff2".to_string(),
+        "font/legacy.woff2".to_string()
+      ]
+    );
+  }
+
+  #[test]
+  fn extract_prohibited_font_paths_handles_missing_sources() {
+    let theme: serde_json::Value = serde_json::from_str(r#"{}"#).unwrap();
+    assert_eq!(extract_prohibited_font_paths(&theme), Vec::<String>::new());
+  }
+
+  #[test]
+  fn build_slide_package_gated_excludes_prohibited_font_src() {
+    // #171: redistribution: "prohibited" なフォントの src はパッケージに同梱されない
+    let dir = std::env::temp_dir().join(format!("slide-export-font-gate-{}", std::process::id()));
+    fs::remove_dir_all(&dir).ok();
+    let base_dir = dir.join("src");
+    let out_dir = dir.join("out");
+    fs::create_dir_all(base_dir.join("font")).unwrap();
+    fs::write(base_dir.join("font").join("corp.woff2"), b"FONTDATA").unwrap();
+    fs::write(base_dir.join("font").join("open.woff2"), b"OPENDATA").unwrap();
+
+    let json = r#"{"meta":{"title":"t"},"theme":{"fonts":{"sources":[
+      {"family":"Corp","src":"font/corp.woff2","redistribution":"prohibited"},
+      {"family":"Open","src":"font/open.woff2","redistribution":"permitted"}
+    ]}},"slides":[]}"#;
+
+    let pkg_path = build_slide_package_gated(
+      true,
+      json,
+      out_dir.to_str().unwrap(),
+      base_dir.to_str().unwrap(),
+      "demo",
+      "1.0.0",
+      &[],
+      None,
+    )
+    .expect("編集モード有効時は書き出す");
+
+    let bytes = fs::read(&pkg_path).unwrap();
+    let extract_dir = dir.join("extract");
+    let pkg = extract_slide_archive(&bytes, &extract_dir).expect("展開できる");
+
+    assert!(
+      !pkg.join("font").join("corp.woff2").exists(),
+      "prohibited なフォントは同梱されない"
+    );
+    assert_eq!(
+      fs::read(pkg.join("font").join("open.woff2")).unwrap(),
+      b"OPENDATA",
+      "permitted なフォントは同梱される"
+    );
+
+    fs::remove_dir_all(&dir).ok();
   }
 
   #[test]

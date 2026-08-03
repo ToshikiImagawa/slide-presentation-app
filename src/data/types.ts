@@ -260,6 +260,8 @@ export interface FontSource {
   format?: string
   /** ローカルインストール済みフォント名（@font-face の local() ソースとして追加） */
   localName?: string
+  /** 再配布ライセンス区分。省略時は 'permitted' 相当。'prohibited' は .spkg 書き出し時に src が自動除外される（#171） */
+  redistribution?: 'permitted' | 'internal-only' | 'prohibited'
 }
 
 /** フォント定義 */
