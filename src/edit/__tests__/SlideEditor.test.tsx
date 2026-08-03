@@ -37,7 +37,7 @@ vi.mock('../../applyTheme', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../applyTheme')>()
   return { ...actual, applyTheme: vi.fn().mockResolvedValue(undefined), applyThemeData: vi.fn(), resetThemeOverrides: vi.fn(), applyPresentationTheme: vi.fn().mockResolvedValue(true) }
 })
-vi.mock('../../localSlideLoader', () => ({ resolveLocalAssetPaths: (v: unknown) => v, getPackageAddonNames: h.getPackageAddonNames }))
+vi.mock('../../localSlideLoader', () => ({ resolveLocalAssetPaths: (v: unknown) => v, getPackageAddonNames: h.getPackageAddonNames, resolveBrandTheme: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('../../brand/io', () => ({ pickBrandTemplate: h.pickBrandTemplate, loadBrandOverrides: h.loadBrandOverrides, saveBrandOverrides: h.saveBrandOverrides }))
 
 import { SlideEditor } from '../SlideEditor'

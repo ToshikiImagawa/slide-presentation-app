@@ -3,6 +3,12 @@ export interface PresentationData {
   meta: PresentationMeta
   theme?: ThemeData
   slides: SlideData[]
+  /**
+   * meta.brandTheme の解決済み ThemeData（実行時専用・スキーマ外）。
+   * ローカル .spkg パッケージ読み込み時（localSlideLoader.ts）に baseDir 基準でアセット参照を解決した上で設定される。
+   * 未設定（Web/ビルド同梱経由）の場合は meta.brandTheme のパスから呼び出し側が fetchThemeData で取得する。
+   */
+  resolvedBrandTheme?: ThemeData
 }
 
 /** プレゼンテーションのメタ情報 */
@@ -12,6 +18,8 @@ export interface PresentationMeta {
   author?: string
   logo?: LogoConfig
   themeColors?: string
+  /** 組織/ブランドテーマ（外部 ThemeData への参照パスまたは URL）。4段カスケードの下地として適用される */
+  brandTheme?: string
 }
 
 /** ロゴ設定 */
@@ -121,7 +129,7 @@ export type PresenterViewMessage =
   // メインウィンドウ → 発表者ビュー（パッケージ切替に伴う同梱アドオンの変更を伝搬する）
   | { type: 'addonsChanged'; payload: { owner: string; scripts: string[] } }
   // メインウィンドウ → 発表者ビュー（本編に適用中のテーマ・ロゴを伝搬する）
-  | { type: 'themeChanged'; payload: { themeColors?: string; theme?: ThemeData; logo?: LogoConfig } }
+  | { type: 'themeChanged'; payload: { themeColors?: string; theme?: ThemeData; brand?: ThemeData; logo?: LogoConfig } }
   // 双方向
   | { type: 'presenterViewReady' }
   | { type: 'presenterViewClosed' }

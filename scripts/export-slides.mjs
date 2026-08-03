@@ -70,6 +70,32 @@ export function extractAssetPaths(obj) {
   return [...paths]
 }
 
+// --- theme/ 配下の参照 JSON（meta.brandTheme 等）を1段だけ辿り、その中のアセット参照も合成する ---
+export function extractAssetPathsDeep(obj, sourceDir, { strict = false } = {}) {
+  const direct = extractAssetPaths(obj)
+  const paths = new Set(direct)
+
+  for (const assetPath of direct) {
+    if (!assetPath.startsWith('theme/') || !assetPath.endsWith('.json')) continue
+    const themeJsonPath = resolve(sourceDir, assetPath)
+    // 欠落（ファイル自体が無い）は後段の missingAssets 検出に委ね、ここでは2段目の探索のみスキップする
+    if (!existsSync(themeJsonPath)) continue
+    try {
+      const themeData = JSON.parse(readFileSync(themeJsonPath, 'utf-8'))
+      for (const nested of extractAssetPaths(themeData)) paths.add(nested)
+    } catch (error) {
+      const message = `${themeJsonPath} の読み込みに失敗しました（参照アセットの2段目探索をスキップ）: ${error.message}`
+      if (strict) {
+        console.error(`Error: ${message}`)
+        process.exit(1)
+      }
+      console.warn(`Warning: ${message}`)
+    }
+  }
+
+  return [...paths]
+}
+
 // --- アドオン manifest の bundle をパッケージ相対（addons/xxx）へ書き換える ---
 export function rewriteAddonManifestBundles(manifest, selected) {
   const addons = selectAddons(manifest?.addons, selected)
@@ -167,9 +193,9 @@ function main() {
 
   console.log(`Exporting slides: ${args.slides} as @slides/${args.name}`)
 
-  // slides.json 読み込み・アセット抽出
+  // slides.json 読み込み・アセット抽出（theme/ 配下の参照 JSON は1段だけ辿って中のアセットも合成する）
   const slidesData = JSON.parse(readFileSync(slidesSourcePath, 'utf-8'))
-  const assetPaths = extractAssetPaths(slidesData)
+  const assetPaths = extractAssetPathsDeep(slidesData, sourceDir, { strict: args.strict })
   console.log(`Found ${assetPaths.length} asset references`)
 
   // 出力ディレクトリ準備

@@ -11,7 +11,7 @@ import { SlideRenderer } from './components/SlideRenderer'
 import { ToolbarVisibilityButton } from './components/ToolbarVisibilityButton'
 import { registerDefaultComponents } from './components/registerDefaults'
 import { getFallbackPresentationData, loadPresentationData } from './data'
-import type { PresentationData } from './data'
+import type { PresentationData, ThemeData } from './data'
 import { getVoicePath } from './data/noteHelpers'
 import { isTypingTarget } from './keyboardTarget'
 import { exportSlidesToPdf } from './pdfExport'
@@ -21,7 +21,7 @@ import { useAutoSlideshow } from './hooks/useAutoSlideshow'
 import { usePresenterView } from './hooks/usePresenterView'
 import { useCircularProgress } from './hooks/useCircularProgress'
 import { useReveal } from './hooks/useReveal'
-import { applyThemeData } from './applyTheme'
+import { applyThemeData, mergeThemeData } from './applyTheme'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useI18n } from './i18n'
 
@@ -43,14 +43,19 @@ type AppProps = {
   onScrollSpeedChange: (speed: number) => void
   /** 設定ダイアログを開く（ダイアログ本体は Root が持つ） */
   onOpenSettings: () => void
+  /** 組織/ブランドテーマ（4段カスケードの下地。Root が meta.brandTheme から解決する） */
+  brandTheme?: ThemeData
 }
 
-export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addonScripts, scrollSpeed, onScrollSpeedChange, onOpenSettings }: AppProps) {
+export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addonScripts, scrollSpeed, onScrollSpeedChange, onOpenSettings, brandTheme }: AppProps) {
   const { locale, t } = useI18n()
   const { showToast } = useToast()
   const defaultData = useMemo(() => getFallbackPresentationData(locale), [locale])
   const data = loadPresentationData(presentationData, defaultData)
   const logo = data.meta.logo
+  // SlideRenderer は masters/masterMap を直接参照するため、CSS 変数適用（applyThemeData）だけでなく
+  // 描画に渡す theme 自体も brand→deck の順で合成する（本編・PDF の2経路。発表者ビュー・編集プレビューは別途合成）
+  const effectiveTheme = useMemo(() => mergeThemeData(brandTheme, data.theme), [brandTheme, data.theme])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [toolbarHidden, setToolbarHidden] = useState(false)
   const [pdfExportState, setPdfExportState] = useState<PdfExportState>('idle')
@@ -101,6 +106,7 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
     addonScripts,
     themeColors: data.meta?.themeColors,
     theme: data.theme,
+    brand: brandTheme,
     logo,
     onNavigate: handleNavigate,
     onAudioToggle: handleAudioToggle,
@@ -195,10 +201,10 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
   }, [currentVoicePath, audioPlayer.toggle])
 
   useEffect(() => {
-    if (data.theme) {
-      applyThemeData(data.theme)
+    if (effectiveTheme) {
+      applyThemeData(effectiveTheme)
     }
-  }, [data.theme])
+  }, [effectiveTheme])
 
   const handleToggleToolbar = useCallback(() => setToolbarHidden((prev) => !prev), [])
 
@@ -237,7 +243,7 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
     <>
       <div className="reveal" ref={deckRef}>
         <div className="slides">
-          <SlideRenderer slides={data.slides} logo={logo} theme={data.theme} />
+          <SlideRenderer slides={data.slides} logo={logo} theme={effectiveTheme} />
         </div>
       </div>
       <div className={`toolbar toolbar-left${toolbarHiddenClass}`}>

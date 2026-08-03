@@ -1,5 +1,8 @@
-import { describe, it, expect } from 'vitest'
-import { parseArgs, rewriteAddonManifestBundles, buildFilesField, extractAssetPaths, selectAddons } from '../export-slides.mjs'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'fs'
+import { tmpdir } from 'os'
+import { join } from 'path'
+import { parseArgs, rewriteAddonManifestBundles, buildFilesField, extractAssetPaths, extractAssetPathsDeep, selectAddons } from '../export-slides.mjs'
 
 describe('parseArgs', () => {
   it('--addons フラグを解釈する', () => {
@@ -94,5 +97,63 @@ describe('extractAssetPaths', () => {
   it('image/voice/theme/font 参照を抽出し先頭スラッシュを正規化する', () => {
     const data = { a: '/image/x.png', b: 'voice/y.mp3', c: 'ignore.txt', d: ['theme/z.css'] }
     expect(extractAssetPaths(data).sort()).toEqual(['image/x.png', 'theme/z.css', 'voice/y.mp3'])
+  })
+})
+
+describe('extractAssetPathsDeep（#170: meta.brandTheme 参照先を1段だけ辿る）', () => {
+  let dir
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), 'export-slides-test-'))
+  })
+
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true })
+  })
+
+  it('theme/ 配下の参照 JSON を1段だけ辿り、中のアセット参照も合成する', () => {
+    mkdirSync(join(dir, 'theme'))
+    writeFileSync(join(dir, 'theme', 'brand.json'), JSON.stringify({ fonts: { sources: [{ family: 'Corp', src: 'font/corp.woff2' }] } }))
+
+    const paths = extractAssetPathsDeep({ meta: { brandTheme: 'theme/brand.json' } }, dir)
+
+    expect(paths.sort()).toEqual(['font/corp.woff2', 'theme/brand.json'])
+  })
+
+  it('参照先が存在しない場合は2段目の探索をスキップする（欠落検出は呼び出し側の missingAssets に委ねる）', () => {
+    const paths = extractAssetPathsDeep({ meta: { brandTheme: 'theme/missing.json' } }, dir)
+    expect(paths).toEqual(['theme/missing.json'])
+  })
+
+  it('参照先 JSON が不正な場合、非 strict では警告して1パスの結果を返す', () => {
+    mkdirSync(join(dir, 'theme'))
+    writeFileSync(join(dir, 'theme', 'brand.json'), 'not json')
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    const paths = extractAssetPathsDeep({ meta: { brandTheme: 'theme/brand.json' } }, dir, { strict: false })
+
+    expect(paths).toEqual(['theme/brand.json'])
+    expect(warnSpy).toHaveBeenCalledOnce()
+    warnSpy.mockRestore()
+  })
+
+  it('参照先 JSON が不正な場合、strict では失敗させる', () => {
+    mkdirSync(join(dir, 'theme'))
+    writeFileSync(join(dir, 'theme', 'brand.json'), 'not json')
+    const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => {
+      throw new Error('exit')
+    })
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    expect(() => extractAssetPathsDeep({ meta: { brandTheme: 'theme/brand.json' } }, dir, { strict: true })).toThrow('exit')
+    expect(exitSpy).toHaveBeenCalledWith(1)
+
+    exitSpy.mockRestore()
+    errorSpy.mockRestore()
+  })
+
+  it('brandTheme 未参照の通常デッキは1パス目のみで完了する', () => {
+    const paths = extractAssetPathsDeep({ meta: { logo: { src: 'image/logo.png' } } }, dir)
+    expect(paths).toEqual(['image/logo.png'])
   })
 })

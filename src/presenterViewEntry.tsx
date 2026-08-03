@@ -7,7 +7,7 @@ import { getCurrentWindow } from '@tauri-apps/api/window'
 import 'reveal.js/dist/reveal.css'
 import './styles/global.css'
 import './addon-bridge'
-import { applyPresentationTheme, applyTheme } from './applyTheme'
+import { applyPresentationTheme, applyTheme, mergeThemeData } from './applyTheme'
 import { loadAddonScripts, loadBuiltinAddons } from './addonLoader'
 import { registerDefaultComponents } from './components/registerDefaults'
 import { unregisterOwner } from './components/ComponentRegistry'
@@ -40,11 +40,12 @@ function PresenterViewApp() {
 
     listen<PresenterViewMessage>(EVENT_NAME, async (event) => {
       if (event.payload.type === 'themeChanged') {
-        const { themeColors, theme: themeData, logo } = event.payload.payload
-        // 本編とテーマの上書きが食い違わないよう、本編と同じ手順（reset→適用）で再適用する
-        await applyPresentationTheme(themeColors, themeData)
+        const { themeColors, theme: themeData, brand, logo } = event.payload.payload
+        // 本編とテーマの上書きが食い違わないよう、本編と同じ手順（reset→brand→themeColors→theme）で再適用する
+        await applyPresentationTheme(themeColors, themeData, brand)
         setLogo(logo)
-        setSlideTheme(themeData)
+        // SlideRenderer は masters/masterMap を直接参照するため、本編と同様に合成済み theme を渡す
+        setSlideTheme(mergeThemeData(brand, themeData))
       } else if (event.payload.type === 'addonsChanged') {
         const { owner, scripts } = event.payload.payload
         // 旧 owner を破棄してから新アドオンをロードする（slideChanged 側がこの完了を待つ）

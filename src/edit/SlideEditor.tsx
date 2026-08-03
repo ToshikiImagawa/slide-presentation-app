@@ -13,9 +13,9 @@ import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline'
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import { editorUiTheme, theme } from '../theme'
 import { useTranslation } from '../i18n'
-import { applyPresentationTheme } from '../applyTheme'
-import { getPackageAddonNames, resolveLocalAssetPaths } from '../localSlideLoader'
-import type { PresentationData, SlideData } from '../data'
+import { applyPresentationTheme, mergeThemeData } from '../applyTheme'
+import { getPackageAddonNames, resolveBrandTheme, resolveLocalAssetPaths } from '../localSlideLoader'
+import type { PresentationData, SlideData, ThemeData } from '../data'
 import type { GeneratedCandidate } from '../aiGenerate'
 import { pickBrandTemplate, loadBrandOverrides, saveBrandOverrides } from '../brand/io'
 import { mergeCompiledBrandTheme } from '../brand/compile'
@@ -148,13 +148,30 @@ export function SlideEditor({
   if (!hasSyntaxError) lastValidRef.current = data
   const validData = lastValidRef.current
 
-  // プレビュー用にテーマを適用（設計 §9.1 の初期方針: 同一 document。テーマ編集で live 反映）
-  const themeKey = JSON.stringify({ theme: validData.theme, themeColors: validData.meta?.themeColors })
+  // meta.brandTheme（組織/ブランドテーマの下地）を解決する。validData（変換前の相対パス）を基準に baseDir から読む
+  const brandThemePath = validData.meta?.brandTheme
+  const [brandTheme, setBrandTheme] = useState<ThemeData | undefined>(undefined)
   useEffect(() => {
-    void applyPresentationTheme(validData.meta?.themeColors, validData.theme)
-    // themeKey が変わったときだけ再適用する
+    if (!brandThemePath) {
+      setBrandTheme(undefined)
+      return
+    }
+    let cancelled = false
+    void resolveBrandTheme(brandThemePath, source.baseDir).then((resolved) => {
+      if (!cancelled) setBrandTheme(resolved)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [brandThemePath, source.baseDir])
+
+  // プレビュー用にテーマを適用（設計 §9.1 の初期方針: 同一 document。テーマ編集で live 反映）
+  const themeKey = JSON.stringify({ theme: validData.theme, themeColors: validData.meta?.themeColors, brandTheme: brandThemePath })
+  useEffect(() => {
+    void applyPresentationTheme(validData.meta?.themeColors, validData.theme, brandTheme)
+    // themeKey・brandTheme が変わったときだけ再適用する
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [themeKey])
+  }, [themeKey, brandTheme])
 
   // 層B: パッケージ同梱アドオン一覧を baseDir/addons/manifest.json から読み、既定で全選択にする（従来の全同梱と同挙動）。
   // 層A（組み込み）は既定では未選択＝オプトインで同梱に加える（②）
@@ -227,6 +244,8 @@ export function SlideEditor({
 
   // プレビュー表示用のアセット解決（パッケージのみ。サンプル/新規は相対のまま app 配下で解決される）
   const previewData = useMemo<PresentationData>(() => (source.baseDir ? resolveLocalAssetPaths(validData, source.baseDir) : validData), [validData, source.baseDir])
+  // SlideRenderer は masters/masterMap を直接参照するため、本編と同様に brand→deck の合成済み theme をプレビューに渡す
+  const effectiveTheme = useMemo(() => mergeThemeData(brandTheme, previewData.theme), [brandTheme, previewData.theme])
   const slides = previewData.slides ?? []
   const clampedIndex = slides.length > 0 ? Math.min(selectedIndex, slides.length - 1) : 0
   const currentSlide: SlideData | undefined = slides[clampedIndex]
@@ -458,7 +477,7 @@ export function SlideEditor({
             initialOverrides={brandImport.overrides}
             previewSlide={currentSlide}
             previewLogo={previewData.meta?.logo}
-            previewTheme={previewData.theme}
+            previewTheme={effectiveTheme}
             onApply={confirmImportBrandTheme}
             onCancel={cancelImportBrandTheme}
           />
@@ -620,7 +639,7 @@ export function SlideEditor({
                     {currentSlide ? (
                       // プレビューだけはプレゼン用テーマ（スライド本来のフォントサイズ）で描画する。編集 chrome は editorUiTheme のまま
                       <ThemeProvider theme={theme}>
-                        <SlidePreview slide={currentSlide} logo={previewData.meta?.logo} theme={previewData.theme} index={clampedIndex} total={slides.length} />
+                        <SlidePreview slide={currentSlide} logo={previewData.meta?.logo} theme={effectiveTheme} index={clampedIndex} total={slides.length} />
                       </ThemeProvider>
                     ) : (
                       <Box sx={{ p: 2, color: 'var(--fixed-text-muted)' }}>{t('edit.noSlides', 'スライドがありません')}</Box>
