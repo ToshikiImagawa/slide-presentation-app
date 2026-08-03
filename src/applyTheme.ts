@@ -1,11 +1,13 @@
 import type { FontSource, ThemeData } from './data'
 import { buildMasterCss, getMasterWarnings } from './masters'
 
+/** 6桁hex（#rrggbb）を [r, g, b] へ分解する（hexToRgb・relativeLuminance・brand/compile.ts の mix 計算が共有する） */
+export function hexToRgbTuple(hex: string): [number, number, number] {
+  return [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)]
+}
+
 function hexToRgb(hex: string): string {
-  const r = parseInt(hex.slice(1, 3), 16)
-  const g = parseInt(hex.slice(3, 5), 16)
-  const b = parseInt(hex.slice(5, 7), 16)
-  return `${r}, ${g}, ${b}`
+  return hexToRgbTuple(hex).join(', ')
 }
 
 /**
@@ -265,11 +267,12 @@ function linearizeChannel(value: number): number {
 
 /** 6桁hex（#rrggbb）の相対輝度（WCAG 2.x の算出式） */
 function relativeLuminance(hex: string): number {
-  const r = parseInt(hex.slice(1, 3), 16)
-  const g = parseInt(hex.slice(3, 5), 16)
-  const b = parseInt(hex.slice(5, 7), 16)
+  const [r, g, b] = hexToRgbTuple(hex)
   return 0.2126 * linearizeChannel(r) + 0.7152 * linearizeChannel(g) + 0.0722 * linearizeChannel(b)
 }
+
+/** WCAG AA（通常テキスト）のコントラスト比閾値。#166 の差分ダイアログ・#168 のブランド取り込みが共有する */
+export const WCAG_AA_THRESHOLD = 4.5
 
 /**
  * 2色間の WCAG コントラスト比（1〜21）を算出する。

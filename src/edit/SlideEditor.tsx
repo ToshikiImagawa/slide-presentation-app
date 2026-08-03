@@ -15,9 +15,10 @@ import { editorUiTheme, theme } from '../theme'
 import { useTranslation } from '../i18n'
 import { applyPresentationTheme } from '../applyTheme'
 import { getPackageAddonNames, resolveLocalAssetPaths } from '../localSlideLoader'
-import type { PresentationData, SlideData, ThemeData } from '../data'
+import type { PresentationData, SlideData } from '../data'
 import type { GeneratedCandidate } from '../aiGenerate'
 import { pickBrandTemplate, loadBrandOverrides, saveBrandOverrides } from '../brand/io'
+import { mergeCompiledBrandTheme } from '../brand/compile'
 import type { BrandOverrides, BrandProfile, CompiledBrandTheme } from '../brand/types'
 import { parseSlides, serializeSlides, prettyPrintJson } from './slidesSerialize'
 import { AiGeneratePanel } from './AiGeneratePanel'
@@ -79,23 +80,6 @@ function validateVersion(value: string): 'required' | 'invalid' | null {
 }
 
 const JSON_SYNTAX_ERROR_MARK = 'JSON 構文エラー'
-
-/**
- * `compile`（#168）の結果を現在の器へ合成する。既存の masters/masterMap/tokens/fonts は保持したまま、
- * ブランド master（`brand`）とその割り当てだけ追加/上書きする（他の master を消さない）。
- * `theme.colors`（ColorPalette）には書き込まない: 12キーは `compiled.colors` 側で別に保持し、
- * 生成 CSS ではなく masters/decorations を経由して見た目に反映する（Epic #173 の方針）
- */
-function applyCompiledBrandTheme(current: PresentationData, compiled: CompiledBrandTheme): PresentationData {
-  const theme: ThemeData = {
-    ...current.theme,
-    fonts: { ...current.theme?.fonts, ...(compiled.fonts.heading ? { heading: compiled.fonts.heading } : {}), ...(compiled.fonts.body ? { body: compiled.fonts.body } : {}) },
-    masters: { ...current.theme?.masters, ...compiled.masters },
-    masterMap: { ...current.theme?.masterMap, ...compiled.masterMap },
-    tokens: { ...current.theme?.tokens, ...compiled.tokens },
-  }
-  return { ...current, theme }
-}
 
 /**
  * 編集画面のルート。JSON エディタ・確定フィールドのフォーム・本番同一レンダラのライブプレビューを束ね、
@@ -376,7 +360,7 @@ export function SlideEditor({
   // 12キーは compiled.colors 側で保持するだけ）、上書きはテンプレートハッシュをキーに保存して再取り込みに備える
   const confirmImportBrandTheme = ({ overrides, compiled }: { overrides: BrandOverrides; compiled: CompiledBrandTheme }) => {
     if (!brandImport) return
-    setText(serializeSlides(applyCompiledBrandTheme(validData, compiled)))
+    setText(serializeSlides({ ...validData, theme: mergeCompiledBrandTheme(validData.theme, compiled) }))
     void saveBrandOverrides(brandImport.profile.templateHash, overrides)
     setBrandImport(null)
     setStatus({ kind: 'ok', message: t('brand.imported', 'ブランドテーマを取り込みました') })

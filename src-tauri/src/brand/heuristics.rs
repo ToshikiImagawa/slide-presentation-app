@@ -74,6 +74,11 @@ pub fn rank_logo_candidates(pics: &[RawPic], slide: SlideSize) -> Vec<RankedLogo
     .collect()
 }
 
+/// name hint（"logo" を含む名前）の寄与が最も大きく、角への近さ・小ささはそれに次ぐ判断材料にする
+const NAME_HINT_WEIGHT: f64 = 1.0;
+const CORNER_PROXIMITY_WEIGHT: f64 = 0.5;
+const SIZE_WEIGHT: f64 = 0.3;
+
 /// name hint（"logo" を含む名前）を最優先の判断材料にし、角に近く・小さい形状を次点で優先する
 fn logo_score(name: Option<&str>, x: i64, y: i64, w: i64, h: i64, slide: SlideSize) -> f64 {
   let name_hint_bonus = name
@@ -81,7 +86,12 @@ fn logo_score(name: Option<&str>, x: i64, y: i64, w: i64, h: i64, slide: SlideSi
     .unwrap_or(false);
   let corner = corner_proximity_score(x, y, w, h, slide);
   let size = size_score(w, h, slide);
-  (if name_hint_bonus { 1.0 } else { 0.0 }) + 0.5 * corner + 0.3 * size
+  (if name_hint_bonus {
+    NAME_HINT_WEIGHT
+  } else {
+    0.0
+  }) + CORNER_PROXIMITY_WEIGHT * corner
+    + SIZE_WEIGHT * size
 }
 
 /// 形状の中心から最も近いスライドの角までの距離を対角線比で正規化する（0=角に接する、1=中心）
@@ -184,29 +194,40 @@ fn classify_geometry(
   let height_ratio = h as f64 / slide_h;
 
   if width_ratio >= 1.0 - EDGE_TOLERANCE && height_ratio <= MAX_BAND_THICKNESS_RATIO {
-    let top_gap = y as f64 / slide_h;
-    let bottom_gap = (slide_h - (y as f64 + h as f64)) / slide_h;
-    if top_gap.abs() <= EDGE_TOLERANCE {
-      return Some(("horizontal", "top-center"));
-    }
-    if bottom_gap.abs() <= EDGE_TOLERANCE {
-      return Some(("horizontal", "bottom-center"));
-    }
-    return None;
+    let near_gap = y as f64 / slide_h;
+    let far_gap = (slide_h - (y as f64 + h as f64)) / slide_h;
+    return Some((
+      "horizontal",
+      edge_anchor(near_gap, far_gap, "top-center", "bottom-center")?,
+    ));
   }
 
   if height_ratio >= 1.0 - EDGE_TOLERANCE && width_ratio <= MAX_BAND_THICKNESS_RATIO {
-    let left_gap = x as f64 / slide_w;
-    let right_gap = (slide_w - (x as f64 + w as f64)) / slide_w;
-    if left_gap.abs() <= EDGE_TOLERANCE {
-      return Some(("vertical", "middle-left"));
-    }
-    if right_gap.abs() <= EDGE_TOLERANCE {
-      return Some(("vertical", "middle-right"));
-    }
-    return None;
+    let near_gap = x as f64 / slide_w;
+    let far_gap = (slide_w - (x as f64 + w as f64)) / slide_w;
+    return Some((
+      "vertical",
+      edge_anchor(near_gap, far_gap, "middle-left", "middle-right")?,
+    ));
   }
 
+  None
+}
+
+/// 帯の近い方の端がスライド境界に接しているかで、どちらの辺に属するアンカーかを決める。
+/// どちらの端にも接していない（中央にある）場合は `None`
+fn edge_anchor(
+  near_gap: f64,
+  far_gap: f64,
+  near_anchor: &'static str,
+  far_anchor: &'static str,
+) -> Option<&'static str> {
+  if near_gap.abs() <= EDGE_TOLERANCE {
+    return Some(near_anchor);
+  }
+  if far_gap.abs() <= EDGE_TOLERANCE {
+    return Some(far_anchor);
+  }
   None
 }
 

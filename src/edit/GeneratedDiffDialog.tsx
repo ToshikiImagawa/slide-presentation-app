@@ -11,7 +11,7 @@ import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import { alpha } from '@mui/material/styles'
 import { useTranslation } from '../i18n'
-import { getContrastRatio, TEXT_COLOR_KEYS } from '../applyTheme'
+import { getContrastRatio, TEXT_COLOR_KEYS, WCAG_AA_THRESHOLD } from '../applyTheme'
 import type { ColorPalette, ThemeData, ValidationError } from '../data/types'
 import { computeSlidesDiff, hasChanges, type FieldChange, type SlideChange } from './slidesDiff'
 import { prettyPrintJson } from './slidesSerialize'
@@ -43,9 +43,6 @@ const KIND_COLOR: Record<FieldChange['kind'], 'success' | 'warning' | 'error'> =
   changed: 'warning',
   removed: 'error',
 }
-
-/** WCAG AA（通常テキスト）の閾値 */
-const WCAG_AA_THRESHOLD = 4.5
 
 function jsonBlock(value: unknown): string {
   return JSON.stringify(value, null, 2)

@@ -1,14 +1,11 @@
-import { getContrastRatio } from '../applyTheme'
+import { getContrastRatio, hexToRgbTuple, THEME_COLOR_TOKENS, WCAG_AA_THRESHOLD } from '../applyTheme'
 import { SLIDE_WIDTH, SLIDE_HEIGHT } from '../hooks/useReveal'
-import type { MasterDecoration } from '../data'
+import type { MasterDecoration, ThemeData } from '../data'
 import { MAPPED_COLOR_KEYS, type BandCandidate, type BrandImportReport, type BrandOverrides, type BrandProfile, type CompiledBrandTheme, type MappedColorKey, type MediaAsset } from './types'
 
 /** 並置比較ダイアログが合成した master を割り当てる先。既存のレイアウト種別（`SlideData.layout`）をすべて対象にする */
 const BRAND_MASTER_KEY = 'brand'
 const LAYOUT_KINDS = ['center', 'content', 'two-column', 'bleed']
-
-/** WCAG AA（通常テキスト）の閾値。#166 の差分ダイアログと同じ基準を使う */
-const WCAG_AA_THRESHOLD = 4.5
 
 /** 抽出できなかったキーの既定色（Office の標準テーマに近い無難な値） */
 const FALLBACK_COLORS: Record<MappedColorKey, string> = {
@@ -33,14 +30,15 @@ const TEXT_ON_BACKGROUND: ReadonlyArray<readonly [MappedColorKey, MappedColorKey
 ]
 
 /** 12 キーのうち、SlidePreview の見た目差分がひと目で分かるよう `brand` master の CSS 変数へ写す最小限の対応。
- * 全キーを写さないのは、`--theme-*` の全トークンへ意味を割り当てるだけの根拠が抽出結果には無いため */
+ * 全キーを写さないのは、`--theme-*` の全トークンへ意味を割り当てるだけの根拠が抽出結果には無いため。
+ * CSS 変数名自体は `THEME_COLOR_TOKENS`（`applyTheme.ts`）を単一真実源として引く（変数名の二重管理を避ける） */
 const KEY_TO_CSS_VAR: Partial<Record<MappedColorKey, string>> = {
-  bg1: '--theme-background',
-  tx1: '--theme-text-body',
-  bg2: '--theme-background-alt',
-  tx2: '--theme-text-muted',
-  accent1: '--theme-primary',
-  accent2: '--theme-accent',
+  bg1: THEME_COLOR_TOKENS.background,
+  tx1: THEME_COLOR_TOKENS.textBody,
+  bg2: THEME_COLOR_TOKENS.backgroundAlt,
+  tx2: THEME_COLOR_TOKENS.textMuted,
+  accent1: THEME_COLOR_TOKENS.primary,
+  accent2: THEME_COLOR_TOKENS.accent,
 }
 
 /**
@@ -110,13 +108,16 @@ function adjustForContrast(textHex: string, bgHex: string, threshold = WCAG_AA_T
   return blackRatio >= whiteRatio ? '#000000' : '#ffffff'
 }
 
+/** 二分探索の反復回数。8bit（256階調）の mix 係数を区別できれば十分なため log2(256)=8 回で収束させる */
+const MIX_SEARCH_ITERATIONS = 8
+
 /** `mixToward(textHex, target, hi)` が閾値を満たす最小の `hi` を求める。フル mix でも届かない方向は `null` */
 function binarySearchMix(textHex: string, target: '#000000' | '#ffffff', bgHex: string, threshold: number): string | null {
   const atFull = getContrastRatio(mixToward(textHex, target, 1), bgHex)
   if (atFull === null || atFull < threshold) return null
   let lo = 0
   let hi = 1
-  for (let i = 0; i < 24; i++) {
+  for (let i = 0; i < MIX_SEARCH_ITERATIONS; i++) {
     const mid = (lo + hi) / 2
     const ratio = getContrastRatio(mixToward(textHex, target, mid), bgHex)
     if (ratio !== null && ratio >= threshold) {
@@ -140,10 +141,6 @@ function colorDistance(a: string, b: string): number {
   const [ar, ag, ab] = hexToRgbTuple(a)
   const [br, bg, bb] = hexToRgbTuple(b)
   return Math.sqrt((ar - br) ** 2 + (ag - bg) ** 2 + (ab - bb) ** 2)
-}
-
-function hexToRgbTuple(hex: string): [number, number, number] {
-  return [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)]
 }
 
 function rgbTupleToHex([r, g, b]: [number, number, number]): string {
@@ -202,7 +199,8 @@ function bandToDecoration(band: BandCandidate, slideSize: BrandProfile['slideSiz
   return { type: 'band', anchor: band.anchor, orientation: band.orientation, color: band.colorHex, thickness }
 }
 
-function mediaAssetToDataUrl(asset: MediaAsset): string {
+/** `MediaAsset` を `<img src>` に直接渡せる data URL へ変換する（サムネイル・ロゴ候補の表示で共有する） */
+export function mediaAssetToDataUrl(asset: MediaAsset): string {
   return `data:${asset.contentType};base64,${asset.base64}`
 }
 
@@ -214,4 +212,22 @@ function buildTokens(colors: Record<MappedColorKey, string>): Record<string, str
     if (value) tokens[cssVar.replace(/^--/, '')] = value
   }
   return tokens
+}
+
+/**
+ * `compile` の出力を既存の `ThemeData` へ合成する。既存の masters/masterMap/tokens/fonts は保持したまま、
+ * `brand` master とその割り当てだけ追加/上書きする（他の master を消さない）。
+ * ライブプレビュー（`BrandConfirmDialog`）とコミット（`SlideEditor`）の両方がこの 1 関数を通ることで、
+ * 「プレビューでは反映されるが確定後の見た目が違う」という食い違いを防ぐ。
+ * `theme.colors`（ColorPalette）には書き込まない: 12 キーは `compiled.colors` 側で別に保持し、
+ * 生成 CSS ではなく masters/decorations 経由で見た目に反映する（Epic #173 の方針）
+ */
+export function mergeCompiledBrandTheme(base: ThemeData | undefined, compiled: CompiledBrandTheme): ThemeData {
+  return {
+    ...base,
+    fonts: { ...base?.fonts, ...(compiled.fonts.heading ? { heading: compiled.fonts.heading } : {}), ...(compiled.fonts.body ? { body: compiled.fonts.body } : {}) },
+    masters: { ...base?.masters, ...compiled.masters },
+    masterMap: { ...base?.masterMap, ...compiled.masterMap },
+    tokens: { ...base?.tokens, ...compiled.tokens },
+  }
 }

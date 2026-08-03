@@ -17,7 +17,7 @@
 //! 信頼できない zip を読むため、既存の `.spkg` 展開（`lib.rs` の tar+gzip。自前で書き出したパッケージ前提で
 //! ディスクへ展開する）とは完全に別経路にし、上限とパス検査を必ず通す。**ディスクへは一切書き出さない。**
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::io::{Read, Seek, SeekFrom};
 
 use quick_xml::events::{BytesStart, Event};
@@ -56,6 +56,11 @@ pub struct OpcPackage<R: Read + Seek> {
   /// `BTreeMap` なので走査順が名前順に決まる（同一入力から同一出力を出すための土台）
   parts: BTreeMap<String, String>,
   content_types: ContentTypes,
+  /// `read_text` のキャッシュ（小文字化した part 名がキー）。root の `_rels/.rels` やロゴ候補ごとの
+  /// slideMaster の `_rels` 等、1 回の抽出で同じ part を何度も読むため、zip の再展開を防ぐ
+  text_cache: HashMap<String, String>,
+  /// `relationships` のキャッシュ（小文字化した part 名がキー）。上記と同じ理由で XML の再解析も防ぐ
+  rels_cache: HashMap<String, Vec<Relationship>>,
 }
 
 impl<R: Read + Seek> OpcPackage<R> {
@@ -100,6 +105,8 @@ impl<R: Read + Seek> OpcPackage<R> {
       archive,
       parts,
       content_types,
+      text_cache: HashMap::new(),
+      rels_cache: HashMap::new(),
     })
   }
 
@@ -118,9 +125,16 @@ impl<R: Read + Seek> OpcPackage<R> {
       .collect()
   }
 
-  /// part を UTF-8 文字列として読む
+  /// part を UTF-8 文字列として読む。同じ part を 2 回目以降に読むときは zip の再展開をしない
+  /// （root の `_rels/.rels` やロゴ候補ごとの slideMaster `_rels` 等、1 回の抽出で何度も読まれる part があるため）
   pub fn read_text(&mut self, part: &str) -> Result<String, BrandError> {
-    read_part_text(&mut self.archive, &self.parts, part)
+    let key = part.to_ascii_lowercase();
+    if let Some(cached) = self.text_cache.get(&key) {
+      return Ok(cached.clone());
+    }
+    let text = read_part_text(&mut self.archive, &self.parts, part)?;
+    self.text_cache.insert(key, text.clone());
+    Ok(text)
   }
 
   /// part をバイト列として読む（画像等の非テキスト part 用。上限は `read_text` より大きめ）
@@ -133,14 +147,22 @@ impl<R: Read + Seek> OpcPackage<R> {
     self.content_types.of(part).map(str::to_string)
   }
 
-  /// part の関係（`_rels`）を読む。関係ファイルを持たない part は空を返す（末端 part では正常）
+  /// part の関係（`_rels`）を読む。関係ファイルを持たない part は空を返す（末端 part では正常）。
+  /// `read_text` と同じ理由でキャッシュする（ロゴ候補ごとに同じ slideMaster の関係を読み直さない）
   fn relationships(&mut self, part: &str) -> Result<Vec<Relationship>, BrandError> {
-    let rels_part = rels_part_name(part);
-    if !self.has_part(&rels_part) {
-      return Ok(Vec::new());
+    let key = part.to_ascii_lowercase();
+    if let Some(cached) = self.rels_cache.get(&key) {
+      return Ok(cached.clone());
     }
-    let xml = self.read_text(&rels_part)?;
-    parse_relationships(&xml, base_dir(part))
+    let rels_part = rels_part_name(part);
+    let rels = if !self.has_part(&rels_part) {
+      Vec::new()
+    } else {
+      let xml = self.read_text(&rels_part)?;
+      parse_relationships(&xml, base_dir(part))?
+    };
+    self.rels_cache.insert(key, rels.clone());
+    Ok(rels)
   }
 
   /// `part` の関係のうち `Id` が `rel_id` に一致するものの Target を返す（`a:blip@r:embed` の解決に使う）。
@@ -150,11 +172,7 @@ impl<R: Read + Seek> OpcPackage<R> {
     part: &str,
     rel_id: &str,
   ) -> Result<Option<String>, BrandError> {
-    let target = self
-      .relationships(part)?
-      .into_iter()
-      .find(|r| r.id == rel_id)
-      .map(|r| r.target);
+    let target = find_target_by(&self.relationships(part)?, |r| r.id == rel_id);
     Ok(target.filter(|t| self.has_part(t)))
   }
 
@@ -417,9 +435,17 @@ fn base_dir(part: &str) -> &str {
 
 /// 指定種別の関係の Target を記述順の先頭から返す
 fn find_target(relationships: &[Relationship], kind: &str) -> Option<String> {
+  find_target_by(relationships, |r| r.kind == kind)
+}
+
+/// 条件に一致する最初の関係の Target を返す（`find_target`/`resolve_relationship_id` が共有する）
+fn find_target_by(
+  relationships: &[Relationship],
+  pred: impl Fn(&Relationship) -> bool,
+) -> Option<String> {
   relationships
     .iter()
-    .find(|r| r.kind == kind)
+    .find(|r| pred(r))
     .map(|r| r.target.clone())
 }
 

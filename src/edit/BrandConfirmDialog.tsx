@@ -14,16 +14,15 @@ import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { useTranslation } from '../i18n'
-import { getContrastRatio } from '../applyTheme'
+import { getContrastRatio, WCAG_AA_THRESHOLD } from '../applyTheme'
 import type { LogoConfig, SlideData, ThemeData } from '../data'
-import { compile } from '../brand/compile'
+import { compile, mediaAssetToDataUrl, mergeCompiledBrandTheme } from '../brand/compile'
 import { MAPPED_COLOR_KEYS, type BandCandidate, type BrandFieldStatus, type BrandOverrides, type BrandProfile, type CompiledBrandTheme, type MappedColorKey } from '../brand/types'
 import { ColorSwatch } from './GeneratedDiffDialog'
 import { SlidePreview } from './SlidePreview'
 
 /** WCAG コントラスト収束の対象キー → 背景キー（表示用。compile.ts の収束対象と同じ組） */
 const TEXT_KEY_TO_BACKGROUND_KEY: Partial<Record<MappedColorKey, MappedColorKey>> = { tx1: 'bg1', tx2: 'bg2' }
-const WCAG_AA_THRESHOLD = 4.5
 const HEX_PATTERN = /^#[0-9a-f]{6}$/i
 
 export interface BrandConfirmDialogProps {
@@ -68,14 +67,7 @@ export function BrandConfirmDialog({ open, profile, initialOverrides, previewSli
 
   const { theme: compiled, report } = useMemo(() => compile(profile, overrides), [profile, overrides])
 
-  const previewMergedTheme = useMemo<ThemeData>(
-    () => ({
-      ...previewTheme,
-      masters: { ...previewTheme?.masters, ...compiled.masters },
-      masterMap: { ...previewTheme?.masterMap, ...compiled.masterMap },
-    }),
-    [previewTheme, compiled],
-  )
+  const previewMergedTheme = useMemo<ThemeData>(() => mergeCompiledBrandTheme(previewTheme, compiled), [previewTheme, compiled])
 
   const commitColorOverride = (key: MappedColorKey, draft: string) => {
     setColorDrafts((prev) => ({ ...prev, [key]: undefined }))
@@ -125,7 +117,7 @@ export function BrandConfirmDialog({ open, profile, initialOverrides, previewSli
               }}
             >
               {profile.thumbnail ? (
-                <img src={`data:${profile.thumbnail.contentType};base64,${profile.thumbnail.base64}`} alt={t('brand.thumbnailAlt', 'テンプレートのサムネイル')} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                <img src={mediaAssetToDataUrl(profile.thumbnail)} alt={t('brand.thumbnailAlt', 'テンプレートのサムネイル')} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
               ) : (
                 <Typography variant="body2" sx={{ color: 'var(--fixed-text-muted)' }}>
                   {t('brand.noThumbnail', 'サムネイルがありません')}
@@ -199,7 +191,7 @@ export function BrandConfirmDialog({ open, profile, initialOverrides, previewSli
                   <Stack direction="row" spacing={0.5} alignItems="center">
                     <Box
                       component="img"
-                      src={`data:${candidate.image.contentType};base64,${candidate.image.base64}`}
+                      src={mediaAssetToDataUrl(candidate.image)}
                       alt={candidate.nameHint ?? `logo-${i}`}
                       sx={{ height: 24, maxWidth: 80, objectFit: 'contain', border: '1px solid var(--fixed-border)', borderRadius: '2px' }}
                     />

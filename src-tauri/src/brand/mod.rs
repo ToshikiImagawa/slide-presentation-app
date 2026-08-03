@@ -252,9 +252,25 @@ fn hash_reader<R: Read + Seek>(reader: &mut R) -> Result<String, BrandError> {
   Ok(format!("{:x}", hasher.finalize()))
 }
 
+/// part を読んで `MediaAsset`（content type + base64）にする。読めない・content type 不明のいずれでも
+/// `None`（呼び出し側はその 1 件だけを諦める。1 件の画像事故で並置比較ダイアログ全体を失敗させない）
+fn read_media_asset(
+  package: &mut OpcPackage<impl Read + Seek>,
+  part: &str,
+  default_content_type: &str,
+) -> Option<MediaAsset> {
+  let bytes = package.read_bytes(part).ok()?;
+  let content_type = package
+    .content_type_of(part)
+    .unwrap_or_else(|| default_content_type.to_string());
+  Some(MediaAsset {
+    content_type,
+    base64: encode_base64(&bytes),
+  })
+}
+
 /// ランキング済みロゴ候補の `r:embed` を media part へ解決し、バイト列を読む。
-/// 参照が壊れている・上限超過・content type 不明のいずれでも、その 1 件だけを諦めて `None` を返す
-/// （1 件の画像事故で並置比較ダイアログ全体を失敗させない）
+/// 参照が壊れている場合も、その 1 件だけを諦めて `None` を返す
 fn resolve_logo_candidate(
   package: &mut OpcPackage<impl Read + Seek>,
   master_part: &str,
@@ -263,16 +279,9 @@ fn resolve_logo_candidate(
   let media_part = package
     .resolve_relationship_id(master_part, &ranked.embed_rid)
     .ok()??;
-  let bytes = package.read_bytes(&media_part).ok()?;
-  let content_type = package
-    .content_type_of(&media_part)
-    .unwrap_or_else(|| "application/octet-stream".to_string());
   Some(LogoCandidate {
     name_hint: ranked.name_hint,
-    image: MediaAsset {
-      content_type,
-      base64: encode_base64(&bytes),
-    },
+    image: read_media_asset(package, &media_part, "application/octet-stream")?,
     width_emu: ranked.width_emu,
     height_emu: ranked.height_emu,
     x_emu: ranked.x_emu,
@@ -284,14 +293,7 @@ fn resolve_logo_candidate(
 /// 無い・壊れているテンプレートは多い（自己生成しない編集ソフトもある）ため、無ければ黙って `None`
 fn extract_thumbnail(package: &mut OpcPackage<impl Read + Seek>) -> Option<MediaAsset> {
   let part = package.find_relationship_target("", "thumbnail").ok()??;
-  let bytes = package.read_bytes(&part).ok()?;
-  let content_type = package
-    .content_type_of(&part)
-    .unwrap_or_else(|| "image/jpeg".to_string());
-  Some(MediaAsset {
-    content_type,
-    base64: encode_base64(&bytes),
-  })
+  read_media_asset(package, &part, "image/jpeg")
 }
 
 fn encode_base64(bytes: &[u8]) -> String {
