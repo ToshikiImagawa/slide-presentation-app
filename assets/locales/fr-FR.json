@@ -223,6 +223,7 @@
       "contrastRatio": "Rapport de contraste"
     },
     "brand": {
+      "importHint": "Appliqué aux sections « Thème » et « Master » ci-dessous",
       "importButton": "Importer le thème de marque",
       "imported": "Thème de marque importé",
       "title": "Confirmer l'import du thème de marque",

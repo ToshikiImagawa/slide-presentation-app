@@ -223,6 +223,7 @@
       "contrastRatio": "Contrast ratio"
     },
     "brand": {
+      "importHint": "Applied to the \"Theme\" and \"Master\" sections below",
       "importButton": "Import brand theme",
       "imported": "Brand theme imported",
       "title": "Confirm brand theme import",

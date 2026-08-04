@@ -223,6 +223,7 @@
       "contrastRatio": "コントラスト比"
     },
     "brand": {
+      "importHint": "以下の「テーマ」「マスター」に反映されます",
       "importButton": "ブランドテーマを取り込む",
       "imported": "ブランドテーマを取り込みました",
       "title": "ブランドテーマの取り込み確認",
