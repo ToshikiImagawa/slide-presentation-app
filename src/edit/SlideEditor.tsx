@@ -395,6 +395,18 @@ export function SlideEditor({
     setBrandImport({ profile, overrides })
   }
 
+  // 「テーマ」見出しの右隣に配置する導線。構文エラー中は SlideMetaForm 自体が非表示になるため、
+  // その場合はエラーメッセージの隣に同じ要素をフォールバック表示し、取り込みによる復旧手段を保つ
+  const brandImportPrompt = (
+    <Tooltip title={t('brand.importHint', '以下の「テーマ」「マスター」に反映されます')}>
+      <span>
+        <Button variant="outlined" size="small" onClick={() => void handleImportBrandTheme()} disabled={!currentSlide}>
+          {t('brand.importButton', 'ブランドテーマを取り込む')}
+        </Button>
+      </span>
+    </Tooltip>
+  )
+
   // 確認ダイアログの [取り込む]。masters/masterMap/tokens/fonts のみ合成し（theme.colors には書き込まない・
   // 12キーは compiled.colors 側で保持するだけ）、上書きはテンプレートハッシュをキーに保存して再取り込みに備える
   const confirmImportBrandTheme = ({ overrides, compiled }: { overrides: BrandOverrides; compiled: CompiledBrandTheme }) => {
@@ -628,15 +640,15 @@ export function SlideEditor({
             <Box sx={{ minWidth: 0, minHeight: 0, overflow: 'auto' }}>
               {themeColorsPalette && <ThemeColorsMigrationNotice themeColorsPalette={themeColorsPalette} brandColors={brandTheme?.colors} onDelegate={handleDelegateThemeColors} />}
               <AiGeneratePanel currentText={text} onApply={applyGeneratedSlides} defaultExpanded={source.aiPanelExpanded} />
-              <Button variant="outlined" size="small" sx={{ m: 1 }} onClick={() => void handleImportBrandTheme()} disabled={!currentSlide}>
-                {t('brand.importButton', 'ブランドテーマを取り込む')}
-              </Button>
               {hasSyntaxError ? (
-                <Typography variant="body2" sx={{ p: 1, color: 'var(--fixed-primary)' }}>
-                  {t('edit.formDisabled', 'JSON に構文エラーがあるためフォーム編集は無効です')}
-                </Typography>
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 0.5, m: 1 }}>
+                  <Typography variant="body2" sx={{ color: 'var(--fixed-primary)' }}>
+                    {t('edit.formDisabled', 'JSON に構文エラーがあるためフォーム編集は無効です')}
+                  </Typography>
+                  {brandImportPrompt}
+                </Box>
               ) : (
-                <SlideMetaForm value={validData} onChange={(next) => setText(serializeSlides(next))} />
+                <SlideMetaForm value={validData} onChange={(next) => setText(serializeSlides(next))} themeSectionSlot={brandImportPrompt} />
               )}
             </Box>
 
