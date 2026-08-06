@@ -142,12 +142,14 @@ function renderColumnContent(data: Record<string, unknown> | undefined): ReactNo
     elements.push(
       <BulletList
         key="items"
-        items={items.map((item, i) => (
-          <span key={i}>
-            {item.emphasis ? <strong>{item.text}</strong> : item.text}
-            {item.description ? ` ${item.description}` : ''}
-          </span>
-        ))}
+        items={items.map((item) => ({
+          content: (
+            <>
+              {item.emphasis ? <strong>{item.text}</strong> : item.text}
+              {item.description ? ` ${item.description}` : ''}
+            </>
+          ),
+        }))}
       />,
     )
   }

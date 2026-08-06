@@ -1,10 +1,9 @@
-import { isValidElement } from 'react'
 import type { ReactNode } from 'react'
 import List from '@mui/material/List'
 import { BulletListItem } from './BulletListItem'
 
-/** ネストや fragment 制御が必要な項目向けのリッチ入力（#193） */
-export type BulletListRichItem = {
+/** 箇条書き1項目分の入力。ネストや fragment 制御が必要な場合はchildren/fragmentを指定する（#193） */
+export type BulletListItemInput = {
   content: ReactNode
   fragment?: boolean
   fragmentIndex?: number
@@ -12,25 +11,17 @@ export type BulletListRichItem = {
 }
 
 type Props = {
-  items: Array<ReactNode | BulletListRichItem>
-}
-
-function isRichItem(item: ReactNode | BulletListRichItem): item is BulletListRichItem {
-  return typeof item === 'object' && item !== null && !isValidElement(item) && 'content' in item
+  items: BulletListItemInput[]
 }
 
 export function BulletList({ items }: Props) {
   return (
     <List disablePadding>
-      {items.map((item, i) =>
-        isRichItem(item) ? (
-          <BulletListItem key={i} primary={item.content} fragment={item.fragment} fragmentIndex={item.fragmentIndex}>
-            {item.children}
-          </BulletListItem>
-        ) : (
-          <BulletListItem key={i} primary={item} />
-        ),
-      )}
+      {items.map((item, i) => (
+        <BulletListItem key={i} primary={item.content} fragment={item.fragment} fragmentIndex={item.fragmentIndex}>
+          {item.children}
+        </BulletListItem>
+      ))}
     </List>
   )
 }
