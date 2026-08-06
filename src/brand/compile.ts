@@ -1,4 +1,4 @@
-import { getContrastRatio, hexToRgbTuple, THEME_COLOR_TOKENS, WCAG_AA_THRESHOLD } from '../applyTheme'
+import { getContrastRatio, hexToRgbTuple, rgbTupleToHex, THEME_COLOR_TOKENS, WCAG_AA_THRESHOLD } from '../applyTheme'
 import { SLIDE_WIDTH, SLIDE_HEIGHT } from '../hooks/useReveal'
 import { slugify } from '../slugify'
 import type { MasterDecoration, MasterDefinition, ThemeData } from '../data'
@@ -41,8 +41,11 @@ const TEXT_ON_BACKGROUND: ReadonlyArray<readonly [MappedColorKey, MappedColorKey
   ['tx2', 'bg2'],
 ]
 
-/** 12 キーのうち、SlidePreview の見た目差分がひと目で分かるよう `brand` master の CSS 変数へ写す最小限の対応。
- * 全キーを写さないのは、`--theme-*` の全トークンへ意味を割り当てるだけの根拠が抽出結果には無いため。
+/** 12 キーすべてを `brand` master の CSS 変数へ写す対応（#186）。
+ * bg1/tx1/bg2/tx2・accent1/accent2・hlink/folHlink は意味が明確なため対応する CSS 変数へ直接写し、
+ * accent3〜accent6（OOXML 上は用途が固定されない予備の強調色）は意味づけの根拠が薄いため
+ * 系列色（series3〜series6）へ機械的に割り当てる（series1/series2 は primary/accent 自体が
+ * 導出元になるため、ここでは直接の対応先を持たない）。
  * CSS 変数名自体は `THEME_COLOR_TOKENS`（`applyTheme.ts`）を単一真実源として引く（変数名の二重管理を避ける） */
 const KEY_TO_CSS_VAR: Partial<Record<MappedColorKey, string>> = {
   bg1: THEME_COLOR_TOKENS.background,
@@ -51,7 +54,16 @@ const KEY_TO_CSS_VAR: Partial<Record<MappedColorKey, string>> = {
   tx2: THEME_COLOR_TOKENS.textMuted,
   accent1: THEME_COLOR_TOKENS.primary,
   accent2: THEME_COLOR_TOKENS.accent,
+  accent3: THEME_COLOR_TOKENS.series3,
+  accent4: THEME_COLOR_TOKENS.series4,
+  accent5: THEME_COLOR_TOKENS.series5,
+  accent6: THEME_COLOR_TOKENS.series6,
+  hlink: THEME_COLOR_TOKENS.link,
+  folHlink: THEME_COLOR_TOKENS.linkVisited,
 }
+
+/** `KEY_TO_CSS_VAR` で系列色へ機械的に割り当てたキー（意味づけの根拠が薄い）。report で `derived` として報告する */
+const MECHANICALLY_ASSIGNED_KEYS: ReadonlySet<MappedColorKey> = new Set(['accent3', 'accent4', 'accent5', 'accent6'])
 
 /**
  * `BrandProfile`（抽出結果）と `BrandOverrides`（人の上書き）から `ThemeData` へ合成可能な `CompiledBrandTheme` を作る純関数。
@@ -123,12 +135,13 @@ function resolveColors(profile: BrandProfile, overrides: BrandOverrides, report:
   for (const key of MAPPED_COLOR_KEYS) {
     const override = overrides.colorHex?.[key]
     const extracted = profile.mappedColors[key]
+    const mechanical = MECHANICALLY_ASSIGNED_KEYS.has(key)
     if (override) {
       colors[key] = override
-      report.fields[`colors.${key}`] = { status: 'ok', detail: '人が上書き' }
+      report.fields[`colors.${key}`] = mechanical ? { status: 'derived', detail: `人が上書き / 系列色（${KEY_TO_CSS_VAR[key]}）へ機械的に割り当て` } : { status: 'ok', detail: '人が上書き' }
     } else if (extracted) {
       colors[key] = extracted
-      report.fields[`colors.${key}`] = { status: 'ok' }
+      report.fields[`colors.${key}`] = mechanical ? { status: 'derived', detail: `系列色（${KEY_TO_CSS_VAR[key]}）へ機械的に割り当て` } : { status: 'ok' }
     } else {
       colors[key] = FALLBACK_COLORS[key]
       report.fields[`colors.${key}`] = { status: 'fallback', detail: 'テンプレートから抽出できず既定値を使用' }
@@ -198,11 +211,6 @@ function colorDistance(a: string, b: string): number {
   return Math.sqrt((ar - br) ** 2 + (ag - bg) ** 2 + (ab - bb) ** 2)
 }
 
-function rgbTupleToHex([r, g, b]: [number, number, number]): string {
-  const clamp = (v: number) => Math.min(255, Math.max(0, v))
-  return `#${[r, g, b].map((v) => clamp(v).toString(16).padStart(2, '0')).join('')}`
-}
-
 function resolveFonts(profile: BrandProfile, overrides: BrandOverrides, report: BrandImportReport): { heading?: string; body?: string } {
   const heading = overrides.fontOverrides?.heading ?? profile.fonts.major.latin ?? profile.fonts.major.jpan ?? undefined
   const body = overrides.fontOverrides?.body ?? profile.fonts.minor.latin ?? profile.fonts.minor.jpan ?? undefined
@@ -259,7 +267,7 @@ export function mediaAssetToDataUrl(asset: MediaAsset): string {
   return `data:${asset.contentType};base64,${asset.base64}`
 }
 
-/** 12 キーのうち意味づけできる分だけ、`brand` master に scope した CSS 変数トークンへ写す（生成 CSS 文字列ではなく値のみ） */
+/** 12 キーすべてを `brand` master に scope した CSS 変数トークンへ写す（生成 CSS 文字列ではなく値のみ） */
 function buildTokens(colors: Record<MappedColorKey, string>): Record<string, string> {
   const tokens: Record<string, string> = {}
   for (const [key, cssVar] of Object.entries(KEY_TO_CSS_VAR)) {

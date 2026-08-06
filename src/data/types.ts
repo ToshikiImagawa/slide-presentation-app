@@ -244,6 +244,18 @@ export interface ColorPalette {
   borderLight?: string
   codeText?: string
   success?: string
+  warning?: string
+  danger?: string
+  neutral?: string
+  link?: string
+  linkVisited?: string
+  /** 系列色（図表・構成図の項目分け用。#186）。未指定でも primary/accent から決定的に導出される */
+  series1?: string
+  series2?: string
+  series3?: string
+  series4?: string
+  series5?: string
+  series6?: string
   [key: string]: string | undefined
 }
 

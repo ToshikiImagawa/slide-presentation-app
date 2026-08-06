@@ -10,6 +10,76 @@ function hexToRgb(hex: string): string {
   return hexToRgbTuple(hex).join(', ')
 }
 
+/** [r, g, b] を6桁hex（#rrggbb）に変換する（hexToRgbTuple の逆変換。brand/compile.ts の mix 計算も共有する） */
+export function rgbTupleToHex([r, g, b]: [number, number, number]): string {
+  const clamp = (v: number) => Math.min(255, Math.max(0, Math.round(v)))
+  return `#${[r, g, b].map((v) => clamp(v).toString(16).padStart(2, '0')).join('')}`
+}
+
+/** sRGB の [r, g, b]（0-255）を [h, s, l]（h: 0-360度, s/l: 0-1）へ変換する */
+function rgbToHsl([r, g, b]: [number, number, number]): [number, number, number] {
+  const rn = r / 255
+  const gn = g / 255
+  const bn = b / 255
+  const max = Math.max(rn, gn, bn)
+  const min = Math.min(rn, gn, bn)
+  const l = (max + min) / 2
+  const d = max - min
+  if (d === 0) return [0, 0, l]
+
+  const s = d / (1 - Math.abs(2 * l - 1))
+  let h: number
+  if (max === rn) h = ((gn - bn) / d) % 6
+  else if (max === gn) h = (bn - rn) / d + 2
+  else h = (rn - gn) / d + 4
+  h *= 60
+  return [h < 0 ? h + 360 : h, s, l]
+}
+
+/** [h, s, l]（h: 0-360度, s/l: 0-1）を [r, g, b]（0-255）へ変換する（rgbToHsl の逆変換） */
+function hslToRgb([h, s, l]: [number, number, number]): [number, number, number] {
+  const c = (1 - Math.abs(2 * l - 1)) * s
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1))
+  const m = l - c / 2
+  const [r1, g1, b1] = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x]
+  return [(r1 + m) * 255, (g1 + m) * 255, (b1 + m) * 255]
+}
+
+/** hex の色相のみを degrees 度回転させる（彩度・明度は保持。系列色のフォールバック導出で使う） */
+function hueRotate(hex: string, degrees: number): string {
+  const [h, s, l] = rgbToHsl(hexToRgbTuple(hex))
+  return rgbTupleToHex(hslToRgb([(h + degrees) % 360, s, l]))
+}
+
+/**
+ * 系列色（series1〜series6）を primary/accent から決定的に導出する（#186）。
+ * series1=primary・series2=accent をそのまま採用し、series3〜6 は primary の色相を
+ * 120°/180°/240°/300° 回転させ、テーマを書かないデッキでも6項目まで視覚的に区別できるようにする。
+ */
+function deriveSeriesColor(index: 1 | 2 | 3 | 4 | 5 | 6, primaryHex: string, accentHex: string): string {
+  if (index === 1) return primaryHex
+  if (index === 2) return accentHex
+  return hueRotate(primaryHex, (index - 1) * 60)
+}
+
+/**
+ * colors で明示されていない series1〜series6 のみ、primary/accent から導出して適用する（#186）。
+ * 明示値は colors から、未指定の primary/accent は既に適用済みの CSS 変数（既定値含む）から解決する。
+ * どちらかが色として解釈できない場合（テスト環境等で未初期化のとき）は導出せずスキップする。
+ */
+function applyDerivedSeriesColors(root: HTMLElement, colors?: ColorPalette): void {
+  const computed = getComputedStyle(root)
+  const primaryHex = normalizeHex(colors?.primary ?? computed.getPropertyValue('--theme-primary'))
+  const accentHex = normalizeHex(colors?.accent ?? computed.getPropertyValue('--theme-accent'))
+  if (!primaryHex || !accentHex) return
+
+  for (const index of [1, 2, 3, 4, 5, 6] as const) {
+    const key = `series${index}` as const
+    if (colors?.[key]) continue
+    setColorVar(root, THEME_COLOR_TOKENS[key], deriveSeriesColor(index, primaryHex, accentHex))
+  }
+}
+
 /**
  * 任意の CSS 色表記（3桁/6桁hex・rgb()/rgba()・色名等）を 6桁hex に正規化する。
  * ブラウザの CSS パーサーに解釈を委譲するため、色名（"teal" 等）を含めて正しく解釈できる。
@@ -50,6 +120,17 @@ export const THEME_COLOR_TOKENS: Record<string, string> = {
   borderLight: '--theme-border-light',
   codeText: '--theme-code-text',
   success: '--theme-success',
+  warning: '--theme-warning',
+  danger: '--theme-danger',
+  neutral: '--theme-neutral',
+  link: '--theme-link',
+  linkVisited: '--theme-link-visited',
+  series1: '--theme-series-1',
+  series2: '--theme-series-2',
+  series3: '--theme-series-3',
+  series4: '--theme-series-4',
+  series5: '--theme-series-5',
+  series6: '--theme-series-6',
 }
 
 /** THEME_COLOR_TOKENS のうち、文字色として使われるキー（帯・線等の装飾色は対象外）。背景色に対するコントラスト比の算出対象を絞るのに使う */
@@ -258,6 +339,8 @@ export function applyThemeData(themeData: ThemeData): void {
       }
     }
   }
+
+  applyDerivedSeriesColors(root, themeData.colors)
 
   if (themeData.fonts) {
     for (const [key, value] of Object.entries(themeData.fonts)) {

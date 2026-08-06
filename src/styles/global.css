@@ -16,6 +16,11 @@
   --theme-border-light: #454b5a;
   --theme-success: #4ade80;
   --theme-code-text: #fb923c;
+  --theme-warning: #fbbf24;
+  --theme-danger: #f87171;
+  --theme-neutral: #94a3b8;
+  --theme-link: #38bdf8;
+  --theme-link-visited: #a78bfa;
 
   /* Font theme variables (overridden by applyThemeData) */
   --theme-font-heading: 'Noto Sans JP', 'Inter', sans-serif;
