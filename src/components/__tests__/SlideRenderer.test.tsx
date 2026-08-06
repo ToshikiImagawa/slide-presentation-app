@@ -251,5 +251,51 @@ describe('SlideRenderer', () => {
       expect(band.style.left).toBe('0px')
       expect(band.style.transform).not.toContain('-50%')
     })
+
+    // #185: masterMap の粒度拡張（slide.meta.master 直接指定・masterMap の layout/variant 分岐）
+    describe('masterMap の粒度拡張（#185）', () => {
+      it('slide.meta.master が masterMap より優先して解決される', () => {
+        const contentSlide = testSlides.find((s) => s.layout === 'content')!
+        const slideWithMeta: SlideData = { ...contentSlide, meta: { master: 'direct' } }
+        const theme: ThemeData = {
+          masters: { standard: { decorations: [] }, direct: { decorations: [{ type: 'rule', anchor: 'bottom-center' }] } },
+          masterMap: { content: 'standard' },
+        }
+        const { container } = renderWithTheme(<SlideRenderer slides={[slideWithMeta]} theme={theme} />)
+        const section = container.querySelector('section.slide-container')!
+        expect(section.getAttribute('data-master')).toBe('direct')
+      })
+
+      it('同一 layout の2枚のスライドに別々の masterKey を割り当てて描画できる（受け入れ基準）', () => {
+        const contentSlides = testSlides.filter((s) => s.layout === 'content')
+        const slideA: SlideData = { ...contentSlides[0], meta: { master: 'a' } }
+        const slideB: SlideData = { ...contentSlides[1], meta: { master: 'b' } }
+        const theme: ThemeData = {
+          masters: { a: { decorations: [{ type: 'rule', anchor: 'bottom-center' }] }, b: { decorations: [{ type: 'band', anchor: 'top-center' }] } },
+        }
+        const { container } = renderWithTheme(<SlideRenderer slides={[slideA, slideB]} theme={theme} />)
+        const sections = container.querySelectorAll('section.slide-container')
+        expect(sections[0].getAttribute('data-master')).toBe('a')
+        expect(sections[1].getAttribute('data-master')).toBe('b')
+      })
+
+      it('content.variant に対応する masterMap["layout/variant"] を優先し、無ければ masterMap["layout"] にフォールバックする', () => {
+        const sectionSlide = testSlides.find((s) => (s.content as Record<string, unknown>).variant === 'section')!
+        const theme: ThemeData = {
+          masters: { forSection: { decorations: [{ type: 'rule', anchor: 'bottom-center' }] }, forCenter: { decorations: [{ type: 'band', anchor: 'top-center' }] } },
+          masterMap: { 'center/section': 'forSection', center: 'forCenter' },
+        }
+        const { container } = renderWithTheme(<SlideRenderer slides={[sectionSlide]} theme={theme} />)
+        const section = container.querySelector('section.slide-container')!
+        expect(section.getAttribute('data-master')).toBe('forSection')
+      })
+
+      it('masterMap のみを使う既存デッキの描画は変わらない（後方互換）', () => {
+        const contentSlide = testSlides.find((s) => s.layout === 'content')!
+        const { container } = renderWithTheme(<SlideRenderer slides={[contentSlide]} theme={masterTheme} />)
+        const section = container.querySelector('section.slide-container')!
+        expect(section.getAttribute('data-master')).toBe('standard')
+      })
+    })
   })
 })

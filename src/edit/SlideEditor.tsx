@@ -648,7 +648,7 @@ export function SlideEditor({
                   {brandImportPrompt}
                 </Box>
               ) : (
-                <SlideMetaForm value={validData} onChange={(next) => setText(serializeSlides(next))} themeSectionSlot={brandImportPrompt} />
+                <SlideMetaForm value={validData} onChange={(next) => setText(serializeSlides(next))} themeSectionSlot={brandImportPrompt} currentSlideIndex={clampedIndex} />
               )}
             </Box>
 

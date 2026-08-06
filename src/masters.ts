@@ -1,5 +1,5 @@
 import { hasComponent } from './components/ComponentRegistry'
-import type { MasterDecoration, MasterDefinition, ThemeData } from './data'
+import type { MasterDecoration, MasterDefinition, SlideData, ThemeData } from './data'
 
 const MASTER_DECORATION_TYPES = ['logo', 'band', 'rule', 'text', 'image', 'component'] as const
 const MASTER_ANCHORS = ['top-left', 'top-center', 'top-right', 'middle-left', 'middle-center', 'middle-right', 'bottom-left', 'bottom-center', 'bottom-right'] as const
@@ -12,19 +12,25 @@ export interface ResolvedMaster {
 }
 
 /**
- * layout（SlideData.layout の値）から masterMap 経由で masterKey を求め、
- * extends チェーンを辿って decorations を合成する（親→子の順にマージ）。
- * masterMap 未指定・masterKey 未解決・extends 循環のいずれの場合も undefined を返す
- * （呼び出し元は「現行と完全同一のDOM」にフォールバックする）。
+ * masterKey を解決順序どおりに候補列挙し、extends チェーンを辿って decorations を合成する
+ * （親→子の順にマージ）。解決順序: ①opts.master（スライド個別指定）→ ②masterMap["<layout>/<variant>"]
+ * （opts.variant があるときのみ）→ ③masterMap["<layout>"] → ④解決なし。
+ * 各候補は masters に存在し extends が循環していない場合のみ採用し、そうでなければ次の候補へ
+ * フォールバックする（未解決の masterKey 指定は getMasterWarnings が警告する）。
+ * 候補が尽きた場合は undefined を返す（呼び出し元は「現行と完全同一のDOM」にフォールバックする）。
  */
-export function resolveMaster(theme: ThemeData | undefined, layout: string): ResolvedMaster | undefined {
-  const masterKey = theme?.masterMap?.[layout]
-  if (!masterKey) return undefined
-
+export function resolveMaster(theme: ThemeData | undefined, layout: string, opts?: { master?: string; variant?: string }): ResolvedMaster | undefined {
   const masters = theme?.masters
-  if (!masters?.[masterKey] || isCircular(masters, masterKey)) return undefined
+  const masterMap = theme?.masterMap
 
-  return { masterKey, decorations: collectDecorations(masters, masterKey) }
+  const candidates = [opts?.master, opts?.variant ? masterMap?.[`${layout}/${opts.variant}`] : undefined, masterMap?.[layout]]
+
+  for (const masterKey of candidates) {
+    if (!masterKey || !masters?.[masterKey] || isCircular(masters, masterKey)) continue
+    return { masterKey, decorations: collectDecorations(masters, masterKey) }
+  }
+
+  return undefined
 }
 
 function collectDecorations(masters: Record<string, MasterDefinition>, key: string): MasterDecoration[] {
@@ -49,11 +55,12 @@ export function buildMasterCss(tokens: Record<string, Record<string, string>> | 
 }
 
 /**
- * masters/masterMap/tokens の値検証エラー（綴りミス等）を警告として返す。
- * getThemeWarnings と同じ方針: 検証エラーではなく警告として扱い、描画は継続する
- * （resolveMaster は循環・未解決を静かにフォールバックするため、その事実をここで利用者に伝える）。
+ * masters/masterMap/tokens、および slides[].meta.master（スライド個別指定）の値検証エラー
+ * （綴りミス等）を警告として返す。getThemeWarnings と同じ方針: 検証エラーではなく警告として扱い、
+ * 描画は継続する（resolveMaster は循環・未解決を静かに次の候補へフォールバックするため、
+ * その事実をここで利用者に伝える）。slides は省略可能（省略時は meta.master の検証をスキップする）。
  */
-export function getMasterWarnings(theme?: ThemeData): string[] {
+export function getMasterWarnings(theme?: ThemeData, slides?: SlideData[]): string[] {
   const warnings: string[] = []
   if (!theme) return warnings
 
@@ -63,6 +70,13 @@ export function getMasterWarnings(theme?: ThemeData): string[] {
   for (const [layout, masterKey] of Object.entries(theme.masterMap ?? {})) {
     if (!masterKeys.has(masterKey)) {
       warnings.push(`theme.masterMap.${layout}: 存在しない masterKey "${masterKey}" を参照しています`)
+    }
+  }
+
+  for (const [index, slide] of (slides ?? []).entries()) {
+    const masterKey = slide.meta?.master
+    if (masterKey && !masterKeys.has(masterKey)) {
+      warnings.push(`slides[${index}].meta.master: 存在しない masterKey "${masterKey}" を参照しています`)
     }
   }
 

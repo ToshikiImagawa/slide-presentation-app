@@ -136,7 +136,8 @@
         "summary": { "type": "array", "description": "要点文字列の配列" },
         "voice": { "type": "string", "description": "音声ファイルへの相対パス" }
       }
-    }
+    },
+    "master": { "type": "string", "description": "このスライドに直接適用するmasterKey（theme.mastersのキー）。theme.masterMapによる解決より優先する" }
   },
   "theme": {
     "description": "プレゼン全体のtheme（トップレベル、オプション）",
@@ -201,7 +202,7 @@
     },
     "masterMap": {
       "type": "object",
-      "description": "レイアウト種別（center/content/two-column/bleed/custom）→ masterKey の対応表。未指定のレイアウトには装飾を描画しない"
+      "description": "キーは\"<layout>\"（center/content/two-column/bleed/custom）または\"<layout>/<variant>\"（例: center/section）→ masterKey の対応表。解決順序はslide.meta.master→masterMap[\"layout/variant\"]→masterMap[\"layout\"]→装飾なし。未指定のレイアウトには装飾を描画しない"
     },
     "tokens": {
       "type": "object",

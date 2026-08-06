@@ -257,7 +257,7 @@ export async function generateSlides(request: GenerateRequest, onProgress?: (p: 
     // 次試行があるなら検証エラー要約を repairFeedback に載せて再投入する
     if (attempt < MAX_GENERATE_ATTEMPTS) {
       onProgress?.({ attempt, maxAttempts: MAX_GENERATE_ATTEMPTS, phase: 'repairing' })
-      repairFeedback = summarizeValidationErrors(errors, getThemeWarnings(data.theme))
+      repairFeedback = summarizeValidationErrors(errors, getThemeWarnings(data.theme, data.slides))
     }
   }
 

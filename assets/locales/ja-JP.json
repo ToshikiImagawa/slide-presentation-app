@@ -96,6 +96,8 @@
       "themeCustomCss": "カスタム CSS",
       "masterSection": "マスター",
       "masterNone": "なし",
+      "slideMasterLabel": "このスライドのマスター",
+      "slideMasterNone": "テーマ設定に従う",
       "includeAddons": "同梱アドオン",
       "packageAddonRemoveAria": "{name} をパッケージから除外",
       "packageAddonRemoveNote": "×またはチェック解除でパッケージから除外されます（再チェックで復帰可）。反映には「.spkg 書き出し」が必要です",

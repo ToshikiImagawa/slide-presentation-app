@@ -66,6 +66,47 @@ describe('resolveMaster', () => {
     const resolved = resolveMaster(theme, 'content')
     expect(resolved?.decorations).toEqual([{ type: 'logo', anchor: 'top-left', src: '/logo.png' }])
   })
+
+  // #185: 解決順序（①opts.master → ②masterMap["layout/variant"] → ③masterMap["layout"] → ④解決なし）
+  describe('解決順序（#185）', () => {
+    const theme: ThemeData = {
+      masters: {
+        direct: { decorations: [{ type: 'logo', anchor: 'top-left', src: '/direct.png' }] },
+        variantMaster: { decorations: [{ type: 'band', anchor: 'top-center' }] },
+        layoutMaster: { decorations: [{ type: 'rule', anchor: 'bottom-center' }] },
+      },
+      masterMap: { 'center/section': 'variantMaster', center: 'layoutMaster' },
+    }
+
+    it('opts.master が最優先で解決される（masterMap を無視する）', () => {
+      const resolved = resolveMaster(theme, 'center', { master: 'direct', variant: 'section' })
+      expect(resolved?.masterKey).toBe('direct')
+    })
+
+    it('opts.master 未指定時は masterMap["layout/variant"] を優先する', () => {
+      const resolved = resolveMaster(theme, 'center', { variant: 'section' })
+      expect(resolved?.masterKey).toBe('variantMaster')
+    })
+
+    it('variant に対応する masterMap エントリがなければ masterMap["layout"] にフォールバックする', () => {
+      const resolved = resolveMaster(theme, 'center', { variant: 'unknown' })
+      expect(resolved?.masterKey).toBe('layoutMaster')
+    })
+
+    it('opts.master が存在しない masterKey の場合は次の候補（masterMap["layout/variant"]）へフォールバックする', () => {
+      const resolved = resolveMaster(theme, 'center', { master: 'missing', variant: 'section' })
+      expect(resolved?.masterKey).toBe('variantMaster')
+    })
+
+    it('variant 未指定なら masterMap["layout"] を使う（既存動作と同一）', () => {
+      const resolved = resolveMaster(theme, 'center')
+      expect(resolved?.masterKey).toBe('layoutMaster')
+    })
+
+    it('候補がすべて未解決なら undefined を返す', () => {
+      expect(resolveMaster(theme, 'bleed')).toBeUndefined()
+    })
+  })
 })
 
 describe('buildMasterCss', () => {
@@ -95,6 +136,24 @@ describe('getMasterWarnings', () => {
   it('masterMap が存在しない masterKey を参照する場合に警告する', () => {
     const warnings = getMasterWarnings({ masterMap: { content: 'missing' } })
     expect(warnings).toContain('theme.masterMap.content: 存在しない masterKey "missing" を参照しています')
+  })
+
+  // #185: slide.meta.master（スライド個別指定）の検証
+  it('slides を渡さない場合は slide.meta.master の検証をスキップする', () => {
+    const theme: ThemeData = { masters: { standard: { decorations: [] } } }
+    expect(getMasterWarnings(theme)).toEqual([])
+  })
+
+  it('slide.meta.master が存在しない masterKey を参照する場合に警告する', () => {
+    const theme: ThemeData = { masters: { standard: { decorations: [] } } }
+    const warnings = getMasterWarnings(theme, [{ id: 's1', layout: 'center', content: {}, meta: { master: 'missing' } }])
+    expect(warnings).toContain('slides[0].meta.master: 存在しない masterKey "missing" を参照しています')
+  })
+
+  it('slide.meta.master が存在する masterKey を参照する場合は警告しない', () => {
+    const theme: ThemeData = { masters: { standard: { decorations: [] } } }
+    const warnings = getMasterWarnings(theme, [{ id: 's1', layout: 'center', content: {}, meta: { master: 'standard' } }])
+    expect(warnings).toEqual([])
   })
 
   it('extends が存在しない masterKey を参照する場合に警告する', () => {

@@ -1,4 +1,4 @@
-import type { ColorPalette, FontDefinition, FontSource, ThemeData } from './data'
+import type { ColorPalette, FontDefinition, FontSource, SlideData, ThemeData } from './data'
 import { buildMasterCss, getMasterWarnings } from './masters'
 
 /** 6桁hex（#rrggbb）を [r, g, b] へ分解する（hexToRgb・relativeLuminance・brand/compile.ts の mix 計算が共有する） */
@@ -291,8 +291,9 @@ export function applyThemeData(themeData: ThemeData): void {
  * `theme.colors`（ColorPalette）を検査し、反映されない/意図せぬ結果になる設定を警告として返す。
  * 検証エラーではなく警告（描画は継続する）: 通常ロード経路のトースト通知と、
  * AI 生成の自動修正ループの `repairFeedback` の両方に載せて利用者・AI 双方に伝える。
+ * slides を渡すと slides[].meta.master（スライド個別指定）の存在しない masterKey 参照も検出する（省略可）。
  */
-export function getThemeWarnings(theme?: ThemeData): string[] {
+export function getThemeWarnings(theme?: ThemeData, slides?: SlideData[]): string[] {
   const warnings: string[] = []
   if (!theme) return warnings
 
@@ -311,7 +312,7 @@ export function getThemeWarnings(theme?: ThemeData): string[] {
     }
   }
 
-  warnings.push(...getMasterWarnings(theme))
+  warnings.push(...getMasterWarnings(theme, slides))
 
   return warnings
 }
