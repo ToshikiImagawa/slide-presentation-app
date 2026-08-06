@@ -7,9 +7,12 @@ import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Checkbox from '@mui/material/Checkbox'
 import Chip from '@mui/material/Chip'
+import FormControl from '@mui/material/FormControl'
+import MenuItem from '@mui/material/MenuItem'
 import Radio from '@mui/material/Radio'
 import RadioGroup from '@mui/material/RadioGroup'
 import FormControlLabel from '@mui/material/FormControlLabel'
+import Select from '@mui/material/Select'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
@@ -17,13 +20,22 @@ import { useTranslation } from '../i18n'
 import { getContrastRatio, WCAG_AA_THRESHOLD } from '../applyTheme'
 import type { LogoConfig, SlideData, ThemeData } from '../data'
 import { compile, mediaAssetToDataUrl, mergeCompiledBrandTheme } from '../brand/compile'
-import { MAPPED_COLOR_KEYS, type BandCandidate, type BrandFieldStatus, type BrandOverrides, type BrandProfile, type CompiledBrandTheme, type MappedColorKey } from '../brand/types'
+import { LAYOUT_ASSIGNMENT_SLOTS, MAPPED_COLOR_KEYS, type BandCandidate, type BrandFieldStatus, type BrandOverrides, type BrandProfile, type CompiledBrandTheme, type LayoutAssignmentSlot, type MappedColorKey } from '../brand/types'
 import { ColorSwatch } from './GeneratedDiffDialog'
 import { SlidePreview } from './SlidePreview'
 
 /** WCAG コントラスト収束の対象キー → 背景キー（表示用。compile.ts の収束対象と同じ組） */
 const TEXT_KEY_TO_BACKGROUND_KEY: Partial<Record<MappedColorKey, MappedColorKey>> = { tx1: 'bg1', tx2: 'bg2' }
 const HEX_PATTERN = /^#[0-9a-f]{6}$/i
+
+/** 割り当て可能な5枠の表示ラベル（#185/#192 契約で固定された `LAYOUT_ASSIGNMENT_SLOTS` の並び順） */
+const LAYOUT_SLOT_LABELS: Record<LayoutAssignmentSlot, string> = {
+  center: 'タイトル',
+  'center/section': 'タイトル（セクション）',
+  content: '本文',
+  'two-column': '2カラム',
+  bleed: '全面',
+}
 
 export interface BrandConfirmDialogProps {
   open: boolean
@@ -85,6 +97,16 @@ export function BrandConfirmDialog({ open, profile, initialOverrides, previewSli
       if (checked) current.add(index)
       else current.delete(index)
       return { ...prev, selectedBandIndices: [...current].sort((a, b) => a - b) }
+    })
+  }
+
+  /** `key` は `"<masterIndex>:<layoutIndex>"`（`profile.masters` の添字）。空文字は「未割当」への戻しを表す */
+  const assignLayout = (key: string, slot: string) => {
+    setOverrides((prev) => {
+      const next = { ...prev.layoutAssignments }
+      if (slot) next[key] = slot as LayoutAssignmentSlot
+      else delete next[key]
+      return { ...prev, layoutAssignments: next }
     })
   }
 
@@ -228,6 +250,52 @@ export function BrandConfirmDialog({ open, profile, initialOverrides, previewSli
                 }
               />
             ))}
+          </Stack>
+        )}
+
+        <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
+          {t('brand.layoutsSection', 'レイアウトの割り当て')}
+        </Typography>
+        {profile.masters.every((master) => master.slideLayouts.length === 0) ? (
+          <Typography variant="body2" sx={{ color: 'var(--fixed-text-muted)', mb: 2 }}>
+            {t('brand.noSlideLayouts', 'レイアウトは検出されませんでした')}
+          </Typography>
+        ) : (
+          <Stack spacing={0.5} sx={{ mb: 2 }}>
+            {profile.masters.map((master, masterIndex) =>
+              master.slideLayouts.map((layout, layoutIndex) => {
+                const key = `${masterIndex}:${layoutIndex}`
+                return (
+                  <Stack key={key} direction="row" spacing={1} alignItems="center" sx={{ flexWrap: 'wrap' }}>
+                    <Typography component="span" sx={{ width: 80, flexShrink: 0, color: 'var(--fixed-text-muted)', fontSize: 12 }}>
+                      {t('brand.masterLabel', 'マスター')} {masterIndex + 1}
+                    </Typography>
+                    <Typography component="span" sx={{ minWidth: 120, fontSize: 13 }}>
+                      {layout.name ?? layout.part}
+                    </Typography>
+                    {layout.layoutType && <Chip size="small" variant="outlined" label={layout.layoutType} />}
+                    <ColorSwatch value={layout.backgroundColorHex ?? undefined} />
+                    <FormControl size="small" sx={{ minWidth: 180 }}>
+                      <Select
+                        value={overrides.layoutAssignments?.[key] ?? ''}
+                        onChange={(e) => assignLayout(key, e.target.value)}
+                        displayEmpty
+                        SelectDisplayProps={{ 'aria-label': `${t('brand.layoutsSection', 'レイアウトの割り当て')}: ${layout.name ?? layout.part}` }}
+                      >
+                        <MenuItem value="">
+                          <em>{t('brand.layoutSlotNone', '未割当')}</em>
+                        </MenuItem>
+                        {LAYOUT_ASSIGNMENT_SLOTS.map((slot) => (
+                          <MenuItem key={slot} value={slot}>
+                            {LAYOUT_SLOT_LABELS[slot]}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Stack>
+                )
+              }),
+            )}
           </Stack>
         )}
       </DialogContent>

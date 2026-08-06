@@ -1,7 +1,18 @@
 import { getContrastRatio, hexToRgbTuple, THEME_COLOR_TOKENS, WCAG_AA_THRESHOLD } from '../applyTheme'
 import { SLIDE_WIDTH, SLIDE_HEIGHT } from '../hooks/useReveal'
-import type { MasterDecoration, ThemeData } from '../data'
-import { MAPPED_COLOR_KEYS, type BandCandidate, type BrandImportReport, type BrandOverrides, type BrandProfile, type CompiledBrandTheme, type MappedColorKey, type MediaAsset } from './types'
+import type { MasterDecoration, MasterDefinition, ThemeData } from '../data'
+import {
+  LAYOUT_ASSIGNMENT_SLOTS,
+  MAPPED_COLOR_KEYS,
+  type BandCandidate,
+  type BrandImportReport,
+  type BrandOverrides,
+  type BrandProfile,
+  type CompiledBrandTheme,
+  type LayoutAssignmentSlot,
+  type MappedColorKey,
+  type MediaAsset,
+} from './types'
 
 /** 並置比較ダイアログが合成した master を割り当てる先。既存のレイアウト種別（`SlideData.layout`）をすべて対象にする */
 const BRAND_MASTER_KEY = 'brand'
@@ -56,11 +67,63 @@ export function compile(profile: BrandProfile, overrides: BrandOverrides): { the
   report.fields.logo = { status: logo ? 'ok' : 'missing', detail: logo ? undefined : 'ロゴ候補が無いか、人が未選択' }
 
   const decorations = buildDecorations(profile, overrides, logo, report)
-  const masters = { [BRAND_MASTER_KEY]: { decorations } }
-  const masterMap = Object.fromEntries(LAYOUT_KINDS.map((layout) => [layout, BRAND_MASTER_KEY]))
+  const assignedLayouts = resolveAssignedLayouts(profile, overrides)
+  const masters = { [BRAND_MASTER_KEY]: { decorations }, ...buildLayoutMasters(assignedLayouts) }
+  const masterMap = { ...Object.fromEntries(LAYOUT_KINDS.map((layout) => [layout, BRAND_MASTER_KEY])), ...buildLayoutMasterMap(assignedLayouts) }
   const tokens = { [BRAND_MASTER_KEY]: buildTokens(colors) }
 
   return { theme: { colors, fonts, masters, masterMap, tokens, logo }, report }
+}
+
+/** `resolveAssignedLayouts` が解決した1件。`key` は `overrides.layoutAssignments` のキー（`"<masterIndex>:<layoutIndex>"`）
+ * をそのまま持ち、masterKey 生成（`layoutMasterKey`）に使う */
+interface AssignedLayout {
+  key: string
+  slot: LayoutAssignmentSlot
+  name: string | null
+}
+
+/** `overrides.layoutAssignments` のうち、①`LAYOUT_ASSIGNMENT_SLOTS` に実在する枠を指し、②実在する layout
+ * （`profile.masters[i].slideLayouts[j]`）を指す、有効なエントリだけを解決する。
+ * 手編集や旧バージョンの永続化ファイルに残った不正な値は静かに無視する（描画を止めない） */
+function resolveAssignedLayouts(profile: BrandProfile, overrides: BrandOverrides): AssignedLayout[] {
+  return Object.entries(overrides.layoutAssignments ?? {})
+    .map(([key, slot]): AssignedLayout | undefined => {
+      if (!LAYOUT_ASSIGNMENT_SLOTS.includes(slot)) return undefined
+      const [masterIndex, layoutIndex] = key.split(':').map(Number)
+      const layout = profile.masters[masterIndex]?.slideLayouts[layoutIndex]
+      return layout ? { key, slot, name: layout.name } : undefined
+    })
+    .filter((entry): entry is AssignedLayout => entry !== undefined)
+}
+
+/**
+ * 割り当て済みの slideLayout ごとに `brand-<slug>` という masterKey で `ThemeData.masters` エントリを追加する
+ * （#192 の masterKey 命名契約）。独自の装飾は持たせず `extends: 'brand'`（主 master の装飾を継承）に留める:
+ * ロゴ・帯のヒューリスティクスは主 slideMaster のみで行う設計（#168）を変えないため、これらのエントリは
+ * 「どの layout が割り当てられているか」という構造だけを表す
+ */
+function buildLayoutMasters(assignedLayouts: AssignedLayout[]): Record<string, MasterDefinition> {
+  return Object.fromEntries(assignedLayouts.map(({ key, name }) => [layoutMasterKey(key, name), { extends: BRAND_MASTER_KEY }]))
+}
+
+function buildLayoutMasterMap(assignedLayouts: AssignedLayout[]): Record<string, string> {
+  return Object.fromEntries(assignedLayouts.map(({ key, slot, name }) => [slot, layoutMasterKey(key, name)]))
+}
+
+/** `brand-<slug>-<masterIndex>-<layoutIndex>` 形式（`/` を含まない）。index を含めるのは、
+ * 同名の layout が複数あってもスラッグの衝突で masterKey が重複しないようにするため */
+function layoutMasterKey(key: string, name: string | null): string {
+  return `brand-${slugify(name ?? 'layout')}-${key.replace(':', '-')}`
+}
+
+function slugify(value: string): string {
+  const slug = value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+  return slug || 'layout'
 }
 
 function resolveColors(profile: BrandProfile, overrides: BrandOverrides, report: BrandImportReport): Record<MappedColorKey, string> {
