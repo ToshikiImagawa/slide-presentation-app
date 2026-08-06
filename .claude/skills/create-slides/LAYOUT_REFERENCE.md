@@ -37,7 +37,32 @@
 
 ## content
 
-コンテンツ表示用レイアウト。子要素のフィールドで描画が決まる。
+コンテンツ表示用レイアウト。子要素のフィールドで描画が決まる。優先順位: `steps` → `tiles` → `component` → `body`/`items`（いずれかが指定されていたら以降は評価しない）。
+
+### body / items（プレーン本文）
+
+`steps`/`tiles`/`component` のいずれも指定しない場合に描画される、タイトル＋左寄せ本文の基本形。`body`（段落）と `items`（箇条書き、ネスト可）は併用できる。
+
+```json
+{
+  "id": "slide-id",
+  "layout": "content",
+  "content": {
+    "title": "タイトル",
+    "body": "本文テキスト（改行は \\n）",
+    "items": [
+      { "text": "項目1", "emphasis": true },
+      {
+        "text": "項目2",
+        "items": [{ "text": "ネストした項目" }]
+      },
+      { "text": "後から表示したい項目", "fragment": true, "fragmentIndex": 1 }
+    ]
+  }
+}
+```
+
+段落の語彙は `body`（単一文字列）に統一する。`two-column` の `paragraphs`（配列）とは役割が異なる: `body` は1カラム全幅の自由記述文、`paragraphs` はカラム内で複数ブロックを組み合わせる用途。
 
 ### steps（Timeline）
 

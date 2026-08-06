@@ -197,6 +197,100 @@ describe('SlideRenderer', () => {
     })
   })
 
+  // #193: contentレイアウトのプレーン本文対応（body/items）
+  describe('contentスライド(body/items)', () => {
+    it('bodyのみを指定すると本文テキストが描画される', () => {
+      const slide: SlideData = { id: 'test-body', layout: 'content', content: { title: 'タイトル', body: '本文テキスト' } }
+      const { container } = renderWithTheme(<SlideRenderer slides={[slide]} />)
+      expect(container.textContent).toContain('本文テキスト')
+    })
+
+    it('itemsのみを指定すると箇条書きが描画される', () => {
+      const slide: SlideData = {
+        id: 'test-items',
+        layout: 'content',
+        content: { title: 'タイトル', items: [{ text: '項目1' }, { text: '項目2' }] },
+      }
+      const { container } = renderWithTheme(<SlideRenderer slides={[slide]} />)
+      const listItems = container.querySelectorAll('li')
+      expect(listItems.length).toBe(2)
+      expect(container.textContent).toContain('項目1')
+      expect(container.textContent).toContain('項目2')
+    })
+
+    it('bodyとitemsを両方指定すると両方描画される', () => {
+      const slide: SlideData = {
+        id: 'test-body-items',
+        layout: 'content',
+        content: { title: 'タイトル', body: '本文テキスト', items: [{ text: '項目1' }] },
+      }
+      const { container } = renderWithTheme(<SlideRenderer slides={[slide]} />)
+      expect(container.textContent).toContain('本文テキスト')
+      expect(container.textContent).toContain('項目1')
+    })
+
+    it('ネストしたitemsが子要素として描画される', () => {
+      const slide: SlideData = {
+        id: 'test-items-nested',
+        layout: 'content',
+        content: {
+          title: 'タイトル',
+          items: [{ text: '親項目', items: [{ text: '子項目1' }, { text: '子項目2' }] }],
+        },
+      }
+      const { container } = renderWithTheme(<SlideRenderer slides={[slide]} />)
+      const listItems = container.querySelectorAll('li')
+      expect(listItems.length).toBe(3)
+      expect(container.textContent).toContain('子項目1')
+      expect(container.textContent).toContain('子項目2')
+    })
+
+    it('emphasisを指定した項目はstrongタグで描画される', () => {
+      const slide: SlideData = {
+        id: 'test-items-emphasis',
+        layout: 'content',
+        content: { title: 'タイトル', items: [{ text: '強調項目', emphasis: true }] },
+      }
+      const { container } = renderWithTheme(<SlideRenderer slides={[slide]} />)
+      const strong = container.querySelector('li strong')
+      expect(strong?.textContent).toBe('強調項目')
+    })
+
+    it('fragment/fragmentIndexを指定した項目にfragmentクラスとdata-fragment-index属性が付く', () => {
+      const slide: SlideData = {
+        id: 'test-items-fragment',
+        layout: 'content',
+        content: { title: 'タイトル', items: [{ text: '段階表示項目', fragment: true, fragmentIndex: 2 }] },
+      }
+      const { container } = renderWithTheme(<SlideRenderer slides={[slide]} />)
+      const li = container.querySelector('li')
+      expect(li?.classList.contains('fragment')).toBe(true)
+      expect(li?.getAttribute('data-fragment-index')).toBe('2')
+    })
+
+    it('stepsが指定されている場合はbodyがあっても既存のTimeline描画が優先される（既存挙動の維持）', () => {
+      const slide: SlideData = {
+        id: 'test-steps-priority',
+        layout: 'content',
+        content: {
+          title: 'タイトル',
+          steps: [{ number: 1, title: 'ステップ1', description: '説明' }],
+          body: '無視されるはずの本文',
+        },
+      }
+      const { container } = renderWithTheme(<SlideRenderer slides={[slide]} />)
+      expect(container.textContent).toContain('ステップ1')
+      expect(container.textContent).not.toContain('無視されるはずの本文')
+    })
+
+    it('body/itemsのいずれも無指定の場合は何も描画されない', () => {
+      const slide: SlideData = { id: 'test-empty-content', layout: 'content', content: { title: 'タイトル' } }
+      const { container } = renderWithTheme(<SlideRenderer slides={[slide]} />)
+      const section = container.querySelector('section.slide-container')!
+      expect(section.querySelector('ul')).toBeNull()
+    })
+  })
+
   // #164: masters/masterMap/tokens と SlideMasterLayer。theme 未指定時は既存と完全同一のDOMになることも併せて確認する
   describe('masters（SlideMasterLayer 装飾描画）', () => {
     const masterTheme: ThemeData = {

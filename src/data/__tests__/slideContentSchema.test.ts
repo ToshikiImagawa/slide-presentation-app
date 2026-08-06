@@ -60,6 +60,34 @@ describe('getSchemaConformanceErrors', () => {
     expect(errors[0].path).toBe('slides[0].content.variant')
   })
 
+  it('content.bodyが文字列でない場合エラーにする', () => {
+    const data = {
+      meta: { title: 't' },
+      slides: [{ id: 's1', layout: 'content', content: { title: 'x', body: 123 } }],
+    } as unknown as PresentationData
+    const errors = getSchemaConformanceErrors(data)
+    expect(errors).toHaveLength(1)
+    expect(errors[0].path).toBe('slides[0].content.body')
+  })
+
+  it('content.itemsのネストした項目の型不一致もエラーにする（#193 contentItemの再帰参照）', () => {
+    const data = {
+      meta: { title: 't' },
+      slides: [{ id: 's1', layout: 'content', content: { title: 'x', items: [{ text: 'ok', items: [{ text: 123 }] }] } }],
+    } as unknown as PresentationData
+    const errors = getSchemaConformanceErrors(data)
+    expect(errors).toHaveLength(1)
+    expect(errors[0].path).toBe('slides[0].content.items[0].items[0].text')
+  })
+
+  it('content.body/itemsは正常な指定であればエラーにしない', () => {
+    const data: PresentationData = {
+      meta: { title: 't' },
+      slides: [{ id: 's1', layout: 'content', content: { title: 'x', body: '本文', items: [{ text: '項目', emphasis: true, items: [{ text: '子項目' }] }] } }],
+    }
+    expect(getSchemaConformanceErrors(data)).toEqual([])
+  })
+
   it('未知フィールドはエラーにしない（拡張・アドオンを阻害しない）', () => {
     const data: PresentationData = {
       meta: { title: 't' },

@@ -24,6 +24,7 @@ interface SlideContentSchema {
   layouts: Record<string, { contentFields: FieldMap }>
   columnContentFields: FieldMap & { description?: string }
   componentReference: FieldMap & { description?: string }
+  contentItem: FieldMap & { description?: string }
 }
 
 const SCHEMA = schemaJson as unknown as SlideContentSchema
@@ -37,6 +38,7 @@ function stripMetaKeys(map: FieldMap & { description?: string }): FieldMap {
 const REF_MAPS: Record<string, FieldMap> = {
   columnContentFields: stripMetaKeys(SCHEMA.columnContentFields),
   componentReference: stripMetaKeys(SCHEMA.componentReference),
+  contentItem: stripMetaKeys(SCHEMA.contentItem),
 }
 
 /** 生成が指定してよい layout の一覧（schemaの単一ソースから導出） */
@@ -77,8 +79,11 @@ function checkFieldValue(value: unknown, def: FieldDef, path: string, errors: Va
     addError(errors, path, `${path}は${def.enum.join('|')}のいずれかである必要があります`, def.enum.join('|'), value)
     return
   }
-  if (Array.isArray(value) && def.itemFields) {
-    value.forEach((item, i) => checkKnownFields(item, def.itemFields as FieldMap, `${path}[${i}]`, errors))
+  if (Array.isArray(value)) {
+    const itemFields = def.itemFields ?? (def.ref ? REF_MAPS[def.ref] : undefined)
+    if (itemFields) {
+      value.forEach((item, i) => checkKnownFields(item, itemFields, `${path}[${i}]`, errors))
+    }
   }
   if (isRecord(value)) {
     if (def.ref && REF_MAPS[def.ref]) {

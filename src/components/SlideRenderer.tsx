@@ -1,12 +1,14 @@
 import type { ReactNode } from 'react'
 import Box from '@mui/material/Box'
+import List from '@mui/material/List'
 import Typography from '@mui/material/Typography'
-import type { LogoConfig, MasterRenderContext, SlideData, ThemeData } from '../data'
+import type { ContentItem, LogoConfig, MasterRenderContext, SlideData, ThemeData } from '../data'
 import { renderRegisteredComponent, resolveComponent } from './ComponentRegistry'
 import { BleedLayout, ContentLayout, SectionLayout, SlideFrame, TitleLayout } from '../layouts'
 import { SlideHeading } from './SlideHeading'
 import { SubtitleText } from './SubtitleText'
 import { BulletList } from './BulletList'
+import { BulletListItem } from './BulletListItem'
 import { TwoColumnGrid } from './TwoColumnGrid'
 import { CodeBlockPanel } from './CodeBlockPanel'
 import { TitledBulletList } from './TitledBulletList'
@@ -193,6 +195,19 @@ function renderColumnContent(data: Record<string, unknown> | undefined): ReactNo
   return elements.length === 1 ? elements[0] : <Box sx={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>{elements}</Box>
 }
 
+/** ContentItem配列を再帰的に箇条書きとしてレンダリング（ネスト可・#193） */
+function renderContentItems(items: ContentItem[]): ReactNode {
+  return (
+    <List disablePadding>
+      {items.map((item, i) => (
+        <BulletListItem key={i} primary={item.emphasis ? <strong>{renderHtml(item.text)}</strong> : renderHtml(item.text)} fragment={item.fragment} fragmentIndex={item.fragmentIndex}>
+          {item.items && item.items.length > 0 && <Box sx={{ pl: '20px', mt: '4px' }}>{renderContentItems(item.items)}</Box>}
+        </BulletListItem>
+      ))}
+    </List>
+  )
+}
+
 /** contentスライドの子要素をレンダリング */
 function renderContentChildren(content: SlideData['content']): ReactNode {
   // steps があれば Timeline
@@ -241,6 +256,21 @@ function renderContentChildren(content: SlideData['content']): ReactNode {
   // component があればそれを描画
   if (content.component) {
     return renderComponent(content.component)
+  }
+
+  // steps/tiles/componentがいずれも無指定の場合のみ、プレーン本文（body/items）を描画する（#193）
+  const { body, items } = content
+  if (body || (items && items.length > 0)) {
+    return (
+      <>
+        {body && (
+          <Typography variant="body1" sx={{ fontSize: '20px', lineHeight: 1.6, color: 'var(--theme-text-body)', mb: items && items.length > 0 ? '20px' : undefined }}>
+            {renderWithLineBreaks(body)}
+          </Typography>
+        )}
+        {items && items.length > 0 && renderContentItems(items)}
+      </>
+    )
   }
 
   return null
