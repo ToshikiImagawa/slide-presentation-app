@@ -60,10 +60,15 @@ function renderIcon(iconName: string): ReactNode {
   return <IconComponent />
 }
 
+/** content.variant を取り出す（masterMap["layout/variant"] 解決に使う・#185） */
+function getVariant(content: SlideData['content']): string | undefined {
+  return content.variant as string | undefined
+}
+
 /** centerスライドをレンダリング（variant: "section" でSectionLayout） */
 function renderCenterSlide(slide: SlideData, logo: LogoConfig | undefined, theme: ThemeData | undefined, ctx: MasterRenderContext): ReactNode {
   const { content } = slide
-  const variant = content.variant as string | undefined
+  const variant = getVariant(content)
 
   if (variant === 'section') {
     return (
@@ -93,7 +98,7 @@ function renderTwoColumnSlide(slide: SlideData, logo: LogoConfig | undefined, th
   const { content } = slide
   const leftData = content.left as Record<string, unknown> | undefined
   const rightData = content.right as Record<string, unknown> | undefined
-  const variant = content.variant as string | undefined
+  const variant = getVariant(content)
 
   return (
     <ContentLayout id={slide.id} layout={slide.layout} variant={variant} title={content.title ?? ''} meta={slide.meta} logo={logo} theme={theme} ctx={ctx}>
@@ -244,7 +249,7 @@ function renderContentChildren(content: SlideData['content']): ReactNode {
 /** contentスライドをレンダリング */
 function renderContentSlide(slide: SlideData, logo: LogoConfig | undefined, theme: ThemeData | undefined, ctx: MasterRenderContext): ReactNode {
   const { content } = slide
-  const variant = content.variant as string | undefined
+  const variant = getVariant(content)
   return (
     <ContentLayout id={slide.id} layout={slide.layout} variant={variant} title={content.title ?? ''} meta={slide.meta} logo={logo} theme={theme} ctx={ctx}>
       {renderContentChildren(content)}
@@ -256,7 +261,7 @@ function renderContentSlide(slide: SlideData, logo: LogoConfig | undefined, them
 function renderBleedSlide(slide: SlideData, logo: LogoConfig | undefined, theme: ThemeData | undefined, ctx: MasterRenderContext): ReactNode {
   const { content } = slide
   const commands = content.commands as Array<{ text: string; color: string }>
-  const variant = content.variant as string | undefined
+  const variant = getVariant(content)
 
   const leftContent = (
     <>
@@ -286,7 +291,7 @@ function renderSlide(slide: SlideData, logo: LogoConfig | undefined, theme: Them
       const ref = slide.content.component
       if (ref)
         return (
-          <SlideFrame id={slide.id} layout={slide.layout} variant={slide.content.variant as string | undefined} meta={slide.meta} logo={logo} theme={theme} ctx={ctx}>
+          <SlideFrame id={slide.id} layout={slide.layout} variant={getVariant(slide.content)} meta={slide.meta} logo={logo} theme={theme} ctx={ctx}>
             {renderComponent(ref)}
           </SlideFrame>
         )

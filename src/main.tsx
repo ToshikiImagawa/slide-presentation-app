@@ -13,7 +13,7 @@ import { applyPresentationTheme, applyTheme, fetchThemeData, getThemeWarnings } 
 import { loadAddonScripts, loadBuiltinAddons } from './addonLoader'
 import { unregisterOwner } from './components/ComponentRegistry'
 import { getBlankPresentationData, getSampleUnavailablePresentationData } from './data'
-import type { PresentationData, SlideData, ThemeData } from './data'
+import type { PresentationData, ThemeData } from './data'
 import { I18nProvider, loadLocales, useI18n } from './i18n'
 import type { LocaleResource } from './i18n'
 import { ToastProvider, useToast } from './toast'
@@ -111,13 +111,14 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
     setPresentationKey((key) => key + 1)
   }, [])
 
-  // テーマを適用し、失敗した場合はトースト通知する（showPresentation・handleExitEdit の両方から使う共通処理）
+  // テーマを適用し、失敗した場合はトースト通知する（showPresentation・handleExitEdit の両方から使う共通処理）。
+  // data は呼び出し側が既に持つ PresentationData をそのまま渡す（フィールドを個別に取り出させない）
   const applyThemeAndNotify = useCallback(
-    async (themeColors?: string, theme?: ThemeData, brand?: ThemeData, slides?: SlideData[]) => {
-      const themeApplied = await applyPresentationTheme(themeColors, theme, brand)
+    async (data: PresentationData | undefined, brand?: ThemeData) => {
+      const themeApplied = await applyPresentationTheme(data?.meta?.themeColors, data?.theme, brand)
       if (!themeApplied) {
         showToast(t('theme.applyFailed'))
-      } else if (getThemeWarnings(theme, slides).length > 0) {
+      } else if (getThemeWarnings(data?.theme, data?.slides).length > 0) {
         showToast(t('theme.colorWarning'))
       }
     },
@@ -132,7 +133,7 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
 
       const brand = await resolveBrandThemeForDisplay(data)
       setBrandTheme(brand)
-      await applyThemeAndNotify(data.meta?.themeColors, data.theme, brand, data.slides)
+      await applyThemeAndNotify(data, brand)
     },
     [applyPresentationData, applyThemeAndNotify],
   )
@@ -265,7 +266,7 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
   const handleExitEdit = useCallback(() => {
     closeEditGate()
     // 編集中に適用したテーマを、表示中プレゼンのテーマへ戻す（brandTheme は showPresentation 時点で解決済みのものを再利用）
-    void applyThemeAndNotify(presentationData?.meta?.themeColors, presentationData?.theme, brandTheme, presentationData?.slides)
+    void applyThemeAndNotify(presentationData, brandTheme)
     setView('presentation')
   }, [closeEditGate, presentationData, brandTheme, applyThemeAndNotify])
 
