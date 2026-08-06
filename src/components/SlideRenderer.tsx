@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react'
 import Box from '@mui/material/Box'
-import List from '@mui/material/List'
 import Typography from '@mui/material/Typography'
 import type { ContentItem, LogoConfig, MasterRenderContext, SlideData, ThemeData } from '../data'
 import { renderRegisteredComponent, resolveComponent } from './ComponentRegistry'
@@ -8,7 +7,6 @@ import { BleedLayout, ContentLayout, SectionLayout, SlideFrame, TitleLayout } fr
 import { SlideHeading } from './SlideHeading'
 import { SubtitleText } from './SubtitleText'
 import { BulletList } from './BulletList'
-import { BulletListItem } from './BulletListItem'
 import { TwoColumnGrid } from './TwoColumnGrid'
 import { CodeBlockPanel } from './CodeBlockPanel'
 import { TitledBulletList } from './TitledBulletList'
@@ -198,13 +196,14 @@ function renderColumnContent(data: Record<string, unknown> | undefined): ReactNo
 /** ContentItem配列を再帰的に箇条書きとしてレンダリング（ネスト可・#193） */
 function renderContentItems(items: ContentItem[]): ReactNode {
   return (
-    <List disablePadding>
-      {items.map((item, i) => (
-        <BulletListItem key={i} primary={item.emphasis ? <strong>{renderHtml(item.text)}</strong> : renderHtml(item.text)} fragment={item.fragment} fragmentIndex={item.fragmentIndex}>
-          {item.items && item.items.length > 0 && <Box sx={{ pl: '20px', mt: '4px' }}>{renderContentItems(item.items)}</Box>}
-        </BulletListItem>
-      ))}
-    </List>
+    <BulletList
+      items={items.map((item) => ({
+        content: item.emphasis ? <strong>{renderHtml(item.text)}</strong> : renderHtml(item.text),
+        fragment: item.fragment,
+        fragmentIndex: item.fragmentIndex,
+        children: item.items && item.items.length > 0 ? <Box sx={{ pl: '20px', mt: '4px' }}>{renderContentItems(item.items)}</Box> : undefined,
+      }))}
+    />
   )
 }
 
@@ -259,16 +258,17 @@ function renderContentChildren(content: SlideData['content']): ReactNode {
   }
 
   // steps/tiles/componentがいずれも無指定の場合のみ、プレーン本文（body/items）を描画する（#193）
-  const { body, items } = content
-  if (body || (items && items.length > 0)) {
+  const { body } = content
+  const items = content.items && content.items.length > 0 ? content.items : undefined
+  if (body || items) {
     return (
       <>
         {body && (
-          <Typography variant="body1" sx={{ fontSize: '20px', lineHeight: 1.6, color: 'var(--theme-text-body)', mb: items && items.length > 0 ? '20px' : undefined }}>
+          <Typography variant="body1" sx={{ fontSize: '20px', lineHeight: 1.6, color: 'var(--theme-text-body)', mb: items ? '20px' : undefined }}>
             {renderWithLineBreaks(body)}
           </Typography>
         )}
-        {items && items.length > 0 && renderContentItems(items)}
+        {items && renderContentItems(items)}
       </>
     )
   }

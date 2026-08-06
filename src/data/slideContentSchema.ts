@@ -69,6 +69,11 @@ function typeMatches(value: unknown, type: string): boolean {
   }
 }
 
+/** フィールド定義から検証対象のFieldMapを解決する（refがあれば名前解決、なければ直接指定分を使う） */
+function resolveFields(def: FieldDef, direct: FieldMap | undefined): FieldMap | undefined {
+  return (def.ref && REF_MAPS[def.ref]) || direct
+}
+
 function checkFieldValue(value: unknown, def: FieldDef, path: string, errors: ValidationError[]): void {
   const types = Array.isArray(def.type) ? def.type : def.type ? [def.type] : []
   if (types.length > 0 && !types.some((t) => typeMatches(value, t))) {
@@ -80,16 +85,15 @@ function checkFieldValue(value: unknown, def: FieldDef, path: string, errors: Va
     return
   }
   if (Array.isArray(value)) {
-    const itemFields = def.itemFields ?? (def.ref ? REF_MAPS[def.ref] : undefined)
+    const itemFields = resolveFields(def, def.itemFields)
     if (itemFields) {
       value.forEach((item, i) => checkKnownFields(item, itemFields, `${path}[${i}]`, errors))
     }
   }
   if (isRecord(value)) {
-    if (def.ref && REF_MAPS[def.ref]) {
-      checkKnownFields(value, REF_MAPS[def.ref], path, errors)
-    } else if (def.fields) {
-      checkKnownFields(value, def.fields, path, errors)
+    const fields = resolveFields(def, def.fields)
+    if (fields) {
+      checkKnownFields(value, fields, path, errors)
     }
   }
 }
