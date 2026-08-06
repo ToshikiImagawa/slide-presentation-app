@@ -15,6 +15,7 @@ import { editorUiTheme, theme } from '../theme'
 import { useTranslation } from '../i18n'
 import { applyPresentationTheme, fetchColorPalette, mergeThemeData } from '../applyTheme'
 import { getPackageAddonNames, resolveBrandTheme, resolveLocalAssetPaths } from '../localSlideLoader'
+import { slugify } from '../slugify'
 import type { ColorPalette, PresentationData, SlideData, ThemeData } from '../data'
 import type { GeneratedCandidate } from '../aiGenerate'
 import { pickBrandTemplate, loadBrandOverrides, saveBrandOverrides } from '../brand/io'
@@ -53,17 +54,6 @@ export interface EditSource {
 type StatusState = { kind: 'idle' | 'ok' | 'error'; message: string }
 
 const DEFAULT_VERSION = '1.0.0'
-
-/** meta.title からパッケージ名（@slides/{name}）の初期値を生成する。あくまで初期値の提案であり、
- * 書き出し前にユーザーが確認・修正することを前提とする（自動生成値は常に下記検証を満たす・#88） */
-function slugify(title: string): string {
-  const slug = title
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-  return slug || 'slides'
-}
 
 /** パッケージ名（@slides/{name} の name 部分）を検証する。npm パッケージ名の規則
  * （小文字英数字・ハイフン・アンダースコアのみ・先頭は英数字。先頭の `_`/`.` は npm で予約的な意味を持つため不可）
@@ -113,7 +103,7 @@ export function SlideEditor({
   const [selectedIndex, setSelectedIndex] = useState(0)
   // パッケージ名・バージョンの初期値は package.json 由来の値を優先し、無ければ meta.title から自動生成する（#88 の続き）。
   // 検証に通らない name（CLI 書き出しは無検証なので実在する）もそのまま入れ、UI の検証エラーで修正を促す
-  const [name, setName] = useState(() => source.packageName || slugify(parseSlides(source.rawText).data.meta?.title ?? 'slides'))
+  const [name, setName] = useState(() => source.packageName || slugify(parseSlides(source.rawText).data.meta?.title ?? 'slides', 'slides'))
   const [version, setVersion] = useState(source.packageVersion || DEFAULT_VERSION)
   // 自動生成値のままか（package.json 由来・手動編集後は確認を促すヒントを出さない・#88）
   const [nameIsAuto, setNameIsAuto] = useState(!source.packageName)

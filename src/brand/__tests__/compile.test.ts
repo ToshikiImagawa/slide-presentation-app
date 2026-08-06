@@ -29,6 +29,7 @@ function profile(overrides: Partial<BrandProfile> = {}): BrandProfile {
     bandCandidates: [],
     mappedColors,
     fonts: { major: { latin: 'Trebuchet MS', ea: null, cs: null, jpan: null }, minor: { latin: 'Calibri', ea: null, cs: null, jpan: null } },
+    masters: [],
     ...overrides,
   }
 }
@@ -204,6 +205,53 @@ describe('compile（#168 の並置比較・取り込み確認）', () => {
       const { theme, report } = compile(p, {})
       expect(theme.fonts.heading).toBeUndefined()
       expect(report.fields['fonts.heading']?.status).toBe('fallback')
+    })
+  })
+
+  describe('レイアウト割り当て（#192）', () => {
+    const withLayouts = () =>
+      profile({
+        masters: [
+          {
+            part: 'ppt/slideMasters/slideMaster1.xml',
+            slideLayouts: [
+              { part: 'ppt/slideLayouts/slideLayout1.xml', name: 'Section Divider', layoutType: 'secHead', placeholders: [], backgroundColorHex: '#000000' },
+              { part: 'ppt/slideLayouts/slideLayout2.xml', name: 'Content', layoutType: 'obj', placeholders: [], backgroundColorHex: null },
+            ],
+          },
+        ],
+      })
+
+    it('割り当てが無ければ既定の masterMap（4種すべて brand）のまま変わらない', () => {
+      const { theme } = compile(withLayouts(), {})
+      expect(theme.masterMap).toEqual({ center: 'brand', content: 'brand', 'two-column': 'brand', bleed: 'brand' })
+      expect(Object.keys(theme.masters)).toEqual(['brand'])
+    })
+
+    it('割り当てた layout ごとに brand-<slug> master（extends: brand）と masterMap を追加する', () => {
+      const { theme } = compile(withLayouts(), { layoutAssignments: { '0:0': 'center/section' } })
+      expect(theme.masterMap['center/section']).toBe('brand-section-divider-0-0')
+      expect(theme.masters['brand-section-divider-0-0']).toEqual({ extends: 'brand' })
+      // 既定の4種は変わらない
+      expect(theme.masterMap.center).toBe('brand')
+    })
+
+    it('複数の layout をそれぞれ別枠へ割り当てられる', () => {
+      const { theme } = compile(withLayouts(), { layoutAssignments: { '0:0': 'center/section', '0:1': 'content' } })
+      expect(theme.masterMap['center/section']).toBe('brand-section-divider-0-0')
+      expect(theme.masterMap.content).toBe('brand-content-0-1')
+      expect(Object.keys(theme.masters).sort()).toEqual(['brand', 'brand-content-0-1', 'brand-section-divider-0-0'])
+    })
+
+    it('存在しない master/layout の添字を指す割り当ては無視する', () => {
+      const { theme } = compile(withLayouts(), { layoutAssignments: { '9:9': 'content' } })
+      expect(Object.keys(theme.masters)).toEqual(['brand'])
+      expect(theme.masterMap.content).toBe('brand')
+    })
+
+    it('5枠に無い不正な値の割り当ては無視する', () => {
+      const { theme } = compile(withLayouts(), { layoutAssignments: { '0:0': 'not-a-real-slot' as never } })
+      expect(Object.keys(theme.masters)).toEqual(['brand'])
     })
   })
 })

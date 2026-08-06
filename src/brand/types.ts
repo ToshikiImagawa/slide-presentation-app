@@ -35,6 +35,34 @@ export interface BandCandidate {
   thicknessEmu: number
 }
 
+/** slideLayout の1プレースホルダ（Rust `brand::PlaceholderProfile` と同じ形） */
+export interface PlaceholderProfile {
+  phType: string | null
+  idx: number | null
+}
+
+/** slideLayout から抽出した内容（#192）。Rust `brand::SlideLayoutProfile` と同じ形。
+ * ロゴ・帯のヒューリスティクスは slideMaster 側のみで行うため、ここに含まれるのは名前・種別・プレースホルダ構成・背景のみ */
+export interface SlideLayoutProfile {
+  part: string
+  name: string | null
+  layoutType: string | null
+  placeholders: PlaceholderProfile[]
+  backgroundColorHex: string | null
+}
+
+/** slideMaster 1枚から抽出した内容（#192）。Rust `brand::MasterProfile` と同じ形 */
+export interface MasterProfile {
+  part: string
+  slideLayouts: SlideLayoutProfile[]
+}
+
+/** #185/#192 契約で固定された masterMap の割り当て可能な5枠。`<layout>` または `<layout>/<variant>` の
+ * 2形式のみで、`variant` はフロントの `content.variant` に実在する値（現状 'section' のみ）に限る */
+export const LAYOUT_ASSIGNMENT_SLOTS = ['center', 'center/section', 'content', 'two-column', 'bleed'] as const
+
+export type LayoutAssignmentSlot = (typeof LAYOUT_ASSIGNMENT_SLOTS)[number]
+
 /** `a:fontScheme` の書体 1 組。Rust `brand::theme_xml::FontFace` と同じ形 */
 export interface BrandFontFace {
   latin: string | null
@@ -62,6 +90,9 @@ export interface BrandProfile {
   /** clrMap 適用後の 12 キー。値が取れなかったキーは `null`（`compile` がフォールバックする） */
   mappedColors: Record<MappedColorKey, string | null>
   fonts: BrandFontScheme
+  /** 全 slideMaster と配下の slideLayout の列挙（#192）。1 枚目は上記の単数フィールド（`slideMasterPart`/
+   * `mappedColors` 等）と同じ内容。取り込み確認ダイアログのレイアウト種別割り当てに使う */
+  masters: MasterProfile[]
 }
 
 /** 並置比較ダイアログで人が加える上書き。`BrandProfile` と合わせて `brand-overrides.json`（テンプレハッシュキー）に保存する */
@@ -75,6 +106,9 @@ export interface BrandOverrides {
   /** `bandCandidates` から装飾として採用する index の一覧（既定は空＝何も自動適用しない） */
   selectedBandIndices?: number[]
   fontOverrides?: { heading?: string; body?: string }
+  /** 抽出した slideLayout を5枠（`LAYOUT_ASSIGNMENT_SLOTS`）へ割り当てた結果（#192）。
+   * key は `"<masterIndex>:<layoutIndex>"`（`BrandProfile.masters` の添字）。未割当のレイアウトは省略する */
+  layoutAssignments?: Record<string, LayoutAssignmentSlot>
 }
 
 /** `compile` の出力。生成 CSS 文字列は含めない（Epic #173 の方針）。フォント/masters/decorations は

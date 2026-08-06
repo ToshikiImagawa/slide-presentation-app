@@ -17,6 +17,7 @@ use std::path::Path;
 
 mod color;
 mod heuristics;
+mod layout_xml;
 mod master_xml;
 mod opc;
 mod shapes;
@@ -133,6 +134,38 @@ pub struct BandCandidate {
   pub thickness_emu: i64,
 }
 
+/// slideLayout の1プレースホルダ（`p:ph@type`/`@idx`）
+#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PlaceholderProfile {
+  pub ph_type: Option<String>,
+  pub idx: Option<u32>,
+}
+
+/// slideLayout から抽出した内容（#192）。ロゴ・帯のヒューリスティクスは slideMaster 側のみで行う設計
+/// （#168）を変えないため、ここに含めるのは名前・種別・プレースホルダ構成・背景のみ
+#[derive(Debug, Clone, Default, PartialEq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SlideLayoutProfile {
+  pub part: String,
+  pub name: Option<String>,
+  pub layout_type: Option<String>,
+  pub placeholders: Vec<PlaceholderProfile>,
+  /// `p:bg/p:bgPr/a:solidFill` を **その layout が属する slideMaster の clrMap** で解決した色。
+  /// clrMap は master ごとに異なり得るため、他 master の clrMap を当てると色が反転しうる
+  pub background_color_hex: Option<String>,
+}
+
+/// slideMaster 1枚から抽出した内容（#192）。複数 slideMaster を持つテンプレートでは `BrandProfile.masters`
+/// に配列で列挙される（列挙順は `p:sldMasterIdLst` の記述順）
+#[derive(Debug, Clone, Default, PartialEq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MasterProfile {
+  pub part: String,
+  /// 配下の slideLayout（列挙順は `p:sldLayoutIdLst` の記述順）
+  pub slide_layouts: Vec<SlideLayoutProfile>,
+}
+
 /// 決定的抽出の結果。色はすべて `#rrggbb` に確定済み。ロゴ・帯候補はヒューリスティクスの出力であり、
 /// 誤爆しうる前提の**候補**（採否は #168 の確認ダイアログで人が決める）
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
@@ -163,6 +196,10 @@ pub struct BrandProfile {
   /// `a:fontScheme` の見出し / 本文書体
   pub fonts: FontScheme,
   pub text_styles: TextStyles,
+  /// 全 slideMaster と配下の slideLayout の列挙（#192）。1 枚目は `slide_master_part`/`mapped_colors` 等の
+  /// 単数フィールドと同じ内容で、後方互換のため単数フィールド側は変更していない。取り込み確認ダイアログの
+  /// レイアウト種別割り当てに使う
+  pub masters: Vec<MasterProfile>,
 }
 
 /// テンプレートファイルからブランド情報を抽出する。ネットワークアクセスはせず、ディスクへも書き出さない
@@ -210,6 +247,21 @@ fn extract<R: Read + Seek>(mut reader: R) -> Result<BrandProfile, BrandError> {
     _ => (Vec::new(), Vec::new()),
   };
 
+  // 1 枚目の master は上で既にパース済みの `master.color_map` を再利用する（同じ XML を二重にパースしない）
+  let masters = parts
+    .slide_masters
+    .iter()
+    .enumerate()
+    .map(|(i, master_part)| -> Result<MasterProfile, BrandError> {
+      let color_map = if i == 0 {
+        master.color_map.clone()
+      } else {
+        master_xml::parse(&package.read_text(master_part)?)?.color_map
+      };
+      build_master_profile(&mut package, master_part, &theme.colors, &color_map)
+    })
+    .collect::<Result<Vec<_>, _>>()?;
+
   let thumbnail = extract_thumbnail(&mut package);
 
   Ok(BrandProfile {
@@ -230,6 +282,56 @@ fn extract<R: Read + Seek>(mut reader: R) -> Result<BrandProfile, BrandError> {
     colors: theme.colors,
     color_map: master.color_map,
     fonts: theme.fonts,
+    masters,
+  })
+}
+
+/// slideMaster 1枚から `MasterProfile`（配下の slideLayout 一覧）を組み立てる。`color_map` は呼び出し側が
+/// 解決済みの値を渡す（「その master 自身の clrMap」で解決する必要があり、他 master の clrMap を当てると
+/// レイアウトの背景色が反転しうるため、master 単位で解決するのが正しい）
+fn build_master_profile(
+  package: &mut OpcPackage<impl Read + Seek>,
+  master_part: &str,
+  theme_colors: &ClrScheme,
+  color_map: &ClrMap,
+) -> Result<MasterProfile, BrandError> {
+  let layout_parts = package.resolve_slide_layouts(master_part)?;
+  let slide_layouts = layout_parts
+    .into_iter()
+    .map(|part| build_slide_layout_profile(&mut *package, part, theme_colors, color_map))
+    .collect::<Result<Vec<_>, _>>()?;
+  Ok(MasterProfile {
+    part: master_part.to_string(),
+    slide_layouts,
+  })
+}
+
+/// slideLayout 1枚から `SlideLayoutProfile` を組み立て、背景色を「所属 master の clrMap」で解決する
+fn build_slide_layout_profile(
+  package: &mut OpcPackage<impl Read + Seek>,
+  part: String,
+  theme_colors: &ClrScheme,
+  color_map: &ClrMap,
+) -> Result<SlideLayoutProfile, BrandError> {
+  let info = layout_xml::parse(&package.read_text(&part)?)?;
+  let background_color_hex = info
+    .background
+    .as_ref()
+    .and_then(|spec| resolve_color_spec(spec, theme_colors, color_map))
+    .map(Rgb::to_hex);
+  Ok(SlideLayoutProfile {
+    part,
+    name: info.name,
+    layout_type: info.layout_type,
+    placeholders: info
+      .placeholders
+      .into_iter()
+      .map(|p| PlaceholderProfile {
+        ph_type: p.ph_type,
+        idx: p.idx,
+      })
+      .collect(),
+    background_color_hex,
   })
 }
 
@@ -920,5 +1022,196 @@ mod tests {
       serde_json::to_string(&again).unwrap(),
       serde_json::to_string(&profile).unwrap()
     );
+  }
+
+  /// 2 枚の slideMaster（明・暗の対照的な clrMap）を持ち、それぞれに複数 slideLayout を割り当てたパッケージ（#192）。
+  /// slideLayout2 枚（master1 配下）と slideLayout1 枚（master2 配下）の背景はいずれも `schemeClr val="bg1"` で、
+  /// 所属 master の clrMap を通して初めて色が確定する（同じ参照でも master が違えば別の色になることを固定する）
+  fn pptx_package_with_multiple_masters_and_layouts() -> Vec<u8> {
+    const MASTER1: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
+<p:sldMaster xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <p:clrMap bg1="lt1" tx1="dk1" bg2="lt2" tx2="dk2" accent1="accent1" accent2="accent2" accent3="accent3" accent4="accent4" accent5="accent5" accent6="accent6" hlink="hlink" folHlink="folHlink"/>
+  <p:sldLayoutIdLst>
+    <p:sldLayoutId id="2147483650" r:id="rId10"/>
+    <p:sldLayoutId id="2147483651" r:id="rId11"/>
+  </p:sldLayoutIdLst>
+</p:sldMaster>"#;
+    const MASTER2: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
+<p:sldMaster xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <p:clrMap bg1="dk1" tx1="lt1" bg2="dk2" tx2="lt2" accent1="accent1" accent2="accent2" accent3="accent3" accent4="accent4" accent5="accent5" accent6="accent6" hlink="hlink" folHlink="folHlink"/>
+  <p:sldLayoutIdLst>
+    <p:sldLayoutId id="2147483652" r:id="rId20"/>
+  </p:sldLayoutIdLst>
+</p:sldMaster>"#;
+    const LAYOUT1_TITLE: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
+<p:sldLayout xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" type="title">
+  <p:cSld name="Title Slide">
+    <p:bg><p:bgPr><a:solidFill><a:schemeClr val="bg1"/></a:solidFill></p:bgPr></p:bg>
+    <p:spTree/>
+  </p:cSld>
+</p:sldLayout>"#;
+    const LAYOUT2_CONTENT: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
+<p:sldLayout xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" type="obj">
+  <p:cSld name="Content">
+    <p:spTree>
+      <p:sp><p:nvSpPr><p:cNvPr id="2" name="Title"/><p:nvPr><p:ph type="title"/></p:nvPr></p:nvSpPr><p:spPr/></p:sp>
+      <p:sp><p:nvSpPr><p:cNvPr id="3" name="Body"/><p:nvPr><p:ph type="body" idx="1"/></p:nvPr></p:nvSpPr><p:spPr/></p:sp>
+    </p:spTree>
+  </p:cSld>
+</p:sldLayout>"#;
+    const LAYOUT3_SECTION: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
+<p:sldLayout xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" type="secHead">
+  <p:cSld name="Section Divider">
+    <p:bg><p:bgPr><a:solidFill><a:schemeClr val="bg1"/></a:solidFill></p:bgPr></p:bg>
+    <p:spTree/>
+  </p:cSld>
+</p:sldLayout>"#;
+
+    let types = content_types(&[
+      ("/ppt/presentation.xml", CT_PRESENTATION),
+      ("/ppt/slideMasters/slideMaster1.xml", CT_SLIDE_MASTER),
+      ("/ppt/slideMasters/slideMaster2.xml", CT_SLIDE_MASTER),
+      ("/ppt/theme/theme1.xml", CT_THEME),
+    ]);
+    let root_rels = relationships(&[("rId1", "officeDocument", "ppt/presentation.xml")]);
+    let pres_rels = relationships(&[
+      ("rId1", "slideMaster", "slideMasters/slideMaster1.xml"),
+      ("rId2", "slideMaster", "slideMasters/slideMaster2.xml"),
+    ]);
+    // presentation.xml の p:sldMasterIdLst の記述順が rId の番号順と逆でも、記述順（master2 が先）が優先される
+    const PRESENTATION_TWO_MASTERS: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
+<p:presentation xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <p:sldMasterIdLst>
+    <p:sldMasterId id="2147483700" r:id="rId2"/>
+    <p:sldMasterId id="2147483701" r:id="rId1"/>
+  </p:sldMasterIdLst>
+</p:presentation>"#;
+    let master1_rels = relationships(&[
+      ("rId12", "theme", "../theme/theme1.xml"),
+      ("rId10", "slideLayout", "../slideLayouts/slideLayout1.xml"),
+      ("rId11", "slideLayout", "../slideLayouts/slideLayout2.xml"),
+    ]);
+    let master2_rels = relationships(&[
+      ("rId12", "theme", "../theme/theme1.xml"),
+      ("rId20", "slideLayout", "../slideLayouts/slideLayout3.xml"),
+    ]);
+    let theme = theme_part("Corporate", "1F4E79");
+    build_zip(&[
+      ("[Content_Types].xml", &types),
+      ("_rels/.rels", &root_rels),
+      ("ppt/presentation.xml", PRESENTATION_TWO_MASTERS),
+      ("ppt/_rels/presentation.xml.rels", &pres_rels),
+      ("ppt/slideMasters/slideMaster1.xml", MASTER1),
+      (
+        "ppt/slideMasters/_rels/slideMaster1.xml.rels",
+        &master1_rels,
+      ),
+      ("ppt/slideMasters/slideMaster2.xml", MASTER2),
+      (
+        "ppt/slideMasters/_rels/slideMaster2.xml.rels",
+        &master2_rels,
+      ),
+      ("ppt/slideLayouts/slideLayout1.xml", LAYOUT1_TITLE),
+      ("ppt/slideLayouts/slideLayout2.xml", LAYOUT2_CONTENT),
+      ("ppt/slideLayouts/slideLayout3.xml", LAYOUT3_SECTION),
+      ("ppt/theme/theme1.xml", &theme),
+    ])
+  }
+
+  #[test]
+  fn enumerates_all_slide_masters_in_document_order() {
+    let profile = extract_bytes(&pptx_package_with_multiple_masters_and_layouts()).unwrap();
+    // sldMasterIdLst の記述順（master2 が先）で列挙される。rId の番号順（master1 が先）ではない
+    assert_eq!(profile.masters.len(), 2);
+    assert_eq!(profile.masters[0].part, "ppt/slideMasters/slideMaster2.xml");
+    assert_eq!(profile.masters[1].part, "ppt/slideMasters/slideMaster1.xml");
+    // 単数フィールドは 1 枚目（= masters[0]）と一致する（#185/#192 契約の後方互換）
+    assert_eq!(
+      profile.slide_master_part.as_deref(),
+      Some(profile.masters[0].part.as_str())
+    );
+  }
+
+  #[test]
+  fn enumerates_slide_layouts_with_name_type_and_placeholders() {
+    let profile = extract_bytes(&pptx_package_with_multiple_masters_and_layouts()).unwrap();
+    let master1 = &profile.masters[1]; // slideMaster1（記述順で2番目）
+    assert_eq!(master1.slide_layouts.len(), 2);
+    assert_eq!(
+      master1.slide_layouts[0].name.as_deref(),
+      Some("Title Slide")
+    );
+    assert_eq!(
+      master1.slide_layouts[0].layout_type.as_deref(),
+      Some("title")
+    );
+    assert_eq!(master1.slide_layouts[0].placeholders.len(), 0);
+
+    assert_eq!(master1.slide_layouts[1].name.as_deref(), Some("Content"));
+    assert_eq!(master1.slide_layouts[1].layout_type.as_deref(), Some("obj"));
+    assert_eq!(master1.slide_layouts[1].placeholders.len(), 2);
+    assert_eq!(
+      master1.slide_layouts[1].placeholders[0].ph_type.as_deref(),
+      Some("title")
+    );
+    assert_eq!(
+      master1.slide_layouts[1].placeholders[1].ph_type.as_deref(),
+      Some("body")
+    );
+    assert_eq!(master1.slide_layouts[1].placeholders[1].idx, Some(1));
+
+    let master2 = &profile.masters[0]; // slideMaster2（記述順で1番目）
+    assert_eq!(master2.slide_layouts.len(), 1);
+    assert_eq!(
+      master2.slide_layouts[0].name.as_deref(),
+      Some("Section Divider")
+    );
+    assert_eq!(
+      master2.slide_layouts[0].layout_type.as_deref(),
+      Some("secHead")
+    );
+  }
+
+  #[test]
+  fn resolves_layout_background_using_its_own_master_clr_map() {
+    // 同じ `schemeClr val="bg1"` でも、slideMaster1（bg1=lt1 = 白）と slideMaster2（bg1=dk1 = 黒）で
+    // 解決結果が異なる。他 master の clrMap を当てると反転する（#192 の受け入れ基準）
+    let profile = extract_bytes(&pptx_package_with_multiple_masters_and_layouts()).unwrap();
+    let master1_title = &profile.masters[1].slide_layouts[0];
+    assert_eq!(
+      master1_title.background_color_hex.as_deref(),
+      Some("#ffffff")
+    );
+
+    let master2_section = &profile.masters[0].slide_layouts[0];
+    assert_eq!(
+      master2_section.background_color_hex.as_deref(),
+      Some("#000000")
+    );
+  }
+
+  #[test]
+  fn single_master_template_keeps_legacy_fields_unchanged() {
+    // master 1 枚のテンプレートでは、追加した `masters` フィールドが増えるだけで、
+    // 既存の単数フィールドの値は従来どおり（#192 の回帰なし基準）
+    let profile = extract_bytes(&pptx_package()).unwrap();
+    assert_eq!(profile.masters.len(), 1);
+    assert_eq!(
+      profile.masters[0].part,
+      profile.slide_master_part.clone().unwrap()
+    );
+    assert_eq!(profile.masters[0].slide_layouts.len(), 0);
+  }
+
+  #[test]
+  fn multi_master_extraction_is_deterministic() {
+    let bytes = pptx_package_with_multiple_masters_and_layouts();
+    let first = serde_json::to_string(&extract_bytes(&bytes).unwrap()).unwrap();
+    for _ in 0..5 {
+      assert_eq!(
+        serde_json::to_string(&extract_bytes(&bytes).unwrap()).unwrap(),
+        first
+      );
+    }
   }
 }

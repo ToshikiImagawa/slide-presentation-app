@@ -4,7 +4,7 @@ import type { ReactNode } from 'react'
 import { BrandConfirmDialog } from '../BrandConfirmDialog'
 import { I18nProvider } from '../../i18n'
 import type { LocaleResource } from '../../i18n'
-import type { BrandOverrides, BrandProfile, MappedColorKey } from '../../brand/types'
+import type { BrandOverrides, BrandProfile, CompiledBrandTheme, MappedColorKey } from '../../brand/types'
 import type { SlideData } from '../../data'
 
 // jsdom には ResizeObserver が無いので stub（SlidePreview が使用）
@@ -52,6 +52,7 @@ function buildProfile(overrides: Partial<BrandProfile> = {}): BrandProfile {
     bandCandidates: [],
     mappedColors,
     fonts: { major: { latin: 'Trebuchet MS', ea: null, cs: null, jpan: null }, minor: { latin: 'Calibri', ea: null, cs: null, jpan: null } },
+    masters: [],
     ...overrides,
   }
 }
@@ -139,6 +140,33 @@ describe('BrandConfirmDialog（#168 並置比較・取り込み確認）', () =>
     fireEvent.click(screen.getByRole('button', { name: '取り込む' }))
     const arg = onApply.mock.calls[0][0] as { overrides: BrandOverrides }
     expect(arg.overrides.selectedBandIndices).toEqual([0])
+  })
+
+  it('slideLayout が無ければ検出されなかった旨を表示する（#192）', () => {
+    renderDialog()
+    expect(screen.getByText('レイアウトは検出されませんでした')).toBeTruthy()
+  })
+
+  it('slideLayout を枠へ割り当てて取り込むと layoutAssignments が渡る（#192）', () => {
+    const profile = buildProfile({
+      masters: [
+        {
+          part: 'ppt/slideMasters/slideMaster1.xml',
+          slideLayouts: [{ part: 'ppt/slideLayouts/slideLayout1.xml', name: 'Section Divider', layoutType: 'secHead', placeholders: [], backgroundColorHex: '#000000' }],
+        },
+      ],
+    })
+    const { onApply } = renderDialog({ profile })
+
+    const layoutSelect = screen.getByRole('combobox', { name: /Section Divider/ })
+    fireEvent.mouseDown(layoutSelect)
+    fireEvent.click(screen.getByRole('option', { name: 'タイトル（セクション）' }))
+
+    fireEvent.click(screen.getByRole('button', { name: '取り込む' }))
+    const arg = onApply.mock.calls[0][0] as { overrides: BrandOverrides; compiled: CompiledBrandTheme }
+    expect(arg.overrides.layoutAssignments).toEqual({ '0:0': 'center/section' })
+    expect(arg.compiled.masterMap['center/section']).toBe('brand-section-divider-0-0')
+    expect(arg.compiled.masters['brand-section-divider-0-0']).toEqual({ extends: 'brand' })
   })
 
   it('前回保存済みの上書きを初期値として反映する（再取り込みで人手修正が保持される）', () => {
