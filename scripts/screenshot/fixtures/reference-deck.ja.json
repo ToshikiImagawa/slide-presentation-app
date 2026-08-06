@@ -1,0 +1,108 @@
+{
+  "meta": {
+    "title": "Reference Deck",
+    "description": "全スライド種別を1枚ずつ並べた開発・検証用の基準見本デッキ（配布サンプルとは別。テーマ差し替えの回帰検知に使う）"
+  },
+  "slides": [
+    {
+      "id": "layout-center",
+      "layout": "center",
+      "content": {
+        "title": "layout: center",
+        "subtitle": "タイトルスライド。title と任意の subtitle を表示"
+      }
+    },
+    {
+      "id": "layout-center-section",
+      "layout": "center",
+      "content": {
+        "variant": "section",
+        "title": "layout: center (variant: section)",
+        "body": "章の区切りやまとめに使う大きな本文。\n複数行の body に対応"
+      }
+    },
+    {
+      "id": "layout-content-steps",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (steps)",
+        "steps": [
+          { "number": 1, "title": "手順1", "description": "steps はタイムライン形式で描画" },
+          { "number": 2, "title": "手順2", "description": "number / title / description を指定" }
+        ],
+        "footer": "steps を指定するとタイムライン形式で表示されます"
+      }
+    },
+    {
+      "id": "layout-content-tiles",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (tiles)",
+        "tiles": [
+          { "icon": "Description", "title": "タイル1", "description": "icon / title / description を指定" },
+          { "icon": "Search", "title": "タイル2", "description": "3カラムのグリッドで描画" },
+          { "icon": "Memory", "title": "タイル3", "description": "アイコンは MUI アイコン名で指定" }
+        ]
+      }
+    },
+    {
+      "id": "layout-content-component",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (component)",
+        "component": {
+          "name": "TerminalAnimation",
+          "props": { "title": "component", "logText": "$ layout: content\n> component を埋め込み\n✓ done" },
+          "style": { "height": "360px", "width": "80%", "margin": "auto" }
+        }
+      }
+    },
+    {
+      "id": "layout-two-column",
+      "layout": "two-column",
+      "content": {
+        "title": "layout: two-column",
+        "left": {
+          "heading": "左カラム",
+          "paragraphs": ["heading / paragraphs / items を配置"],
+          "items": [{ "text": "箇条書き項目1" }, { "text": "箇条書き項目2" }]
+        },
+        "right": {
+          "codeBlock": {
+            "header": "> right",
+            "items": ["{", "  \"left\": {},", "  \"right\": {}", "}"]
+          },
+          "accentText": "codeBlock / accentText などを配置"
+        }
+      }
+    },
+    {
+      "id": "layout-bleed",
+      "layout": "bleed",
+      "content": {
+        "title": "layout: bleed",
+        "titleDescription": "左にタイトルとコマンド、右に任意のコンポーネント",
+        "commands": [
+          { "text": "$ command-1", "color": "var(--theme-text-heading)" },
+          { "text": "> command-2", "color": "var(--theme-primary)" }
+        ],
+        "component": {
+          "name": "TerminalAnimation",
+          "props": { "title": "bleed", "logText": "$ layout: bleed\n> 2カラム全幅\n✓ done" },
+          "style": { "height": "360px", "width": "90%", "margin": "auto" }
+        }
+      }
+    },
+    {
+      "id": "layout-custom",
+      "layout": "custom",
+      "content": {
+        "component": {
+          "name": "TerminalAnimation",
+          "props": { "title": "layout: custom", "logText": "$ layout: custom\n> ラッパー無しで全画面描画\n✓ done" },
+          "style": { "height": "70%", "width": "80%", "margin": "auto" }
+        }
+      }
+    }
+  ]
+}

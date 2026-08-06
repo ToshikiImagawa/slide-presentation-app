@@ -21,7 +21,8 @@
     "generate-icons": "node scripts/generate-icons.mjs",
     "generate-docs": "node scripts/generate-docs-pdf.mjs",
     "generate-screenshots": "node scripts/screenshot/capture-screenshots.mjs",
-    "screenshots:compare": "node scripts/screenshot/compare.mjs"
+    "screenshots:compare": "node scripts/screenshot/compare.mjs",
+    "reference-deck:screenshots": "node scripts/screenshot/capture-reference-deck.mjs"
   },
   "keywords": [],
   "author": "",
