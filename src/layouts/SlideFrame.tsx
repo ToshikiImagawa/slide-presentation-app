@@ -10,6 +10,8 @@ export type SlideFrameCommonProps = {
   id: string
   /** SlideData.layout の値。masterMap 解決に使う */
   layout: string
+  /** SlideData.content.variant の値。masterMap["<layout>/<variant>"] 解決に使う（#185） */
+  variant?: string
   meta?: SlideMeta
   logo?: LogoConfig
   theme?: ThemeData
@@ -22,13 +24,14 @@ type Props = SlideFrameCommonProps & {
   children: ReactNode
 }
 
-/** 5レイアウト共通の section 生成を担う。.master-layer-back/front には masterMap 経由で解決した
- * master の装飾（SlideMasterLayer）を描く。master が未解決（masterMap未指定・masterKey不明・extends循環）
- * の場合は現行と完全同一のDOMになる。.master-layer-front はロゴ（.slide-logo-inline）も持つ。
+/** 5レイアウト共通の section 生成を担う。.master-layer-back/front には resolveMaster が解決した
+ * master の装飾（SlideMasterLayer）を描く（優先順: meta.master → masterMap["layout/variant"] →
+ * masterMap["layout"]）。master が未解決（未指定・masterKey不明・extends循環）の場合は現行と完全同一の
+ * DOMになる。.master-layer-front はロゴ（.slide-logo-inline）も持つ。
  * 余白は section ではなく .master-body に持たせることで、本編・発表者ビュー・編集プレビュー・PDF書き出しの
  * 4経路の見た目を一致させる */
-export function SlideFrame({ id, layout, meta, logo, theme, ctx, bleed, children }: Props) {
-  const resolved = resolveMaster(theme, layout)
+export function SlideFrame({ id, layout, variant, meta, logo, theme, ctx, bleed, children }: Props) {
+  const resolved = resolveMaster(theme, layout, { master: meta?.master, variant })
 
   return (
     <section className="slide-container" id={id} data-master={resolved?.masterKey} data-transition={meta?.transition} data-background-image={meta?.backgroundImage} data-background-color={meta?.backgroundColor}>

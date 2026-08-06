@@ -60,14 +60,19 @@ function renderIcon(iconName: string): ReactNode {
   return <IconComponent />
 }
 
+/** content.variant を取り出す（masterMap["layout/variant"] 解決に使う・#185） */
+function getVariant(content: SlideData['content']): string | undefined {
+  return content.variant as string | undefined
+}
+
 /** centerスライドをレンダリング（variant: "section" でSectionLayout） */
 function renderCenterSlide(slide: SlideData, logo: LogoConfig | undefined, theme: ThemeData | undefined, ctx: MasterRenderContext): ReactNode {
   const { content } = slide
-  const variant = content.variant as string | undefined
+  const variant = getVariant(content)
 
   if (variant === 'section') {
     return (
-      <SectionLayout id={slide.id} layout={slide.layout} meta={slide.meta} logo={logo} theme={theme} ctx={ctx}>
+      <SectionLayout id={slide.id} layout={slide.layout} variant={variant} meta={slide.meta} logo={logo} theme={theme} ctx={ctx}>
         <UnderlinedHeading sx={{ mb: '30px' }}>{content.title}</UnderlinedHeading>
         {content.body && (
           <Typography variant="body1" sx={{ fontSize: '24px', maxWidth: '800px', mb: '40px' }}>
@@ -81,7 +86,7 @@ function renderCenterSlide(slide: SlideData, logo: LogoConfig | undefined, theme
   }
 
   return (
-    <TitleLayout id={slide.id} layout={slide.layout} meta={slide.meta} logo={logo} theme={theme} ctx={ctx}>
+    <TitleLayout id={slide.id} layout={slide.layout} variant={variant} meta={slide.meta} logo={logo} theme={theme} ctx={ctx}>
       <SlideHeading title={content.title ?? ''} variant="h1" sx={{ color: 'var(--theme-text-heading)' }} />
       {content.subtitle && <SubtitleText>{renderWithLineBreaks(content.subtitle)}</SubtitleText>}
     </TitleLayout>
@@ -93,9 +98,10 @@ function renderTwoColumnSlide(slide: SlideData, logo: LogoConfig | undefined, th
   const { content } = slide
   const leftData = content.left as Record<string, unknown> | undefined
   const rightData = content.right as Record<string, unknown> | undefined
+  const variant = getVariant(content)
 
   return (
-    <ContentLayout id={slide.id} layout={slide.layout} title={content.title ?? ''} meta={slide.meta} logo={logo} theme={theme} ctx={ctx}>
+    <ContentLayout id={slide.id} layout={slide.layout} variant={variant} title={content.title ?? ''} meta={slide.meta} logo={logo} theme={theme} ctx={ctx}>
       <TwoColumnGrid left={renderColumnContent(leftData)} right={renderColumnContent(rightData)} />
     </ContentLayout>
   )
@@ -243,8 +249,9 @@ function renderContentChildren(content: SlideData['content']): ReactNode {
 /** contentスライドをレンダリング */
 function renderContentSlide(slide: SlideData, logo: LogoConfig | undefined, theme: ThemeData | undefined, ctx: MasterRenderContext): ReactNode {
   const { content } = slide
+  const variant = getVariant(content)
   return (
-    <ContentLayout id={slide.id} layout={slide.layout} title={content.title ?? ''} meta={slide.meta} logo={logo} theme={theme} ctx={ctx}>
+    <ContentLayout id={slide.id} layout={slide.layout} variant={variant} title={content.title ?? ''} meta={slide.meta} logo={logo} theme={theme} ctx={ctx}>
       {renderContentChildren(content)}
     </ContentLayout>
   )
@@ -254,6 +261,7 @@ function renderContentSlide(slide: SlideData, logo: LogoConfig | undefined, them
 function renderBleedSlide(slide: SlideData, logo: LogoConfig | undefined, theme: ThemeData | undefined, ctx: MasterRenderContext): ReactNode {
   const { content } = slide
   const commands = content.commands as Array<{ text: string; color: string }>
+  const variant = getVariant(content)
 
   const leftContent = (
     <>
@@ -265,7 +273,7 @@ function renderBleedSlide(slide: SlideData, logo: LogoConfig | undefined, theme:
   const terminalRef = content.component as { name: string; props?: Record<string, unknown>; style?: Record<string, string | number> } | undefined
   const rightContent = terminalRef ? renderComponent(terminalRef) : null
 
-  return <BleedLayout id={slide.id} layout={slide.layout} meta={slide.meta} logo={logo} theme={theme} ctx={ctx} left={leftContent} right={rightContent} />
+  return <BleedLayout id={slide.id} layout={slide.layout} variant={variant} meta={slide.meta} logo={logo} theme={theme} ctx={ctx} left={leftContent} right={rightContent} />
 }
 
 /** 単一スライドをレイアウト種別に応じてレンダリング */
@@ -283,7 +291,7 @@ function renderSlide(slide: SlideData, logo: LogoConfig | undefined, theme: Them
       const ref = slide.content.component
       if (ref)
         return (
-          <SlideFrame id={slide.id} layout={slide.layout} meta={slide.meta} logo={logo} theme={theme} ctx={ctx}>
+          <SlideFrame id={slide.id} layout={slide.layout} variant={getVariant(slide.content)} meta={slide.meta} logo={logo} theme={theme} ctx={ctx}>
             {renderComponent(ref)}
           </SlideFrame>
         )

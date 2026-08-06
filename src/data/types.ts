@@ -82,6 +82,8 @@ export interface SlideMeta {
   notes?: string | SlideNotes
   backgroundImage?: string
   backgroundColor?: string
+  /** このスライドに直接適用する masterKey。masterMap による layout/variant 解決より優先する（#185） */
+  master?: string
 }
 
 /** 発表者ビューに同期されるスライド状態 */

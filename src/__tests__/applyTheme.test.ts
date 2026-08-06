@@ -508,6 +508,13 @@ describe('getThemeWarnings', () => {
   it('fonts.sources に src/url/localName のいずれかがあれば警告しない', () => {
     expect(getThemeWarnings({ fonts: { sources: [{ family: 'X', localName: 'Arial' }] } })).toEqual([])
   })
+
+  // #185: slides を渡すと slide.meta.master の検証（getMasterWarnings）も含まれる
+  it('slides を渡すと slide.meta.master が存在しない masterKey を参照する場合に警告する', () => {
+    const theme = { masters: { standard: { decorations: [] } } }
+    const warnings = getThemeWarnings(theme, [{ id: 's1', layout: 'center', content: {}, meta: { master: 'missing' } }])
+    expect(warnings.some((w) => w.includes('slides[0].meta.master'))).toBe(true)
+  })
 })
 
 describe('getContrastRatio（WCAG コントラスト比・#166）', () => {

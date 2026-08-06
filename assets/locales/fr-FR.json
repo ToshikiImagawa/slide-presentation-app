@@ -96,6 +96,8 @@
       "themeCustomCss": "CSS personnalisé",
       "masterSection": "Maître",
       "masterNone": "Aucun",
+      "slideMasterLabel": "Maître de cette diapositive",
+      "slideMasterNone": "Suivre les paramètres du thème",
       "includeAddons": "Modules intégrés au paquet",
       "packageAddonRemoveAria": "Exclure {name} du paquet",
       "packageAddonRemoveNote": "Utilisez × ou décochez pour exclure du paquet (recochez pour restaurer). Réexportez le .spkg pour appliquer le changement",

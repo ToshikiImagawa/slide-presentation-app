@@ -9,6 +9,24 @@ import { ALLOWED_LAYOUTS } from '../data/slideContentSchema'
 import type { ColorPalette, PresentationData, PresentationMeta, ThemeData } from '../data/types'
 import { useTranslation } from '../i18n'
 
+/** masterKey を選ぶセレクト（「なし」相当の空値 + masterKeys 一覧）。theme.masterMap 用・slide.meta.master 用の両方で使う */
+function MasterKeySelect({ value, masterKeys, noneLabel, ariaLabel, onChange }: { value: string; masterKeys: string[]; noneLabel: ReactNode; ariaLabel: string; onChange: (masterKey: string) => void }) {
+  return (
+    <FormControl size="small" fullWidth>
+      <Select value={value} onChange={(e) => onChange(e.target.value)} displayEmpty SelectDisplayProps={{ 'aria-label': ariaLabel }}>
+        <MenuItem value="">
+          <em>{noneLabel}</em>
+        </MenuItem>
+        {masterKeys.map((key) => (
+          <MenuItem key={key} value={key}>
+            {key}
+          </MenuItem>
+        ))}
+      </Select>
+    </FormControl>
+  )
+}
+
 interface SlideMetaFormProps {
   /** 単一の真実源となる PresentationData（JSON エディタと共有） */
   value: PresentationData
@@ -16,6 +34,8 @@ interface SlideMetaFormProps {
   onChange: (next: PresentationData) => void
   /** 「プレゼンテーション情報」と「テーマ」の間に差し込む要素（ブランドテーマ取り込み導線など） */
   themeSectionSlot?: ReactNode
+  /** プレビュー中のスライド index。指定時のみ「このスライドのマスター」（slide.meta.master）を編集できる（#185） */
+  currentSlideIndex?: number
 }
 
 /**
@@ -23,7 +43,7 @@ interface SlideMetaFormProps {
  * 各更新はスプレッドによる部分更新で、対象外のフィールド（未知キー・customCSS・slides 等）を保持する。
  * 型が確定しない自由記述（未知キー・任意 component props）は JSON エディタ側で扱う。
  */
-export function SlideMetaForm({ value, onChange, themeSectionSlot }: SlideMetaFormProps) {
+export function SlideMetaForm({ value, onChange, themeSectionSlot, currentSlideIndex }: SlideMetaFormProps) {
   const { t } = useTranslation()
 
   // 部分更新（対象フィールド以外は保持 = 無損失）
@@ -36,9 +56,22 @@ export function SlideMetaForm({ value, onChange, themeSectionSlot }: SlideMetaFo
     else delete nextMasterMap[layout]
     onChange({ ...value, theme: { ...(value.theme ?? {}), masterMap: nextMasterMap } })
   }
-
   const colors = value.theme?.colors ?? {}
   const masterKeys = Object.keys(value.theme?.masters ?? {})
+  const currentSlide = currentSlideIndex !== undefined ? value.slides[currentSlideIndex] : undefined
+
+  // slide.meta.master を更新する（masterMap 解決より優先されるスライド個別指定・#185）。他の meta フィールドは保持する
+  const updateSlideMaster = (masterKey: string) => {
+    if (!currentSlide) return
+    const nextSlides = value.slides.map((slide, i) => {
+      if (i !== currentSlideIndex) return slide
+      const nextMeta = { ...slide.meta }
+      if (masterKey) nextMeta.master = masterKey
+      else delete nextMeta.master
+      return { ...slide, meta: nextMeta }
+    })
+    onChange({ ...value, slides: nextSlides })
+  }
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, p: 1 }}>
@@ -81,21 +114,31 @@ export function SlideMetaForm({ value, onChange, themeSectionSlot }: SlideMetaFo
             <Typography component="span" sx={{ fontFamily: 'var(--fixed-font-code)', fontSize: 13 }}>
               {layout}
             </Typography>
-            <FormControl size="small" fullWidth>
-              <Select value={value.theme?.masterMap?.[layout] ?? ''} onChange={(e) => updateMasterMap(layout, e.target.value)} displayEmpty SelectDisplayProps={{ 'aria-label': `${t('edit.masterSection', 'マスター')}: ${layout}` }}>
-                <MenuItem value="">
-                  <em>{t('edit.masterNone', 'なし')}</em>
-                </MenuItem>
-                {masterKeys.map((key) => (
-                  <MenuItem key={key} value={key}>
-                    {key}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            <MasterKeySelect
+              value={value.theme?.masterMap?.[layout] ?? ''}
+              masterKeys={masterKeys}
+              noneLabel={t('edit.masterNone', 'なし')}
+              ariaLabel={`${t('edit.masterSection', 'マスター')}: ${layout}`}
+              onChange={(key) => updateMasterMap(layout, key)}
+            />
           </Box>
         ))}
       </Box>
+
+      {currentSlide && (
+        <>
+          <Typography variant="subtitle2" sx={{ color: 'var(--fixed-text-heading)', fontWeight: 600, mt: 1 }}>
+            {t('edit.slideMasterLabel', 'このスライドのマスター')}
+          </Typography>
+          <MasterKeySelect
+            value={currentSlide.meta?.master ?? ''}
+            masterKeys={masterKeys}
+            noneLabel={t('edit.slideMasterNone', 'テーマ設定に従う')}
+            ariaLabel={t('edit.slideMasterLabel', 'このスライドのマスター')}
+            onChange={updateSlideMaster}
+          />
+        </>
+      )}
     </Box>
   )
 }

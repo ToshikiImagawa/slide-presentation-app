@@ -83,6 +83,61 @@ describe('SlideMetaForm', () => {
     expect(next.theme?.colors).toEqual(withMasters.theme?.colors)
   })
 
+  // #185: スライド個別のマスター選択（slide.meta.master）
+  it('currentSlideIndex 未指定なら「このスライドのマスター」セクションを表示しない', () => {
+    const withMasters: PresentationData = { ...base, theme: { ...base.theme, masters: { footer: { decorations: [] } } } }
+    render(
+      <Wrapper>
+        <SlideMetaForm value={withMasters} onChange={vi.fn()} />
+      </Wrapper>,
+    )
+    expect(screen.queryByText('このスライドのマスター')).toBeNull()
+  })
+
+  it('currentSlideIndex 指定時、選択した masterKey を該当スライドの meta.master に設定する（他フィールドは保持・#185）', () => {
+    const onChange = vi.fn()
+    const withMasters: PresentationData = {
+      ...base,
+      theme: { ...base.theme, masters: { footer: { decorations: [] } } },
+      slides: [{ id: 's1', layout: 'center', content: {}, meta: { transition: 'fade' } }],
+    }
+    render(
+      <Wrapper>
+        <SlideMetaForm value={withMasters} onChange={onChange} currentSlideIndex={0} />
+      </Wrapper>,
+    )
+
+    const slideMasterSelect = screen.getByRole('combobox', { name: 'このスライドのマスター' })
+    fireEvent.mouseDown(slideMasterSelect)
+    fireEvent.click(screen.getByRole('option', { name: 'footer' }))
+
+    const next = onChange.mock.calls[0][0] as PresentationData
+    expect(next.slides[0].meta?.master).toBe('footer')
+    expect(next.slides[0].meta?.transition).toBe('fade')
+  })
+
+  it('「テーマ設定に従う」を選ぶと meta.master を削除する（#185）', () => {
+    const onChange = vi.fn()
+    const withMasters: PresentationData = {
+      ...base,
+      theme: { ...base.theme, masters: { footer: { decorations: [] } } },
+      slides: [{ id: 's1', layout: 'center', content: {}, meta: { transition: 'fade', master: 'footer' } }],
+    }
+    render(
+      <Wrapper>
+        <SlideMetaForm value={withMasters} onChange={onChange} currentSlideIndex={0} />
+      </Wrapper>,
+    )
+
+    const slideMasterSelect = screen.getByRole('combobox', { name: 'このスライドのマスター' })
+    fireEvent.mouseDown(slideMasterSelect)
+    fireEvent.click(screen.getByRole('option', { name: 'テーマ設定に従う' }))
+
+    const next = onChange.mock.calls[0][0] as PresentationData
+    expect(next.slides[0].meta?.master).toBeUndefined()
+    expect(next.slides[0].meta?.transition).toBe('fade')
+  })
+
   it('「なし」を選ぶと masterMap から該当レイアウトのキーを削除する（#166）', () => {
     const onChange = vi.fn()
     const withMasterMap: PresentationData = {

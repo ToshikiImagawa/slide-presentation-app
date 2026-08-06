@@ -96,6 +96,8 @@
       "themeCustomCss": "Custom CSS",
       "masterSection": "Master",
       "masterNone": "None",
+      "slideMasterLabel": "This slide's master",
+      "slideMasterNone": "Follow theme settings",
       "includeAddons": "Bundled add-ons",
       "packageAddonRemoveAria": "Exclude {name} from the package",
       "packageAddonRemoveNote": "Use × or uncheck to exclude from the package (re-check to restore). Re-export the .spkg to apply the change",
