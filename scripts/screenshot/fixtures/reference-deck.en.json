@@ -1,0 +1,108 @@
+{
+  "meta": {
+    "title": "Reference Deck",
+    "description": "A development/verification deck listing one slide per layout type (separate from distribution samples; used to detect regressions when swapping themes)"
+  },
+  "slides": [
+    {
+      "id": "layout-center",
+      "layout": "center",
+      "content": {
+        "title": "layout: center",
+        "subtitle": "Title slide. Shows title and optional subtitle"
+      }
+    },
+    {
+      "id": "layout-center-section",
+      "layout": "center",
+      "content": {
+        "variant": "section",
+        "title": "layout: center (variant: section)",
+        "body": "Large body text for section breaks or summaries.\nSupports multi-line body"
+      }
+    },
+    {
+      "id": "layout-content-steps",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (steps)",
+        "steps": [
+          { "number": 1, "title": "Step 1", "description": "steps render as a timeline" },
+          { "number": 2, "title": "Step 2", "description": "Specify number / title / description" }
+        ],
+        "footer": "Specifying steps renders a timeline layout"
+      }
+    },
+    {
+      "id": "layout-content-tiles",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (tiles)",
+        "tiles": [
+          { "icon": "Description", "title": "Tile 1", "description": "Specify icon / title / description" },
+          { "icon": "Search", "title": "Tile 2", "description": "Renders as a 3-column grid" },
+          { "icon": "Memory", "title": "Tile 3", "description": "Icons are specified by MUI icon name" }
+        ]
+      }
+    },
+    {
+      "id": "layout-content-component",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (component)",
+        "component": {
+          "name": "TerminalAnimation",
+          "props": { "title": "component", "logText": "$ layout: content\n> embedding a component\n✓ done" },
+          "style": { "height": "360px", "width": "80%", "margin": "auto" }
+        }
+      }
+    },
+    {
+      "id": "layout-two-column",
+      "layout": "two-column",
+      "content": {
+        "title": "layout: two-column",
+        "left": {
+          "heading": "Left column",
+          "paragraphs": ["Place heading / paragraphs / items"],
+          "items": [{ "text": "Bullet item 1" }, { "text": "Bullet item 2" }]
+        },
+        "right": {
+          "codeBlock": {
+            "header": "> right",
+            "items": ["{", "  \"left\": {},", "  \"right\": {}", "}"]
+          },
+          "accentText": "Place codeBlock / accentText, etc."
+        }
+      }
+    },
+    {
+      "id": "layout-bleed",
+      "layout": "bleed",
+      "content": {
+        "title": "layout: bleed",
+        "titleDescription": "Title and commands on the left, any component on the right",
+        "commands": [
+          { "text": "$ command-1", "color": "var(--theme-text-heading)" },
+          { "text": "> command-2", "color": "var(--theme-primary)" }
+        ],
+        "component": {
+          "name": "TerminalAnimation",
+          "props": { "title": "bleed", "logText": "$ layout: bleed\n> full-width two columns\n✓ done" },
+          "style": { "height": "360px", "width": "90%", "margin": "auto" }
+        }
+      }
+    },
+    {
+      "id": "layout-custom",
+      "layout": "custom",
+      "content": {
+        "component": {
+          "name": "TerminalAnimation",
+          "props": { "title": "layout: custom", "logText": "$ layout: custom\n> full-screen render without a wrapper\n✓ done" },
+          "style": { "height": "70%", "width": "80%", "margin": "auto" }
+        }
+      }
+    }
+  ]
+}

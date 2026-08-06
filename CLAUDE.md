@@ -24,9 +24,10 @@ npm run test:e2e     # Playwright E2E（アサーション付き・en/ja 2ロケ
 npm run export:slides   # スライド内容を .spkg として書き出す（--source / --slides / --name / --version / --addons / --strict）
 npm run export:samples  # samples/manifest.json の全ロケールを .spkg 化（リリース時に Releases へ添付）
 npm run generate-icons       # resources/icon.svg から src-tauri/icons/ を再生成（macOS 専用: sips + tauri icon）
-npm run generate-screenshots # README 用スクリーンショット撮影（Playwright WebKit・macOS 専用・e2e スモーク兼用）
-npm run screenshots:compare  # 実アプリ画像とモック画像の手動比較（pixelmatch）
-npm run generate-docs        # README.md / CHANGELOG.md を PDF 化（docs/ に出力・puppeteer）
+npm run generate-screenshots       # README 用スクリーンショット撮影（Playwright WebKit・macOS 専用・e2e スモーク兼用）
+npm run screenshots:compare        # 実アプリ画像とモック画像の手動比較（pixelmatch）
+npm run reference-deck:screenshots # 基準見本デッキ（全スライド種別を1枚ずつ網羅）の一括撮影（Playwright WebKit・macOS 専用）
+npm run generate-docs              # README.md / CHANGELOG.md を PDF 化（docs/ に出力・puppeteer）
 ```
 
 ### スナップショット / e2e（スクリーンショット機構）
@@ -35,11 +36,12 @@ npm run generate-docs        # README.md / CHANGELOG.md を PDF 化（docs/ に�
 
 - **`npm run test:e2e`** — Playwright **Test** によるアサーション付き E2E（`playwright.config.ts` + `e2e/*.spec.ts`）。`en` / `ja` の 2 プロジェクトで実行し、期待値は `assets/locales/*.json` と fixture から読み込む（ハードコードしない）。テキスト内容ベースなので **Linux CI 可**（`.github/workflows/ci.yml` の `E2E (Playwright)` ジョブ）。
 - **`npm run generate-screenshots`** — README 用スクリーンショット撮影。**e2e スモークも兼ねる**（各シナリオの待受が失敗すると非ゼロ終了）。
+- **`npm run reference-deck:screenshots`** — 全スライド種別を1枚ずつ並べた基準見本デッキ（`scripts/screenshot/fixtures/reference-deck.{ja,en}.json`。Epic #212 で種別を追加するたびに1枚増える）の一括撮影。`capture-screenshots.mjs`（README 用の厳選ショットを `scenarios.mjs` に手動列挙する設計）とは別スクリプト `capture-reference-deck.mjs` にしている。fixture のスライド数を動的に読み取ってループ撮影するため、種別追加時にこのスクリプト側の変更は不要（fixture に1枚追加するだけで済む）。出力は `resources/reference-deck/{en,ja}/` にコミットし、テーマ差し替え前後の **git 差分ベースの回帰検知**に使う（#209 の前提）。
 
 スクリーンショット撮影の仕組み:
 
 - `vite --mode screenshot` を起動し、Tauri IPC を `src/__screenshot__/`（`tauri-store` / `tauri-event` / `tauri-webview`）へ **Vite alias で差し替え**て素のブラウザで boot させる（本番ビルドには非混入。`@tauri-apps/api/core` は実物の plugin-fs/dialog が依存するため alias しない）。
-- スライド内容はロケール別 fixture `scripts/screenshot/fixtures/slides.{ja,en}.json` を `/slides.json` として配信する（`Accept-Language` で出し分け）。
+- スライド内容はロケール別 fixture `scripts/screenshot/fixtures/slides.{ja,en}.json` を `/slides.json` として配信する（`Accept-Language` で出し分け）。基準見本デッキ用の `reference-deck.{ja,en}.json` は同じ仕組みで `/reference-deck.json` として配信され、`VITE_SLIDES_PATH`（`src/sampleSlides.ts` の `loadBundledSampleSlides` が読む既存の env var）でホーム画面「サンプルを開く」の取得先をそちらに切り替える。
 - Playwright **WebKit** で撮影し、`scripts/screenshot/chrome.mjs` が macOS ウィンドウ枠を合成。**en / ja の 2 ロケール**で撮影し、`resources/screenshots/en/`・`resources/screenshots/ja/` に出力する（Playwright の context `locale` で UI 言語と fixture を切り替え）。
 - シナリオは `scripts/screenshot/scenarios.mjs`（`home` / `presentation` / `toolbar` / `settings` / `shortcuts` / `edit` / `presenter-view` / `layout-*` / `logo`）。撮影キーは `VIEWPORTS`（`viewports.mjs`）にも同名で登録が必要。待受は `data-testid` で行うため、新シナリオが UI に到達できないときはコンポーネント側に testid を足す。回帰検知は **git 差分ベース**（閾値自動判定はしない）。
 - **日本語フォント・WebKit 描画差のため macOS で実行する**（CI は `.github/workflows/screenshots.yml` の macOS ランナー・手動 dispatch）。

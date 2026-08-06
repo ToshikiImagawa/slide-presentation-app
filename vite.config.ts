@@ -200,18 +200,25 @@ function slideContentPlugin(): Plugin {
   }
 }
 
-/** screenshot モード専用: ロケール別 fixture を /slides.json として配信する（Accept-Language で出し分け） */
+/**
+ * screenshot モード専用: ロケール別 fixture を配信する（Accept-Language で出し分け）。
+ * `/slides.json` は README 撮影用の代表デッキ、`/reference-deck.json` は全レイアウト種別を
+ * 1枚ずつ並べた開発・検証用の基準見本デッキ（#208）。後者は VITE_SLIDES_PATH でホーム画面の
+ * 「サンプルを開く」の取得先を切り替えたときにのみ使われる（scripts/screenshot/capture-reference-deck.mjs）。
+ */
 function screenshotFixturePlugin(): Plugin {
-  const fixtureFor = (lang: string) => resolve(__dirname, `scripts/screenshot/fixtures/slides.${lang}.json`)
+  const URL_TO_FIXTURE_BASE: Record<string, string> = { '/slides.json': 'slides', '/reference-deck.json': 'reference-deck' }
+  const fixtureFor = (base: string, lang: string) => resolve(__dirname, `scripts/screenshot/fixtures/${base}.${lang}.json`)
   return {
     name: 'screenshot-fixture',
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
         const url = (req.url ?? '/').split('?')[0]
-        if (url !== '/slides.json') return next()
+        const base = URL_TO_FIXTURE_BASE[url]
+        if (!base) return next()
         // Accept-Language（Playwright の context locale が設定する）が ja で始まれば日本語、それ以外は英語 fixture
         const lang = (req.headers['accept-language'] ?? '').toLowerCase().startsWith('ja') ? 'ja' : 'en'
-        const fixture = fixtureFor(lang)
+        const fixture = fixtureFor(base, lang)
         if (!existsSync(fixture)) return next()
         res.setHeader('Content-Type', 'application/json')
         res.setHeader('Content-Length', statSync(fixture).size)
