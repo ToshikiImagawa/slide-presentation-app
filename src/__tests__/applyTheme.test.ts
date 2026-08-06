@@ -480,6 +480,74 @@ describe('THEME_COLOR_TOKENS 統合（accent/primary 分離・12キー対応・-
   })
 })
 
+describe('新規カラートークン（系列色・状態色・リンク色・#186）', () => {
+  beforeEach(() => {
+    document.documentElement.style.cssText = ''
+  })
+
+  it('warning/danger/neutral/link/linkVisited を CSS 変数へ反映する', () => {
+    applyThemeData({ colors: { warning: '#111111', danger: '#222222', neutral: '#333333', link: '#444444', linkVisited: '#555555' } })
+
+    expect(document.documentElement.style.getPropertyValue('--theme-warning')).toBe('#111111')
+    expect(document.documentElement.style.getPropertyValue('--theme-danger')).toBe('#222222')
+    expect(document.documentElement.style.getPropertyValue('--theme-neutral')).toBe('#333333')
+    expect(document.documentElement.style.getPropertyValue('--theme-link')).toBe('#444444')
+    expect(document.documentElement.style.getPropertyValue('--theme-link-visited')).toBe('#555555')
+  })
+
+  it('未知キーとして誤検知されない（getThemeWarnings）', () => {
+    const warnings = getThemeWarnings({ colors: { warning: '#111111', danger: '#222222', neutral: '#333333', link: '#444444', linkVisited: '#555555', series1: '#666666' } })
+    expect(warnings).toEqual([])
+  })
+})
+
+describe('系列色のフォールバック導出（primary/accent からの決定的導出・#186）', () => {
+  beforeEach(() => {
+    document.documentElement.style.cssText = ''
+  })
+
+  it('primary/accent が指定されていれば series1/series2 はそれぞれの値をそのまま採用する', () => {
+    applyThemeData({ colors: { primary: '#2dd4bf', accent: '#ff0000' } })
+
+    expect(document.documentElement.style.getPropertyValue('--theme-series-1')).toBe('#2dd4bf')
+    expect(document.documentElement.style.getPropertyValue('--theme-series-2')).toBe('#ff0000')
+  })
+
+  it('series3〜6 は primary の色相を120/180/240/300度回転させた値になる', () => {
+    applyThemeData({ colors: { primary: '#2dd4bf', accent: '#ff0000' } })
+
+    expect(document.documentElement.style.getPropertyValue('--theme-series-3')).toBe('#bf2dd4')
+    expect(document.documentElement.style.getPropertyValue('--theme-series-4')).toBe('#d42d42')
+    expect(document.documentElement.style.getPropertyValue('--theme-series-5')).toBe('#d4bf2d')
+    expect(document.documentElement.style.getPropertyValue('--theme-series-6')).toBe('#42d42d')
+  })
+
+  it('同じ primary/accent からは常に同じ6色が導出される（決定的）', () => {
+    applyThemeData({ colors: { primary: '#2dd4bf', accent: '#ff0000' } })
+    const first = [1, 2, 3, 4, 5, 6].map((i) => document.documentElement.style.getPropertyValue(`--theme-series-${i}`))
+
+    document.documentElement.style.cssText = ''
+    applyThemeData({ colors: { primary: '#2dd4bf', accent: '#ff0000' } })
+    const second = [1, 2, 3, 4, 5, 6].map((i) => document.documentElement.style.getPropertyValue(`--theme-series-${i}`))
+
+    expect(second).toEqual(first)
+  })
+
+  it('明示的に指定された series は導出で上書きしない', () => {
+    applyThemeData({ colors: { primary: '#2dd4bf', accent: '#ff0000', series3: '#123456' } })
+
+    expect(document.documentElement.style.getPropertyValue('--theme-series-3')).toBe('#123456')
+    // series4 は未指定なので導出される
+    expect(document.documentElement.style.getPropertyValue('--theme-series-4')).toBe('#d42d42')
+  })
+
+  it('primary/accent のどちらも解釈できない場合は導出をスキップする（テスト環境等の未初期化状態で NaN 事故を起こさない）', () => {
+    applyThemeData({ fonts: { heading: 'Foo' } })
+
+    expect(document.documentElement.style.getPropertyValue('--theme-series-1')).toBe('')
+  })
+})
+
 describe('getThemeWarnings', () => {
   it('theme 未指定・colors 未指定なら空配列を返す', () => {
     expect(getThemeWarnings(undefined)).toEqual([])

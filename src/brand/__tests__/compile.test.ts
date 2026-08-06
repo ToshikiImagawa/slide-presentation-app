@@ -185,6 +185,34 @@ describe('compile（#168 の並置比較・取り込み確認）', () => {
       expect(theme.tokens.brand['theme-background']).toBe('#ffffff')
       expect(theme.tokens.brand['theme-primary']).toBe('#1f4e79')
     })
+
+    it('12キーすべてが tokens に反映される（#186）: accent3〜6 は系列色、hlink/folHlink はリンク色へ', () => {
+      const { theme } = compile(profile(), {})
+      expect(theme.tokens.brand['theme-series-3']).toBe('#a5a5a5') // accent3
+      expect(theme.tokens.brand['theme-series-4']).toBe('#ffc000') // accent4
+      expect(theme.tokens.brand['theme-series-5']).toBe('#5b9bd5') // accent5
+      expect(theme.tokens.brand['theme-series-6']).toBe('#70ad47') // accent6
+      expect(theme.tokens.brand['theme-link']).toBe('#0563c1') // hlink
+      expect(theme.tokens.brand['theme-link-visited']).toBe('#954f72') // folHlink
+    })
+
+    it('系列色へ機械的に割り当てた accent3〜6 は report で derived として報告する（#186）', () => {
+      const { report } = compile(profile(), {})
+      expect(report.fields['colors.accent3']?.status).toBe('derived')
+      expect(report.fields['colors.accent4']?.status).toBe('derived')
+      expect(report.fields['colors.accent5']?.status).toBe('derived')
+      expect(report.fields['colors.accent6']?.status).toBe('derived')
+      // 意味が明確な hlink/folHlink や accent1/accent2 は derived ではなく ok のまま
+      expect(report.fields['colors.hlink']?.status).toBe('ok')
+      expect(report.fields['colors.accent1']?.status).toBe('ok')
+    })
+
+    it('accent3〜6 が抽出できず既定値になった場合は derived ではなく fallback として報告する', () => {
+      const p = profile({ mappedColors: { ...profile().mappedColors, accent3: null } })
+      const { theme, report } = compile(p, {})
+      expect(theme.colors.accent3).toBeTruthy()
+      expect(report.fields['colors.accent3']?.status).toBe('fallback')
+    })
   })
 
   describe('フォント', () => {
