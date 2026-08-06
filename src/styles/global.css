@@ -22,16 +22,6 @@
   --theme-link: #38bdf8;
   --theme-link-visited: #a78bfa;
 
-  /* 系列色（#186）: series1/series2 は既定で primary/accent と同値、series3〜6 は色相を
-     120/180/240/300度回転させた値（applyTheme.ts の導出ロジックと同じ計算結果）。
-     未カスタマイズのデッキでも初回描画から6色を区別できるようにする静的フォールバック */
-  --theme-series-1: #2dd4bf;
-  --theme-series-2: #2dd4bf;
-  --theme-series-3: #bf2dd4;
-  --theme-series-4: #d42d42;
-  --theme-series-5: #d4bf2d;
-  --theme-series-6: #42d42d;
-
   /* Font theme variables (overridden by applyThemeData) */
   --theme-font-heading: 'Noto Sans JP', 'Inter', sans-serif;
   --theme-font-body: 'Noto Sans JP', 'Inter', sans-serif;

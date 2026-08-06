@@ -59,8 +59,7 @@ function hueRotate(hex: string, degrees: number): string {
 function deriveSeriesColor(index: 1 | 2 | 3 | 4 | 5 | 6, primaryHex: string, accentHex: string): string {
   if (index === 1) return primaryHex
   if (index === 2) return accentHex
-  const degrees = { 3: 120, 4: 180, 5: 240, 6: 300 }[index]
-  return hueRotate(primaryHex, degrees)
+  return hueRotate(primaryHex, (index - 1) * 60)
 }
 
 /**
@@ -69,13 +68,14 @@ function deriveSeriesColor(index: 1 | 2 | 3 | 4 | 5 | 6, primaryHex: string, acc
  * どちらかが色として解釈できない場合（テスト環境等で未初期化のとき）は導出せずスキップする。
  */
 function applyDerivedSeriesColors(root: HTMLElement, colors?: ColorPalette): void {
-  const primaryHex = normalizeHex(colors?.primary ?? getComputedStyle(root).getPropertyValue('--theme-primary'))
-  const accentHex = normalizeHex(colors?.accent ?? getComputedStyle(root).getPropertyValue('--theme-accent'))
+  const computed = getComputedStyle(root)
+  const primaryHex = normalizeHex(colors?.primary ?? computed.getPropertyValue('--theme-primary'))
+  const accentHex = normalizeHex(colors?.accent ?? computed.getPropertyValue('--theme-accent'))
   if (!primaryHex || !accentHex) return
 
-  for (const key of SERIES_COLOR_KEYS) {
+  for (const index of [1, 2, 3, 4, 5, 6] as const) {
+    const key = `series${index}` as const
     if (colors?.[key]) continue
-    const index = Number(key.slice('series'.length)) as 1 | 2 | 3 | 4 | 5 | 6
     setColorVar(root, THEME_COLOR_TOKENS[key], deriveSeriesColor(index, primaryHex, accentHex))
   }
 }
@@ -132,9 +132,6 @@ export const THEME_COLOR_TOKENS: Record<string, string> = {
   series5: '--theme-series-5',
   series6: '--theme-series-6',
 }
-
-/** 系列色（series1〜series6）のキーと CSS 変数の対応（フォールバック導出で使う） */
-const SERIES_COLOR_KEYS = ['series1', 'series2', 'series3', 'series4', 'series5', 'series6'] as const
 
 /** THEME_COLOR_TOKENS のうち、文字色として使われるキー（帯・線等の装飾色は対象外）。背景色に対するコントラスト比の算出対象を絞るのに使う */
 export const TEXT_COLOR_KEYS: readonly string[] = ['text', 'textHeading', 'textBody', 'textSubtitle', 'textMuted', 'codeText']
