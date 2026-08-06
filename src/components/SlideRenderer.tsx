@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
-import type { LogoConfig, MasterRenderContext, SlideData, ThemeData } from '../data'
+import type { ContentItem, LogoConfig, MasterRenderContext, SlideData, ThemeData } from '../data'
 import { renderRegisteredComponent, resolveComponent } from './ComponentRegistry'
 import { BleedLayout, ContentLayout, SectionLayout, SlideFrame, TitleLayout } from '../layouts'
 import { SlideHeading } from './SlideHeading'
@@ -142,12 +142,14 @@ function renderColumnContent(data: Record<string, unknown> | undefined): ReactNo
     elements.push(
       <BulletList
         key="items"
-        items={items.map((item, i) => (
-          <span key={i}>
-            {item.emphasis ? <strong>{item.text}</strong> : item.text}
-            {item.description ? ` ${item.description}` : ''}
-          </span>
-        ))}
+        items={items.map((item) => ({
+          content: (
+            <>
+              {item.emphasis ? <strong>{item.text}</strong> : item.text}
+              {item.description ? ` ${item.description}` : ''}
+            </>
+          ),
+        }))}
       />,
     )
   }
@@ -191,6 +193,20 @@ function renderColumnContent(data: Record<string, unknown> | undefined): ReactNo
   }
 
   return elements.length === 1 ? elements[0] : <Box sx={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>{elements}</Box>
+}
+
+/** ContentItem配列を再帰的に箇条書きとしてレンダリング（ネスト可・#193） */
+function renderContentItems(items: ContentItem[]): ReactNode {
+  return (
+    <BulletList
+      items={items.map((item) => ({
+        content: item.emphasis ? <strong>{renderHtml(item.text)}</strong> : renderHtml(item.text),
+        fragment: item.fragment,
+        fragmentIndex: item.fragmentIndex,
+        children: item.items && item.items.length > 0 ? <Box sx={{ pl: '20px', mt: '4px' }}>{renderContentItems(item.items)}</Box> : undefined,
+      }))}
+    />
+  )
 }
 
 /** contentスライドの子要素をレンダリング */
@@ -241,6 +257,22 @@ function renderContentChildren(content: SlideData['content']): ReactNode {
   // component があればそれを描画
   if (content.component) {
     return renderComponent(content.component)
+  }
+
+  // steps/tiles/componentがいずれも無指定の場合のみ、プレーン本文（body/items）を描画する（#193）
+  const { body } = content
+  const items = content.items && content.items.length > 0 ? content.items : undefined
+  if (body || items) {
+    return (
+      <>
+        {body && (
+          <Typography variant="body1" sx={{ fontSize: '20px', lineHeight: 1.6, color: 'var(--theme-text-body)', mb: items ? '20px' : undefined }}>
+            {renderWithLineBreaks(body)}
+          </Typography>
+        )}
+        {items && renderContentItems(items)}
+      </>
+    )
   }
 
   return null

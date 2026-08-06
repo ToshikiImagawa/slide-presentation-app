@@ -13,7 +13,7 @@
       }
     },
     "content": {
-      "description": "コンテンツ表示用レイアウト。子要素のフィールドで描画が決まる（steps→Timeline / tiles→FeatureTileGrid / component→カスタム）",
+      "description": "コンテンツ表示用レイアウト。子要素のフィールドで描画が決まる。優先順位: steps→Timeline / tiles→FeatureTileGrid / component→カスタム。いずれも無指定の場合に限り body/items（プレーン本文）を描画する（#193）",
       "contentFields": {
         "title": { "type": "string" },
         "steps": {
@@ -36,7 +36,16 @@
           }
         },
         "component": { "type": "object", "ref": "componentReference" },
-        "footer": { "type": "string" }
+        "footer": { "type": "string" },
+        "body": {
+          "type": "string",
+          "description": "プレーン本文の段落（改行は\\n）。steps/tiles/componentのいずれも無指定の場合のみ描画される。itemsと併用可。段落配列が必要な場合はtwo-columnのparagraphsを使う（1カラム全幅の自由記述文はbody、カラム構成用の複数ブロックはparagraphsという役割分担）"
+        },
+        "items": {
+          "type": "array",
+          "ref": "contentItem",
+          "description": "箇条書き（ネスト可）。steps/tiles/componentのいずれも無指定の場合のみ描画される。bodyと併用可"
+        }
       }
     },
     "two-column": {
@@ -69,11 +78,19 @@
       }
     }
   },
+  "contentItem": {
+    "description": "content.items の箇条書き項目（ネスト可）",
+    "text": { "type": "string" },
+    "emphasis": { "type": "boolean" },
+    "fragment": { "type": "boolean", "description": "Reveal.jsのフラグメント表示（段階的に表示）を有効にする" },
+    "fragmentIndex": { "type": "number", "description": "フラグメント表示の順序" },
+    "items": { "type": "array", "ref": "contentItem", "description": "ネストした箇条書き（再帰）" }
+  },
   "columnContentFields": {
     "description": "two-columnの left/right に指定可能なフィールド（すべてオプション、組み合わせ可）。componentを指定した場合は他のフィールドは無視される",
     "heading": { "type": "string" },
     "headingDescription": { "type": "string" },
-    "paragraphs": { "type": "array", "description": "段落テキストの配列（HTMLタグ可）" },
+    "paragraphs": { "type": "array", "description": "段落テキストの配列（HTMLタグ可）。カラム内で複数ブロックを組み合わせる用途向け。1カラム全幅の自由記述文はcontent.bodyを使う" },
     "items": {
       "type": "array",
       "itemFields": {

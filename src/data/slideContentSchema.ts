@@ -24,6 +24,7 @@ interface SlideContentSchema {
   layouts: Record<string, { contentFields: FieldMap }>
   columnContentFields: FieldMap & { description?: string }
   componentReference: FieldMap & { description?: string }
+  contentItem: FieldMap & { description?: string }
 }
 
 const SCHEMA = schemaJson as unknown as SlideContentSchema
@@ -37,6 +38,7 @@ function stripMetaKeys(map: FieldMap & { description?: string }): FieldMap {
 const REF_MAPS: Record<string, FieldMap> = {
   columnContentFields: stripMetaKeys(SCHEMA.columnContentFields),
   componentReference: stripMetaKeys(SCHEMA.componentReference),
+  contentItem: stripMetaKeys(SCHEMA.contentItem),
 }
 
 /** 生成が指定してよい layout の一覧（schemaの単一ソースから導出） */
@@ -67,6 +69,11 @@ function typeMatches(value: unknown, type: string): boolean {
   }
 }
 
+/** フィールド定義から検証対象のFieldMapを解決する（refがあれば名前解決、なければ直接指定分を使う） */
+function resolveFields(def: FieldDef, direct: FieldMap | undefined): FieldMap | undefined {
+  return (def.ref && REF_MAPS[def.ref]) || direct
+}
+
 function checkFieldValue(value: unknown, def: FieldDef, path: string, errors: ValidationError[]): void {
   const types = Array.isArray(def.type) ? def.type : def.type ? [def.type] : []
   if (types.length > 0 && !types.some((t) => typeMatches(value, t))) {
@@ -77,14 +84,16 @@ function checkFieldValue(value: unknown, def: FieldDef, path: string, errors: Va
     addError(errors, path, `${path}は${def.enum.join('|')}のいずれかである必要があります`, def.enum.join('|'), value)
     return
   }
-  if (Array.isArray(value) && def.itemFields) {
-    value.forEach((item, i) => checkKnownFields(item, def.itemFields as FieldMap, `${path}[${i}]`, errors))
+  if (Array.isArray(value)) {
+    const itemFields = resolveFields(def, def.itemFields)
+    if (itemFields) {
+      value.forEach((item, i) => checkKnownFields(item, itemFields, `${path}[${i}]`, errors))
+    }
   }
   if (isRecord(value)) {
-    if (def.ref && REF_MAPS[def.ref]) {
-      checkKnownFields(value, REF_MAPS[def.ref], path, errors)
-    } else if (def.fields) {
-      checkKnownFields(value, def.fields, path, errors)
+    const fields = resolveFields(def, def.fields)
+    if (fields) {
+      checkKnownFields(value, fields, path, errors)
     }
   }
 }

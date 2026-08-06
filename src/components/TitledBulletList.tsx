@@ -12,7 +12,7 @@ export function TitledBulletList({ title, description, items }: Props) {
   return (
     <>
       <SlideHeading title={title} variant="h3" description={description} />
-      <BulletList items={items} />
+      <BulletList items={items.map((content) => ({ content }))} />
     </>
   )
 }
