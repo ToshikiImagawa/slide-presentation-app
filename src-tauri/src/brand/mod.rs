@@ -247,10 +247,19 @@ fn extract<R: Read + Seek>(mut reader: R) -> Result<BrandProfile, BrandError> {
     _ => (Vec::new(), Vec::new()),
   };
 
+  // 1 枚目の master は上で既にパース済みの `master.color_map` を再利用する（同じ XML を二重にパースしない）
   let masters = parts
     .slide_masters
     .iter()
-    .map(|master_part| build_master_profile(&mut package, master_part, &theme))
+    .enumerate()
+    .map(|(i, master_part)| -> Result<MasterProfile, BrandError> {
+      let color_map = if i == 0 {
+        master.color_map.clone()
+      } else {
+        master_xml::parse(&package.read_text(master_part)?)?.color_map
+      };
+      build_master_profile(&mut package, master_part, &theme.colors, &color_map)
+    })
     .collect::<Result<Vec<_>, _>>()?;
 
   let thumbnail = extract_thumbnail(&mut package);
@@ -277,19 +286,19 @@ fn extract<R: Read + Seek>(mut reader: R) -> Result<BrandProfile, BrandError> {
   })
 }
 
-/// slideMaster 1枚から `MasterProfile`（配下の slideLayout 一覧）を組み立てる。
-/// clrMap は「その master 自身の clrMap」で解決する（他 master の clrMap を当てると
+/// slideMaster 1枚から `MasterProfile`（配下の slideLayout 一覧）を組み立てる。`color_map` は呼び出し側が
+/// 解決済みの値を渡す（「その master 自身の clrMap」で解決する必要があり、他 master の clrMap を当てると
 /// レイアウトの背景色が反転しうるため、master 単位で解決するのが正しい）
 fn build_master_profile(
   package: &mut OpcPackage<impl Read + Seek>,
   master_part: &str,
-  theme: &theme_xml::ThemeInfo,
+  theme_colors: &ClrScheme,
+  color_map: &ClrMap,
 ) -> Result<MasterProfile, BrandError> {
-  let color_map = master_xml::parse(&package.read_text(master_part)?)?.color_map;
   let layout_parts = package.resolve_slide_layouts(master_part)?;
   let slide_layouts = layout_parts
     .into_iter()
-    .map(|part| build_slide_layout_profile(&mut *package, part, theme, &color_map))
+    .map(|part| build_slide_layout_profile(&mut *package, part, theme_colors, color_map))
     .collect::<Result<Vec<_>, _>>()?;
   Ok(MasterProfile {
     part: master_part.to_string(),
@@ -301,14 +310,14 @@ fn build_master_profile(
 fn build_slide_layout_profile(
   package: &mut OpcPackage<impl Read + Seek>,
   part: String,
-  theme: &theme_xml::ThemeInfo,
+  theme_colors: &ClrScheme,
   color_map: &ClrMap,
 ) -> Result<SlideLayoutProfile, BrandError> {
   let info = layout_xml::parse(&package.read_text(&part)?)?;
   let background_color_hex = info
     .background
     .as_ref()
-    .and_then(|spec| resolve_color_spec(spec, &theme.colors, color_map))
+    .and_then(|spec| resolve_color_spec(spec, theme_colors, color_map))
     .map(Rgb::to_hex);
   Ok(SlideLayoutProfile {
     part,

@@ -248,24 +248,32 @@ impl<R: Read + Seek> OpcPackage<R> {
     Ok(None)
   }
 
-  /// presentation から全 slideMaster part を、`p:sldMasterIdLst` の記述順（#192）で引く。
-  /// マスターが複数あるテンプレートでは `rId` の番号順と記述順が一致しないため、XML の順序を使う
-  fn resolve_slide_masters(&mut self, presentation: &str) -> Result<Vec<String>, BrandError> {
-    let rels = self.relationships(presentation)?;
+  /// `part` の関係のうち種別が `kind` に一致する Target を、`part` 自身の XML 内の `<list_name>/<item_name>@r:id`
+  /// の記述順で返す（#192）。`p:sldMasterIdLst`（presentation.xml）と `p:sldLayoutIdLst`（slideMaster part）が
+  /// 同じ構造を持つため、`resolve_slide_masters`/`resolve_slide_layouts` で共有する。
+  /// 対象が複数あるテンプレートでは `rId` の番号順と記述順が一致しないため、XML の順序を使う
+  fn resolve_ordered_relationship_targets(
+    &mut self,
+    part: &str,
+    kind: &str,
+    list_name: &str,
+    item_name: &str,
+  ) -> Result<Vec<String>, BrandError> {
+    let rels = self.relationships(part)?;
     let targets: Vec<String> = rels
       .iter()
-      .filter(|r| r.kind == "slideMaster")
+      .filter(|r| r.kind == kind)
       .map(|r| r.target.clone())
       .collect();
-    // マスターが 1 個以下なら記述順は関係ない。presentation XML を読まずに確定させる
+    // 対象が 1 個以下なら記述順は関係ない。part の XML を読まずに確定させる
     if targets.len() <= 1 {
       return Ok(targets);
     }
 
-    let xml = self.read_text(presentation)?;
-    let ids = ordered_rel_ids(&xml, "sldMasterIdLst", "sldMasterId")?;
+    let xml = self.read_text(part)?;
+    let ids = ordered_rel_ids(&xml, list_name, item_name)?;
     let ordered = resolve_ordered_targets(&rels, &ids);
-    // sldMasterIdLst が読めない・一部しか対応しない場合は名前順へ落とす
+    // 記述順の一覧が読めない・一部しか対応しない場合は名前順へ落とす
     if ordered.len() == targets.len() {
       Ok(ordered)
     } else {
@@ -275,29 +283,24 @@ impl<R: Read + Seek> OpcPackage<R> {
     }
   }
 
-  /// slideMaster から配下の全 slideLayout part を、`p:sldLayoutIdLst` の記述順（#192）で引く。
-  /// `resolve_slide_masters` と同じ理由（rId 番号順と記述順の不一致）で XML の順序を使う
-  pub fn resolve_slide_layouts(&mut self, master_part: &str) -> Result<Vec<String>, BrandError> {
-    let rels = self.relationships(master_part)?;
-    let targets: Vec<String> = rels
-      .iter()
-      .filter(|r| r.kind == "slideLayout")
-      .map(|r| r.target.clone())
-      .collect();
-    if targets.len() <= 1 {
-      return Ok(targets);
-    }
+  /// presentation から全 slideMaster part を、`p:sldMasterIdLst` の記述順（#192）で引く
+  fn resolve_slide_masters(&mut self, presentation: &str) -> Result<Vec<String>, BrandError> {
+    self.resolve_ordered_relationship_targets(
+      presentation,
+      "slideMaster",
+      "sldMasterIdLst",
+      "sldMasterId",
+    )
+  }
 
-    let xml = self.read_text(master_part)?;
-    let ids = ordered_rel_ids(&xml, "sldLayoutIdLst", "sldLayoutId")?;
-    let ordered = resolve_ordered_targets(&rels, &ids);
-    if ordered.len() == targets.len() {
-      Ok(ordered)
-    } else {
-      let mut sorted = targets;
-      sorted.sort();
-      Ok(sorted)
-    }
+  /// slideMaster から配下の全 slideLayout part を、`p:sldLayoutIdLst` の記述順（#192）で引く
+  pub fn resolve_slide_layouts(&mut self, master_part: &str) -> Result<Vec<String>, BrandError> {
+    self.resolve_ordered_relationship_targets(
+      master_part,
+      "slideLayout",
+      "sldLayoutIdLst",
+      "sldLayoutId",
+    )
   }
 }
 

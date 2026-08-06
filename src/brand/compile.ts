@@ -1,5 +1,6 @@
 import { getContrastRatio, hexToRgbTuple, THEME_COLOR_TOKENS, WCAG_AA_THRESHOLD } from '../applyTheme'
 import { SLIDE_WIDTH, SLIDE_HEIGHT } from '../hooks/useReveal'
+import { slugify } from '../slugify'
 import type { MasterDecoration, MasterDefinition, ThemeData } from '../data'
 import {
   LAYOUT_ASSIGNMENT_SLOTS,
@@ -114,16 +115,7 @@ function buildLayoutMasterMap(assignedLayouts: AssignedLayout[]): Record<string,
 /** `brand-<slug>-<masterIndex>-<layoutIndex>` 形式（`/` を含まない）。index を含めるのは、
  * 同名の layout が複数あってもスラッグの衝突で masterKey が重複しないようにするため */
 function layoutMasterKey(key: string, name: string | null): string {
-  return `brand-${slugify(name ?? 'layout')}-${key.replace(':', '-')}`
-}
-
-function slugify(value: string): string {
-  const slug = value
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-  return slug || 'layout'
+  return `brand-${slugify(name ?? '', 'layout')}-${key.replace(':', '-')}`
 }
 
 function resolveColors(profile: BrandProfile, overrides: BrandOverrides, report: BrandImportReport): Record<MappedColorKey, string> {
