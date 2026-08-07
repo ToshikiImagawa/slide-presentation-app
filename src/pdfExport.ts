@@ -80,15 +80,21 @@ export async function exportSlidesToPdf(deckEl: HTMLElement, title: string, canv
       await waitForSlideReady(section)
       neutralizeSlidesScale()
 
-      const canvas = await html2canvas(section, {
-        width: canvasWidth,
-        height: canvasHeight,
-        scale: CAPTURE_SCALE,
-        // QrCodeCard等の外部画像（api.qrserver.com等）をCORSモードで再取得する。
-        // 未対応だとcanvasが汚染され、その画像だけ空白になる
-        useCORS: true,
-      })
-      const imageData = canvas.toDataURL('image/png')
+      const restoreSvgVars = inlineSvgCssVariables(section)
+      let imageData: string
+      try {
+        const canvas = await html2canvas(section, {
+          width: canvasWidth,
+          height: canvasHeight,
+          scale: CAPTURE_SCALE,
+          // QrCodeCard等の外部画像（api.qrserver.com等）をCORSモードで再取得する。
+          // 未対応だとcanvasが汚染され、その画像だけ空白になる
+          useCORS: true,
+        })
+        imageData = canvas.toDataURL('image/png')
+      } finally {
+        restoreSvgVars()
+      }
 
       if (index > 0) {
         pdf.addPage([canvasWidth, canvasHeight], 'landscape')
@@ -118,6 +124,62 @@ export async function exportSlidesToPdf(deckEl: HTMLElement, title: string, canv
 
   await writeFile(destination, new Uint8Array(pdf.output('arraybuffer')))
   return 'saved'
+}
+
+/** `var(--name)` / `var(--name, fallback)`。入れ子は内側から解けるので fallback には括弧を含めない */
+const CSS_VAR_PATTERN = /var\(\s*(--[\w-]+)\s*(?:,\s*([^()]*))?\)/g
+
+/** 入れ子の var() を解くための反復上限（フォールバックの連鎖がこれ以上深くなる指定は想定しない） */
+const CSS_VAR_MAX_DEPTH = 4
+
+/**
+ * 文字列中の CSS 変数参照を、要素の計算済みカスタムプロパティ値へ置き換える。
+ * 変数はカスタムプロパティなので継承する＝要素自身から読めば `:root` の値もマスター単位の
+ * 上書き（theme.tokens の `section[data-master=...]` スコープ）も正しく解決できる。
+ */
+export function resolveCssVars(value: string, computed: CSSStyleDeclaration): string {
+  let resolved = value
+  for (let depth = 0; depth < CSS_VAR_MAX_DEPTH && resolved.includes('var('); depth++) {
+    const next = resolved.replace(CSS_VAR_PATTERN, (_match, name: string, fallback?: string) => computed.getPropertyValue(name).trim() || (fallback ?? '').trim())
+    if (next === resolved) break
+    resolved = next
+  }
+  return resolved
+}
+
+/**
+ * 撮影直前に、SVG 配下の属性（inline style を含む）に書かれた CSS 変数参照を実測値へ置き換える。
+ *
+ * html2canvas は `<svg>` を XMLSerializer で単体シリアライズして data URI の画像として描くため
+ * （html2canvas の SVGElementContainer）、SVG の中の `var(--theme-series-1)` は祖先を失って解決できず、
+ * 黒や未描画になる。チャート（#204）・図解プリミティブ（#202）はいずれも色・線幅を意匠トークンから
+ * 引いているので、この置き換えがないと PDF だけ表示が一致しない。
+ *
+ * 戻り値を呼ぶと元の属性値へ戻す（ライブDOMを一時的に触るのは、この関数の呼び出し元が
+ * class や transform に対して既に行っているのと同じ方針）。
+ */
+export function inlineSvgCssVariables(root: HTMLElement): () => void {
+  const restores: Array<() => void> = []
+
+  const inline = (element: Element) => {
+    const targets = Array.from(element.attributes).filter((attr) => attr.value.includes('var('))
+    if (targets.length === 0) return
+    const computed = getComputedStyle(element)
+    for (const attr of targets) {
+      const { name, value } = attr
+      element.setAttribute(name, resolveCssVars(value, computed))
+      restores.push(() => element.setAttribute(name, value))
+    }
+  }
+
+  for (const svg of Array.from(root.querySelectorAll('svg'))) {
+    inline(svg)
+    for (const descendant of Array.from(svg.querySelectorAll('*'))) {
+      inline(descendant)
+    }
+  }
+
+  return () => restores.forEach((restore) => restore())
 }
 
 /** present化直後の画像読み込み・タイピングアニメーション開始を待つ */

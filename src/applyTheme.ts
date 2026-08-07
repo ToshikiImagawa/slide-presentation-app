@@ -58,10 +58,12 @@ function hueRotate(hex: string, degrees: number): string {
  * 系列色（series1〜series6）を primary/accent から決定的に導出する（#186）。
  * series1=primary・series2=accent をそのまま採用し、series3〜6 は primary の色相を
  * 120°/180°/240°/300° 回転させ、テーマを書かないデッキでも6項目まで視覚的に区別できるようにする。
+ * ただし accent が primary と同色のテーマ（グローバルCSSの既定値どうしがこれに当たる）では
+ * series2 も色相回転で作る（同色だと系列を区別できず、6項目を見分けるという前提が崩れる・#204）。
  */
 function deriveSeriesColor(index: 1 | 2 | 3 | 4 | 5 | 6, primaryHex: string, accentHex: string): string {
   if (index === 1) return primaryHex
-  if (index === 2) return accentHex
+  if (index === 2 && accentHex !== primaryHex) return accentHex
   return hueRotate(primaryHex, (index - 1) * 60)
 }
 
@@ -558,8 +560,9 @@ export async function applyPresentationTheme(themeColors?: string, theme?: Theme
   // brand → themeColors → theme の順で1層ずつ合成する（各層が後勝ちで前層を上書きする）
   const layers: (ThemeData | undefined)[] = [brand, themeColorsPalette ? { colors: themeColorsPalette } : undefined, theme]
   const merged = layers.reduce<ThemeData | undefined>((acc, layer) => mergeThemeData(acc, layer), undefined)
-  if (merged) {
-    applyThemeData(merged)
-  }
+  // テーマを一切宣言しないデッキでも空の ThemeData で通す。系列色（--theme-series-1〜6・#186）は
+  // グローバルCSSに既定値を持たず applyThemeData の導出だけが供給源なので、ここを飛ばすと
+  // resetThemeOverrides で消えたまま未定義になり、チャートの系列色（#204）が描画されない
+  applyThemeData(merged ?? {})
   return ok
 }

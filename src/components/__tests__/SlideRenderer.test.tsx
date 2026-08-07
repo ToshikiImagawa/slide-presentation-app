@@ -435,6 +435,36 @@ describe('SlideRenderer', () => {
     })
   })
 
+  // #204: チャート（content.chart → Chart）
+  describe('contentスライド(chart)', () => {
+    function renderContent(content: SlideData['content']) {
+      return renderWithTheme(<SlideRenderer slides={[{ id: 'test-chart', layout: 'content', content: { title: 'タイトル', ...content } }]} />)
+    }
+
+    it('chartが指定された種別で描画される', () => {
+      const { getByTestId } = renderContent({ chart: { type: 'line', categories: ['Q1', 'Q2'], series: [{ values: [1, 2] }] } })
+      expect(getByTestId('chart').dataset.chartType).toBe('line')
+    })
+
+    it('chartがオブジェクトでない場合は描画せずbody/itemsへ落ちる', () => {
+      const { queryByTestId, container } = renderContent({ chart: 'broken', body: '本文' })
+      expect(queryByTestId('chart')).toBeNull()
+      expect(container.textContent).toContain('本文')
+    })
+
+    it('imagesが指定されている場合はimages描画が優先される（既存の優先順位の維持）', () => {
+      const { container, queryByTestId } = renderContent({ images: [{ src: '/a.png' }], chart: { type: 'bar', categories: ['A'], series: [{ values: [1] }] } })
+      expect(container.querySelector('figure')).not.toBeNull()
+      expect(queryByTestId('chart')).toBeNull()
+    })
+
+    it('chart指定時はcomponent/body/itemsを描画しない', () => {
+      const { getByTestId, container } = renderContent({ chart: { type: 'bar', categories: ['A'], series: [{ values: [1] }] }, body: '描画されない本文' })
+      expect(getByTestId('chart')).not.toBeNull()
+      expect(container.textContent).not.toContain('描画されない本文')
+    })
+  })
+
   // #164: masters/masterMap/tokens と SlideMasterLayer。theme 未指定時は既存と完全同一のDOMになることも併せて確認する
   describe('masters（SlideMasterLayer 装飾描画）', () => {
     const masterTheme: ThemeData = {

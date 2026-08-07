@@ -25,6 +25,7 @@ interface SlideContentSchema {
   columnContentFields: FieldMap & { description?: string }
   componentReference: FieldMap & { description?: string }
   contentItem: FieldMap & { description?: string }
+  chart: FieldMap & { description?: string }
 }
 
 const SCHEMA = schemaJson as unknown as SlideContentSchema
@@ -39,6 +40,7 @@ const REF_MAPS: Record<string, FieldMap> = {
   columnContentFields: stripMetaKeys(SCHEMA.columnContentFields),
   componentReference: stripMetaKeys(SCHEMA.componentReference),
   contentItem: stripMetaKeys(SCHEMA.contentItem),
+  chart: stripMetaKeys(SCHEMA.chart),
 }
 
 /** 生成が指定してよい layout の一覧（schemaの単一ソースから導出） */
