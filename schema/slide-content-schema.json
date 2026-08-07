@@ -13,7 +13,7 @@
       }
     },
     "content": {
-      "description": "コンテンツ表示用レイアウト。子要素のフィールドで描画が決まる。優先順位: steps→Timeline / tiles→FeatureTileGrid / images→画像スライド / chart→チャート / component→カスタム。いずれも無指定の場合に限り body/items（プレーン本文）を描画する（#193）",
+      "description": "コンテンツ表示用レイアウト。子要素のフィールドで描画が決まる。優先順位: steps→Timeline / tiles→FeatureTileGrid / images→画像スライド / chart→チャート / table→表 / component→カスタム。いずれも無指定の場合に限り body/items（プレーン本文）を描画する（#193）",
       "contentFields": {
         "title": { "type": "string" },
         "steps": {
@@ -50,16 +50,17 @@
           }
         },
         "chart": { "type": "object", "ref": "chart" },
+        "table": { "type": "object", "ref": "table" },
         "component": { "type": "object", "ref": "componentReference" },
         "footer": { "type": "string" },
         "body": {
           "type": "string",
-          "description": "プレーン本文の段落（改行は\\n）。steps/tiles/images/componentのいずれも無指定の場合のみ描画される。itemsと併用可。段落配列が必要な場合はtwo-columnのparagraphsを使う（1カラム全幅の自由記述文はbody、カラム構成用の複数ブロックはparagraphsという役割分担）"
+          "description": "プレーン本文の段落（改行は\\n）。steps/tiles/images/chart/table/componentのいずれも無指定の場合のみ描画される。itemsと併用可。段落配列が必要な場合はtwo-columnのparagraphsを使う（1カラム全幅の自由記述文はbody、カラム構成用の複数ブロックはparagraphsという役割分担）"
         },
         "items": {
           "type": "array",
           "ref": "contentItem",
-          "description": "箇条書き（ネスト可）。steps/tiles/images/componentのいずれも無指定の場合のみ描画される。bodyと併用可"
+          "description": "箇条書き（ネスト可）。steps/tiles/images/chart/table/componentのいずれも無指定の場合のみ描画される。bodyと併用可"
         }
       }
     },
@@ -125,6 +126,19 @@
     "delta": { "type": "string", "description": "type=kpi の増減注記（\"+12% 前年比\" 等）" },
     "trend": { "type": "array", "description": "type=kpi の推移線の数値配列（2点以上で描画。0基準ではなくデータ範囲に合わせるので変化が読める）" },
     "color": { "type": "string", "description": "type=kpi の大数値・推移線の色トークン名。省略時はseries1" }
+  },
+  "table": {
+    "description": "content.table の表指定（#194）。ヘッダー行＋本文行の表。寸法・座標は持たず本文領域いっぱいに自動で収まり、罫線・ゼブラ・ヘッダ行の塗り・角丸はテーマトークンに追従する。行数・列数が多いときはpadding・文字サイズが段階的に縮む",
+    "columns": {
+      "type": "array",
+      "description": "ヘッダー列の定義。rows[]の各要素と同じ順序・数で対応する",
+      "itemFields": {
+        "label": { "type": "string" },
+        "align": { "type": "string", "enum": ["left", "center", "right"], "description": "列内の文字揃え。省略時left" },
+        "width": { "type": "number", "description": "列幅の比率（例: 2は1の倍の幅）。省略時は全列等分" }
+      }
+    },
+    "rows": { "type": "array", "description": "本文行。各要素はcolumnsと同じ順序・数のセル文字列配列" }
   },
   "columnContentFields": {
     "description": "two-columnの left/right に指定可能なフィールド（すべてオプション、組み合わせ可）。componentを指定した場合は他のフィールドは無視される",

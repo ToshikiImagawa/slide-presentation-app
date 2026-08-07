@@ -16,6 +16,7 @@ import { TimelineNode } from './TimelineNode'
 import { FeatureTileGrid } from './FeatureTileGrid'
 import { ImageFigureGrid } from './ImageFigureGrid'
 import { Chart, type ChartSpec } from './chart'
+import { Table, type TableSpec } from './table'
 import { AccentText } from './AccentText'
 import { CommandList } from './CommandList'
 import { UnderlinedHeading } from './UnderlinedHeading'
@@ -270,12 +271,17 @@ function renderContentChildren(content: SlideData['content']): ReactNode {
     return <Chart {...(content.chart as ChartSpec)} />
   }
 
+  // table があれば表（#194）
+  if (content.table && typeof content.table === 'object') {
+    return <Table {...(content.table as TableSpec)} />
+  }
+
   // component があればそれを描画
   if (content.component) {
     return renderComponent(content.component)
   }
 
-  // steps/tiles/images/chart/componentがいずれも無指定の場合のみ、プレーン本文（body/items）を描画する（#193）
+  // steps/tiles/images/chart/table/componentがいずれも無指定の場合のみ、プレーン本文（body/items）を描画する（#193）
   const { body } = content
   const items = content.items && content.items.length > 0 ? content.items : undefined
   if (body || items) {

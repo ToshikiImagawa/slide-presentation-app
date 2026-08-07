@@ -37,11 +37,11 @@
 
 ## content
 
-コンテンツ表示用レイアウト。子要素のフィールドで描画が決まる。優先順位: `steps` → `tiles` → `images` → `component` → `body`/`items`（いずれかが指定されていたら以降は評価しない）。
+コンテンツ表示用レイアウト。子要素のフィールドで描画が決まる。優先順位: `steps` → `tiles` → `images` → `chart` → `table` → `component` → `body`/`items`（いずれかが指定されていたら以降は評価しない）。
 
 ### body / items（プレーン本文）
 
-`steps`/`tiles`/`images`/`component` のいずれも指定しない場合に描画される、タイトル＋左寄せ本文の基本形。`body`（段落）と `items`（箇条書き、ネスト可）は併用できる。
+`steps`/`tiles`/`images`/`chart`/`table`/`component` のいずれも指定しない場合に描画される、タイトル＋左寄せ本文の基本形。`body`（段落）と `items`（箇条書き、ネスト可）は併用できる。
 
 ```json
 {
@@ -183,6 +183,33 @@
 表示制御は `axis`（軸の目盛りと格子線）・`legend`（凡例）・`valueLabels`（値ラベル）で、いずれも省略時は自動判定する。項目名は 12 個を超えると等間隔に間引かれ（先頭と末尾は必ず表示）、値ラベルは描画点が多いと既定で省かれるため、項目数が多くてもラベルは重ならない。軸の範囲は `min` / `max` で固定できる（百分率を 0〜100 に固定する場合等）。
 
 `series[].color` と `kpi` の `color` は色トークン名（`series1`〜`series6`/`primary`/`accent`/`success`/`warning`/`danger`/`neutral` 等）。省略時は系列順に `series1`〜`series6` が割り当たる（円は `categories` の順）。
+
+### table（表）
+
+比較表・マイルストーン表・仕様表等のためのヘッダー行＋本文行の表。寸法・座標の指定はなく本文領域いっぱいに自動で収まり、罫線・ゼブラ・ヘッダ行の塗り・角丸はテーマトークンに追従する。
+
+```json
+{
+  "id": "slide-id",
+  "layout": "content",
+  "content": {
+    "title": "タイトル",
+    "table": {
+      "columns": [
+        { "label": "項目", "align": "left", "width": 2 },
+        { "label": "Free", "align": "center" },
+        { "label": "Pro", "align": "center" }
+      ],
+      "rows": [
+        ["価格", "0円", "1,200円/月"],
+        ["ユーザー数", "1", "10"]
+      ]
+    }
+  }
+}
+```
+
+`columns[].align`（`left`/`center`/`right`。省略時 `left`）と `columns[].width`（列幅の比率。省略時は全列等分）で列ごとの見た目を調整する。`rows[]` の各要素は `columns` と同じ順序・数のセル文字列配列。行数・列数が多い場合はpadding・文字サイズが段階的に縮み、それでも収まらない分は本文領域の外へはみ出させずクリップする。
 
 ### component（カスタムコンポーネント）
 

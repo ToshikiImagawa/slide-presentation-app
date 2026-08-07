@@ -247,6 +247,28 @@
           "color": "series2"
         }
       }
+    },
+    {
+      "id": "layout-content-table",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (table)",
+        "table": {
+          "columns": [
+            { "label": "項目", "align": "left", "width": 2 },
+            { "label": "Free", "align": "center" },
+            { "label": "Pro", "align": "center" },
+            { "label": "Enterprise", "align": "center" }
+          ],
+          "rows": [
+            ["価格", "0円", "1,200円/月", "要見積り"],
+            ["ユーザー数", "1", "10", "無制限"],
+            ["サポート", "コミュニティ", "メール", "専任担当"],
+            ["SLA", "-", "99.9%", "99.99%"],
+            ["SSO", "-", "-", "対応"]
+          ]
+        }
+      }
     }
   ]
 }

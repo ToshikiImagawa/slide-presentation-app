@@ -146,6 +146,49 @@ describe('getSchemaConformanceErrors', () => {
     expect(errors[0].path).toBe('slides[0].content.chart.series[0].values')
   })
 
+  it('content.tableの正常な指定はエラーにしない（#194 表）', () => {
+    const data: PresentationData = {
+      meta: { title: 't' },
+      slides: [
+        {
+          id: 's1',
+          layout: 'content',
+          content: {
+            title: 'x',
+            table: {
+              columns: [
+                { label: '項目', align: 'left', width: 2 },
+                { label: 'Pro', align: 'center' },
+              ],
+              rows: [['価格', '1,200円']],
+            },
+          },
+        },
+      ],
+    }
+    expect(getSchemaConformanceErrors(data)).toEqual([])
+  })
+
+  it('content.table.columns[].alignがleft/center/right以外だとエラーにする', () => {
+    const data = {
+      meta: { title: 't' },
+      slides: [{ id: 's1', layout: 'content', content: { title: 'x', table: { columns: [{ label: '項目', align: 'justify' }] } } }],
+    } as unknown as PresentationData
+    const errors = getSchemaConformanceErrors(data)
+    expect(errors).toHaveLength(1)
+    expect(errors[0].path).toBe('slides[0].content.table.columns[0].align')
+  })
+
+  it('content.table.columnsが配列でない場合エラーにする', () => {
+    const data = {
+      meta: { title: 't' },
+      slides: [{ id: 's1', layout: 'content', content: { title: 'x', table: { columns: 'broken' } } }],
+    } as unknown as PresentationData
+    const errors = getSchemaConformanceErrors(data)
+    expect(errors).toHaveLength(1)
+    expect(errors[0].path).toBe('slides[0].content.table.columns')
+  })
+
   it('未知フィールドはエラーにしない（拡張・アドオンを阻害しない）', () => {
     const data: PresentationData = {
       meta: { title: 't' },
