@@ -145,6 +145,35 @@
           }
         ]
       }
+    },
+    {
+      "id": "layout-content-diagram",
+      "layout": "content",
+      "content": {
+        "title": "Diagram primitives",
+        "component": {
+          "name": "Diagram",
+          "props": {
+            "nodes": [
+              { "id": "a", "rect": { "x": 0.02, "y": 0.06, "w": 0.16, "h": 0.26 }, "title": "Card", "body": "outline", "badge": 1, "color": "primary" },
+              { "id": "b", "rect": { "x": 0.3, "y": 0.06, "w": 0.16, "h": 0.26 }, "title": "Card", "body": "filled", "badge": 2, "color": "success", "variant": "filled" },
+              { "id": "c", "rect": { "x": 0.02, "y": 0.64, "w": 0.16, "h": 0.26 }, "title": "Card", "body": "plain", "badge": 3, "color": "neutral", "variant": "plain" }
+            ],
+            "connectors": [
+              { "from": "a", "to": "b", "head": "triangle", "label": "connector" },
+              { "from": "b", "to": "c", "routing": "vertical", "head": "triangle" }
+            ],
+            "arrows": [
+              { "from": { "x": 0.53, "y": 0.1 }, "to": { "x": 0.97, "y": 0.1 }, "head": "arrow", "label": "arrow (horizontal)" },
+              { "from": { "x": 0.53, "y": 0.28 }, "to": { "x": 0.97, "y": 0.44 }, "head": "triangle", "thickness": 3, "label": "diagonal" },
+              { "from": { "x": 0.56, "y": 0.55 }, "to": { "x": 0.56, "y": 0.8 }, "head": "arrow" },
+              { "from": { "x": 0.64, "y": 0.55 }, "to": { "x": 0.64, "y": 0.8 }, "head": "triangle", "tail": "dot", "dashed": true }
+            ],
+            "badges": [{ "at": { "x": 0.9, "y": 0.6 }, "text": "★", "shape": "square", "color": "warning" }],
+            "callouts": [{ "at": { "x": 0.876, "y": 0.638 }, "to": { "x": 0.8, "y": 0.86 }, "label": "callout" }]
+          }
+        }
+      }
     }
   ]
 }

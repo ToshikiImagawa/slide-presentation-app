@@ -1,0 +1,15 @@
+/* 引出線のラベル（#202）。意匠は線ラベルのチップと共通で、置き方（中心合わせではなく辺合わせ）だけが違う */
+.label {
+  composes: chip from './DiagramLine.module.css';
+  padding: 4px 10px;
+}
+
+/* アンカー（to）をラベルの左辺に合わせ、引出先の反対側へラベルを伸ばす */
+.anchorLeft {
+  transform: translate(0, -50%);
+}
+
+/* アンカー（to）をラベルの右辺に合わせる */
+.anchorRight {
+  transform: translate(-100%, -50%);
+}

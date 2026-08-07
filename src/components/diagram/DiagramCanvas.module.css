@@ -1,0 +1,9 @@
+/* 図解プリミティブの器（#202）。子要素は position:absolute で正規化座標（% 指定）に載るため、
+   ここが position:relative の基準になる。本文領域（.content-area = flex column）の残り高さを
+   flex:1 で受け取り、キャンバスサイズが変わっても図解が本文領域いっぱいに追従する */
+.canvas {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}

@@ -15,6 +15,17 @@ class MockIntersectionObserver {
 
 globalThis.IntersectionObserver = MockIntersectionObserver as unknown as typeof IntersectionObserver
 
+// jsdom はレイアウトを持たないため ResizeObserver も実装しない（SlidePreview・PresenterViewWindow・DiagramCanvas が使用）。
+// observe() は実物と違って初回コールバックを配送しないため、購読側の同期的な初回計測だけが効く
+class MockResizeObserver {
+  constructor(_callback: ResizeObserverCallback) {}
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+
+globalThis.ResizeObserver = MockResizeObserver as unknown as typeof ResizeObserver
+
 // jsdom は Range のレイアウト計測 API を実装しないため、CodeMirror（SlideJsonEditor）の座標計算が例外を投げる
 Range.prototype.getBoundingClientRect = () => ({ x: 0, y: 0, width: 0, height: 0, top: 0, left: 0, right: 0, bottom: 0, toJSON: () => '' })
 Range.prototype.getClientRects = () => Object.assign([], { item: () => null }) as unknown as DOMRectList

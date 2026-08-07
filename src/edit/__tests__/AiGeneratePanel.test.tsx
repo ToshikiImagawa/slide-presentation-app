@@ -60,13 +60,6 @@ import { SlideEditor } from '../SlideEditor'
 import { I18nProvider } from '../../i18n'
 import type { LocaleResource } from '../../i18n'
 
-class ResizeObserverStub {
-  observe() {}
-  unobserve() {}
-  disconnect() {}
-}
-;(globalThis as unknown as { ResizeObserver: typeof ResizeObserverStub }).ResizeObserver = ResizeObserverStub
-
 const locales: LocaleResource[] = [{ languageCode: 'ja-JP', languageName: '日本語', ui: {} }]
 function Wrapper({ children }: { children: ReactNode }) {
   return (

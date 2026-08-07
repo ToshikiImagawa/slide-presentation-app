@@ -7,6 +7,7 @@ import TrafficIcon from '@mui/icons-material/Traffic'
 import logText from '../data/default-log.txt?raw'
 import { TerminalAnimation } from './TerminalAnimation'
 import { FallbackImage } from './FallbackImage'
+import { Diagram } from './diagram'
 import { registerDefaultComponent } from './ComponentRegistry'
 
 /** TerminalAnimationのラッパー（デフォルトlogTextを注入） */
@@ -24,6 +25,8 @@ export function registerDefaultComponents(): void {
   // ビジュアルコンポーネント
   registerDefaultComponent('TerminalAnimation', DefaultTerminalAnimation)
   registerDefaultComponent('Image', DefaultImage)
+  // 図解プリミティブ（#202）。矢印・コネクタ・カード・バッジ・引出線を正規化座標で組み立てる
+  registerDefaultComponent('Diagram', Diagram)
 
   // MUIアイコン
   registerDefaultComponent('Icon:Description', () => <DescriptionIcon sx={{ fontSize: 32 }} />)
