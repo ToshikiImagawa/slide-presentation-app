@@ -228,7 +228,7 @@ export function PresenterViewWindow({ slides, currentIndex, logo, theme, control
 }
 
 /** スライドの縮小プレビュー */
-function PreviewSlide({ slide, logo, theme, index, total, sections }: { slide: SlideData; logo?: LogoConfig; theme?: ThemeData; index: number; total: number; sections?: SectionInfo[] }) {
+function PreviewSlide({ slide, logo, theme, index, total, sections }: { slide: SlideData; logo?: LogoConfig; theme?: ThemeData; index: number; total: number; sections: SectionInfo[] }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [scale, setScale] = useState(0.3)
   const { width: canvasWidth, height: canvasHeight } = resolveCanvasSize(theme?.canvas)

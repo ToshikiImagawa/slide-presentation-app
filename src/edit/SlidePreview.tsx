@@ -10,7 +10,7 @@ import styles from './SlidePreview.module.css'
  * 親要素サイズに追従して transform: scale する。編集内容は props 更新で差分再描画され、
  * presentationKey による App 全再マウント（Reveal 全再初期化）を伴わない（NFR-004）。
  */
-export function SlidePreview({ slide, logo, theme, index, total, sections }: { slide: SlideData; logo?: LogoConfig; theme?: ThemeData; index: number; total: number; sections?: SectionInfo[] }) {
+export function SlidePreview({ slide, logo, theme, index, total, sections }: { slide: SlideData; logo?: LogoConfig; theme?: ThemeData; index: number; total: number; sections: SectionInfo[] }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [scale, setScale] = useState(0.3)
   const { width: canvasWidth, height: canvasHeight } = resolveCanvasSize(theme?.canvas)

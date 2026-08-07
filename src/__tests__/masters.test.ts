@@ -161,8 +161,8 @@ describe('renderMasterText', () => {
     expect(renderMasterText('第 {sectionNumber:02} 章', { index: 0, total: 3 })).toBe('第  章')
   })
 
-  it('未知の変数名は本文の波括弧を壊さないためそのまま残す', () => {
-    expect(renderMasterText('{sectinTitle} {foo:02}', ctx)).toBe('{sectinTitle} {foo:02}')
+  it('未知の変数名は本文の波括弧を壊さないためそのまま残す（Object.prototype のキー名も変数として扱わない）', () => {
+    expect(renderMasterText('{sectinTitle} {foo:02} {toString}', ctx)).toBe('{sectinTitle} {foo:02} {toString}')
   })
 })
 

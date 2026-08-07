@@ -356,10 +356,10 @@ export function SlideRenderer({ slides, logo, theme }: SlideRendererProps) {
   )
 }
 
-/** 個別スライドコンポーネント。index/total は masterMap 装飾のページ番号・only 判定に使う（3経路: 本編・発表者ビュー・編集プレビューで必須）。
- * sections（デッキ全体から buildSections で導出した章）を渡すと章番号・章タイトルの装飾テンプレートと
- * only: section-first も解決される。省略時は章に属さない扱いになる（#191） */
-SlideRenderer.Slide = function SlideRendererSlide({ slide, index, total, sections, logo, theme }: { slide: SlideData; index: number; total: number; sections?: SectionInfo[]; logo?: LogoConfig; theme?: ThemeData }) {
-  const ctx: MasterRenderContext = { index, total, section: sections && findSectionAt(sections, index) }
+/** 個別スライドコンポーネント。index/total/sections は masterMap 装飾のページ番号・章情報・only 判定に使う
+ * （3経路: 本編・発表者ビュー・編集プレビューで必須）。sections はデッキ全体から buildSections で導出した章で、
+ * 章を持たないデッキでは空配列を渡す（省略可にすると配線もれが「章が無い」として静かに埋もれる・#191） */
+SlideRenderer.Slide = function SlideRendererSlide({ slide, index, total, sections, logo, theme }: { slide: SlideData; index: number; total: number; sections: SectionInfo[]; logo?: LogoConfig; theme?: ThemeData }) {
+  const ctx: MasterRenderContext = { index, total, section: findSectionAt(sections, index) }
   return <>{renderSlide(slide, logo, theme, ctx)}</>
 }

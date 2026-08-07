@@ -1,8 +1,8 @@
 import type { CSSProperties } from 'react'
 import { FallbackImage } from '../components/FallbackImage'
 import { hasComponent, renderRegisteredComponent } from '../components/ComponentRegistry'
-import type { MasterAnchor, MasterDecoration, MasterDecorationLayer, MasterDecorationOnly, MasterRenderContext } from '../data'
-import { renderMasterText } from '../masters'
+import type { MasterAnchor, MasterDecoration, MasterDecorationLayer, MasterRenderContext } from '../data'
+import { matchesDecorationOnly, renderMasterText } from '../masters'
 
 type Props = {
   decorations: MasterDecoration[]
@@ -12,7 +12,7 @@ type Props = {
 
 /** master の decorations から指定レイヤー（back/front）に属し only 条件を満たすものだけを描画する */
 export function SlideMasterLayer({ decorations, layer, ctx }: Props) {
-  const visible = decorations.filter((d) => (d.layer ?? 'back') === layer && matchesOnly(d.only, ctx))
+  const visible = decorations.filter((d) => (d.layer ?? 'back') === layer && matchesDecorationOnly(d.only, ctx))
   return (
     <>
       {visible.map((decoration, i) => (
@@ -20,30 +20,6 @@ export function SlideMasterLayer({ decorations, layer, ctx }: Props) {
       ))}
     </>
   )
-}
-
-function matchesOnly(only: MasterDecorationOnly | undefined, ctx: MasterRenderContext): boolean {
-  switch (only) {
-    case 'first':
-      return ctx.index === 0
-    case 'last':
-      return ctx.index === ctx.total - 1
-    case 'not-first':
-      return ctx.index !== 0
-    case 'middle':
-      return ctx.index !== 0 && ctx.index !== ctx.total - 1
-    case 'section-first':
-      return isSectionFirst(ctx)
-    case 'not-section-first':
-      return !isSectionFirst(ctx)
-    default:
-      return true
-  }
-}
-
-/** 章の先頭スライド（章扉）かどうか。章に属さないスライドは章の先頭ではない（#191） */
-function isSectionFirst(ctx: MasterRenderContext): boolean {
-  return ctx.section !== undefined && ctx.section.startIndex === ctx.index
 }
 
 /**

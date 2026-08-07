@@ -1,5 +1,5 @@
 import { hasComponent } from './components/ComponentRegistry'
-import type { MasterDecoration, MasterDefinition, MasterRenderContext, SlideData, ThemeData } from './data'
+import type { MasterDecoration, MasterDecorationOnly, MasterDefinition, MasterRenderContext, SlideData, ThemeData } from './data'
 
 const MASTER_DECORATION_TYPES = ['logo', 'band', 'rule', 'text', 'image', 'component'] as const
 const MASTER_ANCHORS = ['top-left', 'top-center', 'top-right', 'middle-left', 'middle-center', 'middle-right', 'bottom-left', 'bottom-center', 'bottom-right'] as const
@@ -62,33 +62,44 @@ export function buildMasterCss(tokens: Record<string, Record<string, string>> | 
     .join('\n')
 }
 
-/** text 装飾の content で使えるテンプレート変数（#191） */
-const MASTER_TEXT_VARIABLES = ['index', 'total', 'sectionNumber', 'sectionTitle', 'sectionIndex', 'sectionTotal'] as const
-type MasterTextVariable = (typeof MASTER_TEXT_VARIABLES)[number]
+/** 装飾の適用条件（only）を描画時の位置・章情報から判定する。未知の値は all と同じ扱いで全スライドに出す
+ * （綴りミスは getMasterWarnings が警告する）。#191 で middle / section-first / not-section-first を追加 */
+export function matchesDecorationOnly(only: MasterDecorationOnly | undefined, ctx: MasterRenderContext): boolean {
+  switch (only) {
+    case 'first':
+      return ctx.index === 0
+    case 'last':
+      return ctx.index === ctx.total - 1
+    case 'not-first':
+      return ctx.index !== 0
+    case 'middle':
+      return ctx.index !== 0 && ctx.index !== ctx.total - 1
+    case 'section-first':
+      return isSectionFirst(ctx)
+    case 'not-section-first':
+      return !isSectionFirst(ctx)
+    default:
+      return true
+  }
+}
+
+/** 章の先頭スライド（章扉）かどうか。章に属さないスライドは章の先頭ではない（#191） */
+function isSectionFirst(ctx: MasterRenderContext): boolean {
+  return ctx.section !== undefined && ctx.section.startIndex === ctx.index
+}
+
+/** text 装飾の content で使えるテンプレート変数（#191）。キーがそのまま既知の変数名の一覧になる */
+const MASTER_TEXT_RESOLVERS = new Map<string, (ctx: MasterRenderContext) => string | number | undefined>([
+  ['index', (ctx) => ctx.index + 1],
+  ['total', (ctx) => ctx.total],
+  ['sectionNumber', (ctx) => ctx.section?.number],
+  ['sectionTitle', (ctx) => ctx.section?.title],
+  ['sectionIndex', (ctx) => (ctx.section ? ctx.index - ctx.section.startIndex + 1 : undefined)],
+  ['sectionTotal', (ctx) => ctx.section?.slideCount],
+])
 
 /** `{name}`（そのまま）または `{name:0N}`（N桁ゼロ詰め）にマッチする */
 const MASTER_TEXT_PATTERN = /\{(\w+)(?::0(\d+))?\}/g
-
-function isMasterTextVariable(name: string): name is MasterTextVariable {
-  return (MASTER_TEXT_VARIABLES as readonly string[]).includes(name)
-}
-
-function masterTextValue(name: MasterTextVariable, ctx: MasterRenderContext): string | number | undefined {
-  switch (name) {
-    case 'index':
-      return ctx.index + 1
-    case 'total':
-      return ctx.total
-    case 'sectionNumber':
-      return ctx.section?.number
-    case 'sectionTitle':
-      return ctx.section?.title
-    case 'sectionIndex':
-      return ctx.section ? ctx.index - ctx.section.startIndex + 1 : undefined
-    case 'sectionTotal':
-      return ctx.section?.slideCount
-  }
-}
 
 /**
  * text 装飾の content 内のテンプレート変数を展開する。`{index}`/`{total}`（ページ番号）に加え、
@@ -100,8 +111,9 @@ function masterTextValue(name: MasterTextVariable, ctx: MasterRenderContext): st
  */
 export function renderMasterText(content: string, ctx: MasterRenderContext): string {
   return content.replace(MASTER_TEXT_PATTERN, (match, name: string, pad: string | undefined) => {
-    if (!isMasterTextVariable(name)) return match
-    const value = masterTextValue(name, ctx)
+    const resolve = MASTER_TEXT_RESOLVERS.get(name)
+    if (!resolve) return match
+    const value = resolve(ctx)
     if (value === undefined) return ''
     return pad ? String(value).padStart(Number(pad), '0') : String(value)
   })
@@ -109,7 +121,7 @@ export function renderMasterText(content: string, ctx: MasterRenderContext): str
 
 /** content 内のテンプレート変数のうち、renderMasterText が展開できない名前を重複なしで返す */
 function unknownTextVariables(content: string): string[] {
-  const names = [...content.matchAll(MASTER_TEXT_PATTERN)].map(([, name]) => name).filter((name) => !isMasterTextVariable(name))
+  const names = [...content.matchAll(MASTER_TEXT_PATTERN)].map(([, name]) => name).filter((name) => !MASTER_TEXT_RESOLVERS.has(name))
   return [...new Set(names)]
 }
 
@@ -164,7 +176,7 @@ export function getMasterWarnings(theme?: ThemeData, slides?: SlideData[]): stri
       }
       if (decoration.type === 'text') {
         for (const name of unknownTextVariables(decoration.content)) {
-          warnings.push(`${path}.content: 不明なテンプレート変数 "{${name}}" です（${MASTER_TEXT_VARIABLES.join('/')} のいずれかを指定してください）`)
+          warnings.push(`${path}.content: 不明なテンプレート変数 "{${name}}" です（${[...MASTER_TEXT_RESOLVERS.keys()].join('/')} のいずれかを指定してください）`)
         }
       }
       if (decoration.type === 'component' && !hasComponent(decoration.name)) {
