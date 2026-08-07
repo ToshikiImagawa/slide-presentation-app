@@ -23,12 +23,12 @@ export function SlideMasterLayer({ decorations, layer, ctx }: Props) {
 }
 
 /**
- * anchor（9方向）+ offset から position: absolute 用のスタイルを組み立て、装飾共通の opacity / rotate も反映する。
+ * 装飾共通のスタイル（anchor 9方向 + offset の position: absolute 配置、opacity、rotate）を組み立てる。
  * stretchAxis を指定した軸は、band が辺いっぱいに広がる際に center 系アンカー（transform: translate(-50%,...)）と
  * 衝突して画面外にずれるのを防ぐため、その軸のセンタリング transform を無効化する。
  * rotate はアンカー位置を動かさないよう translate の後段に置き、要素自身の中心を軸に回す（#189）。
  */
-function anchorStyle(decoration: MasterDecoration, stretchAxis?: 'horizontal' | 'vertical'): CSSProperties {
+function decorationStyle(decoration: MasterDecoration, stretchAxis?: 'horizontal' | 'vertical'): CSSProperties {
   const { anchor, offset } = decoration
   const [vertical, horizontal] = anchor.split('-') as ['top' | 'middle' | 'bottom', 'left' | 'center' | 'right']
 
@@ -57,11 +57,8 @@ function linearGradient(gradient: MasterGradient): string {
   return `linear-gradient(${gradient.angle ?? 180}deg, ${gradient.from}, ${gradient.to})`
 }
 
-/**
- * master の background（無地/格子/全面塗り/グラデーション/画像）を .master-layer-back の最背面に敷く（#189）。
- * background を持たないマスターでは SlideFrame がこの要素自体を描かないため、body のデッキ既定背景が
- * そのまま見える（現行と完全同一のDOM）。
- */
+/** master の background（無地/格子/全面塗り/グラデーション/画像）を .master-layer-back の最背面に敷く（#189）。
+ * 描くかどうか（background を持つマスターだけ）の判断は SlideFrame 側が持つ */
 export function SlideMasterBackground({ background }: { background: MasterBackground }) {
   const className = background.type === 'grid' ? 'master-background master-background-grid' : 'master-background'
   return <div className={className} style={backgroundStyle(background)} />
@@ -73,9 +70,11 @@ function backgroundStyle(background: MasterBackground): CSSProperties {
     case 'plain':
       return { ...base, backgroundColor: 'var(--theme-background)' }
 
-    case 'grid':
+    case 'grid': {
       // 格子の意匠自体は .master-background-grid（global.css）に持たせ、密度だけCSS変数で上書きする
-      return { ...base, backgroundColor: background.color ?? 'var(--theme-background)', ...(background.size !== undefined ? ({ '--theme-background-grid-size': `${background.size}px` } as CSSProperties) : undefined) }
+      const density = background.size !== undefined ? ({ '--theme-background-grid-size': `${background.size}px` } as CSSProperties) : undefined
+      return { ...base, backgroundColor: background.color ?? 'var(--theme-background)', ...density }
+    }
 
     case 'fill':
       return { ...base, backgroundColor: background.color }
@@ -101,38 +100,38 @@ function MasterDecorationElement({ decoration, ctx }: { decoration: MasterDecora
   switch (decoration.type) {
     case 'logo':
       return (
-        <div style={anchorStyle(decoration)}>
+        <div style={decorationStyle(decoration)}>
           <FallbackImage src={decoration.src} width={decoration.width ?? 120} height={decoration.height ?? 40} alt="Logo" />
         </div>
       )
 
     case 'image':
       return (
-        <div style={anchorStyle(decoration)}>
+        <div style={decorationStyle(decoration)}>
           <FallbackImage src={decoration.src} width={decoration.width ?? 120} height={decoration.height ?? 120} alt="" />
         </div>
       )
 
     case 'band': {
-      const style = anchorStyle(decoration, decoration.orientation ?? 'horizontal')
+      const style = decorationStyle(decoration, decoration.orientation ?? 'horizontal')
       const sizeStyle = stripeSize(decoration.orientation, decoration.thickness ?? 8)
       const paint = decoration.gradient ? { backgroundImage: linearGradient(decoration.gradient) } : { backgroundColor: decoration.color ?? 'var(--theme-primary)' }
       return <div style={{ ...style, ...sizeStyle, ...paint }} />
     }
 
     case 'rule': {
-      const style = anchorStyle(decoration)
+      const style = decorationStyle(decoration)
       const sizeStyle = stripeSize(decoration.orientation, decoration.thickness ?? 2, decoration.length ?? 200)
       return <div style={{ ...style, ...sizeStyle, backgroundColor: decoration.color ?? 'var(--theme-primary)' }} />
     }
 
     case 'text':
-      return <div style={{ ...anchorStyle(decoration), color: decoration.color ?? 'var(--theme-text-body)', fontSize: decoration.fontSize, whiteSpace: 'nowrap' }}>{renderMasterText(decoration.content, ctx)}</div>
+      return <div style={{ ...decorationStyle(decoration), color: decoration.color ?? 'var(--theme-text-body)', fontSize: decoration.fontSize, whiteSpace: 'nowrap' }}>{renderMasterText(decoration.content, ctx)}</div>
 
     case 'component':
       // 未登録コンポーネントは FallbackComponent の破線枠が全スライドに並ぶのを避けるため、装飾自体を描画しない
       // （検証エラーは getMasterWarnings 経由で通常ロードのトーストに集約する）
       if (!hasComponent(decoration.name)) return null
-      return <div style={anchorStyle(decoration)}>{renderRegisteredComponent(decoration.name, decoration.props)}</div>
+      return <div style={decorationStyle(decoration)}>{renderRegisteredComponent(decoration.name, decoration.props)}</div>
   }
 }

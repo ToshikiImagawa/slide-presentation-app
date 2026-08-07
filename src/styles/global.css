@@ -163,9 +163,8 @@ body {
   z-index: 2;
 }
 
-/* マスター背景（#189）。theme.masters[key].background を持つマスターだけが .master-layer-back の最背面に
-   敷く要素。背景定義のないテーマでは要素自体を描かないため body のデッキ背景がそのまま見える（現行と同一）。
-   種別ごとの色・画像・不透明度は SlideMasterBackground がインラインスタイルで与える */
+/* マスター背景（#189）。.master-layer-back の最背面に敷く要素で、種別ごとの色・画像・不透明度は
+   SlideMasterBackground がインラインスタイルで与える */
 .master-background {
   inset: 0;
   position: absolute;

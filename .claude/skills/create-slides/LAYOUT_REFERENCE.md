@@ -310,7 +310,7 @@
     "customCSS": ".reveal h1 { text-shadow: none; }",
     "masters": {
       "standard": {
-        "background": { "type": "grid", "size": 40 },
+        "background": { "type": "grid", "size": 24 },
         "decorations": [
           { "type": "band", "anchor": "top-center", "thickness": 6, "color": "var(--theme-primary)" },
           { "type": "text", "anchor": "bottom-right", "content": "{index} / {total}", "only": "not-first" },
@@ -337,14 +337,14 @@
 
 `masters` は masterKey → 背景意匠（`background`）と装飾セット（`decorations`）の定義。装飾は `logo`/`band`/`rule`/`text`/`image`/`component` の6種のみで、`anchor`（9方向）・`offset`（`{x,y}`のpx）・`only`（後述。省略時 `all`）・`layer`（`back`/`front`。省略時 `back`）・`opacity`（0〜1。省略時 1）・`rotate`（deg・時計回り。アンカー位置は動かさず要素の中心を軸に回す）を組み合わせて宣言する。`extends` で他の masterKey の定義を継承できる（循環参照は不可）。`decorations` は親→子の順にマージし、`background` は重ねられないため自身の定義が親より勝つ。
 
-透かし（機密表記等）は `text`/`image` 装飾に `opacity` と `rotate` を付けて表現する。斜め帯は `band` に `rotate`、グラデーション帯は `band` に `gradient`（`{ from, to, angle }`）を指定する（`color` の代わりに使う）。
+透かし（機密表記等）は `text`/`image` 装飾に `opacity` と `rotate` を付けて表現する。グラデーション帯は `band` に `gradient`（`{ from, to, angle }`）を指定する（`color` の代わりに使う）。斜めのストライプは `rule` に `length`（対角を覆う長さ）・`thickness`・`rotate` を指定する（辺いっぱいに伸びる `band` を回すと両端に隙間が出る）。
 
 `background` はマスター単位の背景意匠。省略するとデッキ既定の背景（テーマ背景色＋格子）がそのまま見える。`opacity`（0〜1）を下げるとデッキ既定の背景が透ける。
 
 | `type` | 追加プロパティ | 用途 |
 |---|---|---|
 | `plain` | なし | 無地（テーマ背景色で塗り、デッキ既定の格子を隠す） |
-| `grid` | `color`（下地色・省略時テーマ背景色）/ `size`（格子の間隔px・省略時 40） | 格子（デッキ既定と同じ意匠。`size` で密度を変える） |
+| `grid` | `color`（下地色・省略時テーマ背景色）/ `size`（格子の間隔px） | 格子（デッキ既定と同じ意匠）。`size` 省略時はデッキ既定と同じ間隔なので、密度・下地色を変えるときだけ指定する |
 | `fill` | `color`（必須） | 全面塗り（章扉の反転面等） |
 | `gradient` | `from` / `to`（必須）/ `angle`（deg・省略時 180 = 上→下） | グラデーション |
 | `image` | `src`（必須）/ `fit`（`cover`/`contain`・省略時 `cover`） | 画像を全面に敷く |

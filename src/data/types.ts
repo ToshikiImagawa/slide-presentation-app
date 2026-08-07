@@ -284,13 +284,13 @@ export interface PlainMasterBackground extends MasterBackgroundBase {
   type: 'plain'
 }
 
-/** 格子背景（デッキ既定の背景と同じ意匠。既定値は現行の body 背景と同一で、size で密度を変える）。
+/** 格子背景（デッキ既定の背景と同じ意匠。size で密度を変える）。
  * 格子線の色はマスタースコープの tokens（`theme-background-grid`）で変えられる */
 export interface GridMasterBackground extends MasterBackgroundBase {
   type: 'grid'
   /** 格子の下地色。省略時は var(--theme-background) */
   color?: string
-  /** 格子の間隔（px）。省略時は 40 */
+  /** 格子の間隔（px）。省略時はデッキ既定の格子と同じ間隔（--theme-background-grid-size） */
   size?: number
 }
 

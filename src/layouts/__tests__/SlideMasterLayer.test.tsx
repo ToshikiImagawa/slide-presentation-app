@@ -13,6 +13,12 @@ function isVisible(only: MasterDecorationOnly, renderCtx: MasterRenderContext): 
   return container.textContent === 'shown'
 }
 
+/** 装飾1件を描画してそのルート要素の style を返す */
+function styleOf(decoration: MasterDecoration): CSSStyleDeclaration {
+  const { container } = render(<SlideMasterLayer decorations={[decoration]} layer="back" ctx={ctx} />)
+  return (container.firstElementChild as HTMLElement).style
+}
+
 describe('SlideMasterLayer', () => {
   beforeEach(() => {
     clearRegistry()
@@ -71,13 +77,8 @@ describe('SlideMasterLayer', () => {
     })
   })
 
-  // #189: 装飾共通の opacity / rotate（透かし・斜め帯を6種のまま表現する）
+  // #189: 装飾共通の opacity / rotate（透かし・回転を6種のまま表現する）
   describe('装飾共通の opacity / rotate', () => {
-    const styleOf = (decoration: MasterDecoration): CSSStyleDeclaration => {
-      const { container } = render(<SlideMasterLayer decorations={[decoration]} layer="back" ctx={ctx} />)
-      return (container.firstElementChild as HTMLElement).style
-    }
-
     it('opacity を指定すると透かしとして薄く描画する', () => {
       expect(styleOf({ type: 'text', anchor: 'middle-center', content: 'CONFIDENTIAL', opacity: 0.08 }).opacity).toBe('0.08')
     })
@@ -95,26 +96,21 @@ describe('SlideMasterLayer', () => {
     })
   })
 
-  // #189: 帯のグラデーション（shape 装飾を増やさずに斜め帯・グラデーション帯を表現する）
+  // #189: 帯のグラデーション（shape 装飾を増やさずにグラデーション帯を表現する）
   // 色は jsdom が rgb() に正規化するため、期待値も正規化後の表記で書く
   describe('band のグラデーション', () => {
-    const bandStyle = (decoration: MasterDecoration): CSSStyleDeclaration => {
-      const { container } = render(<SlideMasterLayer decorations={[decoration]} layer="back" ctx={ctx} />)
-      return (container.firstElementChild as HTMLElement).style
-    }
-
     it('gradient 指定時は backgroundImage で塗る', () => {
-      const style = bandStyle({ type: 'band', anchor: 'bottom-center', gradient: { from: '#000', to: '#fff', angle: 90 } })
+      const style = styleOf({ type: 'band', anchor: 'bottom-center', gradient: { from: '#000', to: '#fff', angle: 90 } })
       expect(style.backgroundImage).toBe('linear-gradient(90deg, rgb(0, 0, 0), rgb(255, 255, 255))')
       expect(style.backgroundColor).toBe('')
     })
 
     it('angle 省略時は 180deg（上→下）', () => {
-      expect(bandStyle({ type: 'band', anchor: 'bottom-center', gradient: { from: '#000', to: '#fff' } }).backgroundImage).toBe('linear-gradient(180deg, rgb(0, 0, 0), rgb(255, 255, 255))')
+      expect(styleOf({ type: 'band', anchor: 'bottom-center', gradient: { from: '#000', to: '#fff' } }).backgroundImage).toBe('linear-gradient(180deg, rgb(0, 0, 0), rgb(255, 255, 255))')
     })
 
     it('gradient 未指定時は既存どおり color で塗る', () => {
-      const style = bandStyle({ type: 'band', anchor: 'top-center' })
+      const style = styleOf({ type: 'band', anchor: 'top-center' })
       expect(style.backgroundColor).toBe('var(--theme-primary)')
       expect(style.backgroundImage).toBe('')
     })

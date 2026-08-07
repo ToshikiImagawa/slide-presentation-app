@@ -1,5 +1,5 @@
 import { hasComponent } from './components/ComponentRegistry'
-import type { MasterBackground, MasterDecoration, MasterDecorationOnly, MasterDefinition, MasterRenderContext, SlideData, ThemeData } from './data'
+import type { MasterBackground, MasterDecoration, MasterDecorationOnly, MasterDefinition, MasterGradient, MasterRenderContext, SlideData, ThemeData } from './data'
 
 const MASTER_DECORATION_TYPES = ['logo', 'band', 'rule', 'text', 'image', 'component'] as const
 const MASTER_ANCHORS = ['top-left', 'top-center', 'top-right', 'middle-left', 'middle-center', 'middle-right', 'bottom-left', 'bottom-center', 'bottom-right'] as const
@@ -11,13 +11,13 @@ const MASTER_BACKGROUND_FITS = ['cover', 'contain'] as const
 export interface ResolvedMaster {
   masterKey: string
   decorations: MasterDecoration[]
-  /** 背景意匠。未指定のマスターでは undefined（呼び出し元は背景要素自体を描かない・#189） */
+  /** 背景意匠。未指定のマスターでは undefined（#189） */
   background?: MasterBackground
 }
 
 /**
- * masterKey を解決順序どおりに候補列挙し、extends チェーンを辿って decorations を合成する
- * （親→子の順にマージ）。解決順序: ①opts.master（スライド個別指定）→ ②masterMap["<layout>/<variant>"]
+ * masterKey を解決順序どおりに候補列挙し、extends チェーンを辿って定義を合成する
+ * （collectDefinition）。解決順序: ①opts.master（スライド個別指定）→ ②masterMap["<layout>/<variant>"]
  * （opts.variant があるときのみ）→ ③masterMap["<layout>"] → ④解決なし。
  * 各候補は masters に存在し extends が循環していない場合のみ採用し、そうでなければ次の候補へ
  * フォールバックする（未解決の masterKey 指定は getMasterWarnings が警告する）。
@@ -31,25 +31,25 @@ export function resolveMaster(theme: ThemeData | undefined, layout: string, opts
 
   for (const masterKey of candidates) {
     if (!masterKey || !masters?.[masterKey] || isCircular(masters, masterKey)) continue
-    return { masterKey, decorations: collectDecorations(masters, masterKey), background: resolveBackground(masters, masterKey) }
+    return { masterKey, ...collectDefinition(masters, masterKey) }
   }
 
   return undefined
 }
 
-function collectDecorations(masters: Record<string, MasterDefinition>, key: string): MasterDecoration[] {
+/**
+ * extends チェーンを1度だけ辿って定義を合成する（循環していないことは呼び出し側が確認済み）。
+ * フィールドごとのマージ規則: decorations は親→子の順に連結し、background は重ね合わせできないため
+ * 自身に近い定義が勝つ（#189）。継承対象のフィールドを増やすときはここに規則を1行足す。
+ */
+function collectDefinition(masters: Record<string, MasterDefinition>, key: string): Omit<ResolvedMaster, 'masterKey'> {
   const definition = masters[key]
-  if (!definition) return []
-  const inherited = definition.extends ? collectDecorations(masters, definition.extends) : []
-  return [...inherited, ...(definition.decorations ?? [])]
-}
-
-/** 背景は decorations と違い重ね合わせできないため、extends チェーンで最も手前（自身に近い）の定義が勝つ（#189） */
-function resolveBackground(masters: Record<string, MasterDefinition>, key: string): MasterBackground | undefined {
-  const definition = masters[key]
-  if (!definition) return undefined
-  if (definition.background) return definition.background
-  return definition.extends ? resolveBackground(masters, definition.extends) : undefined
+  if (!definition) return { decorations: [] }
+  const inherited = definition.extends ? collectDefinition(masters, definition.extends) : { decorations: [] }
+  return {
+    decorations: [...inherited.decorations, ...(definition.decorations ?? [])],
+    background: definition.background ?? inherited.background,
+  }
 }
 
 /**
@@ -132,8 +132,16 @@ export function renderMasterText(content: string, ctx: MasterRenderContext): str
 }
 
 /** opacity は未指定（=1 相当）か 0〜1 の数値のみ許容する（JSON 由来のため文字列・NaN・Infinity も来る・#189） */
-function isValidOpacity(opacity: number | undefined): boolean {
-  return opacity === undefined || (typeof opacity === 'number' && opacity >= 0 && opacity <= 1)
+function opacityWarnings(opacity: number | undefined, path: string): string[] {
+  if (opacity === undefined || (typeof opacity === 'number' && opacity >= 0 && opacity <= 1)) return []
+  return [`${path}.opacity: 0〜1 の数値を指定してください（"${opacity}"）`]
+}
+
+/** MasterGradient は背景（type: gradient）と帯装飾（band.gradient）で共有するため、検証も共有する（#189）。
+ * 片方が欠けると linear-gradient 自体が不正になり CSS 側で宣言ごと破棄される（無言で消える）ため警告する */
+function gradientWarnings(gradient: MasterGradient, path: string): string[] {
+  if (!gradient.from || !gradient.to) return [`${path}: gradient には from / to の両方が必要です`]
+  return []
 }
 
 /**
@@ -145,10 +153,7 @@ function backgroundWarnings(background: MasterBackground, path: string): string[
     return [`${path}.type: 不明な種別 "${background.type}" です（${MASTER_BACKGROUND_TYPES.join('/')} のいずれかを指定してください）`]
   }
 
-  const warnings: string[] = []
-  if (!isValidOpacity(background.opacity)) {
-    warnings.push(`${path}.opacity: 0〜1 の数値を指定してください（"${background.opacity}"）`)
-  }
+  const warnings = opacityWarnings(background.opacity, path)
 
   switch (background.type) {
     case 'grid':
@@ -162,9 +167,7 @@ function backgroundWarnings(background: MasterBackground, path: string): string[
       }
       break
     case 'gradient':
-      if (!background.from || !background.to) {
-        warnings.push(`${path}: gradient には from / to の両方が必要です`)
-      }
+      warnings.push(...gradientWarnings(background, path))
       break
     case 'image':
       if (!background.src) {
@@ -237,11 +240,12 @@ export function getMasterWarnings(theme?: ThemeData, slides?: SlideData[]): stri
       if (decoration.layer && !MASTER_DECORATION_LAYER.includes(decoration.layer)) {
         warnings.push(`${path}.layer: 不明な値 "${decoration.layer}" です`)
       }
-      if (!isValidOpacity(decoration.opacity)) {
-        warnings.push(`${path}.opacity: 0〜1 の数値を指定してください（"${decoration.opacity}"）`)
-      }
+      warnings.push(...opacityWarnings(decoration.opacity, path))
       if (decoration.rotate !== undefined && !Number.isFinite(decoration.rotate)) {
         warnings.push(`${path}.rotate: 数値（deg）を指定してください（"${decoration.rotate}"）`)
+      }
+      if (decoration.type === 'band' && decoration.gradient) {
+        warnings.push(...gradientWarnings(decoration.gradient, `${path}.gradient`))
       }
       if (decoration.type === 'text') {
         for (const name of unknownTextVariables(decoration.content)) {

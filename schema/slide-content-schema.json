@@ -218,7 +218,7 @@
             "type": { "type": "string", "enum": ["plain", "grid", "fill", "gradient", "image"], "description": "plain=無地（テーマ背景色で塗り格子を隠す）/ grid=格子（デッキ既定と同じ意匠）/ fill=全面塗り / gradient=グラデーション / image=画像を全面に敷く" },
             "opacity": { "type": "number", "description": "0〜1。省略時1。下げるとデッキ既定の背景が透ける" },
             "color": { "type": "string", "description": "type: fill で必須（塗り色）。type: grid では格子の下地色（省略時テーマ背景色）" },
-            "size": { "type": "number", "description": "type: grid で使用（格子の間隔px。省略時40）。格子線の色はtokensのmasterKeyスコープでtheme-background-gridを上書きする" },
+            "size": { "type": "number", "description": "type: grid で使用（格子の間隔px）。省略時はデッキ既定の格子と同じ間隔になるので、密度を変えるときだけ指定する。格子線の色はtokensのmasterKeyスコープでtheme-background-gridを上書きする" },
             "from": { "type": "string", "description": "type: gradient で必須（開始色）" },
             "to": { "type": "string", "description": "type: gradient で必須（終了色）" },
             "angle": { "type": "number", "description": "type: gradient で使用（deg。省略時180=上→下）" },
@@ -249,7 +249,15 @@
             "width": { "type": "number", "description": "type: logo/image で使用" },
             "height": { "type": "number", "description": "type: logo/image で使用" },
             "color": { "type": "string", "description": "type: band/rule/text で使用" },
-            "gradient": { "type": "object", "description": "type: band で使用。{ from, to, angle }（angle省略時180=上→下）。指定時はcolorの代わりにグラデーションで塗る" },
+            "gradient": {
+              "type": "object",
+              "description": "type: band で使用。指定時はcolorの代わりにグラデーションで塗る（背景のtype: gradientと同じ形）",
+              "fields": {
+                "from": { "type": "string", "description": "開始色（必須）" },
+                "to": { "type": "string", "description": "終了色（必須）" },
+                "angle": { "type": "number", "description": "deg。省略時180=上→下" }
+              }
+            },
             "thickness": { "type": "number", "description": "type: band/rule で使用（帯・線の太さ）" },
             "length": { "type": "number", "description": "type: rule で使用（線の長さ）" },
             "orientation": { "type": "string", "enum": ["horizontal", "vertical"], "description": "type: band/rule で使用" },
