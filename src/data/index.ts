@@ -13,6 +13,8 @@ export type {
   PresenterProgressState,
   PresenterViewMessage,
   ThemeData,
+  CanvasData,
+  SafeArea,
   ColorPalette,
   FontDefinition,
   FontSource,

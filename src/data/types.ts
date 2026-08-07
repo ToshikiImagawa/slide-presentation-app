@@ -147,6 +147,26 @@ export interface ThemeData {
   masterMap?: Record<string, string>
   /** masterKey ごとの CSS 変数トークン。buildMasterCss が section[data-master="key"] スコープで出力する */
   tokens?: Record<string, Record<string, string>>
+  /** キャンバスサイズ・セーフエリア（#188）。未指定時は現行と完全同一（1280x720 / 各辺60px） */
+  canvas?: CanvasData
+}
+
+/** キャンバスの保護領域（px）。マスター装飾と本文が重ならないよう .master-body の余白として使う（#188）。
+ * 未指定の辺は CSS 側の var() フォールバックで 60px（現行の .master-body padding と同一）になる */
+export interface SafeArea {
+  top?: number
+  right?: number
+  bottom?: number
+  left?: number
+}
+
+/** キャンバス定義（スライドサイズ・セーフエリア）。useReveal の初期化・pdfExport の用紙比率・
+ * SlidePreview/PresenterViewWindow の縮小表示の基準に使う（#188）。width/height 未指定時は
+ * useReveal.SLIDE_WIDTH/SLIDE_HEIGHT（1280x720）にフォールバックする */
+export interface CanvasData {
+  width?: number
+  height?: number
+  safeArea?: SafeArea
 }
 
 /** マスター装飾のアンカー位置（9方向） */

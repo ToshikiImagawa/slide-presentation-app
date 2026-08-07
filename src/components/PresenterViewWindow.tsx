@@ -4,14 +4,14 @@ import { getSpeakerNotes, getSlideSummary } from '../data'
 import { useTranslation } from '../i18n'
 import { FillProgress } from './FillProgress'
 import { SlideRenderer } from './SlideRenderer'
+import { SLIDE_WIDTH, SLIDE_HEIGHT } from '../hooks/useReveal'
 import styles from './PresenterViewWindow.module.css'
 
-const ASPECT_RATIO = 16 / 9
 const PREVIEW_GAP = 12
 const HEADING_HEIGHT = 30 // h2 の高さ + gap の概算
 
-/** コンテナサイズから16:9制約付きプレビューレイアウトを計算する */
-function usePreviewLayout(containerRef: React.RefObject<HTMLDivElement | null>, controlBarRef: React.RefObject<HTMLDivElement | null>) {
+/** コンテナサイズから aspectRatio 制約付きプレビューレイアウトを計算する（既定は16:9。#188） */
+function usePreviewLayout(containerRef: React.RefObject<HTMLDivElement | null>, controlBarRef: React.RefObject<HTMLDivElement | null>, aspectRatio: number) {
   const [layout, setLayout] = useState({ mainContentHeight: 0, rightColumnWidth: 0, previewHeight: 0 })
 
   const calculate = useCallback(() => {
@@ -33,20 +33,20 @@ function usePreviewLayout(containerRef: React.RefObject<HTMLDivElement | null>, 
     const maxMainContentHeight = availableHeight * 0.8
     // 各プレビューの最大高さ: (mainContent高さ - gap - 見出し2つ分) / 2
     let previewHeight = (maxMainContentHeight - PREVIEW_GAP - HEADING_HEIGHT * 2) / 2
-    let previewWidth = previewHeight * ASPECT_RATIO
+    let previewWidth = previewHeight * aspectRatio
 
     // 幅が利用可能幅の半分を超える場合は幅で制約
     const maxPreviewWidth = availableWidth * 0.5
     if (previewWidth > maxPreviewWidth) {
       previewWidth = maxPreviewWidth
-      previewHeight = previewWidth / ASPECT_RATIO
+      previewHeight = previewWidth / aspectRatio
     }
 
     const mainContentHeight = previewHeight * 2 + PREVIEW_GAP + HEADING_HEIGHT * 2
     const rightColumnWidth = previewWidth
 
     setLayout({ mainContentHeight, rightColumnWidth, previewHeight })
-  }, [containerRef, controlBarRef])
+  }, [containerRef, controlBarRef, aspectRatio])
 
   useEffect(() => {
     const container = containerRef.current
@@ -91,9 +91,13 @@ export function PresenterViewWindow({ slides, currentIndex, logo, theme, control
   const autoPlayLabel = t('presenterView.autoPlay')
   const autoSlideshowLabel = t('presenterView.autoSlideshow')
 
+  const canvasWidth = theme?.canvas?.width ?? SLIDE_WIDTH
+  const canvasHeight = theme?.canvas?.height ?? SLIDE_HEIGHT
+  const canvasAspectRatio = `${canvasWidth} / ${canvasHeight}`
+
   const containerRef = useRef<HTMLDivElement>(null)
   const controlBarRef = useRef<HTMLDivElement>(null)
-  const { mainContentHeight, rightColumnWidth, previewHeight } = usePreviewLayout(containerRef, controlBarRef)
+  const { mainContentHeight, rightColumnWidth, previewHeight } = usePreviewLayout(containerRef, controlBarRef, canvasWidth / canvasHeight)
 
   // キーボード操作
   useEffect(() => {
@@ -185,7 +189,7 @@ export function PresenterViewWindow({ slides, currentIndex, logo, theme, control
           {/* 次スライドプレビュー */}
           <div className={styles.previewPanel}>
             <h2>{t('presenterView.nextSlide')}</h2>
-            <div className={styles.previewFrame} style={{ height: previewHeight > 0 ? previewHeight : undefined, aspectRatio: '16 / 9' }}>
+            <div className={styles.previewFrame} style={{ height: previewHeight > 0 ? previewHeight : undefined, aspectRatio: canvasAspectRatio }}>
               {nextSlide ? <PreviewSlide slide={nextSlide} logo={logo} theme={theme} index={currentIndex + 1} total={slides.length} /> : <div className={styles.boundaryMessage}>{t('presenterView.lastSlide')}</div>}
             </div>
           </div>
@@ -193,7 +197,7 @@ export function PresenterViewWindow({ slides, currentIndex, logo, theme, control
           {/* 前スライドプレビュー */}
           <div className={styles.previewPanel}>
             <h2>{t('presenterView.previousSlide')}</h2>
-            <div className={styles.previewFrame} style={{ height: previewHeight > 0 ? previewHeight : undefined, aspectRatio: '16 / 9' }}>
+            <div className={styles.previewFrame} style={{ height: previewHeight > 0 ? previewHeight : undefined, aspectRatio: canvasAspectRatio }}>
               {previousSlide ? <PreviewSlide slide={previousSlide} logo={logo} theme={theme} index={currentIndex - 1} total={slides.length} /> : <div className={styles.boundaryMessage}>{t('presenterView.firstSlide')}</div>}
             </div>
           </div>
@@ -221,6 +225,8 @@ export function PresenterViewWindow({ slides, currentIndex, logo, theme, control
 function PreviewSlide({ slide, logo, theme, index, total }: { slide: SlideData; logo?: LogoConfig; theme?: ThemeData; index: number; total: number }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [scale, setScale] = useState(0.3)
+  const canvasWidth = theme?.canvas?.width ?? SLIDE_WIDTH
+  const canvasHeight = theme?.canvas?.height ?? SLIDE_HEIGHT
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -230,8 +236,8 @@ function PreviewSlide({ slide, logo, theme, index, total }: { slide: SlideData; 
     const updateScale = () => {
       const parentWidth = parent.clientWidth
       const parentHeight = parent.clientHeight
-      const scaleX = parentWidth / 1280
-      const scaleY = parentHeight / 720
+      const scaleX = parentWidth / canvasWidth
+      const scaleY = parentHeight / canvasHeight
       setScale(Math.min(scaleX, scaleY))
     }
 
@@ -239,10 +245,12 @@ function PreviewSlide({ slide, logo, theme, index, total }: { slide: SlideData; 
     const observer = new ResizeObserver(updateScale)
     observer.observe(parent)
     return () => observer.disconnect()
-  }, [])
+  }, [canvasWidth, canvasHeight])
+
+  const canvasVars = { '--preview-canvas-width': `${canvasWidth}px`, '--preview-canvas-height': `${canvasHeight}px` } as React.CSSProperties
 
   return (
-    <div ref={containerRef} className={styles.previewScaler} style={{ transform: `scale(${scale})` }}>
+    <div ref={containerRef} className={styles.previewScaler} style={{ ...canvasVars, transform: `scale(${scale})` }}>
       <div className={`reveal ${styles.previewReveal}`}>
         <div className="slides">
           <SlideRenderer.Slide slide={slide} logo={logo} theme={theme} index={index} total={total} />

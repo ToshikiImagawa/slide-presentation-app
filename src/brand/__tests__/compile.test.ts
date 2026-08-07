@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { getContrastRatio } from '../../applyTheme'
-import { compile } from '../compile'
-import type { BrandOverrides, BrandProfile, MappedColorKey } from '../types'
+import { compile, mergeCompiledBrandTheme } from '../compile'
+import type { BrandOverrides, BrandProfile, CompiledBrandTheme, MappedColorKey } from '../types'
 
 function profile(overrides: Partial<BrandProfile> = {}): BrandProfile {
   const mappedColors: Record<MappedColorKey, string | null> = {
@@ -171,6 +171,42 @@ describe('compile（#168 の並置比較・取り込み確認）', () => {
     })
   })
 
+  describe('キャンバス（#188）', () => {
+    it('16:9（既定 profile）は canvas 1280x720（現行と完全同一）', () => {
+      const { theme } = compile(profile(), {})
+      expect(theme.canvas).toEqual({ width: 1280, height: 720 })
+    })
+
+    it('4:3 テンプレートは幅1280固定・実比率から高さ960を算出する', () => {
+      const p = profile({ slideSize: { widthEmu: 9_144_000, heightEmu: 6_858_000 } })
+      const { theme } = compile(p, {})
+      expect(theme.canvas).toEqual({ width: 1280, height: 960 })
+    })
+
+    it('slideSize が無い場合は canvas を生成しない（既定の1280x720のまま）', () => {
+      const p = profile({ slideSize: null })
+      const { theme } = compile(p, {})
+      expect(theme.canvas).toBeUndefined()
+    })
+
+    it('4:3 テンプレートのロゴ/帯の px 換算は実際の canvas 高さ（960）を基準にする', () => {
+      const p = profile({
+        slideSize: { widthEmu: 9_144_000, heightEmu: 6_858_000 },
+        logoCandidates: [{ nameHint: 'Company Logo', image: { contentType: 'image/png', base64: 'Zm9v' }, widthEmu: 914_400, heightEmu: 304_800, xEmu: 10_000_000, yEmu: 6_000_000 }],
+        bandCandidates: [{ orientation: 'horizontal', anchor: 'top-center', colorHex: '#1f4e79', thicknessEmu: 457_200 }],
+      })
+      const { theme } = compile(p, { selectedLogoIndex: 0, selectedBandIndices: [0] })
+
+      const logo = theme.masters.brand.decorations!.find((d) => d.type === 'logo')
+      // heightEmu 304_800 / slideHeightEmu 6_858_000 * canvasHeight(960) ≈ 43（720基準なら32）
+      expect(logo?.type === 'logo' && logo.height).toBeCloseTo(43, 0)
+
+      const band = theme.masters.brand.decorations!.find((d) => d.type === 'band')
+      // thicknessEmu 457_200 / slideHeightEmu 6_858_000 * canvasHeight(960) = 64（720基準なら48）
+      expect(band?.type === 'band' && band.thickness).toBeCloseTo(64, 0)
+    })
+  })
+
   describe('masterMap / tokens', () => {
     it('主要レイアウト種別すべてを合成した brand master へ割り当てる', () => {
       const { theme } = compile(profile(), {})
@@ -281,5 +317,26 @@ describe('compile（#168 の並置比較・取り込み確認）', () => {
       const { theme } = compile(withLayouts(), { layoutAssignments: { '0:0': 'not-a-real-slot' as never } })
       expect(Object.keys(theme.masters)).toEqual(['brand'])
     })
+  })
+})
+
+describe('mergeCompiledBrandTheme のキャンバス合成（#188）', () => {
+  function compiledTheme(overrides: Partial<CompiledBrandTheme> = {}): CompiledBrandTheme {
+    return { colors: {} as CompiledBrandTheme['colors'], fonts: {}, masters: {}, masterMap: {}, tokens: {}, logo: null, ...overrides }
+  }
+
+  it('compiled.canvas を base へ合成する', () => {
+    const merged = mergeCompiledBrandTheme(undefined, compiledTheme({ canvas: { width: 1280, height: 960 } }))
+    expect(merged.canvas).toEqual({ width: 1280, height: 960 })
+  })
+
+  it('base.canvas.safeArea は compiled.canvas に無いので保持される', () => {
+    const merged = mergeCompiledBrandTheme({ canvas: { safeArea: { top: 40 } } }, compiledTheme({ canvas: { width: 1280, height: 960 } }))
+    expect(merged.canvas).toEqual({ width: 1280, height: 960, safeArea: { top: 40 } })
+  })
+
+  it('compiled.canvas が無い（slideSize 未検出）場合は base.canvas をそのまま保持する', () => {
+    const merged = mergeCompiledBrandTheme({ canvas: { width: 1280, height: 720 } }, compiledTheme())
+    expect(merged.canvas).toEqual({ width: 1280, height: 720 })
   })
 })

@@ -7,6 +7,9 @@ export const SLIDE_HEIGHT = 720
 
 export interface UseRevealOptions {
   onSlideChanged?: (event: { indexh: number; indexv: number }) => void
+  /** キャンバスサイズ（px）。テーマの canvas 未指定時は SLIDE_WIDTH/SLIDE_HEIGHT（現行と完全同一） */
+  canvasWidth?: number
+  canvasHeight?: number
 }
 
 export interface UseRevealReturn {
@@ -40,8 +43,8 @@ export function useReveal(options?: UseRevealOptions): UseRevealReturn {
     }
 
     const deck = new Reveal(deckRef.current, {
-      width: SLIDE_WIDTH,
-      height: SLIDE_HEIGHT,
+      width: options?.canvasWidth ?? SLIDE_WIDTH,
+      height: options?.canvasHeight ?? SLIDE_HEIGHT,
       margin: 0,
       minScale: 0.2,
       maxScale: 2.0,

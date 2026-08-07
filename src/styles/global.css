@@ -108,7 +108,9 @@ body {
 
 /* 余白は section ではなく .master-body に持たせる。プレビュー系CSS（SlidePreview.module.css /
    PresenterViewWindow.module.css）の padding:0 !important は section にしか当たらないため、
-   本編・発表者ビュー・編集プレビュー・PDF書き出しの4経路で同じ余白になる */
+   本編・発表者ビュー・編集プレビュー・PDF書き出しの4経路で同じ余白になる。
+   セーフエリア（テーマの canvas.safeArea）は --theme-safe-* として applyTheme.ts が設定する。
+   未指定時は var() のフォールバックで現行と同じ 60px になる（#188） */
 .master-body {
   align-items: center;
   box-sizing: border-box;
@@ -118,7 +120,7 @@ body {
   justify-content: center;
   min-height: 0;
   overflow: hidden;
-  padding: 60px;
+  padding: var(--theme-safe-top, 60px) var(--theme-safe-right, 60px) var(--theme-safe-bottom, 60px) var(--theme-safe-left, 60px);
   position: relative;
   width: 100%;
   z-index: 1;

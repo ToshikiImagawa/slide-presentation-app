@@ -7,15 +7,14 @@ const h = vi.hoisted(() => ({
   addPage: vi.fn(),
   addImage: vi.fn(),
   output: vi.fn(),
+  jsPDFCtor: vi.fn(),
 }))
 
 vi.mock('@tauri-apps/plugin-fs', () => ({ writeFile: h.writeFile }))
 vi.mock('@tauri-apps/plugin-dialog', () => ({ save: h.save }))
 vi.mock('html2canvas', () => ({ default: h.html2canvas }))
 vi.mock('jspdf', () => ({
-  jsPDF: vi.fn().mockImplementation(function MockJsPDF() {
-    return { addPage: h.addPage, addImage: h.addImage, output: h.output }
-  }),
+  jsPDF: h.jsPDFCtor,
 }))
 
 import { exportSlidesToPdf } from '../pdfExport'
@@ -41,6 +40,10 @@ describe('exportSlidesToPdf', () => {
     h.addPage.mockReset()
     h.addImage.mockReset()
     h.output.mockReset()
+    h.jsPDFCtor.mockReset()
+    h.jsPDFCtor.mockImplementation(function MockJsPDF() {
+      return { addPage: h.addPage, addImage: h.addImage, output: h.output }
+    })
     h.html2canvas.mockResolvedValue({ toDataURL: () => 'data:image/png;base64,dummy' })
     h.output.mockReturnValue(new ArrayBuffer(4))
   })
@@ -137,5 +140,28 @@ describe('exportSlidesToPdf', () => {
         expect(className).toBe('future')
       }
     }
+  })
+
+  describe('キャンバスサイズ（#188）', () => {
+    it('canvasWidth/canvasHeight 省略時は 1280x720（現行と完全同一）', async () => {
+      h.save.mockResolvedValue('/tmp/my-deck.pdf')
+
+      await exportSlidesToPdf(buildDeck(1), 'my-deck')
+
+      expect(h.jsPDFCtor).toHaveBeenCalledWith({ orientation: 'landscape', unit: 'px', format: [1280, 720] })
+      expect(h.html2canvas).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ width: 1280, height: 720 }))
+      expect(h.addImage).toHaveBeenCalledWith(expect.anything(), 'PNG', 0, 0, 1280, 720)
+    })
+
+    it('canvasWidth/canvasHeight を指定するとその用紙比率・キャプチャサイズになる（4:3等）', async () => {
+      h.save.mockResolvedValue('/tmp/my-deck.pdf')
+
+      await exportSlidesToPdf(buildDeck(2), 'my-deck', 1280, 960)
+
+      expect(h.jsPDFCtor).toHaveBeenCalledWith({ orientation: 'landscape', unit: 'px', format: [1280, 960] })
+      expect(h.html2canvas).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ width: 1280, height: 960 }))
+      expect(h.addPage).toHaveBeenCalledWith([1280, 960], 'landscape')
+      expect(h.addImage).toHaveBeenCalledWith(expect.anything(), 'PNG', 0, 0, 1280, 960)
+    })
   })
 })
