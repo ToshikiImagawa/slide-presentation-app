@@ -535,5 +535,52 @@ describe('SlideRenderer', () => {
         expect(section.getAttribute('data-master')).toBe('standard')
       })
     })
+
+    // #191: 章（meta.section）を装飾テキストへ差し込む
+    describe('章の概念（#191）', () => {
+      const sectionTheme: ThemeData = {
+        masters: {
+          standard: {
+            decorations: [
+              { type: 'text', anchor: 'bottom-left', content: '第 {sectionNumber:02} 章 {sectionTitle}（{sectionIndex}/{sectionTotal}）', layer: 'front' },
+              { type: 'rule', anchor: 'bottom-center', only: 'section-first' },
+            ],
+          },
+        },
+        masterMap: { content: 'standard' },
+      }
+
+      /** meta.section だけを与えた content スライドを並べる */
+      function sectionDeck(...sections: (string | undefined)[]): SlideData[] {
+        return sections.map((section, i) => ({ id: `s${i}`, layout: 'content', content: { title: `slide ${i}` }, meta: section ? { section } : undefined }))
+      }
+
+      const footerOf = (container: HTMLElement, index: number) => container.querySelectorAll('section.slide-container')[index].querySelector('.master-layer-front')?.textContent
+
+      it('章番号（ゼロ詰め）・章タイトル・章内連番をデッキ全体の並びから解決して差し込む', () => {
+        const { container } = renderWithTheme(<SlideRenderer slides={sectionDeck(undefined, '導入', '導入', '設計')} theme={sectionTheme} />)
+        expect(footerOf(container, 1)).toBe('第 01 章 導入（1/2）')
+        expect(footerOf(container, 2)).toBe('第 01 章 導入（2/2）')
+        expect(footerOf(container, 3)).toBe('第 02 章 設計（1/1）')
+      })
+
+      it('章に属さないスライドでは章の変数が空文字になる', () => {
+        const { container } = renderWithTheme(<SlideRenderer slides={sectionDeck(undefined, '導入')} theme={sectionTheme} />)
+        expect(footerOf(container, 0)).toBe('第  章 （/）')
+      })
+
+      it('only: section-first の装飾が各章の先頭スライドにだけ描画される', () => {
+        const { container } = renderWithTheme(<SlideRenderer slides={sectionDeck(undefined, '導入', '導入', '設計')} theme={sectionTheme} />)
+        const backChildren = [...container.querySelectorAll('section.slide-container')].map((s) => s.querySelector('.master-layer-back')?.children.length)
+        expect(backChildren).toEqual([0, 1, 0, 1])
+      })
+
+      it('章定義のないデッキの描画は変わらない（受け入れ基準・後方互換）', () => {
+        const contentSlides = testSlides.filter((s) => s.layout === 'content')
+        const { container } = renderWithTheme(<SlideRenderer slides={contentSlides} theme={masterTheme} />)
+        expect(footerOf(container, 0)).toBe('')
+        expect(footerOf(container, 1)).toBe(`2 / ${contentSlides.length}`)
+      })
+    })
   })
 })

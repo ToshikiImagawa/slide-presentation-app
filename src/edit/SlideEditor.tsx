@@ -17,6 +17,7 @@ import { applyPresentationTheme, fetchColorPalette, mergeThemeData } from '../ap
 import { getPackageAddonNames, resolveBrandTheme, resolveLocalAssetPaths } from '../localSlideLoader'
 import { slugify } from '../slugify'
 import { resolveCanvasSize } from '../hooks/useReveal'
+import { buildSections } from '../sections'
 import type { ColorPalette, PresentationData, SlideData, ThemeData } from '../data'
 import type { GeneratedCandidate } from '../aiGenerate'
 import { pickBrandTemplate, loadBrandOverrides, saveBrandOverrides } from '../brand/io'
@@ -262,6 +263,8 @@ export function SlideEditor({
   const slides = previewData.slides ?? []
   const clampedIndex = slides.length > 0 ? Math.min(selectedIndex, slides.length - 1) : 0
   const currentSlide: SlideData | undefined = slides[clampedIndex]
+  // プレビューも本編と同じ章情報でマスター装飾を解決する（#191）
+  const sections = useMemo(() => buildSections(slides), [slides])
 
   // 保存前バリデーション: 構文・スキーマエラーがあれば書き込みを止める（FR-005）
   const canWrite = errors.length === 0
@@ -673,7 +676,7 @@ export function SlideEditor({
                     {currentSlide ? (
                       // プレビューだけはプレゼン用テーマ（スライド本来のフォントサイズ）で描画する。編集 chrome は editorUiTheme のまま
                       <ThemeProvider theme={theme}>
-                        <SlidePreview slide={currentSlide} logo={previewData.meta?.logo} theme={effectiveTheme} index={clampedIndex} total={slides.length} />
+                        <SlidePreview slide={currentSlide} logo={previewData.meta?.logo} theme={effectiveTheme} index={clampedIndex} total={slides.length} sections={sections} />
                       </ThemeProvider>
                     ) : (
                       <Box sx={{ p: 2, color: 'var(--fixed-text-muted)' }}>{t('edit.noSlides', 'スライドがありません')}</Box>

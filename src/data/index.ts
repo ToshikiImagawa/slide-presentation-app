@@ -8,6 +8,7 @@ export type {
   ComponentReference,
   SlideMeta,
   SlideNotes,
+  SectionInfo,
   PresenterSlideState,
   PresenterControlState,
   PresenterProgressState,

@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react'
 import { FallbackImage } from '../components/FallbackImage'
 import { hasComponent, renderRegisteredComponent } from '../components/ComponentRegistry'
 import type { MasterAnchor, MasterDecoration, MasterDecorationLayer, MasterDecorationOnly, MasterRenderContext } from '../data'
+import { renderMasterText } from '../masters'
 
 type Props = {
   decorations: MasterDecoration[]
@@ -29,9 +30,20 @@ function matchesOnly(only: MasterDecorationOnly | undefined, ctx: MasterRenderCo
       return ctx.index === ctx.total - 1
     case 'not-first':
       return ctx.index !== 0
+    case 'middle':
+      return ctx.index !== 0 && ctx.index !== ctx.total - 1
+    case 'section-first':
+      return isSectionFirst(ctx)
+    case 'not-section-first':
+      return !isSectionFirst(ctx)
     default:
       return true
   }
+}
+
+/** 章の先頭スライド（章扉）かどうか。章に属さないスライドは章の先頭ではない（#191） */
+function isSectionFirst(ctx: MasterRenderContext): boolean {
+  return ctx.section !== undefined && ctx.section.startIndex === ctx.index
 }
 
 /**
@@ -69,11 +81,6 @@ function stripeSize(orientation: 'horizontal' | 'vertical' | undefined, thicknes
   return vertical ? { width: thickness, height: length } : { width: length, height: thickness }
 }
 
-/** content 内の {index}/{total} をページ番号として展開する */
-function renderTextContent(content: string, ctx: MasterRenderContext): string {
-  return content.replace(/\{index\}/g, String(ctx.index + 1)).replace(/\{total\}/g, String(ctx.total))
-}
-
 function MasterDecorationElement({ decoration, ctx }: { decoration: MasterDecoration; ctx: MasterRenderContext }) {
   switch (decoration.type) {
     case 'logo':
@@ -103,7 +110,7 @@ function MasterDecorationElement({ decoration, ctx }: { decoration: MasterDecora
     }
 
     case 'text':
-      return <div style={{ ...anchorStyle(decoration.anchor, decoration.offset), color: decoration.color ?? 'var(--theme-text-body)', fontSize: decoration.fontSize, whiteSpace: 'nowrap' }}>{renderTextContent(decoration.content, ctx)}</div>
+      return <div style={{ ...anchorStyle(decoration.anchor, decoration.offset), color: decoration.color ?? 'var(--theme-text-body)', fontSize: decoration.fontSize, whiteSpace: 'nowrap' }}>{renderMasterText(decoration.content, ctx)}</div>
 
     case 'component':
       // 未登録コンポーネントは FallbackComponent の破線枠が全スライドに並ぶのを避けるため、装飾自体を描画しない

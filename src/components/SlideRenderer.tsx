@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
-import type { ContentItem, LogoConfig, MasterRenderContext, SlideData, ThemeData } from '../data'
+import type { ContentItem, LogoConfig, MasterRenderContext, SectionInfo, SlideData, ThemeData } from '../data'
+import { buildSections, findSectionAt } from '../sections'
 import { renderRegisteredComponent, resolveComponent } from './ComponentRegistry'
 import { BleedLayout, ContentLayout, SectionLayout, SlideFrame, TitleLayout } from '../layouts'
 import { SlideHeading } from './SlideHeading'
@@ -345,17 +346,20 @@ function renderSlide(slide: SlideData, logo: LogoConfig | undefined, theme: Them
 
 /** スライドデータ配列からReact要素を生成するレンダラー */
 export function SlideRenderer({ slides, logo, theme }: SlideRendererProps) {
+  const sections = buildSections(slides)
   return (
     <>
       {slides.map((slide, index) => (
-        <SlideRenderer.Slide key={slide.id} slide={slide} index={index} total={slides.length} logo={logo} theme={theme} />
+        <SlideRenderer.Slide key={slide.id} slide={slide} index={index} total={slides.length} sections={sections} logo={logo} theme={theme} />
       ))}
     </>
   )
 }
 
-/** 個別スライドコンポーネント。index/total は masterMap 装飾のページ番号・only 判定に使う（3経路: 本編・発表者ビュー・編集プレビューで必須） */
-SlideRenderer.Slide = function SlideRendererSlide({ slide, index, total, logo, theme }: { slide: SlideData; index: number; total: number; logo?: LogoConfig; theme?: ThemeData }) {
-  const ctx: MasterRenderContext = { index, total }
+/** 個別スライドコンポーネント。index/total は masterMap 装飾のページ番号・only 判定に使う（3経路: 本編・発表者ビュー・編集プレビューで必須）。
+ * sections（デッキ全体から buildSections で導出した章）を渡すと章番号・章タイトルの装飾テンプレートと
+ * only: section-first も解決される。省略時は章に属さない扱いになる（#191） */
+SlideRenderer.Slide = function SlideRendererSlide({ slide, index, total, sections, logo, theme }: { slide: SlideData; index: number; total: number; sections?: SectionInfo[]; logo?: LogoConfig; theme?: ThemeData }) {
+  const ctx: MasterRenderContext = { index, total, section: sections && findSectionAt(sections, index) }
   return <>{renderSlide(slide, logo, theme, ctx)}</>
 }

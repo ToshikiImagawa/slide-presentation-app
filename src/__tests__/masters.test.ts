@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { resolveMaster, buildMasterCss, getMasterWarnings } from '../masters'
+import { resolveMaster, buildMasterCss, getMasterWarnings, renderMasterText } from '../masters'
 import { clearRegistry, registerDefaultComponent } from '../components/ComponentRegistry'
-import type { ThemeData } from '../data'
+import type { MasterRenderContext, SectionInfo, ThemeData } from '../data'
 
 describe('resolveMaster', () => {
   it('masterMap 未指定なら undefined を返す（現行と完全同一のDOMにフォールバック）', () => {
@@ -134,6 +134,38 @@ describe('buildMasterCss', () => {
   })
 })
 
+// #191: text 装飾のテンプレート変数展開（ページ番号 + 章情報 + ゼロ詰め書式）
+describe('renderMasterText', () => {
+  const section: SectionInfo = { title: '設計', number: 3, startIndex: 4, slideCount: 2 }
+  const ctx: MasterRenderContext = { index: 5, total: 10, section }
+
+  it('{index} は1始まりのページ番号、{total} は総ページ数に展開する（既存動作）', () => {
+    expect(renderMasterText('{index} / {total}', ctx)).toBe('6 / 10')
+  })
+
+  it('章番号・章タイトル・章内連番・章内枚数に展開する', () => {
+    expect(renderMasterText('{sectionNumber} {sectionTitle} {sectionIndex}/{sectionTotal}', ctx)).toBe('3 設計 2/2')
+  })
+
+  it(':0N を付けた変数をN桁ゼロ詰めにする', () => {
+    expect(renderMasterText('第 {sectionNumber:02} 章', ctx)).toBe('第 03 章')
+    expect(renderMasterText('{index:03}', ctx)).toBe('006')
+  })
+
+  it('桁数を超える値はゼロ詰めせずそのまま出す', () => {
+    expect(renderMasterText('{total:02}', { index: 0, total: 123 })).toBe('123')
+  })
+
+  it('章に属さないスライドでは章の変数を空文字にする', () => {
+    expect(renderMasterText('{sectionTitle}', { index: 0, total: 3 })).toBe('')
+    expect(renderMasterText('第 {sectionNumber:02} 章', { index: 0, total: 3 })).toBe('第  章')
+  })
+
+  it('未知の変数名は本文の波括弧を壊さないためそのまま残す', () => {
+    expect(renderMasterText('{sectinTitle} {foo:02}', ctx)).toBe('{sectinTitle} {foo:02}')
+  })
+})
+
 describe('getMasterWarnings', () => {
   it('theme 未指定なら警告なし', () => {
     expect(getMasterWarnings(undefined)).toEqual([])
@@ -193,6 +225,38 @@ describe('getMasterWarnings', () => {
     const warnings = getMasterWarnings(theme)
     expect(warnings.some((w) => w.includes('.only: 不明な値'))).toBe(true)
     expect(warnings.some((w) => w.includes('.layer: 不明な値'))).toBe(true)
+  })
+
+  // #191: only の語彙拡張と text 装飾のテンプレート変数
+  it('拡張した only の値（middle / section-first / not-section-first）は警告しない', () => {
+    const theme: ThemeData = {
+      masters: {
+        standard: {
+          decorations: [
+            { type: 'band', anchor: 'top-center', only: 'middle' },
+            { type: 'band', anchor: 'top-center', only: 'section-first' },
+            { type: 'band', anchor: 'top-center', only: 'not-section-first' },
+          ],
+        },
+      },
+    }
+    expect(getMasterWarnings(theme)).toEqual([])
+  })
+
+  it('text 装飾の content のテンプレート変数の綴りミスを警告する', () => {
+    const theme: ThemeData = { masters: { standard: { decorations: [{ type: 'text', anchor: 'bottom-left', content: '第 {sectinNumber} 章' }] } } }
+    const warnings = getMasterWarnings(theme)
+    expect(warnings).toContain('theme.masters.standard.decorations[0].content: 不明なテンプレート変数 "{sectinNumber}" です（index/total/sectionNumber/sectionTitle/sectionIndex/sectionTotal のいずれかを指定してください）')
+  })
+
+  it('同じ綴りミスが複数回登場しても警告は1件にまとめる', () => {
+    const theme: ThemeData = { masters: { standard: { decorations: [{ type: 'text', anchor: 'bottom-left', content: '{foo} {foo:02}' }] } } }
+    expect(getMasterWarnings(theme)).toHaveLength(1)
+  })
+
+  it('既知のテンプレート変数（ゼロ詰め書式つきを含む）では警告しない', () => {
+    const theme: ThemeData = { masters: { standard: { decorations: [{ type: 'text', anchor: 'bottom-left', content: '第 {sectionNumber:02} 章 {sectionTitle} — {index}/{total}' }] } } }
+    expect(getMasterWarnings(theme)).toEqual([])
   })
 
   it('tokens が存在しない masterKey を参照する場合に警告する', () => {

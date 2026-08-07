@@ -241,10 +241,13 @@
     "transition": "slide",
     "backgroundColor": "#1a1a2e",
     "backgroundImage": "url(/bg.png)",
-    "notes": "スピーカーノート"
+    "notes": "スピーカーノート",
+    "section": "導入"
   }
 }
 ```
+
+`section` はそのスライドが属する章のタイトル。同じ値が**隣接して続く**スライドを1つの章として扱い、章番号（宣言順の1始まり）・開始ページ・章内枚数は自動で導出される（章の定義を別に書く必要はない）。表紙・締めのように章に属さないスライドは省略する。導出した章はマスター装飾の `text` に差し込める（後述の `{sectionNumber}` 等）。
 
 `notes` はオブジェクト形式でも指定可能:
 
@@ -309,7 +312,8 @@
       "standard": {
         "decorations": [
           { "type": "band", "anchor": "top-center", "thickness": 6, "color": "var(--theme-primary)" },
-          { "type": "text", "anchor": "bottom-right", "content": "{index} / {total}", "only": "not-first" }
+          { "type": "text", "anchor": "bottom-right", "content": "{index} / {total}", "only": "not-first" },
+          { "type": "text", "anchor": "bottom-left", "content": "第 {sectionNumber:02} 章 {sectionTitle}", "only": "not-section-first" }
         ]
       }
     },
@@ -325,7 +329,27 @@
 }
 ```
 
-`masters` は masterKey → 装飾セット（`decorations`）の定義。装飾は `logo`/`band`/`rule`/`text`/`image`/`component` の6種のみで、`anchor`（9方向）・`offset`（`{x,y}`のpx）・`only`（`first`/`last`/`not-first`/`all`。省略時 `all`）・`layer`（`back`/`front`。省略時 `back`）を組み合わせて宣言する。`text` の `content` は `{index}`/`{total}` でページ番号を展開できる。`extends` で他の masterKey の decorations を継承できる（循環参照は不可）。
+`masters` は masterKey → 装飾セット（`decorations`）の定義。装飾は `logo`/`band`/`rule`/`text`/`image`/`component` の6種のみで、`anchor`（9方向）・`offset`（`{x,y}`のpx）・`only`（後述。省略時 `all`）・`layer`（`back`/`front`。省略時 `back`）を組み合わせて宣言する。`extends` で他の masterKey の decorations を継承できる（循環参照は不可）。
+
+`only` は装飾を出すスライドの絞り込み条件。
+
+| `only` | 適用されるスライド |
+|---|---|
+| `all` | すべて（省略時） |
+| `first` / `last` | 最初 / 最後だけ |
+| `not-first` | 最初以外 |
+| `middle` | 最初と最後以外（表紙と締めを除く） |
+| `section-first` | 各章の先頭スライドだけ（章扉） |
+| `not-section-first` | 章の先頭以外（章に属さないスライドも含む） |
+
+`text` の `content` では次のテンプレート変数を展開できる。`{sectionNumber:02}` のように `:0N` を付けると N 桁ゼロ詰めになる（`3` → `03`）。章の変数は `meta.section` を持たないスライドでは空文字になる。
+
+| 変数 | 展開結果 |
+|---|---|
+| `{index}` / `{total}` | ページ番号（1始まり）/ 総ページ数 |
+| `{sectionNumber}` | 章番号（1始まり） |
+| `{sectionTitle}` | 章タイトル（`meta.section` の値） |
+| `{sectionIndex}` / `{sectionTotal}` | 章内の連番（1始まり）/ 章内の総枚数 |
 
 `masterMap` はレイアウト種別（`center`/`content`/`two-column`/`bleed`/`custom`）→ masterKey の対応表。未指定のレイアウトには装飾を描画しない（masters/masterMap を省略したデッキは現行と完全同一のDOMになる）。
 
