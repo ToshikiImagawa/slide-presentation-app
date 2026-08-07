@@ -84,6 +84,22 @@ export interface SlideMeta {
   backgroundColor?: string
   /** このスライドに直接適用する masterKey。masterMap による layout/variant 解決より優先する（#185） */
   master?: string
+  /** このスライドが属する章のタイトル。同じ値が連続するスライドを1つの章として扱い、章番号・開始ページは
+   * 宣言順から導出する（buildSections・#191）。未指定のスライドは章に属さない（表紙・締め等） */
+  section?: string
+}
+
+/** slides[].meta.section の連続ブロックから導出した章（#191）。装飾テキストへの章番号・章タイトルの差し込みと、
+ * 目次スライドの章番号・開始ページの自動整合に使う */
+export interface SectionInfo {
+  /** 章タイトル（meta.section の値） */
+  title: string
+  /** 宣言順の章番号（1始まり） */
+  number: number
+  /** 章の先頭スライドの index（0始まり） */
+  startIndex: number
+  /** 章に属するスライドの枚数 */
+  slideCount: number
 }
 
 /** 発表者ビューに同期されるスライド状態 */
@@ -176,8 +192,10 @@ export interface CanvasData {
 /** マスター装飾のアンカー位置（9方向） */
 export type MasterAnchor = 'top-left' | 'top-center' | 'top-right' | 'middle-left' | 'middle-center' | 'middle-right' | 'bottom-left' | 'bottom-center' | 'bottom-right'
 
-/** 装飾を適用するスライドの絞り込み条件（ページ番号をタイトルスライドに出さない等の用途） */
-export type MasterDecorationOnly = 'first' | 'last' | 'not-first' | 'all'
+/** 装飾を適用するスライドの絞り込み条件（ページ番号をタイトルスライドに出さない等の用途）。
+ * middle は最初と最後以外（表紙と締めを除く）、section-first / not-section-first は
+ * meta.section から導出した章の先頭スライド（章扉）を基準にする（#191） */
+export type MasterDecorationOnly = 'first' | 'last' | 'not-first' | 'all' | 'middle' | 'section-first' | 'not-section-first'
 
 /** 描画レイヤー（SlideFrame の .master-layer-back / .master-layer-front に対応） */
 export type MasterDecorationLayer = 'back' | 'front'
@@ -214,7 +232,9 @@ export interface RuleMasterDecoration extends MasterDecorationBase {
   orientation?: 'horizontal' | 'vertical'
 }
 
-/** テキスト装飾（フッター・ページ番号等）。content 内の {index}/{total} は MasterRenderContext で展開される */
+/** テキスト装飾（フッター・ページ番号・章見出し等）。content 内の {index}/{total} と
+ * {sectionNumber}/{sectionTitle}/{sectionIndex}/{sectionTotal} は MasterRenderContext で展開される
+ * （renderMasterText。`{sectionNumber:02}` のように `:0N` を付けるとN桁ゼロ詰め・#191） */
 export interface TextMasterDecoration extends MasterDecorationBase {
   type: 'text'
   content: string
@@ -246,10 +266,12 @@ export interface MasterDefinition {
   decorations?: MasterDecoration[]
 }
 
-/** マスター装飾の描画に必要な文脈（ページ番号のテンプレート展開・only の位置判定に使う） */
+/** マスター装飾の描画に必要な文脈（ページ番号・章情報のテンプレート展開・only の位置判定に使う） */
 export interface MasterRenderContext {
   index: number
   total: number
+  /** このスライドが属する章。meta.section 未指定のスライド、および章を持たないデッキでは undefined（#191） */
+  section?: SectionInfo
 }
 
 /** カラーパレット（キーは THEME_COLOR_TOKENS と一致。外部 theme-colors.json と同じ項目を指定できる） */

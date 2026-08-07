@@ -1,7 +1,8 @@
 import type { CSSProperties } from 'react'
 import { FallbackImage } from '../components/FallbackImage'
 import { hasComponent, renderRegisteredComponent } from '../components/ComponentRegistry'
-import type { MasterAnchor, MasterDecoration, MasterDecorationLayer, MasterDecorationOnly, MasterRenderContext } from '../data'
+import type { MasterAnchor, MasterDecoration, MasterDecorationLayer, MasterRenderContext } from '../data'
+import { matchesDecorationOnly, renderMasterText } from '../masters'
 
 type Props = {
   decorations: MasterDecoration[]
@@ -11,7 +12,7 @@ type Props = {
 
 /** master の decorations から指定レイヤー（back/front）に属し only 条件を満たすものだけを描画する */
 export function SlideMasterLayer({ decorations, layer, ctx }: Props) {
-  const visible = decorations.filter((d) => (d.layer ?? 'back') === layer && matchesOnly(d.only, ctx))
+  const visible = decorations.filter((d) => (d.layer ?? 'back') === layer && matchesDecorationOnly(d.only, ctx))
   return (
     <>
       {visible.map((decoration, i) => (
@@ -19,19 +20,6 @@ export function SlideMasterLayer({ decorations, layer, ctx }: Props) {
       ))}
     </>
   )
-}
-
-function matchesOnly(only: MasterDecorationOnly | undefined, ctx: MasterRenderContext): boolean {
-  switch (only) {
-    case 'first':
-      return ctx.index === 0
-    case 'last':
-      return ctx.index === ctx.total - 1
-    case 'not-first':
-      return ctx.index !== 0
-    default:
-      return true
-  }
 }
 
 /**
@@ -69,11 +57,6 @@ function stripeSize(orientation: 'horizontal' | 'vertical' | undefined, thicknes
   return vertical ? { width: thickness, height: length } : { width: length, height: thickness }
 }
 
-/** content 内の {index}/{total} をページ番号として展開する */
-function renderTextContent(content: string, ctx: MasterRenderContext): string {
-  return content.replace(/\{index\}/g, String(ctx.index + 1)).replace(/\{total\}/g, String(ctx.total))
-}
-
 function MasterDecorationElement({ decoration, ctx }: { decoration: MasterDecoration; ctx: MasterRenderContext }) {
   switch (decoration.type) {
     case 'logo':
@@ -103,7 +86,7 @@ function MasterDecorationElement({ decoration, ctx }: { decoration: MasterDecora
     }
 
     case 'text':
-      return <div style={{ ...anchorStyle(decoration.anchor, decoration.offset), color: decoration.color ?? 'var(--theme-text-body)', fontSize: decoration.fontSize, whiteSpace: 'nowrap' }}>{renderTextContent(decoration.content, ctx)}</div>
+      return <div style={{ ...anchorStyle(decoration.anchor, decoration.offset), color: decoration.color ?? 'var(--theme-text-body)', fontSize: decoration.fontSize, whiteSpace: 'nowrap' }}>{renderMasterText(decoration.content, ctx)}</div>
 
     case 'component':
       // 未登録コンポーネントは FallbackComponent の破線枠が全スライドに並ぶのを避けるため、装飾自体を描画しない

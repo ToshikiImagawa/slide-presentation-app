@@ -168,7 +168,11 @@
         "voice": { "type": "string", "description": "音声ファイルへの相対パス" }
       }
     },
-    "master": { "type": "string", "description": "このスライドに直接適用するmasterKey（theme.mastersのキー）。theme.masterMapによる解決より優先する" }
+    "master": { "type": "string", "description": "このスライドに直接適用するmasterKey（theme.mastersのキー）。theme.masterMapによる解決より優先する" },
+    "section": {
+      "type": "string",
+      "description": "このスライドが属する章のタイトル。同じ値が隣接して続くスライドを1つの章として扱い、章番号（宣言順の1始まり）・開始ページ・章内枚数は自動導出される。省略したスライドは章に属さない（表紙・締め等）"
+    }
   },
   "theme": {
     "description": "プレゼン全体のtheme（トップレベル、オプション）",
@@ -218,7 +222,11 @@
               "description": "9方向のアンカー位置"
             },
             "offset": { "type": "object", "description": "{ x, y } でアンカーからのpxオフセット" },
-            "only": { "type": "string", "enum": ["first", "last", "not-first", "all"], "description": "省略時は all" },
+            "only": {
+              "type": "string",
+              "enum": ["first", "last", "not-first", "all", "middle", "section-first", "not-section-first"],
+              "description": "省略時は all。middle は最初と最後以外（表紙と締めを除く）、section-first / not-section-first は slide.meta.section から導出した章の先頭スライド（章扉）を基準にする"
+            },
             "layer": { "type": "string", "enum": ["back", "front"], "description": "省略時は back" },
             "src": { "type": "string", "description": "type: logo/image で使用する画像パス" },
             "width": { "type": "number", "description": "type: logo/image で使用" },
@@ -227,7 +235,10 @@
             "thickness": { "type": "number", "description": "type: band/rule で使用（帯・線の太さ）" },
             "length": { "type": "number", "description": "type: rule で使用（線の長さ）" },
             "orientation": { "type": "string", "enum": ["horizontal", "vertical"], "description": "type: band/rule で使用" },
-            "content": { "type": "string", "description": "type: text で使用。{index}/{total}でページ番号を展開" },
+            "content": {
+              "type": "string",
+              "description": "type: text で使用。{index}/{total}でページ番号、{sectionNumber}/{sectionTitle}/{sectionIndex}/{sectionTotal}で章情報を展開する。{sectionNumber:02}のように:0Nを付けるとN桁ゼロ詰めになる（例: \"第 {sectionNumber:02} 章 {sectionTitle}\"）。章に属さないスライドでは章の変数が空文字になる"
+            },
             "fontSize": { "type": "number", "description": "type: text で使用" },
             "name": { "type": "string", "description": "type: component で使用。ComponentRegistryに登録済みのコンポーネント名" },
             "props": { "type": "object", "description": "type: component で使用" }

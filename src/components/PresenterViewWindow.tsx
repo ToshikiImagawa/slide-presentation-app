@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { SlideData, PresenterControlState, PresenterProgressState, LogoConfig, ThemeData } from '../data'
+import type { SlideData, PresenterControlState, PresenterProgressState, LogoConfig, SectionInfo, ThemeData } from '../data'
 import { getSpeakerNotes, getSlideSummary } from '../data'
+import { buildSections } from '../sections'
 import { useTranslation } from '../i18n'
 import { FillProgress } from './FillProgress'
 import { SlideRenderer } from './SlideRenderer'
@@ -81,6 +82,8 @@ export function PresenterViewWindow({ slides, currentIndex, logo, theme, control
   const nextSlide = currentIndex < slides.length - 1 ? slides[currentIndex + 1] : null
   const speakerNotes = currentSlide ? getSpeakerNotes(currentSlide) : undefined
   const summary = currentSlide ? getSlideSummary(currentSlide) : []
+  // プレビューも本編と同じ章情報でマスター装飾を解決する（#191）
+  const sections = buildSections(slides)
 
   const isFirst = currentIndex === 0
   const isLast = currentIndex >= slides.length - 1
@@ -189,7 +192,7 @@ export function PresenterViewWindow({ slides, currentIndex, logo, theme, control
           <div className={styles.previewPanel}>
             <h2>{t('presenterView.nextSlide')}</h2>
             <div className={styles.previewFrame} style={{ height: previewHeight > 0 ? previewHeight : undefined, aspectRatio: canvasAspectRatio }}>
-              {nextSlide ? <PreviewSlide slide={nextSlide} logo={logo} theme={theme} index={currentIndex + 1} total={slides.length} /> : <div className={styles.boundaryMessage}>{t('presenterView.lastSlide')}</div>}
+              {nextSlide ? <PreviewSlide slide={nextSlide} logo={logo} theme={theme} index={currentIndex + 1} total={slides.length} sections={sections} /> : <div className={styles.boundaryMessage}>{t('presenterView.lastSlide')}</div>}
             </div>
           </div>
 
@@ -197,7 +200,11 @@ export function PresenterViewWindow({ slides, currentIndex, logo, theme, control
           <div className={styles.previewPanel}>
             <h2>{t('presenterView.previousSlide')}</h2>
             <div className={styles.previewFrame} style={{ height: previewHeight > 0 ? previewHeight : undefined, aspectRatio: canvasAspectRatio }}>
-              {previousSlide ? <PreviewSlide slide={previousSlide} logo={logo} theme={theme} index={currentIndex - 1} total={slides.length} /> : <div className={styles.boundaryMessage}>{t('presenterView.firstSlide')}</div>}
+              {previousSlide ? (
+                <PreviewSlide slide={previousSlide} logo={logo} theme={theme} index={currentIndex - 1} total={slides.length} sections={sections} />
+              ) : (
+                <div className={styles.boundaryMessage}>{t('presenterView.firstSlide')}</div>
+              )}
             </div>
           </div>
         </div>
@@ -221,7 +228,7 @@ export function PresenterViewWindow({ slides, currentIndex, logo, theme, control
 }
 
 /** スライドの縮小プレビュー */
-function PreviewSlide({ slide, logo, theme, index, total }: { slide: SlideData; logo?: LogoConfig; theme?: ThemeData; index: number; total: number }) {
+function PreviewSlide({ slide, logo, theme, index, total, sections }: { slide: SlideData; logo?: LogoConfig; theme?: ThemeData; index: number; total: number; sections: SectionInfo[] }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [scale, setScale] = useState(0.3)
   const { width: canvasWidth, height: canvasHeight } = resolveCanvasSize(theme?.canvas)
@@ -251,7 +258,7 @@ function PreviewSlide({ slide, logo, theme, index, total }: { slide: SlideData; 
     <div ref={containerRef} className={styles.previewScaler} style={{ ...canvasVars, transform: `scale(${scale})` }}>
       <div className={`reveal ${styles.previewReveal}`}>
         <div className="slides">
-          <SlideRenderer.Slide slide={slide} logo={logo} theme={theme} index={index} total={total} />
+          <SlideRenderer.Slide slide={slide} logo={logo} theme={theme} index={index} total={total} sections={sections} />
         </div>
       </div>
     </div>

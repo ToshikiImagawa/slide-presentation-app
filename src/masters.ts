@@ -1,9 +1,9 @@
 import { hasComponent } from './components/ComponentRegistry'
-import type { MasterDecoration, MasterDefinition, SlideData, ThemeData } from './data'
+import type { MasterDecoration, MasterDecorationOnly, MasterDefinition, MasterRenderContext, SlideData, ThemeData } from './data'
 
 const MASTER_DECORATION_TYPES = ['logo', 'band', 'rule', 'text', 'image', 'component'] as const
 const MASTER_ANCHORS = ['top-left', 'top-center', 'top-right', 'middle-left', 'middle-center', 'middle-right', 'bottom-left', 'bottom-center', 'bottom-right'] as const
-const MASTER_DECORATION_ONLY = ['first', 'last', 'not-first', 'all'] as const
+const MASTER_DECORATION_ONLY = ['first', 'last', 'not-first', 'all', 'middle', 'section-first', 'not-section-first'] as const
 const MASTER_DECORATION_LAYER = ['back', 'front'] as const
 
 export interface ResolvedMaster {
@@ -62,6 +62,69 @@ export function buildMasterCss(tokens: Record<string, Record<string, string>> | 
     .join('\n')
 }
 
+/** 装飾の適用条件（only）を描画時の位置・章情報から判定する。未知の値は all と同じ扱いで全スライドに出す
+ * （綴りミスは getMasterWarnings が警告する）。#191 で middle / section-first / not-section-first を追加 */
+export function matchesDecorationOnly(only: MasterDecorationOnly | undefined, ctx: MasterRenderContext): boolean {
+  switch (only) {
+    case 'first':
+      return ctx.index === 0
+    case 'last':
+      return ctx.index === ctx.total - 1
+    case 'not-first':
+      return ctx.index !== 0
+    case 'middle':
+      return ctx.index !== 0 && ctx.index !== ctx.total - 1
+    case 'section-first':
+      return isSectionFirst(ctx)
+    case 'not-section-first':
+      return !isSectionFirst(ctx)
+    default:
+      return true
+  }
+}
+
+/** 章の先頭スライド（章扉）かどうか。章に属さないスライドは章の先頭ではない（#191） */
+function isSectionFirst(ctx: MasterRenderContext): boolean {
+  return ctx.section !== undefined && ctx.section.startIndex === ctx.index
+}
+
+/** text 装飾の content で使えるテンプレート変数（#191）。キーがそのまま既知の変数名の一覧になる */
+const MASTER_TEXT_RESOLVERS = new Map<string, (ctx: MasterRenderContext) => string | number | undefined>([
+  ['index', (ctx) => ctx.index + 1],
+  ['total', (ctx) => ctx.total],
+  ['sectionNumber', (ctx) => ctx.section?.number],
+  ['sectionTitle', (ctx) => ctx.section?.title],
+  ['sectionIndex', (ctx) => (ctx.section ? ctx.index - ctx.section.startIndex + 1 : undefined)],
+  ['sectionTotal', (ctx) => ctx.section?.slideCount],
+])
+
+/** `{name}`（そのまま）または `{name:0N}`（N桁ゼロ詰め）にマッチする */
+const MASTER_TEXT_PATTERN = /\{(\w+)(?::0(\d+))?\}/g
+
+/**
+ * text 装飾の content 内のテンプレート変数を展開する。`{index}`/`{total}`（ページ番号）に加え、
+ * `{sectionNumber}`/`{sectionTitle}`/`{sectionIndex}`/`{sectionTotal}`（章情報）を展開し、
+ * `{sectionNumber:02}` のように `:0N` を付けるとN桁ゼロ詰めになる（「第 03 章」等の表記・#191）。
+ *
+ * 章に属さないスライド（meta.section 未指定）では章の変数が空文字になる。未知の変数名は本文中の
+ * 波括弧を壊さないためそのまま残し、綴りミスは getMasterWarnings が警告として拾う。
+ */
+export function renderMasterText(content: string, ctx: MasterRenderContext): string {
+  return content.replace(MASTER_TEXT_PATTERN, (match, name: string, pad: string | undefined) => {
+    const resolve = MASTER_TEXT_RESOLVERS.get(name)
+    if (!resolve) return match
+    const value = resolve(ctx)
+    if (value === undefined) return ''
+    return pad ? String(value).padStart(Number(pad), '0') : String(value)
+  })
+}
+
+/** content 内のテンプレート変数のうち、renderMasterText が展開できない名前を重複なしで返す */
+function unknownTextVariables(content: string): string[] {
+  const names = [...content.matchAll(MASTER_TEXT_PATTERN)].map(([, name]) => name).filter((name) => !MASTER_TEXT_RESOLVERS.has(name))
+  return [...new Set(names)]
+}
+
 /**
  * masters/masterMap/tokens、および slides[].meta.master（スライド個別指定）の値検証エラー
  * （綴りミス等）を警告として返す。getThemeWarnings と同じ方針: 検証エラーではなく警告として扱い、
@@ -110,6 +173,11 @@ export function getMasterWarnings(theme?: ThemeData, slides?: SlideData[]): stri
       }
       if (decoration.layer && !MASTER_DECORATION_LAYER.includes(decoration.layer)) {
         warnings.push(`${path}.layer: 不明な値 "${decoration.layer}" です`)
+      }
+      if (decoration.type === 'text') {
+        for (const name of unknownTextVariables(decoration.content)) {
+          warnings.push(`${path}.content: 不明なテンプレート変数 "{${name}}" です（${[...MASTER_TEXT_RESOLVERS.keys()].join('/')} のいずれかを指定してください）`)
+        }
       }
       if (decoration.type === 'component' && !hasComponent(decoration.name)) {
         warnings.push(`${path}.name: 未登録のコンポーネント "${decoration.name}" が指定されています（該当箇所は描画をスキップします）`)

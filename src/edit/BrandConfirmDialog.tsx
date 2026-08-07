@@ -155,7 +155,8 @@ export function BrandConfirmDialog({ open, profile, initialOverrides, previewSli
               {t('brand.previewLabel', '取り込み後のプレビュー')}
             </Typography>
             <Box sx={{ aspectRatio: previewAspectRatio, position: 'relative', border: '1px solid var(--fixed-border)', borderRadius: 1, overflow: 'hidden' }}>
-              <SlidePreview slide={previewSlide} logo={previewLogo} theme={previewMergedTheme} index={0} total={1} />
+              {/* 単票のサンプル1枚なので章はない（sections は空配列） */}
+              <SlidePreview slide={previewSlide} logo={previewLogo} theme={previewMergedTheme} index={0} total={1} sections={[]} />
             </Box>
           </Box>
         </Stack>
