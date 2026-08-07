@@ -31,6 +31,7 @@ allowed-tools: Read, Edit, Glob, Grep, Bash(npm run typecheck), Bash(npm run tes
 | まとめ・締め  | `center` + `variant: "section"` | 本文 + QRコード等   |
 | 手順・フロー  | `content` (steps)               | ステップ形式        |
 | 機能・特徴紹介 | `content` (tiles)               | アイコン付きタイル     |
+| 画像・スクショ | `content` (images)              | 画像＋キャプション     |
 | 比較・詳細説明 | `two-column`                    | 左右カラム         |
 | デモ・ライブ  | `bleed`                         | コマンド + ターミナル  |
 | 完全カスタム  | `custom`                        | コンポーネント直接表示   |

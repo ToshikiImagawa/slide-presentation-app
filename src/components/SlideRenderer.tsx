@@ -13,6 +13,7 @@ import { TitledBulletList } from './TitledBulletList'
 import { Timeline } from './Timeline'
 import { TimelineNode } from './TimelineNode'
 import { FeatureTileGrid } from './FeatureTileGrid'
+import { ImageFigureGrid } from './ImageFigureGrid'
 import { AccentText } from './AccentText'
 import { CommandList } from './CommandList'
 import { UnderlinedHeading } from './UnderlinedHeading'
@@ -256,12 +257,18 @@ function renderContentChildren(content: SlideData['content']): ReactNode {
     )
   }
 
+  // images があれば ImageFigureGrid（画像スライド・#198）
+  if (content.images) {
+    const images = content.images as Array<{ src: string; alt?: string; caption?: string }>
+    return <ImageFigureGrid images={images.map((image) => ({ src: image.src, alt: image.alt, caption: image.caption ? renderHtml(image.caption) : undefined }))} />
+  }
+
   // component があればそれを描画
   if (content.component) {
     return renderComponent(content.component)
   }
 
-  // steps/tiles/componentがいずれも無指定の場合のみ、プレーン本文（body/items）を描画する（#193）
+  // steps/tiles/images/componentがいずれも無指定の場合のみ、プレーン本文（body/items）を描画する（#193）
   const { body } = content
   const items = content.items && content.items.length > 0 ? content.items : undefined
   if (body || items) {

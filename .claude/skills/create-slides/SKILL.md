@@ -49,6 +49,7 @@ allowed-tools: Read, Write, Glob, Grep, Bash(npm run typecheck), Bash(npm run te
 | まとめ・締め | `center` + `variant: "section"` | 最後のスライドに使用 |
 | 手順・フロー | `content` (steps) | ステップ形式で表示 |
 | 機能・特徴紹介 | `content` (tiles) | アイコン付きタイルグリッド |
+| 画像・スクリーンショット | `content` (images) | 画像＋キャプション（自動フィット） |
 | 比較・対比 | `two-column` | 左右で異なる情報を対比 |
 | 詳細説明 | `two-column` | テキスト+コード/コンポーネント |
 | デモ・ライブ | `bleed` | コマンド一覧+ターミナル表示 |
