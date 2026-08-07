@@ -4,13 +4,13 @@ import Box from '@mui/material/Box'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
 import Typography from '@mui/material/Typography'
-import { THEME_COLOR_TOKENS } from '../applyTheme'
+import { resolveColorToken } from '../applyTheme'
 
 type Tile = {
   icon: ReactNode
   title: string
   description: ReactNode
-  /** THEME_COLOR_TOKENSのキー名（例: 'series2'）。省略時は'primary' */
+  /** カラーパレットキー名（例: 'series2'）。省略時は'primary' */
   accentColor?: string
 }
 
@@ -24,7 +24,7 @@ export function FeatureTileGrid({ tiles, columns }: Props) {
   return (
     <Box sx={{ display: 'grid', gridTemplateColumns: `repeat(${columns ?? tiles.length}, 1fr)`, gap: '30px', width: '100%' }}>
       {tiles.map((tile) => {
-        const cssVar = (tile.accentColor && THEME_COLOR_TOKENS[tile.accentColor]) || THEME_COLOR_TOKENS.primary
+        const cssVar = resolveColorToken(tile.accentColor)
         return (
           <Card key={tile.title} sx={{ p: '30px' }}>
             <CardContent sx={{ p: 0, '&:last-child': { pb: 0 } }}>

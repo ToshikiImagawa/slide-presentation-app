@@ -2,6 +2,7 @@ import { createElement } from 'react'
 import type { ColorPalette, FontDefinition, FontSource, SlideData, ThemeData } from './data'
 import { buildMasterCss, getMasterWarnings } from './masters'
 import { hasComponent, registerComponent, unregisterOwner } from './components/ComponentRegistry'
+import { FallbackImage } from './components/FallbackImage'
 
 /** 6桁hex（#rrggbb）を [r, g, b] へ分解する（hexToRgb・relativeLuminance・brand/compile.ts の mix 計算が共有する） */
 export function hexToRgbTuple(hex: string): [number, number, number] {
@@ -133,6 +134,11 @@ export const THEME_COLOR_TOKENS: Record<string, string> = {
   series4: '--theme-series-4',
   series5: '--theme-series-5',
   series6: '--theme-series-6',
+}
+
+/** カラーパレットキー名（primary/series1等）からCSS変数名を解決する。未知のキー・未指定時はprimaryにフォールバックする（#201） */
+export function resolveColorToken(key?: string): string {
+  return (key && THEME_COLOR_TOKENS[key]) || THEME_COLOR_TOKENS.primary
 }
 
 /** THEME_COLOR_TOKENS のうち、文字色として使われるキー（帯・線等の装飾色は対象外）。背景色に対するコントラスト比の算出対象を絞るのに使う */
@@ -332,11 +338,15 @@ function upsertStyleElement(id: string, css: string): void {
 /** theme.icons による ComponentRegistry 登録の owner（resetThemeOverrides での一括解除に使う） */
 const BRAND_ICON_OWNER = 'brand-theme-icons'
 
-/** theme.icons（アイコン名 → SVGアセットパス/外部URL）を ComponentRegistry に 'Icon:<name>' として登録する（#201） */
+/** MUIアイコン（Icon:Description等）のAvatar内表示サイズに合わせる（registerDefaults.tsxのfontSize: 32と揃える） */
+const THEME_ICON_SIZE = 32
+
+/** theme.icons（アイコン名 → SVGアセットパス/外部URL）を ComponentRegistry に 'Icon:<name>' として登録する。
+ * 読み込み失敗時のフォールバック表示は既存の FallbackImage（画像装飾・master image decoration と共通）に委ねる（#201） */
 function registerThemeIcons(icons: Record<string, string>): void {
   for (const [name, src] of Object.entries(icons)) {
     if (!src) continue
-    registerComponent(`Icon:${name}`, () => createElement('img', { src, alt: name, style: { width: '100%', height: '100%', objectFit: 'contain' } }), BRAND_ICON_OWNER)
+    registerComponent(`Icon:${name}`, () => createElement(FallbackImage, { src, alt: name, width: THEME_ICON_SIZE, height: THEME_ICON_SIZE }), BRAND_ICON_OWNER)
   }
 }
 

@@ -32,7 +32,7 @@
           "itemFields": {
             "icon": {
               "type": "string",
-              "description": "ComponentRegistryに'Icon:<name>'で登録済みの任意アイコン名。推奨（登録済み）: Description, PlaylistAddCheck, Traffic, FactCheck, Memory, Search。アドオン/ブランドテーマ提供のアイコン名も指定可。未登録名は破線枠フォールバック＋警告になる"
+              "description": "ComponentRegistryに'Icon:<name>'で登録済みの任意アイコン名（builtinIcons一覧、アドオン/ブランドテーマ提供分を含む）。未登録名は破線枠フォールバック＋警告になる"
             },
             "title": { "type": "string" },
             "description": { "type": "string", "description": "<br/>等HTMLタグ利用可" },
