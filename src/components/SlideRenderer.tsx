@@ -54,7 +54,7 @@ function renderComponent(ref: { name: string; props?: Record<string, unknown>; s
   return element
 }
 
-/** MUIアイコン名からアイコンコンポーネントを解決する */
+/** icon名からComponentRegistry登録済みのアイコンコンポーネントを解決する。未登録名の利用者向け警告はgetThemeWarnings（applyTheme.ts）が担う */
 function renderIcon(iconName: string): ReactNode {
   const IconComponent = resolveComponent(`Icon:${iconName}`)
   return <IconComponent />
@@ -242,13 +242,15 @@ function renderContentChildren(content: SlideData['content']): ReactNode {
 
   // tiles があれば FeatureTileGrid
   if (content.tiles) {
-    const tiles = content.tiles as Array<{ icon: string; title: string; description: string }>
+    const tiles = content.tiles as Array<{ icon: string; title: string; description: string; accentColor?: string }>
     return (
       <FeatureTileGrid
+        columns={content.tileColumns as number | undefined}
         tiles={tiles.map((tile) => ({
           icon: renderIcon(tile.icon),
           title: tile.title,
           description: renderHtml(tile.description),
+          accentColor: tile.accentColor,
         }))}
       />
     )

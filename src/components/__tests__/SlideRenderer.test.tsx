@@ -138,6 +138,84 @@ describe('SlideRenderer', () => {
     }
   })
 
+  // MUIのsx propはインラインstyleではなくemotionが注入する<style>タグのCSSクラスとして反映されるため、
+  // 生成されたスタイル全文（document.styleSheets）に対象の宣言が含まれるかで検証する
+  function injectedStylesText(): string {
+    return Array.from(document.styleSheets)
+      .flatMap((sheet) => Array.from(sheet.cssRules))
+      .map((rule) => rule.cssText)
+      .join('\n')
+  }
+
+  it('tileColumns未指定時、FeatureTileGridのグリッド列数がタイル数と同数になる（既定挙動が変わらない）', () => {
+    renderWithTheme(
+      <SlideRenderer
+        slides={[
+          {
+            id: 'test-tiles-default-columns',
+            layout: 'content',
+            content: {
+              tiles: [
+                { icon: 'Description', title: 'A', description: 'a' },
+                { icon: 'Description', title: 'B', description: 'b' },
+                { icon: 'Description', title: 'C', description: 'c' },
+              ],
+            },
+          },
+        ]}
+      />,
+    )
+    expect(injectedStylesText()).toContain('grid-template-columns: repeat(3, 1fr)')
+  })
+
+  it('tileColumns指定時、FeatureTileGridのグリッド列数がその値になる（6枚以上の折返し）', () => {
+    const { container } = renderWithTheme(
+      <SlideRenderer
+        slides={[
+          {
+            id: 'test-tiles-columns',
+            layout: 'content',
+            content: {
+              tileColumns: 3,
+              tiles: Array.from({ length: 6 }, (_, i) => ({ icon: 'Description', title: `タイル${i}`, description: `説明${i}` })),
+            },
+          },
+        ]}
+      />,
+    )
+    expect(injectedStylesText()).toContain('grid-template-columns: repeat(3, 1fr)')
+    expect(container.textContent).toContain('タイル5')
+  })
+
+  it('tiles[].accentColorで指定した系列色がアイコンAvatarに反映される', () => {
+    renderWithTheme(
+      <SlideRenderer
+        slides={[
+          {
+            id: 'test-tiles-accent',
+            layout: 'content',
+            content: {
+              tiles: [{ icon: 'Description', title: 'A', description: 'a', accentColor: 'series2' }],
+            },
+          },
+        ]}
+      />,
+    )
+    expect(injectedStylesText()).toContain('color: var(--theme-series-2)')
+  })
+
+  it('未登録のicon名を指定した場合、フォールバックコンポーネントが描画される', () => {
+    const tilesSlide: SlideData = {
+      id: 'test-tiles-unknown-icon',
+      layout: 'content',
+      content: {
+        tiles: [{ icon: 'NoSuchIcon', title: 'A', description: 'a' }],
+      },
+    }
+    const { container } = renderWithTheme(<SlideRenderer slides={[tilesSlide]} />)
+    expect(container.textContent).toContain('Component not found')
+  })
+
   it('centerスライド(variant: section)にタイトルが含まれる', () => {
     const summarySlide = testSlides.find((s) => s.layout === 'center' && (s.content as Record<string, unknown>).variant === 'section')!
     const { container } = renderWithTheme(<SlideRenderer slides={[summarySlide]} />)
