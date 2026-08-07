@@ -208,9 +208,24 @@
     },
     "masters": {
       "type": "object",
-      "description": "masterKey → マスター定義。帯・ロゴ・フッター・ページ番号等の装飾セットを宣言する（キーは任意の文字列）",
+      "description": "masterKey → マスター定義。背景意匠と、帯・ロゴ・フッター・ページ番号等の装飾セットを宣言する（キーは任意の文字列）",
       "itemFields": {
-        "extends": { "type": "string", "description": "継承元のmasterKey。循環参照は不可" },
+        "extends": { "type": "string", "description": "継承元のmasterKey。循環参照は不可。decorationsは親→子の順にマージし、backgroundは重ねられないため自身の定義が親より勝つ" },
+        "background": {
+          "type": "object",
+          "description": "マスター単位の背景意匠。省略するとデッキ既定の背景（テーマ背景色＋格子）がそのまま見える",
+          "fields": {
+            "type": { "type": "string", "enum": ["plain", "grid", "fill", "gradient", "image"], "description": "plain=無地（テーマ背景色で塗り格子を隠す）/ grid=格子（デッキ既定と同じ意匠）/ fill=全面塗り / gradient=グラデーション / image=画像を全面に敷く" },
+            "opacity": { "type": "number", "description": "0〜1。省略時1。下げるとデッキ既定の背景が透ける" },
+            "color": { "type": "string", "description": "type: fill で必須（塗り色）。type: grid では格子の下地色（省略時テーマ背景色）" },
+            "size": { "type": "number", "description": "type: grid で使用（格子の間隔px。省略時40）。格子線の色はtokensのmasterKeyスコープでtheme-background-gridを上書きする" },
+            "from": { "type": "string", "description": "type: gradient で必須（開始色）" },
+            "to": { "type": "string", "description": "type: gradient で必須（終了色）" },
+            "angle": { "type": "number", "description": "type: gradient で使用（deg。省略時180=上→下）" },
+            "src": { "type": "string", "description": "type: image で必須（画像パス）" },
+            "fit": { "type": "string", "enum": ["cover", "contain"], "description": "type: image で使用。省略時cover" }
+          }
+        },
         "decorations": {
           "type": "array",
           "description": "logo/band/rule/text/image/component の6種のみ許可（DSL膨張の歯止め）",
@@ -228,10 +243,13 @@
               "description": "省略時は all。middle は最初と最後以外（表紙と締めを除く）、section-first / not-section-first は slide.meta.section から導出した章の先頭スライド（章扉）を基準にする"
             },
             "layer": { "type": "string", "enum": ["back", "front"], "description": "省略時は back" },
+            "opacity": { "type": "number", "description": "0〜1。省略時1。透かし（機密表記等）を薄く敷く用途" },
+            "rotate": { "type": "number", "description": "回転角（deg・時計回り）。アンカー位置は動かさず要素の中心を軸に回す。斜め帯・回転させた透かしに使う" },
             "src": { "type": "string", "description": "type: logo/image で使用する画像パス" },
             "width": { "type": "number", "description": "type: logo/image で使用" },
             "height": { "type": "number", "description": "type: logo/image で使用" },
             "color": { "type": "string", "description": "type: band/rule/text で使用" },
+            "gradient": { "type": "object", "description": "type: band で使用。{ from, to, angle }（angle省略時180=上→下）。指定時はcolorの代わりにグラデーションで塗る" },
             "thickness": { "type": "number", "description": "type: band/rule で使用（帯・線の太さ）" },
             "length": { "type": "number", "description": "type: rule で使用（線の長さ）" },
             "orientation": { "type": "string", "enum": ["horizontal", "vertical"], "description": "type: band/rule で使用" },

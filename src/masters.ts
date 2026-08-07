@@ -1,14 +1,18 @@
 import { hasComponent } from './components/ComponentRegistry'
-import type { MasterDecoration, MasterDecorationOnly, MasterDefinition, MasterRenderContext, SlideData, ThemeData } from './data'
+import type { MasterBackground, MasterDecoration, MasterDecorationOnly, MasterDefinition, MasterRenderContext, SlideData, ThemeData } from './data'
 
 const MASTER_DECORATION_TYPES = ['logo', 'band', 'rule', 'text', 'image', 'component'] as const
 const MASTER_ANCHORS = ['top-left', 'top-center', 'top-right', 'middle-left', 'middle-center', 'middle-right', 'bottom-left', 'bottom-center', 'bottom-right'] as const
 const MASTER_DECORATION_ONLY = ['first', 'last', 'not-first', 'all', 'middle', 'section-first', 'not-section-first'] as const
 const MASTER_DECORATION_LAYER = ['back', 'front'] as const
+const MASTER_BACKGROUND_TYPES = ['plain', 'grid', 'fill', 'gradient', 'image'] as const
+const MASTER_BACKGROUND_FITS = ['cover', 'contain'] as const
 
 export interface ResolvedMaster {
   masterKey: string
   decorations: MasterDecoration[]
+  /** 背景意匠。未指定のマスターでは undefined（呼び出し元は背景要素自体を描かない・#189） */
+  background?: MasterBackground
 }
 
 /**
@@ -27,7 +31,7 @@ export function resolveMaster(theme: ThemeData | undefined, layout: string, opts
 
   for (const masterKey of candidates) {
     if (!masterKey || !masters?.[masterKey] || isCircular(masters, masterKey)) continue
-    return { masterKey, decorations: collectDecorations(masters, masterKey) }
+    return { masterKey, decorations: collectDecorations(masters, masterKey), background: resolveBackground(masters, masterKey) }
   }
 
   return undefined
@@ -38,6 +42,14 @@ function collectDecorations(masters: Record<string, MasterDefinition>, key: stri
   if (!definition) return []
   const inherited = definition.extends ? collectDecorations(masters, definition.extends) : []
   return [...inherited, ...(definition.decorations ?? [])]
+}
+
+/** 背景は decorations と違い重ね合わせできないため、extends チェーンで最も手前（自身に近い）の定義が勝つ（#189） */
+function resolveBackground(masters: Record<string, MasterDefinition>, key: string): MasterBackground | undefined {
+  const definition = masters[key]
+  if (!definition) return undefined
+  if (definition.background) return definition.background
+  return definition.extends ? resolveBackground(masters, definition.extends) : undefined
 }
 
 /**
@@ -119,6 +131,54 @@ export function renderMasterText(content: string, ctx: MasterRenderContext): str
   })
 }
 
+/** opacity は未指定（=1 相当）か 0〜1 の数値のみ許容する（JSON 由来のため文字列・NaN・Infinity も来る・#189） */
+function isValidOpacity(opacity: number | undefined): boolean {
+  return opacity === undefined || (typeof opacity === 'number' && opacity >= 0 && opacity <= 1)
+}
+
+/**
+ * 背景定義（#189）の値検証。種別が不明な場合は SlideMasterBackground が何も描けないため以降の検証は行わない。
+ * 必須プロパティ（fill の color 等）は型では強制できても JSON では欠けうるため、ここで警告する。
+ */
+function backgroundWarnings(background: MasterBackground, path: string): string[] {
+  if (!MASTER_BACKGROUND_TYPES.includes(background.type)) {
+    return [`${path}.type: 不明な種別 "${background.type}" です（${MASTER_BACKGROUND_TYPES.join('/')} のいずれかを指定してください）`]
+  }
+
+  const warnings: string[] = []
+  if (!isValidOpacity(background.opacity)) {
+    warnings.push(`${path}.opacity: 0〜1 の数値を指定してください（"${background.opacity}"）`)
+  }
+
+  switch (background.type) {
+    case 'grid':
+      if (background.size !== undefined && !(typeof background.size === 'number' && background.size > 0)) {
+        warnings.push(`${path}.size: 0 より大きい数値（px）を指定してください（"${background.size}"）`)
+      }
+      break
+    case 'fill':
+      if (!background.color) {
+        warnings.push(`${path}.color: fill には塗り色が必要です（省略する場合は type: "plain" を使ってください）`)
+      }
+      break
+    case 'gradient':
+      if (!background.from || !background.to) {
+        warnings.push(`${path}: gradient には from / to の両方が必要です`)
+      }
+      break
+    case 'image':
+      if (!background.src) {
+        warnings.push(`${path}.src: image には画像パスが必要です`)
+      }
+      if (background.fit && !MASTER_BACKGROUND_FITS.includes(background.fit)) {
+        warnings.push(`${path}.fit: 不明な値 "${background.fit}" です（${MASTER_BACKGROUND_FITS.join('/')} のいずれかを指定してください）`)
+      }
+      break
+  }
+
+  return warnings
+}
+
 /** content 内のテンプレート変数のうち、renderMasterText が展開できない名前を重複なしで返す */
 function unknownTextVariables(content: string): string[] {
   const names = [...content.matchAll(MASTER_TEXT_PATTERN)].map(([, name]) => name).filter((name) => !MASTER_TEXT_RESOLVERS.has(name))
@@ -158,6 +218,9 @@ export function getMasterWarnings(theme?: ThemeData, slides?: SlideData[]): stri
     if (definition.extends && isCircular(masters, masterKey)) {
       warnings.push(`theme.masters.${masterKey}: extends が循環しています`)
     }
+    if (definition.background) {
+      warnings.push(...backgroundWarnings(definition.background, `theme.masters.${masterKey}.background`))
+    }
 
     for (const [i, decoration] of (definition.decorations ?? []).entries()) {
       const path = `theme.masters.${masterKey}.decorations[${i}]`
@@ -173,6 +236,12 @@ export function getMasterWarnings(theme?: ThemeData, slides?: SlideData[]): stri
       }
       if (decoration.layer && !MASTER_DECORATION_LAYER.includes(decoration.layer)) {
         warnings.push(`${path}.layer: 不明な値 "${decoration.layer}" です`)
+      }
+      if (!isValidOpacity(decoration.opacity)) {
+        warnings.push(`${path}.opacity: 0〜1 の数値を指定してください（"${decoration.opacity}"）`)
+      }
+      if (decoration.rotate !== undefined && !Number.isFinite(decoration.rotate)) {
+        warnings.push(`${path}.rotate: 数値（deg）を指定してください（"${decoration.rotate}"）`)
       }
       if (decoration.type === 'text') {
         for (const name of unknownTextVariables(decoration.content)) {

@@ -30,6 +30,13 @@ export type {
   ImageMasterDecoration,
   ComponentMasterDecoration,
   MasterDecoration,
+  MasterGradient,
+  PlainMasterBackground,
+  GridMasterBackground,
+  FillMasterBackground,
+  GradientMasterBackground,
+  ImageMasterBackground,
+  MasterBackground,
   MasterDefinition,
   MasterRenderContext,
 } from './types'
