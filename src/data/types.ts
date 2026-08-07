@@ -140,6 +140,8 @@ export type PresenterViewMessage =
 export interface ThemeData {
   colors?: ColorPalette
   fonts?: FontDefinition
+  /** アイコン名 → SVGアセットパス（image/配下）または外部URL。ComponentRegistryに'Icon:<name>'として登録され、content.tiles[].iconから参照できる（ブランドテーマ提供アイコンの登録経路。#201） */
+  icons?: Record<string, string>
   customCSS?: string
   /** マスター定義（masterKey → 装飾セット）。SlideFrame の master-layer-back/front に描画される */
   masters?: Record<string, MasterDefinition>

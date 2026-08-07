@@ -30,11 +30,16 @@
           "type": "array",
           "description": "FeatureTileGridのタイル",
           "itemFields": {
-            "icon": { "type": "string", "enum": ["Description", "PlaylistAddCheck", "Traffic", "FactCheck", "Memory", "Search"] },
+            "icon": {
+              "type": "string",
+              "description": "ComponentRegistryに'Icon:<name>'で登録済みの任意アイコン名（builtinIcons一覧、アドオン/ブランドテーマ提供分を含む）。未登録名は破線枠フォールバック＋警告になる"
+            },
             "title": { "type": "string" },
-            "description": { "type": "string", "description": "<br/>等HTMLタグ利用可" }
+            "description": { "type": "string", "description": "<br/>等HTMLタグ利用可" },
+            "accentColor": { "type": "string", "description": "アイコン背景・枠のアクセント色トークン名（primary/accent/series1-6/success/warning/danger/neutral等、theme.colorsのキーと同じ）。省略時は既定でprimary" }
           }
         },
+        "tileColumns": { "type": "number", "description": "tilesの列数。省略時はタイル数と同数の列（現行と同一の1行表示）。6枚以上のtilesを読める大きさで折返し表示したい場合に指定する" },
         "component": { "type": "object", "ref": "componentReference" },
         "footer": { "type": "string" },
         "body": {
@@ -184,6 +189,10 @@
       }
     },
     "customCSS": { "type": "string" },
+    "icons": {
+      "type": "object",
+      "description": "アイコン名 → SVGアセットパス（image/配下）または外部URL。ComponentRegistryに'Icon:<name>'として登録され、content.tiles[].iconから参照できる（ブランドテーマ提供アイコンの登録経路）"
+    },
     "masters": {
       "type": "object",
       "description": "masterKey → マスター定義。帯・ロゴ・フッター・ページ番号等の装飾セットを宣言する（キーは任意の文字列）",

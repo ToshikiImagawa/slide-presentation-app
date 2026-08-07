@@ -40,14 +40,22 @@ describe('getSchemaConformanceErrors', () => {
     expect(errors[0].path).toBe('slides[0].content.steps')
   })
 
-  it('tiles.icon が既知アイコン以外だとエラーにする', () => {
+  it('tiles.icon はenum固定を撤廃しているため任意のアイコン名でもエラーにしない（アドオン/ブランド提供アイコンの参照を許容・#201）', () => {
     const data: PresentationData = {
       meta: { title: 't' },
-      slides: [{ id: 's1', layout: 'content', content: { title: 'x', tiles: [{ icon: 'NotAnIcon', title: 't', description: 'd' }] } }],
+      slides: [{ id: 's1', layout: 'content', content: { title: 'x', tiles: [{ icon: 'CustomBrandIcon', title: 't', description: 'd' }] } }],
+    }
+    expect(getSchemaConformanceErrors(data)).toEqual([])
+  })
+
+  it('tileColumns が数値でない場合エラーにする', () => {
+    const data: PresentationData = {
+      meta: { title: 't' },
+      slides: [{ id: 's1', layout: 'content', content: { title: 'x', tileColumns: '3', tiles: [{ icon: 'Description', title: 't', description: 'd' }] } }],
     }
     const errors = getSchemaConformanceErrors(data)
     expect(errors).toHaveLength(1)
-    expect(errors[0].path).toBe('slides[0].content.tiles[0].icon')
+    expect(errors[0].path).toBe('slides[0].content.tileColumns')
   })
 
   it('center.variant が section 以外だとエラーにする', () => {

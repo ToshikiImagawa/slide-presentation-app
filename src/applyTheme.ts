@@ -1,5 +1,8 @@
+import { createElement } from 'react'
 import type { CanvasData, ColorPalette, FontDefinition, FontSource, SafeArea, SlideData, ThemeData } from './data'
 import { buildMasterCss, getMasterWarnings } from './masters'
+import { hasComponent, registerComponent, unregisterOwner } from './components/ComponentRegistry'
+import { FallbackImage } from './components/FallbackImage'
 
 /** 6桁hex（#rrggbb）を [r, g, b] へ分解する（hexToRgb・relativeLuminance・brand/compile.ts の mix 計算が共有する） */
 export function hexToRgbTuple(hex: string): [number, number, number] {
@@ -133,6 +136,11 @@ export const THEME_COLOR_TOKENS: Record<string, string> = {
   series6: '--theme-series-6',
 }
 
+/** カラーパレットキー名（primary/series1等）からCSS変数名を解決する。未知のキー・未指定時はprimaryにフォールバックする（#201） */
+export function resolveColorToken(key?: string): string {
+  return (key && THEME_COLOR_TOKENS[key]) || THEME_COLOR_TOKENS.primary
+}
+
 /** THEME_COLOR_TOKENS のうち、文字色として使われるキー（帯・線等の装飾色は対象外）。背景色に対するコントラスト比の算出対象を絞るのに使う */
 export const TEXT_COLOR_KEYS: readonly string[] = ['text', 'textHeading', 'textBody', 'textSubtitle', 'textMuted', 'codeText']
 
@@ -242,6 +250,7 @@ export function mergeThemeData(brand?: ThemeData, theme?: ThemeData): ThemeData 
   return {
     colors: mergeRecord<string | undefined>(brand?.colors, theme?.colors),
     fonts: mergeFonts(brand?.fonts, theme?.fonts),
+    icons: mergeRecord(brand?.icons, theme?.icons),
     customCSS: [brand?.customCSS, theme?.customCSS].filter(Boolean).join('\n') || undefined,
     masters: mergeRecord(brand?.masters, theme?.masters),
     masterMap: mergeRecord(brand?.masterMap, theme?.masterMap),
@@ -352,6 +361,21 @@ function upsertStyleElement(id: string, css: string): void {
   styleEl.textContent = css
 }
 
+/** theme.icons による ComponentRegistry 登録の owner（resetThemeOverrides での一括解除に使う） */
+const BRAND_ICON_OWNER = 'brand-theme-icons'
+
+/** MUIアイコン（Icon:Description等）のAvatar内表示サイズに合わせる（registerDefaults.tsxのfontSize: 32と揃える） */
+const THEME_ICON_SIZE = 32
+
+/** theme.icons（アイコン名 → SVGアセットパス/外部URL）を ComponentRegistry に 'Icon:<name>' として登録する。
+ * 読み込み失敗時のフォールバック表示は既存の FallbackImage（画像装飾・master image decoration と共通）に委ねる（#201） */
+function registerThemeIcons(icons: Record<string, string>): void {
+  for (const [name, src] of Object.entries(icons)) {
+    if (!src) continue
+    registerComponent(`Icon:${name}`, () => createElement(FallbackImage, { src, alt: name, width: THEME_ICON_SIZE, height: THEME_ICON_SIZE }), BRAND_ICON_OWNER)
+  }
+}
+
 /** ThemeDataからCSS変数を適用する */
 export function applyThemeData(themeData: ThemeData): void {
   const root = document.documentElement
@@ -390,6 +414,10 @@ export function applyThemeData(themeData: ThemeData): void {
     applySafeArea(root, themeData.canvas.safeArea)
   }
 
+  if (themeData.icons) {
+    registerThemeIcons(themeData.icons)
+  }
+
   if (themeData.customCSS) {
     upsertStyleElement('sdd-custom-theme-css', themeData.customCSS)
   }
@@ -408,25 +436,49 @@ export function applyThemeData(themeData: ThemeData): void {
  */
 export function getThemeWarnings(theme?: ThemeData, slides?: SlideData[]): string[] {
   const warnings: string[] = []
-  if (!theme) return warnings
 
-  for (const [key, value] of Object.entries(theme.colors ?? {})) {
-    if (!value) continue
-    if (!THEME_COLOR_TOKENS[key]) {
-      warnings.push(`theme.colors.${key}: 不明なキーです（無視されます）`)
-    } else if (normalizeHex(value) === null) {
-      warnings.push(`theme.colors.${key}: "${value}" は有効な色として解釈できません`)
+  if (theme) {
+    for (const [key, value] of Object.entries(theme.colors ?? {})) {
+      if (!value) continue
+      if (!THEME_COLOR_TOKENS[key]) {
+        warnings.push(`theme.colors.${key}: 不明なキーです（無視されます）`)
+      } else if (normalizeHex(value) === null) {
+        warnings.push(`theme.colors.${key}: "${value}" は有効な色として解釈できません`)
+      }
     }
-  }
 
-  for (const source of theme.fonts?.sources ?? []) {
-    if (!hasFontSourceContent(source)) {
-      warnings.push(`theme.fonts.sources（family: "${source.family}"）: src/url/localName のいずれも指定されていません`)
+    for (const source of theme.fonts?.sources ?? []) {
+      if (!hasFontSourceContent(source)) {
+        warnings.push(`theme.fonts.sources（family: "${source.family}"）: src/url/localName のいずれも指定されていません`)
+      }
+    }
+
+    for (const [name, src] of Object.entries(theme.icons ?? {})) {
+      if (!src) {
+        warnings.push(`theme.icons.${name}: srcが指定されていません`)
+      }
     }
   }
 
   warnings.push(...getMasterWarnings(theme, slides))
+  warnings.push(...getTileIconWarnings(slides))
 
+  return warnings
+}
+
+/** content.tiles[].icon が ComponentRegistry（デフォルト・アドオン・ブランドテーマ提供のいずれも）に未登録の場合を検出する（#201） */
+function getTileIconWarnings(slides?: SlideData[]): string[] {
+  const warnings: string[] = []
+  for (const [index, slide] of (slides ?? []).entries()) {
+    const tiles = slide.content?.tiles
+    if (!Array.isArray(tiles)) continue
+    tiles.forEach((tile, i) => {
+      const icon = (tile as { icon?: unknown })?.icon
+      if (typeof icon === 'string' && !hasComponent(`Icon:${icon}`)) {
+        warnings.push(`slides[${index}].content.tiles[${i}].icon: 未登録のアイコン名 "${icon}" です`)
+      }
+    })
+  }
   return warnings
 }
 
@@ -481,6 +533,7 @@ export function resetThemeOverrides(): void {
   document.getElementById('sdd-master-tokens-css')?.remove()
   document.querySelectorAll('style[id^="sdd-font-face-"]').forEach((el) => el.remove())
   document.querySelectorAll('link[data-sdd-dynamic-font="true"]').forEach((el) => el.remove())
+  unregisterOwner(BRAND_ICON_OWNER)
 }
 
 /**

@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { applyTheme, applyPresentationTheme, applyThemeData, applyBaseFontSize, loadFontSources, resetThemeOverrides, normalizeHex, getThemeWarnings, getContrastRatio, mergeThemeData, fetchThemeData } from '../applyTheme'
+import { hasComponent } from '../components/ComponentRegistry'
 import type { ThemeData } from '../data'
 
 describe('applyTheme', () => {
@@ -200,6 +201,15 @@ describe('mergeThemeData（brand→deck の合成・#170）', () => {
     ])
   })
 
+  it('icons はキー単位でマージし、同名キーは theme が優先される（#201）', () => {
+    const brand: ThemeData = { icons: { rocket: 'image/icons/rocket-brand.svg', logo: 'image/icons/logo.svg' } }
+    const theme: ThemeData = { icons: { rocket: 'image/icons/rocket-deck.svg' } }
+
+    const merged = mergeThemeData(brand, theme)
+
+    expect(merged?.icons).toEqual({ rocket: 'image/icons/rocket-deck.svg', logo: 'image/icons/logo.svg' })
+  })
+
   it('customCSS は brand→theme の順で連結する', () => {
     const merged = mergeThemeData({ customCSS: '.brand {}' }, { customCSS: '.deck {}' })
 
@@ -209,7 +219,15 @@ describe('mergeThemeData（brand→deck の合成・#170）', () => {
   it('brand のみ指定時はそのまま反映される', () => {
     const brand: ThemeData = { colors: { primary: '#000000' } }
 
-    expect(mergeThemeData(brand, undefined)).toEqual({ colors: { primary: '#000000' }, fonts: undefined, customCSS: undefined, masters: undefined, masterMap: undefined, tokens: undefined })
+    expect(mergeThemeData(brand, undefined)).toEqual({
+      colors: { primary: '#000000' },
+      fonts: undefined,
+      icons: undefined,
+      customCSS: undefined,
+      masters: undefined,
+      masterMap: undefined,
+      tokens: undefined,
+    })
   })
 
   it('canvas は width/height を個別キーでマージし、同名キーは theme が優先される（#188）', () => {
@@ -376,6 +394,24 @@ describe('applyThemeData - canvas.safeArea（#188）', () => {
   })
 })
 
+describe('applyThemeData - icons integration（#201）', () => {
+  afterEach(() => {
+    resetThemeOverrides()
+  })
+
+  it('theme.icons を ComponentRegistry に Icon:<name> として登録する', () => {
+    applyThemeData({ icons: { rocket: 'image/icons/rocket.svg' } })
+
+    expect(hasComponent('Icon:rocket')).toBe(true)
+  })
+
+  it('srcが空文字列のアイコンは登録しない', () => {
+    applyThemeData({ icons: { broken: '' } })
+
+    expect(hasComponent('Icon:broken')).toBe(false)
+  })
+})
+
 describe('resetThemeOverrides', () => {
   beforeEach(() => {
     document.documentElement.style.cssText = ''
@@ -423,6 +459,15 @@ describe('resetThemeOverrides', () => {
 
     expect(document.getElementById('sdd-font-face-myfont')).toBeNull()
     expect(document.querySelector('link[data-sdd-dynamic-font="true"]')).toBeNull()
+  })
+
+  it('前のプレゼンテーションで登録した theme.icons を ComponentRegistry から解除する（#201）', () => {
+    applyThemeData({ icons: { rocket: 'image/icons/rocket.svg' } })
+    expect(hasComponent('Icon:rocket')).toBe(true)
+
+    resetThemeOverrides()
+
+    expect(hasComponent('Icon:rocket')).toBe(false)
   })
 
   it('accent の CSS 変数（--theme-accent, -rgb）も消す', () => {
@@ -638,6 +683,18 @@ describe('getThemeWarnings', () => {
     const theme = { masters: { standard: { decorations: [] } } }
     const warnings = getThemeWarnings(theme, [{ id: 's1', layout: 'center', content: {}, meta: { master: 'missing' } }])
     expect(warnings.some((w) => w.includes('slides[0].meta.master'))).toBe(true)
+  })
+
+  // #201: theme.icons に src 未指定のエントリがあれば警告する
+  it('icons に src 未指定のエントリがあれば警告する', () => {
+    const warnings = getThemeWarnings({ icons: { broken: '' } })
+    expect(warnings.some((w) => w.includes('theme.icons.broken'))).toBe(true)
+  })
+
+  // #201: content.tiles[].icon が ComponentRegistry に未登録なら theme 未指定でも警告する
+  it('slides を渡すと content.tiles[].icon が未登録の場合に警告する', () => {
+    const warnings = getThemeWarnings(undefined, [{ id: 's1', layout: 'content', content: { tiles: [{ icon: 'NoSuchIcon', title: 'A', description: 'a' }] } }])
+    expect(warnings.some((w) => w.includes('slides[0].content.tiles[0].icon') && w.includes('NoSuchIcon'))).toBe(true)
   })
 })
 
