@@ -4,26 +4,28 @@ import Typography from '@mui/material/Typography'
 
 type Props = {
   src: string
-  /** 固定寸法（px）。fit 指定時は不要 */
+  /** 固定寸法（px）。省略すると縦横比を保って親要素に収める（画像スライドの自動フィット・#198）。
+   * 省略時は読み込み失敗の破線プレースホルダも親要素いっぱいに広がり、寸法表記は出さない */
   width?: number
   height?: number
   alt?: string
   className?: string
-  /** 固定寸法の代わりに、縦横比を保って親要素に収める（画像スライドの自動フィット・#198）。
-   * 読み込み失敗時の破線プレースホルダは親要素いっぱいに広がる（寸法表記は出さない） */
-  fit?: boolean
 }
 
-export function FallbackImage({ src, width, height, alt = '', className, fit }: Props) {
+/** data-state で読み込み状態を公開する。呼び出し側が「成功した画像にだけ意匠を当てる」等の
+ * 状態依存スタイルを、描画される要素（img / プレースホルダの div）に依存せず書けるようにするため */
+export function FallbackImage({ src, width, height, alt = '', className }: Props) {
   const [status, setStatus] = useState<'loading' | 'loaded' | 'error'>('loading')
+  const hasSize = width !== undefined && height !== undefined
 
   if (status === 'error') {
     return (
       <Box
         className={className}
+        data-state={status}
         sx={{
-          width: fit ? '100%' : width,
-          height: fit ? '100%' : height,
+          width: hasSize ? width : '100%',
+          height: hasSize ? height : '100%',
           border: '1px dashed var(--theme-border-light)',
           borderRadius: '4px',
           display: 'flex',
@@ -31,7 +33,7 @@ export function FallbackImage({ src, width, height, alt = '', className, fit }: 
           justifyContent: 'center',
         }}
       >
-        {!fit && (
+        {hasSize && (
           <Typography
             sx={{
               fontSize: '11px',
@@ -51,8 +53,9 @@ export function FallbackImage({ src, width, height, alt = '', className, fit }: 
       src={src}
       alt={alt}
       className={className}
+      data-state={status}
       style={{
-        ...(fit ? { maxWidth: '100%', maxHeight: '100%' } : { width, height }),
+        ...(hasSize ? { width, height } : { maxWidth: '100%', maxHeight: '100%' }),
         objectFit: 'contain',
         display: status === 'loading' ? 'none' : undefined,
       }}

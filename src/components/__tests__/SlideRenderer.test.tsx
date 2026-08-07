@@ -371,79 +371,65 @@ describe('SlideRenderer', () => {
 
   // #198: 画像スライド（content.images → ImageFigureGrid）
   describe('contentスライド(images)', () => {
-    const image = (src: string, caption?: string) => ({ src, caption })
-
-    function renderImages(images: Array<Record<string, unknown>>) {
-      return renderWithTheme(<SlideRenderer slides={[{ id: 'test-images', layout: 'content', content: { title: 'タイトル', images } }]} />)
+    function renderContent(content: SlideData['content']) {
+      return renderWithTheme(<SlideRenderer slides={[{ id: 'test-images', layout: 'content', content: { title: 'タイトル', ...content } }]} />)
     }
 
     it('画像が枚数分figureとして描画される', () => {
-      const { container } = renderImages([image('/a.png'), image('/b.png')])
+      const { container } = renderContent({ images: [{ src: '/a.png' }, { src: '/b.png' }] })
       expect(container.querySelectorAll('figure').length).toBe(2)
       expect(container.querySelectorAll('figure img').length).toBe(2)
     })
 
     it('captionがfigcaptionとして描画される（HTMLタグも展開される）', () => {
-      const { container } = renderImages([image('/a.png', '説明<br/>2行目')])
+      const { container } = renderContent({ images: [{ src: '/a.png', caption: '説明<br/>2行目' }] })
       const figcaption = container.querySelector('figcaption')
       expect(figcaption?.textContent).toBe('説明2行目')
       expect(figcaption?.querySelector('br')).not.toBeNull()
     })
 
     it('caption未指定の画像にはfigcaptionが描画されない', () => {
-      const { container } = renderImages([image('/a.png')])
+      const { container } = renderContent({ images: [{ src: '/a.png' }] })
       expect(container.querySelector('figcaption')).toBeNull()
     })
 
     it('altが指定した代替テキストになり、未指定なら空文字になる', () => {
-      const { container } = renderImages([{ src: '/a.png', alt: '図の説明' }, image('/b.png')])
+      const { container } = renderContent({ images: [{ src: '/a.png', alt: '図の説明' }, { src: '/b.png' }] })
       const imgs = container.querySelectorAll('img')
       expect(imgs[0].getAttribute('alt')).toBe('図の説明')
       expect(imgs[1].getAttribute('alt')).toBe('')
     })
 
-    // 縦横比を保った自動フィット（受け入れ基準: 縦長・横長・正方形がいずれもセーフエリア内に収まる）は
-    // 固定寸法を持たず max-* + object-fit: contain で親要素に収める指定で成り立つ
+    // 縦横比を保った自動フィット（受け入れ基準: 縦長・横長・正方形がいずれもセーフエリア内に収まる）は、
+    // 固定寸法を持たず max-* だけで親要素に収めることで成り立つ（寸法が付くと縦横比が崩れる）
     it('画像に固定寸法を付けず、縦横比を保って親要素に収める指定になる', () => {
-      const { container } = renderImages([image('/a.png')])
+      const { container } = renderContent({ images: [{ src: '/a.png' }] })
       const img = container.querySelector('img')!
       expect(img.style.maxWidth).toBe('100%')
       expect(img.style.maxHeight).toBe('100%')
-      expect(img.style.objectFit).toBe('contain')
       expect(img.style.width).toBe('')
       expect(img.style.height).toBe('')
     })
 
     it('グリッドの列数は画像枚数と同数になり、3枚を超えると3列で折返す', () => {
-      const { container: one } = renderImages([image('/a.png')])
+      const { container: one } = renderContent({ images: [{ src: '/a.png' }] })
       expect((one.querySelector('figure')!.parentElement as HTMLElement).style.gridTemplateColumns).toBe('repeat(1, minmax(0, 1fr))')
 
-      const { container: four } = renderImages([image('/a.png'), image('/b.png'), image('/c.png'), image('/d.png')])
+      const { container: four } = renderContent({ images: [{ src: '/a.png' }, { src: '/b.png' }, { src: '/c.png' }, { src: '/d.png' }] })
       expect((four.querySelector('figure')!.parentElement as HTMLElement).style.gridTemplateColumns).toBe('repeat(3, minmax(0, 1fr))')
     })
 
     it('tilesが指定されている場合はtiles描画が優先される（既存の優先順位の維持）', () => {
-      const slide: SlideData = {
-        id: 'test-images-priority',
-        layout: 'content',
-        content: {
-          title: 'タイトル',
-          tiles: [{ icon: 'Description', title: 'タイル', description: '説明' }],
-          images: [image('/a.png', '描画されないキャプション')],
-        },
-      }
-      const { container } = renderWithTheme(<SlideRenderer slides={[slide]} />)
+      const { container } = renderContent({
+        tiles: [{ icon: 'Description', title: 'タイル', description: '説明' }],
+        images: [{ src: '/a.png' }],
+      })
       expect(container.textContent).toContain('タイル')
       expect(container.querySelector('figure')).toBeNull()
     })
 
     it('images指定時はbody/itemsを描画しない（画像スライドはbody/itemsより優先される）', () => {
-      const slide: SlideData = {
-        id: 'test-images-over-body',
-        layout: 'content',
-        content: { title: 'タイトル', images: [image('/a.png')], body: '描画されない本文' },
-      }
-      const { container } = renderWithTheme(<SlideRenderer slides={[slide]} />)
+      const { container } = renderContent({ images: [{ src: '/a.png' }], body: '描画されない本文' })
       expect(container.querySelector('figure')).not.toBeNull()
       expect(container.textContent).not.toContain('描画されない本文')
     })
