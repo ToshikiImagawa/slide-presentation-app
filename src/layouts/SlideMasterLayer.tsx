@@ -2,19 +2,27 @@ import type { CSSProperties } from 'react'
 import { FallbackImage } from '../components/FallbackImage'
 import { hasComponent, renderRegisteredComponent } from '../components/ComponentRegistry'
 import type { MasterBackground, MasterDecoration, MasterDecorationLayer, MasterGradient, MasterRenderContext } from '../data'
+import type { ResolvedMaster } from '../masters'
 import { matchesDecorationOnly, renderMasterText } from '../masters'
 
 type Props = {
-  decorations: MasterDecoration[]
+  /** resolveMaster が解決したマスター。未解決（undefined）なら何も描かない（現行と完全同一のDOM） */
+  master: ResolvedMaster | undefined
   layer: MasterDecorationLayer
   ctx: MasterRenderContext
 }
 
-/** master の decorations から指定レイヤー（back/front）に属し only 条件を満たすものだけを描画する */
-export function SlideMasterLayer({ decorations, layer, ctx }: Props) {
-  const visible = decorations.filter((d) => (d.layer ?? 'back') === layer && matchesDecorationOnly(d.only, ctx))
+/**
+ * 指定レイヤー（back/front）の中身を組み立てる。back レイヤーは最背面にマスター背景（#189）を敷き、
+ * その上に該当レイヤーの装飾（only 条件を満たすもの）を宣言順で描く。
+ * レイヤー内の重なり順を知るのはこのコンポーネントだけで、SlideFrame は2つのレイヤー div を並べるだけ。
+ */
+export function SlideMasterLayer({ master, layer, ctx }: Props) {
+  if (!master) return null
+  const visible = master.decorations.filter((d) => (d.layer ?? 'back') === layer && matchesDecorationOnly(d.only, ctx))
   return (
     <>
+      {layer === 'back' && master.background && <MasterBackgroundElement background={master.background} />}
       {visible.map((decoration, i) => (
         <MasterDecorationElement key={i} decoration={decoration} ctx={ctx} />
       ))}
@@ -57,9 +65,8 @@ function linearGradient(gradient: MasterGradient): string {
   return `linear-gradient(${gradient.angle ?? 180}deg, ${gradient.from}, ${gradient.to})`
 }
 
-/** master の background（無地/格子/全面塗り/グラデーション/画像）を .master-layer-back の最背面に敷く（#189）。
- * 描くかどうか（background を持つマスターだけ）の判断は SlideFrame 側が持つ */
-export function SlideMasterBackground({ background }: { background: MasterBackground }) {
+/** master の background（無地/格子/全面塗り/グラデーション/画像）を全面に敷く要素（#189） */
+function MasterBackgroundElement({ background }: { background: MasterBackground }) {
   const className = background.type === 'grid' ? 'master-background master-background-grid' : 'master-background'
   return <div className={className} style={backgroundStyle(background)} />
 }

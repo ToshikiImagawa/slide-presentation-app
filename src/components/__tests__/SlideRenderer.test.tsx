@@ -544,7 +544,6 @@ describe('SlideRenderer', () => {
         expect(container.querySelector('.master-background')).toBeNull()
       })
 
-      // 種別ごとの塗り分けは SlideMasterBackground の単体テストが担保するので、ここは masterKey → 背景の配線だけを見る
       it('マスターごとに別の背景（無地 / 格子 / 全面塗り）を割り当てられる（受け入れ基準）', () => {
         const slides: SlideData[] = ['plain', 'grid', 'fill'].map((master, i) => ({ id: `s${i}`, layout: 'content', content: { title: `slide ${i}` }, meta: { master } }))
         const theme: ThemeData = {
@@ -556,20 +555,9 @@ describe('SlideRenderer', () => {
         }
         const { container } = renderWithTheme(<SlideRenderer slides={slides} theme={theme} />)
         const backgroundOf = (index: number) => container.querySelectorAll('section.slide-container')[index].querySelector('.master-layer-back > .master-background') as HTMLElement
-        expect([backgroundOf(0), backgroundOf(1), backgroundOf(2)].every(Boolean)).toBe(true)
-        expect(new Set([backgroundOf(0).outerHTML, backgroundOf(1).outerHTML, backgroundOf(2).outerHTML]).size).toBe(3)
-      })
-
-      it('背景は同じレイヤーの装飾より背面（先頭の子）に描かれる', () => {
-        const contentSlide = testSlides.find((s) => s.layout === 'content')!
-        const theme: ThemeData = {
-          masters: { standard: { background: { type: 'plain' }, decorations: [{ type: 'band', anchor: 'top-center' }] } },
-          masterMap: { content: 'standard' },
-        }
-        const { container } = renderWithTheme(<SlideRenderer slides={[contentSlide]} theme={theme} />)
-        const back = container.querySelector('.master-layer-back')!
-        expect(back.children.length).toBe(2)
-        expect(back.children[0].className).toBe('master-background')
+        expect(backgroundOf(0).className).toBe('master-background')
+        expect(backgroundOf(1).className).toBe('master-background master-background-grid')
+        expect(backgroundOf(2).style.backgroundColor).toBe('rgb(1, 2, 3)')
       })
 
       it('透かし（低不透明度・回転させたテキスト装飾）をマスター装飾として置ける（受け入れ基準）', () => {
@@ -579,10 +567,10 @@ describe('SlideRenderer', () => {
           masterMap: { content: 'standard' },
         }
         const { container } = renderWithTheme(<SlideRenderer slides={[contentSlide]} theme={theme} />)
-        // opacity / rotate のスタイル文字列は SlideMasterLayer の単体テストが担保する
         const watermark = container.querySelector('.master-layer-back > div') as HTMLElement
         expect(watermark.textContent).toBe('CONFIDENTIAL')
         expect(watermark.style.opacity).toBe('0.08')
+        expect(watermark.style.transform).toContain('rotate(-30deg)')
       })
     })
 

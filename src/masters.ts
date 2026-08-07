@@ -8,16 +8,16 @@ const MASTER_DECORATION_LAYER = ['back', 'front'] as const
 const MASTER_BACKGROUND_TYPES = ['plain', 'grid', 'fill', 'gradient', 'image'] as const
 const MASTER_BACKGROUND_FITS = ['cover', 'contain'] as const
 
-export interface ResolvedMaster {
-  masterKey: string
-  decorations: MasterDecoration[]
-  /** 背景意匠。未指定のマスターでは undefined（#189） */
-  background?: MasterBackground
-}
+/** extends が解けた状態のマスター定義（decorations は常に配列に正規化する）。継承できるフィールドは
+ * MasterDefinition 側の語彙で決まるため、フィールドを増やしてもこの型は追随不要 */
+type MergedMasterDefinition = Omit<MasterDefinition, 'extends' | 'decorations'> & { decorations: MasterDecoration[] }
+
+/** 合成済みのマスター定義に、採用された masterKey を添えた描画側の契約 */
+export type ResolvedMaster = MergedMasterDefinition & { masterKey: string }
 
 /**
- * masterKey を解決順序どおりに候補列挙し、extends チェーンを辿って定義を合成する
- * （collectDefinition）。解決順序: ①opts.master（スライド個別指定）→ ②masterMap["<layout>/<variant>"]
+ * masterKey を解決順序どおりに候補列挙し、extends チェーンを辿って定義を合成する。
+ * 解決順序: ①opts.master（スライド個別指定）→ ②masterMap["<layout>/<variant>"]
  * （opts.variant があるときのみ）→ ③masterMap["<layout>"] → ④解決なし。
  * 各候補は masters に存在し extends が循環していない場合のみ採用し、そうでなければ次の候補へ
  * フォールバックする（未解決の masterKey 指定は getMasterWarnings が警告する）。
@@ -42,7 +42,7 @@ export function resolveMaster(theme: ThemeData | undefined, layout: string, opts
  * フィールドごとのマージ規則: decorations は親→子の順に連結し、background は重ね合わせできないため
  * 自身に近い定義が勝つ（#189）。継承対象のフィールドを増やすときはここに規則を1行足す。
  */
-function collectDefinition(masters: Record<string, MasterDefinition>, key: string): Omit<ResolvedMaster, 'masterKey'> {
+function collectDefinition(masters: Record<string, MasterDefinition>, key: string): MergedMasterDefinition {
   const definition = masters[key]
   if (!definition) return { decorations: [] }
   const inherited = definition.extends ? collectDefinition(masters, definition.extends) : { decorations: [] }
@@ -153,7 +153,7 @@ function backgroundWarnings(background: MasterBackground, path: string): string[
     return [`${path}.type: 不明な種別 "${background.type}" です（${MASTER_BACKGROUND_TYPES.join('/')} のいずれかを指定してください）`]
   }
 
-  const warnings = opacityWarnings(background.opacity, path)
+  const warnings = [...opacityWarnings(background.opacity, path)]
 
   switch (background.type) {
     case 'grid':
@@ -175,6 +175,50 @@ function backgroundWarnings(background: MasterBackground, path: string): string[
       }
       if (background.fit && !MASTER_BACKGROUND_FITS.includes(background.fit)) {
         warnings.push(`${path}.fit: 不明な値 "${background.fit}" です（${MASTER_BACKGROUND_FITS.join('/')} のいずれかを指定してください）`)
+      }
+      break
+  }
+
+  return warnings
+}
+
+/**
+ * 装飾1件の値検証。種別が不明な場合は何も描けないため以降の検証は行わない（backgroundWarnings と同じ方針）。
+ * 共通プロパティ（anchor/only/layer/opacity/rotate）を見たあと、種別固有の規則を switch で並べる。
+ */
+function decorationWarnings(decoration: MasterDecoration, path: string): string[] {
+  if (!MASTER_DECORATION_TYPES.includes(decoration.type)) {
+    return [`${path}.type: 不明な種別 "${decoration.type}" です（${MASTER_DECORATION_TYPES.join('/')} のいずれかを指定してください）`]
+  }
+
+  const warnings = [...opacityWarnings(decoration.opacity, path)]
+  if (!MASTER_ANCHORS.includes(decoration.anchor)) {
+    warnings.push(`${path}.anchor: 不明な値 "${decoration.anchor}" です`)
+  }
+  if (decoration.only && !MASTER_DECORATION_ONLY.includes(decoration.only)) {
+    warnings.push(`${path}.only: 不明な値 "${decoration.only}" です`)
+  }
+  if (decoration.layer && !MASTER_DECORATION_LAYER.includes(decoration.layer)) {
+    warnings.push(`${path}.layer: 不明な値 "${decoration.layer}" です`)
+  }
+  if (decoration.rotate !== undefined && !Number.isFinite(decoration.rotate)) {
+    warnings.push(`${path}.rotate: 数値（deg）を指定してください（"${decoration.rotate}"）`)
+  }
+
+  switch (decoration.type) {
+    case 'band':
+      if (decoration.gradient) {
+        warnings.push(...gradientWarnings(decoration.gradient, `${path}.gradient`))
+      }
+      break
+    case 'text':
+      for (const name of unknownTextVariables(decoration.content)) {
+        warnings.push(`${path}.content: 不明なテンプレート変数 "{${name}}" です（${[...MASTER_TEXT_RESOLVERS.keys()].join('/')} のいずれかを指定してください）`)
+      }
+      break
+    case 'component':
+      if (!hasComponent(decoration.name)) {
+        warnings.push(`${path}.name: 未登録のコンポーネント "${decoration.name}" が指定されています（該当箇所は描画をスキップします）`)
       }
       break
   }
@@ -226,35 +270,7 @@ export function getMasterWarnings(theme?: ThemeData, slides?: SlideData[]): stri
     }
 
     for (const [i, decoration] of (definition.decorations ?? []).entries()) {
-      const path = `theme.masters.${masterKey}.decorations[${i}]`
-      if (!MASTER_DECORATION_TYPES.includes(decoration.type)) {
-        warnings.push(`${path}.type: 不明な種別 "${decoration.type}" です（logo/band/rule/text/image/component のいずれかを指定してください）`)
-        continue
-      }
-      if (!MASTER_ANCHORS.includes(decoration.anchor)) {
-        warnings.push(`${path}.anchor: 不明な値 "${decoration.anchor}" です`)
-      }
-      if (decoration.only && !MASTER_DECORATION_ONLY.includes(decoration.only)) {
-        warnings.push(`${path}.only: 不明な値 "${decoration.only}" です`)
-      }
-      if (decoration.layer && !MASTER_DECORATION_LAYER.includes(decoration.layer)) {
-        warnings.push(`${path}.layer: 不明な値 "${decoration.layer}" です`)
-      }
-      warnings.push(...opacityWarnings(decoration.opacity, path))
-      if (decoration.rotate !== undefined && !Number.isFinite(decoration.rotate)) {
-        warnings.push(`${path}.rotate: 数値（deg）を指定してください（"${decoration.rotate}"）`)
-      }
-      if (decoration.type === 'band' && decoration.gradient) {
-        warnings.push(...gradientWarnings(decoration.gradient, `${path}.gradient`))
-      }
-      if (decoration.type === 'text') {
-        for (const name of unknownTextVariables(decoration.content)) {
-          warnings.push(`${path}.content: 不明なテンプレート変数 "{${name}}" です（${[...MASTER_TEXT_RESOLVERS.keys()].join('/')} のいずれかを指定してください）`)
-        }
-      }
-      if (decoration.type === 'component' && !hasComponent(decoration.name)) {
-        warnings.push(`${path}.name: 未登録のコンポーネント "${decoration.name}" が指定されています（該当箇所は描画をスキップします）`)
-      }
+      warnings.push(...decorationWarnings(decoration, `theme.masters.${masterKey}.decorations[${i}]`))
     }
   }
 

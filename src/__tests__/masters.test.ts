@@ -209,7 +209,8 @@ describe('renderMasterText', () => {
 })
 
 describe('getMasterWarnings', () => {
-  /** masters.standard に定義1つだけを置いた theme の警告を返す（JSON 由来の型不一致も渡せるよう unknown で受ける） */
+  /** masters.standard に定義1つだけを置いた theme の警告を返す（JSON 由来の型不一致も渡せるよう unknown で受ける）。
+   * 「警告が出ない」ことを確かめる正例は、リテラル自体が DSL の型検査になるので ThemeData 注釈付きで書く */
   const warningsFor = (definition: unknown): string[] => getMasterWarnings({ masters: { standard: definition } } as unknown as ThemeData)
 
   it('theme 未指定なら警告なし', () => {

@@ -1,22 +1,25 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { render } from '@testing-library/react'
-import { SlideMasterBackground, SlideMasterLayer } from '../SlideMasterLayer'
+import { SlideMasterLayer } from '../SlideMasterLayer'
 import { clearRegistry, registerDefaultComponent } from '../../components/ComponentRegistry'
 import type { MasterBackground, MasterDecoration, MasterDecorationOnly, MasterRenderContext, SectionInfo } from '../../data'
 
 const ctx: MasterRenderContext = { index: 0, total: 1 }
 
+/** back レイヤーを描画する（master は decorations / background だけを与えれば足りる） */
+function renderBackLayer(master: { decorations?: MasterDecoration[]; background?: MasterBackground }, renderCtx: MasterRenderContext = ctx): HTMLElement {
+  const { container } = render(<SlideMasterLayer master={{ masterKey: 'standard', decorations: master.decorations ?? [], background: master.background }} layer="back" ctx={renderCtx} />)
+  return container
+}
+
 /** only 条件だけを変えた text 装飾を描画し、その装飾が出たかどうかを返す */
 function isVisible(only: MasterDecorationOnly, renderCtx: MasterRenderContext): boolean {
-  const decorations: MasterDecoration[] = [{ type: 'text', anchor: 'bottom-right', content: 'shown', only }]
-  const { container } = render(<SlideMasterLayer decorations={decorations} layer="back" ctx={renderCtx} />)
-  return container.textContent === 'shown'
+  return renderBackLayer({ decorations: [{ type: 'text', anchor: 'bottom-right', content: 'shown', only }] }, renderCtx).textContent === 'shown'
 }
 
 /** 装飾1件を描画してそのルート要素の style を返す */
 function styleOf(decoration: MasterDecoration): CSSStyleDeclaration {
-  const { container } = render(<SlideMasterLayer decorations={[decoration]} layer="back" ctx={ctx} />)
-  return (container.firstElementChild as HTMLElement).style
+  return (renderBackLayer({ decorations: [decoration] }).firstElementChild as HTMLElement).style
 }
 
 describe('SlideMasterLayer', () => {
@@ -24,18 +27,20 @@ describe('SlideMasterLayer', () => {
     clearRegistry()
   })
 
+  it('master が未解決なら何も描画しない（現行と完全同一のDOM）', () => {
+    const { container } = render(<SlideMasterLayer master={undefined} layer="back" ctx={ctx} />)
+    expect(container.innerHTML).toBe('')
+  })
+
   it('未登録コンポーネントを参照する component 装飾は描画しない（Fallback落ち防止）', () => {
-    const decorations: MasterDecoration[] = [{ type: 'component', anchor: 'top-left', name: 'Unregistered' }]
-    const { container } = render(<SlideMasterLayer decorations={decorations} layer="back" ctx={ctx} />)
+    const container = renderBackLayer({ decorations: [{ type: 'component', anchor: 'top-left', name: 'Unregistered' }] })
     expect(container.textContent).toBe('')
     expect(container.querySelector('div')).toBeNull()
   })
 
   it('登録済みコンポーネントを参照する component 装飾は描画する', () => {
     registerDefaultComponent('Registered', () => <span>rendered</span>)
-    const decorations: MasterDecoration[] = [{ type: 'component', anchor: 'top-left', name: 'Registered' }]
-    const { container } = render(<SlideMasterLayer decorations={decorations} layer="back" ctx={ctx} />)
-    expect(container.textContent).toBe('rendered')
+    expect(renderBackLayer({ decorations: [{ type: 'component', anchor: 'top-left', name: 'Registered' }] }).textContent).toBe('rendered')
   })
 
   it('未登録コンポーネントが混在しても他の装飾は描画される', () => {
@@ -43,8 +48,7 @@ describe('SlideMasterLayer', () => {
       { type: 'component', anchor: 'top-left', name: 'Unregistered' },
       { type: 'text', anchor: 'bottom-right', content: 'page' },
     ]
-    const { container } = render(<SlideMasterLayer decorations={decorations} layer="back" ctx={ctx} />)
-    expect(container.textContent).toBe('page')
+    expect(renderBackLayer({ decorations }).textContent).toBe('page')
   })
 
   // #191: only の語彙拡張（middle / section-first / not-section-first）
@@ -117,12 +121,24 @@ describe('SlideMasterLayer', () => {
   })
 })
 
-// #189: マスター背景意匠。背景を持たないマスターでは SlideFrame がこの要素自体を描かない
-describe('SlideMasterBackground', () => {
-  const backgroundEl = (background: MasterBackground): HTMLElement => {
-    const { container } = render(<SlideMasterBackground background={background} />)
-    return container.firstElementChild as HTMLElement
-  }
+// #189: マスター背景意匠（back レイヤーの最背面に敷かれる）
+describe('マスター背景', () => {
+  const backgroundEl = (background: MasterBackground): HTMLElement => renderBackLayer({ background }).querySelector('.master-background') as HTMLElement
+
+  it('background を持たないマスターでは背景要素を描かない（現行と完全同一のDOM）', () => {
+    expect(renderBackLayer({ decorations: [{ type: 'band', anchor: 'top-center' }] }).querySelector('.master-background')).toBeNull()
+  })
+
+  it('front レイヤーには背景を描かない（背景は back の最背面だけ）', () => {
+    const { container } = render(<SlideMasterLayer master={{ masterKey: 'standard', decorations: [], background: { type: 'plain' } }} layer="front" ctx={ctx} />)
+    expect(container.querySelector('.master-background')).toBeNull()
+  })
+
+  it('背景は同じレイヤーの装飾より背面（先頭の子）に描く', () => {
+    const container = renderBackLayer({ background: { type: 'plain' }, decorations: [{ type: 'band', anchor: 'top-center' }] })
+    expect(container.children.length).toBe(2)
+    expect(container.children[0].className).toBe('master-background')
+  })
 
   it('plain はテーマ背景色の無地で塗る（デッキ既定の格子を隠す）', () => {
     const el = backgroundEl({ type: 'plain' })
