@@ -1,0 +1,74 @@
+/* 図解用の角丸カード／パネル（#202）。角丸・境界線幅・アクセント幅・影は意匠トークンから引く。
+   面は半透明の色被せではなく不透明色にしている: rgba(var(--theme-*-rgb), α) は `-rgb` companion が
+   ある色（primary/accent/background と、テーマを持つデッキの系列色）でしか成立せず、テーマを持たない
+   デッキで success/warning/series* を指定すると面と枠が消えてしまう。図解のノードは境界がはっきり
+   読めることを優先し、どのカラーパレットキーでも同じ品質で描けるようにする */
+.card {
+  position: absolute;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  padding: 14px 18px;
+  overflow: hidden;
+  border: var(--theme-border-width) solid var(--diagram-color);
+  border-radius: var(--theme-radius-lg);
+  background: var(--theme-background-alt);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, calc(0.06 * var(--theme-shadow-strength)));
+}
+
+/* カード左端のアクセントバー（既定幅 0 = 描画なし）。border-left にすると 0px 指定時に左辺の
+   ヘアライン境界線を食い潰すため、FeatureTileGrid と同じく擬似要素で描く */
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: var(--theme-card-accent-width);
+  background: var(--diagram-color);
+}
+
+/* 面をカラーパレット色で塗り、文字色を背景色トークンへ反転させる（彩度の高い地色でも読める） */
+.filled {
+  background: var(--diagram-color);
+}
+
+.filled .title,
+.filled .body {
+  color: var(--theme-background);
+}
+
+/* 色に意味を持たせないノード（枠だけのプレースホルダ等）向け。境界線をテーマの中立色にする */
+.plain {
+  border-color: var(--theme-border);
+}
+
+.title {
+  font-family: var(--theme-font-heading);
+  font-size: var(--theme-font-size-h4);
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--theme-text-heading);
+}
+
+.body {
+  font-family: var(--theme-font-body);
+  font-size: var(--theme-font-size-body2);
+  line-height: 1.4;
+  color: var(--theme-text-body);
+}
+
+/* カード左上に重ねる番号バッジ。カードの角丸に食い込まないよう内側へ寄せる */
+.badge {
+  position: absolute;
+  top: 10px;
+  left: 14px;
+}
+
+/* バッジを置いたときはタイトル・本文がバッジと重ならないよう上端を空ける */
+.withBadge {
+  padding-top: 52px;
+  justify-content: flex-start;
+}

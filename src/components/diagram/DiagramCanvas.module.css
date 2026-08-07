@@ -1,0 +1,36 @@
+/* 図解プリミティブの器（#202）。子要素は position:absolute で正規化座標（% 指定）に載るため、
+   ここが position:relative の基準になる。本文領域（.content-area = flex column）の残り高さを
+   flex:1 で受け取り、キャンバスサイズが変わっても図解が本文領域いっぱいに追従する */
+.canvas {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}
+
+/* 線（矢印・コネクタ・引出線）を描く SVG 層。プリミティブごとに 1 枚重ねる（描画順＝要素順のまま
+   自由に合成できるようにするため、キャンバス側で層を持たない）。幅・高さは実測値を属性で持たせる
+   （PDF 書き出しの html2canvas は SVG を単体でシリアライズするため、CSS だけのサイズ指定では
+   既定サイズ 300x150 で描かれてしまう）。矢印の先端が辺で切れないよう overflow:visible にする */
+.lineLayer {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+/* 線に添えるラベル。線の上に載せるため背景で下地を隠す */
+.lineLabel {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  padding: 2px 8px;
+  border-radius: var(--theme-radius-sm);
+  background: var(--theme-background);
+  border: var(--theme-border-width) solid var(--theme-border);
+  font-family: var(--theme-font-body);
+  font-size: var(--theme-font-size-body2);
+  color: var(--theme-text-body);
+  line-height: 1.3;
+  white-space: nowrap;
+}
