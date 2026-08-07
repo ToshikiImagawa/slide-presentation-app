@@ -103,6 +103,24 @@
           "style": { "height": "70%", "width": "80%", "margin": "auto" }
         }
       }
+    },
+    {
+      "id": "layout-content-body-items",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (body/items)",
+        "body": "When none of steps / tiles / component are specified, body and items render plain body text.",
+        "items": [
+          { "text": "body: multi-line paragraph text", "emphasis": true },
+          {
+            "text": "items: bullet list (nestable)",
+            "items": [
+              { "text": "Child items can have their own items" },
+              { "text": "emphasis: true renders bold text", "emphasis": true }
+            ]
+          }
+        ]
+      }
     }
   ]
 }

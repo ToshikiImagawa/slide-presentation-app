@@ -103,6 +103,24 @@
           "style": { "height": "70%", "width": "80%", "margin": "auto" }
         }
       }
+    },
+    {
+      "id": "layout-content-body-items",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (body/items)",
+        "body": "steps / tiles / component をいずれも指定しない場合、body と items でプレーンな本文を描画します。",
+        "items": [
+          { "text": "body: 複数行に対応した段落テキスト", "emphasis": true },
+          {
+            "text": "items: 箇条書き（ネスト可）",
+            "items": [
+              { "text": "子要素にもさらに items を指定できる" },
+              { "text": "emphasis: true で太字強調", "emphasis": true }
+            ]
+          }
+        ]
+      }
     }
   ]
 }
