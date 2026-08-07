@@ -91,6 +91,40 @@ npm run build:addons
 
 スライドマスターの `component` 装飾（`theme.masters.*.decorations`）が `ComponentRegistry` に未登録の名前を参照している場合（アドオン未インストール・trust プロンプトでの拒否・綴りミス等）、その装飾は「Component not found」の破線枠にフォールバックせず、静かにスキップされます。フォールバックしてしまうと、そのマスターを使うすべてのスライドに破線枠が並んでしまうためです。代わりに通常ロード時のトースト（`getMasterWarnings`/`getThemeWarnings` 経由）で一度だけ警告を出し、デッキは素のテーマのまま開けるようにします。これにより、説明のない壊れたデッキではなく、対処可能な単一の通知をユーザーに提供します。
 
+## 意匠トークン
+
+スライドのコンポーネントは、角丸・境界線幅・アクセント幅・影の不透明度・表のゼブラ濃度をハードコードしてはいけません。代わりに下記の CSS 変数を参照してください。これらは `src/styles/global.css` で宣言され、デッキごとに `theme.tokens` から上書きできます。ハードコードするとブランドテーマに追従できず、色だけ合わせても「自社のものに見えない」原因になります。
+
+| トークン                     | 既定値  | 制御する対象                                                                     |
+|------------------------------|---------|----------------------------------------------------------------------------------|
+| `--theme-radius-sm`          | `8px`   | パネルと小さな chrome（`CodeBlockPanel`・インライン `code`・Reveal のスライド番号） |
+| `--theme-radius-md`          | `12px`  | 中間サイズの面とカード内側のネスト要素（`QrCodeCard`・タイルのアイコンチップ）      |
+| `--theme-radius-lg`          | `16px`  | カード（`MuiCard` = `FeatureTileGrid` のタイル）                                  |
+| `--theme-border-width`       | `1px`   | カード・パネルのヘアライン境界線。太いアクセント線はコンポーネント固有値のまま      |
+| `--theme-card-accent-width`  | `0px`   | カード内側（左端）のアクセントバー幅。`0` は「バーなし」＝現行の見た目             |
+| `--theme-shadow-strength`    | `1`     | 影の不透明度に掛ける倍率。`0` で影なし、`2` で倍の濃さ                            |
+| `--theme-zebra-opacity`      | `0.04`  | 表の偶数行に敷く背景の alpha 値                                                   |
+
+参照の規則:
+
+- 角丸と境界線幅はプロパティへ直接指定します: `border-radius: var(--theme-radius-md)` / `border: var(--theme-border-width) solid var(--theme-border)`
+- 影の強さは倍率なので、コンポーネント固有の alpha を残したまま掛けます: `box-shadow: 0 2px 8px rgba(0, 0, 0, calc(0.04 * var(--theme-shadow-strength)))`。各影の相対的な深さを保ったまま、テーマ側の1つのつまみで全体を強弱できます
+- `--theme-card-accent-width` の既定値は `0` なので、バーは `border-left` ではなく擬似要素で描きます（`0px` の border はその辺のヘアライン境界線を食い潰してしまいます）
+- 意図的にテーマ非依存の見た目を持つコンポーネント（ターミナル色をハードコードしている `TerminalAnimation`）と、フォールバック・エラー表示 UI（`FallbackImage`・未解決コンポーネントのプレースホルダ）は、意図的にこの仕組みの対象外です
+
+デッキの `theme.tokens` からの上書き: キーは `--` を除いた CSS 変数名、スコープキーは `masterKey`（`section[data-master="<key>"]` として出力）または `"*"`（デッキ全体。`:root` として出力）です。両方に同じ変数があれば `masterKey` スコープが勝ちます。
+
+```json
+{
+  "theme": {
+    "tokens": {
+      "*": { "theme-radius-lg": "4px", "theme-border-width": "2px", "theme-card-accent-width": "6px" },
+      "standard": { "theme-shadow-strength": "0" }
+    }
+  }
+}
+```
+
 ## 静的アセット
 
 `public/` ディレクトリに配置したファイルは、ビルド後にルートパスからアクセスできます。

@@ -37,6 +37,19 @@
   --theme-font-size-body1: 20px;
   --theme-font-size-body2: 16px;
 
+  /* 意匠トークン（#190）。theme.tokens の "*"（全体スコープ）または masterKey スコープで上書きできる。
+     参照すべき箇所の一覧は CONTRIBUTING.md の「意匠トークン」節 */
+  --theme-radius-sm: 8px;
+  --theme-radius-md: 12px;
+  --theme-radius-lg: 16px;
+  --theme-border-width: 1px;
+  /* カード左端のアクセントバーの幅。既定 0 は「バーなし」＝現行の見た目 */
+  --theme-card-accent-width: 0px;
+  /* 影の不透明度に掛ける倍率（0 で影なし・2 で倍の濃さ）。絶対値ではなく倍率にして各影の相対的な深さを保つ */
+  --theme-shadow-strength: 1;
+  /* 表の偶数行に敷く背景の alpha。消費者は後続 issue の表コンポーネント（現時点では未参照） */
+  --theme-zebra-opacity: 0.04;
+
   /* 固定パレット（applyTheme が上書きしない。プレゼンのテーマ変更から独立させたいUI chrome用。editorUiTheme(src/theme.ts) と揃える） */
   --fixed-primary: #2dd4bf;
   --fixed-background: #181a20;
@@ -229,10 +242,10 @@ code {
   font-family: 'Roboto Mono', monospace;
   background: var(--theme-background-alt);
   padding: 4px 8px;
-  border-radius: 6px;
+  border-radius: var(--theme-radius-sm);
   color: var(--theme-code-text);
   font-size: 0.9em;
-  border: 1px solid var(--theme-border);
+  border: var(--theme-border-width) solid var(--theme-border);
 }
 
 /* 3. LAYOUTS */
@@ -340,8 +353,8 @@ code {
   color: var(--theme-text-muted);
   background: rgba(var(--theme-background-rgb), 0.9);
   font-family: 'Roboto Mono', monospace;
-  border: 1px solid var(--theme-border);
-  border-radius: 4px;
+  border: var(--theme-border-width) solid var(--theme-border);
+  border-radius: var(--theme-radius-sm);
 }
 
 .reveal .controls .navigate-left,

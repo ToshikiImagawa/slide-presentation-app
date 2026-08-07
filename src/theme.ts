@@ -68,9 +68,9 @@ export const theme = createTheme({
       styleOverrides: {
         root: {
           background: 'var(--theme-background)',
-          border: '1px solid var(--theme-border)',
-          borderRadius: '16px',
-          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
+          border: 'var(--theme-border-width) solid var(--theme-border)',
+          borderRadius: 'var(--theme-radius-lg)',
+          boxShadow: '0 2px 8px rgba(0, 0, 0, calc(0.04 * var(--theme-shadow-strength)))',
           transition: 'transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease',
         },
       },
