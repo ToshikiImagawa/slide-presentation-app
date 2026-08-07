@@ -174,6 +174,78 @@
           }
         }
       }
+    },
+    {
+      "id": "layout-content-chart-bar",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (chart: bar)",
+        "chart": {
+          "type": "bar",
+          "unit": "%",
+          "categories": ["Q1", "Q2", "Q3", "Q4"],
+          "series": [
+            { "name": "This year", "values": [42, 51, 58, 67] },
+            { "name": "Last year", "values": [38, 40, 47, 52], "color": "series3" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "layout-content-chart-line",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (chart: line)",
+        "chart": {
+          "type": "line",
+          "unit": "k",
+          "categories": ["24/01", "24/02", "24/03", "24/04", "24/05", "24/06", "24/07", "24/08", "24/09", "24/10", "24/11", "24/12", "25/01", "25/02", "25/03", "25/04", "25/05", "25/06"],
+          "series": [
+            { "name": "Actual", "values": [12, 15, 14, 18, 21, 20, 24, 27, 26, 31, 34, 33, 38, 41, 44, 48, 52, 57] },
+            { "name": "Plan", "values": [12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40, 42, 44, 46], "color": "series4" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "layout-content-chart-pie",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (chart: pie)",
+        "chart": {
+          "type": "pie",
+          "unit": "%",
+          "categories": ["Design", "Build", "Review", "Verify", "Other"],
+          "series": [{ "values": [28, 34, 14, 18, 6] }]
+        }
+      }
+    },
+    {
+      "id": "layout-content-chart-hbar",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (chart: hbar)",
+        "chart": {
+          "type": "hbar",
+          "categories": ["Expand automated tests", "Unify review criteria", "Automate release steps", "Build monitoring dashboards", "Refresh documentation", "Improve onboarding"],
+          "series": [{ "values": [124, 98, 76, 61, 45, 32] }]
+        }
+      }
+    },
+    {
+      "id": "layout-content-chart-kpi",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (chart: kpi)",
+        "chart": {
+          "type": "kpi",
+          "label": "Monthly active users",
+          "value": 128400,
+          "delta": "+18.2% year over year",
+          "trend": [72000, 78500, 81200, 86400, 95100, 104300, 118600, 128400],
+          "color": "series2"
+        }
+      }
     }
   ]
 }

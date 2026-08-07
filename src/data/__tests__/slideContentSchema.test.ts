@@ -114,6 +114,38 @@ describe('getSchemaConformanceErrors', () => {
     expect(errors[0].path).toBe('slides[0].content.images[0].src')
   })
 
+  it('content.chartの正常な指定はエラーにしない（#204 チャート）', () => {
+    const data: PresentationData = {
+      meta: { title: 't' },
+      slides: [
+        { id: 's1', layout: 'content', content: { title: 'x', chart: { type: 'bar', unit: '%', categories: ['Q1'], series: [{ name: '今期', values: [42], color: 'series3' }], legend: true, valueLabels: false, min: 0, max: 100 } } },
+        { id: 's2', layout: 'content', content: { title: 'x', chart: { type: 'kpi', label: 'MAU', value: 128400, delta: '+18.2%', trend: [1, 2, 3], color: 'series2' } } },
+        { id: 's3', layout: 'content', content: { title: 'x', chart: { type: 'kpi', value: '1.2M' } } },
+      ],
+    }
+    expect(getSchemaConformanceErrors(data)).toEqual([])
+  })
+
+  it('content.chart.typeが5種以外だとエラーにする', () => {
+    const data: PresentationData = {
+      meta: { title: 't' },
+      slides: [{ id: 's1', layout: 'content', content: { title: 'x', chart: { type: 'radar' } } }],
+    }
+    const errors = getSchemaConformanceErrors(data)
+    expect(errors).toHaveLength(1)
+    expect(errors[0].path).toBe('slides[0].content.chart.type')
+  })
+
+  it('content.chart.series[].valuesが配列でない場合エラーにする', () => {
+    const data = {
+      meta: { title: 't' },
+      slides: [{ id: 's1', layout: 'content', content: { title: 'x', chart: { type: 'bar', series: [{ values: '42' }] } } }],
+    } as unknown as PresentationData
+    const errors = getSchemaConformanceErrors(data)
+    expect(errors).toHaveLength(1)
+    expect(errors[0].path).toBe('slides[0].content.chart.series[0].values')
+  })
+
   it('未知フィールドはエラーにしない（拡張・アドオンを阻害しない）', () => {
     const data: PresentationData = {
       meta: { title: 't' },

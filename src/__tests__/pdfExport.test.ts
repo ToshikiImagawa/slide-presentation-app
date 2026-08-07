@@ -17,7 +17,7 @@ vi.mock('jspdf', () => ({
   jsPDF: h.jsPDFCtor,
 }))
 
-import { exportSlidesToPdf } from '../pdfExport'
+import { exportSlidesToPdf, resolveCssVars } from '../pdfExport'
 
 function buildDeck(slideCount: number): HTMLElement {
   const deck = document.createElement('div')
@@ -163,5 +163,83 @@ describe('exportSlidesToPdf', () => {
       expect(h.addPage).toHaveBeenCalledWith([1280, 960], 'landscape')
       expect(h.addImage).toHaveBeenCalledWith(expect.anything(), 'PNG', 0, 0, 1280, 960)
     })
+  })
+
+  // #204: html2canvas は <svg> を単体シリアライズして画像化するため、SVG 内の var() は祖先を失って解決できない。
+  // 撮影の瞬間だけ実測値へ置き換え、チャート・図解プリミティブが PDF でも同じ色・線幅で描かれるようにする
+  describe('SVG 内の CSS 変数のインライン化', () => {
+    /** 色・線幅を var() で持つ SVG を含むデッキを作る。
+     * jsdom の getComputedStyle は継承したカスタムプロパティを解決しないため、変数の定義も参照元の要素自身に置く
+     * （実ブラウザではカスタムプロパティが継承するので、実際には :root や section[data-master] 側の定義でも解決できる） */
+    function buildDeckWithSvg(): { deck: HTMLElement; polyline: SVGElement } {
+      const deck = buildDeck(1)
+      const section = deck.querySelector('section') as HTMLElement
+
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+      const polyline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline')
+      polyline.setAttribute('stroke', 'var(--theme-series-1)')
+      polyline.setAttribute('style', '--theme-series-1: rgb(1, 2, 3); --theme-border-width: 2px; stroke-width: calc(var(--theme-border-width) * 3)')
+      svg.appendChild(polyline)
+      section.appendChild(svg)
+      document.body.appendChild(deck)
+      return { deck, polyline }
+    }
+
+    it('撮影時は var() が実測値に置き換わり、撮影後は元の指定へ復元する', async () => {
+      h.save.mockResolvedValue('/tmp/my-deck.pdf')
+      const { deck, polyline } = buildDeckWithSvg()
+
+      const captured: Array<string | null> = []
+      h.html2canvas.mockImplementation(async () => {
+        captured.push(polyline.getAttribute('stroke'), polyline.getAttribute('style'))
+        return { toDataURL: () => 'data:image/png;base64,dummy' }
+      })
+
+      await exportSlidesToPdf(deck, 'my-deck')
+
+      expect(captured[0]).toBe('rgb(1, 2, 3)')
+      expect(captured[1]).toContain('stroke-width: calc(2px * 3)')
+      expect(polyline.getAttribute('stroke')).toBe('var(--theme-series-1)')
+      expect(polyline.getAttribute('style')).toContain('stroke-width: calc(var(--theme-border-width) * 3)')
+      deck.remove()
+    })
+
+    it('html2canvas が失敗しても元の指定へ復元する', async () => {
+      h.save.mockResolvedValue('/tmp/my-deck.pdf')
+      const { deck, polyline } = buildDeckWithSvg()
+      h.html2canvas.mockRejectedValue(new Error('capture failed'))
+
+      await expect(exportSlidesToPdf(deck, 'my-deck')).rejects.toThrow('capture failed')
+
+      expect(polyline.getAttribute('stroke')).toBe('var(--theme-series-1)')
+      deck.remove()
+    })
+  })
+})
+
+describe('resolveCssVars', () => {
+  function computedOf(declarations: Record<string, string>): CSSStyleDeclaration {
+    const probe = document.createElement('div')
+    for (const [name, value] of Object.entries(declarations)) {
+      probe.style.setProperty(name, value)
+    }
+    document.body.appendChild(probe)
+    return getComputedStyle(probe)
+  }
+
+  it('未定義の変数はフォールバックを使う', () => {
+    expect(resolveCssVars('var(--missing, 8px)', computedOf({}))).toBe('8px')
+  })
+
+  it('定義済みならフォールバックより実測値を優先する', () => {
+    expect(resolveCssVars('var(--theme-radius-md, 8px)', computedOf({ '--theme-radius-md': '12px' }))).toBe('12px')
+  })
+
+  it('入れ子のフォールバックを内側から解く', () => {
+    expect(resolveCssVars('var(--missing, var(--theme-primary))', computedOf({ '--theme-primary': 'teal' }))).toBe('teal')
+  })
+
+  it('解決できない参照が残っても無限に繰り返さない', () => {
+    expect(resolveCssVars('var(--missing)', computedOf({}))).toBe('')
   })
 })

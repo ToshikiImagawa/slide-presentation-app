@@ -13,7 +13,7 @@
       }
     },
     "content": {
-      "description": "コンテンツ表示用レイアウト。子要素のフィールドで描画が決まる。優先順位: steps→Timeline / tiles→FeatureTileGrid / images→画像スライド / component→カスタム。いずれも無指定の場合に限り body/items（プレーン本文）を描画する（#193）",
+      "description": "コンテンツ表示用レイアウト。子要素のフィールドで描画が決まる。優先順位: steps→Timeline / tiles→FeatureTileGrid / images→画像スライド / chart→チャート / component→カスタム。いずれも無指定の場合に限り body/items（プレーン本文）を描画する（#193）",
       "contentFields": {
         "title": { "type": "string" },
         "steps": {
@@ -49,6 +49,7 @@
             "caption": { "type": "string", "description": "画像の下に表示するキャプション（<br/>等HTMLタグ利用可）" }
           }
         },
+        "chart": { "type": "object", "ref": "chart" },
         "component": { "type": "object", "ref": "componentReference" },
         "footer": { "type": "string" },
         "body": {
@@ -99,6 +100,31 @@
     "fragment": { "type": "boolean", "description": "Reveal.jsのフラグメント表示（段階的に表示）を有効にする" },
     "fragmentIndex": { "type": "number", "description": "フラグメント表示の順序" },
     "items": { "type": "array", "ref": "contentItem", "description": "ネストした箇条書き（再帰）" }
+  },
+  "chart": {
+    "description": "content.chart のチャート指定（#204）。棒・折れ線・円・横棒・大数値＋推移の5種。寸法・座標は持たず本文領域いっぱいに自動で収まり、系列色・線幅・角丸はテーマトークンに追従する。軸ラベルは項目が12個を超えると等間隔に間引かれ、値ラベルは描画点が多いと既定で省かれる（表示は axis / legend / valueLabels で上書きできる）",
+    "type": { "type": "string", "enum": ["bar", "line", "pie", "hbar", "kpi"], "description": "bar=縦棒（推移・比較） / line=折れ線（推移） / pie=円（構成比） / hbar=横棒（項目名が長い比較） / kpi=大数値＋推移線。省略時はbar" },
+    "categories": { "type": "array", "description": "項目名（横軸、円は内訳）の文字列配列。series[].values と同じ順序で対応する。kpiでは使わない" },
+    "series": {
+      "type": "array",
+      "description": "系列。bar/line/hbarは複数系列を並べて描画し、pieはseries[0].valuesだけを構成比として使う（円の色はcategoriesの順にseries1〜series6が割り当たる）。kpiでは使わない",
+      "itemFields": {
+        "name": { "type": "string", "description": "凡例に出す系列名" },
+        "values": { "type": "array", "description": "categoriesと同じ順序の数値配列" },
+        "color": { "type": "string", "description": "系列色のトークン名（series1〜series6/primary/accent/success/warning/danger/neutral等、theme.colorsのキーと同じ）。省略時は系列順にseries1〜series6" }
+      }
+    },
+    "unit": { "type": "string", "description": "軸ラベル・値ラベルに付ける単位（\"%\" / \"件\" 等）。数値の直後に連結する" },
+    "axis": { "type": "boolean", "description": "軸の目盛りラベルと格子線。省略時は表示する" },
+    "legend": { "type": "boolean", "description": "凡例。省略時は系列名が2つ以上あるとき（円はcategoriesが2つ以上のとき）表示する" },
+    "valueLabels": { "type": "boolean", "description": "値ラベル。省略時は描画点の数から自動判定する（重なりを避けるため点が多いと省く）" },
+    "min": { "type": "number", "description": "軸の下限。省略時はデータから導出（0を必ず含む1/2/5刻みの範囲）" },
+    "max": { "type": "number", "description": "軸の上限。省略時はデータから導出。百分率を0〜100で固定したい場合等に指定する" },
+    "value": { "type": ["string", "number"], "description": "type=kpi の大数値。数値なら桁区切りされ、文字列ならそのまま表示する" },
+    "label": { "type": "string", "description": "type=kpi の大数値の見出し" },
+    "delta": { "type": "string", "description": "type=kpi の増減注記（\"+12% 前年比\" 等）" },
+    "trend": { "type": "array", "description": "type=kpi の推移線の数値配列（2点以上で描画。0基準ではなくデータ範囲に合わせるので変化が読める）" },
+    "color": { "type": "string", "description": "type=kpi の大数値・推移線の色トークン名。省略時はseries1" }
   },
   "columnContentFields": {
     "description": "two-columnの left/right に指定可能なフィールド（すべてオプション、組み合わせ可）。componentを指定した場合は他のフィールドは無視される",

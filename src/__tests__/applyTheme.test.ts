@@ -663,6 +663,14 @@ describe('系列色のフォールバック導出（primary/accent からの決�
     expect(document.documentElement.style.getPropertyValue('--theme-series-4')).toBe('#d42d42')
   })
 
+  it('accent が primary と同色なら series2 も色相回転で作る（同色では系列を区別できないため・#204）', () => {
+    applyThemeData({ colors: { primary: '#2dd4bf', accent: '#2dd4bf' } })
+
+    expect(document.documentElement.style.getPropertyValue('--theme-series-1')).toBe('#2dd4bf')
+    expect(document.documentElement.style.getPropertyValue('--theme-series-2')).toBe('#2d42d4')
+    expect(new Set([1, 2, 3, 4, 5, 6].map((i) => document.documentElement.style.getPropertyValue(`--theme-series-${i}`))).size).toBe(6)
+  })
+
   it('primary/accent のどちらも解釈できない場合は導出をスキップする（テスト環境等の未初期化状態で NaN 事故を起こさない）', () => {
     applyThemeData({ fonts: { heading: 'Foo' } })
 
