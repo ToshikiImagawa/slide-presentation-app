@@ -15,8 +15,8 @@ class MockIntersectionObserver {
 
 globalThis.IntersectionObserver = MockIntersectionObserver as unknown as typeof IntersectionObserver
 
-// jsdom はレイアウトを持たないため ResizeObserver も実装しない（DiagramCanvas・SlidePreview 等のサイズ計測で使用）。
-// observe() は何もしないので、購読側の初回計測（コールバック外の同期呼び出し）だけが効く
+// jsdom はレイアウトを持たないため ResizeObserver も実装しない（SlidePreview・PresenterViewWindow・DiagramCanvas が使用）。
+// observe() は実物と違って初回コールバックを配送しないため、購読側の同期的な初回計測だけが効く
 class MockResizeObserver {
   constructor(_callback: ResizeObserverCallback) {}
   observe() {}

@@ -7,14 +7,6 @@ import type { LocaleResource } from '../../i18n'
 import type { BrandOverrides, BrandProfile, CompiledBrandTheme, MappedColorKey } from '../../brand/types'
 import type { SlideData } from '../../data'
 
-// jsdom には ResizeObserver が無いので stub（SlidePreview が使用）
-class ResizeObserverStub {
-  observe() {}
-  unobserve() {}
-  disconnect() {}
-}
-;(globalThis as unknown as { ResizeObserver: typeof ResizeObserverStub }).ResizeObserver = ResizeObserverStub
-
 const locales: LocaleResource[] = [{ languageCode: 'ja-JP', languageName: '日本語', ui: {} }]
 function wrap(ui: ReactNode) {
   return (

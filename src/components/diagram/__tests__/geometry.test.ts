@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { boundaryPointPx, centerOfPx, orthogonalPath, pathMidpoint, polylinePoints, pxToPercent, rectToPx, toPx, type CanvasSize, type NormRect, type PxPoint } from '../geometry'
+import { boundaryPointPx, normToPercent, orthogonalPath, pathMidpoint, polylinePoints, pxToPercent, rectToPx, toPx, type CanvasSize, type NormRect, type PxPoint } from '../geometry'
 
 const SIZE: CanvasSize = { width: 1200, height: 500 }
 
@@ -24,12 +24,8 @@ describe('正規化座標 → px 変換', () => {
     expect(pxToPercent(300, 1200)).toBe('25%')
   })
 
-  it('キャンバスサイズが 0 のときは % を 0 にする（ゼロ除算を避ける）', () => {
-    expect(pxToPercent(300, 0)).toBe('0%')
-  })
-
-  it('px 矩形の中心を返す', () => {
-    expect(centerOfPx({ x: 100, y: 200, w: 400, h: 100 })).toEqual({ x: 300, y: 250 })
+  it('正規化座標を % 文字列にする', () => {
+    expect(normToPercent(0.42)).toBe('42%')
   })
 })
 
@@ -176,9 +172,5 @@ describe('pathMidpoint', () => {
         { x: 5, y: 5 },
       ]),
     ).toEqual({ x: 5, y: 5 })
-  })
-
-  it('空の経路では原点を返す', () => {
-    expect(pathMidpoint([])).toEqual({ x: 0, y: 0 })
   })
 })

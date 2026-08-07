@@ -1,32 +1,24 @@
+import type { ComponentProps } from 'react'
 import { Arrow } from './Arrow'
 import { Callout } from './Callout'
 import { Connector } from './Connector'
 import { DiagramBadge } from './DiagramBadge'
 import { DiagramCanvas } from './DiagramCanvas'
 import { DiagramCard } from './DiagramCard'
-import type { LineEndShape } from './DiagramLine'
-import type { ConnectorRouting, NormPoint, NormRect } from './geometry'
+import type { DiagramLineStyleProps } from './DiagramLine'
+import type { ConnectorRouting, NormPoint } from './geometry'
 
-/** 線の見た目（矢印・コネクタ共通）。JSON から指定する */
-type LineSpec = {
-  color?: string
-  thickness?: number
-  dashed?: boolean
-  head?: LineEndShape
-  tail?: LineEndShape
-  label?: string
-}
+/** 線の見た目（矢印・コネクタ共通）。ラベルだけ JSON で書ける string に狭め、他はプリミティブの契約をそのまま使う */
+type LineSpec = Omit<DiagramLineStyleProps, 'label'> & { label?: string }
 
-type NodeSpec = {
+/** カードの見た目はプリミティブの props から導出し、union リテラルを二重管理しない */
+type NodeSpec = Pick<ComponentProps<typeof DiagramCard>, 'rect' | 'color' | 'variant'> & {
   /** connectors から参照するための識別子 */
   id?: string
-  rect: NormRect
   title?: string
   body?: string
   /** 左上に重ねる番号・記号バッジ */
   badge?: string | number
-  color?: string
-  variant?: 'outline' | 'filled' | 'plain'
 }
 
 /** nodes の id 同士を直交経路で結ぶ */
@@ -34,9 +26,9 @@ type ConnectorSpec = LineSpec & { from: string; to: string; routing?: ConnectorR
 
 type ArrowSpec = LineSpec & { from: NormPoint; to: NormPoint }
 
-type BadgeSpec = { at: NormPoint; text: string | number; color?: string; shape?: 'circle' | 'square'; size?: number }
+type BadgeSpec = Pick<ComponentProps<typeof DiagramBadge>, 'color' | 'shape'> & { at: NormPoint; text: string | number }
 
-type CalloutSpec = { at: NormPoint; to: NormPoint; label: string; color?: string; thickness?: number }
+type CalloutSpec = Omit<ComponentProps<typeof Callout>, 'label'> & { label: string }
 
 export type DiagramProps = {
   nodes?: NodeSpec[]
@@ -72,8 +64,8 @@ export function Diagram({ nodes, connectors, arrows, badges, callouts }: Diagram
           console.warn(`[Diagram] コネクタが参照するノードが見つかりません: "${connector.from}" -> "${connector.to}"`)
           return null
         }
-        const { from: _from, to: _to, ...lineProps } = connector
-        return <Connector key={`connector-${i}`} from={from} to={to} {...lineProps} />
+        // from/to はスプレッド後に上書きする（id 文字列 → 矩形。後勝ちなので型も NormRect になる）
+        return <Connector key={`connector-${i}`} {...connector} from={from} to={to} />
       })}
 
       {asArray(arrows).map((arrow, i) => (
@@ -87,7 +79,7 @@ export function Diagram({ nodes, connectors, arrows, badges, callouts }: Diagram
       ))}
 
       {asArray(badges).map((badge, i) => (
-        <DiagramBadge key={`badge-${i}`} at={badge.at} color={badge.color} shape={badge.shape} size={badge.size}>
+        <DiagramBadge key={`badge-${i}`} at={badge.at} color={badge.color} shape={badge.shape}>
           {badge.text}
         </DiagramBadge>
       ))}

@@ -30,9 +30,12 @@
   background: var(--diagram-color);
 }
 
-/* 面をカラーパレット色で塗り、文字色を背景色トークンへ反転させる（彩度の高い地色でも読める） */
+/* 面をカラーパレット色で塗り、文字色を背景色トークンへ反転させる（彩度の高い地色でも読める）。
+   バッジは既定でカードと同じ色なので面に溶けてしまう。輪郭が要ることを知っているのはカード側なので、
+   ここで縁の色を宣言してバッジに継承させる（バッジ側は無条件に縁を描かない） */
 .filled {
   background: var(--diagram-color);
+  --diagram-badge-outline: var(--theme-background);
 }
 
 .filled .title,

@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { createContext, useContext, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import type { CanvasSize } from './geometry'
 import styles from './DiagramCanvas.module.css'
 
@@ -26,15 +26,19 @@ export function DiagramCanvas({ children }: { children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null)
   const [size, setSize] = useState<CanvasSize>({ width: 0, height: 0 })
 
-  useEffect(() => {
+  // 線系プリミティブは実測サイズが揃うまで描けないため、ペイント前に計測して二重描画を避ける
+  useLayoutEffect(() => {
     const el = ref.current
     if (!el) return
 
     const measure = () => {
+      // Reveal.js は viewDistance（既定 3）の外のスライドを unload して display:none にするため、
+      // 表示範囲を出入りするたびに 0 が観測される。0 は「箱が無い」だけで図解の寸法が変わったわけでは
+      // ないので無視し、最後の実サイズを保持する（線レイヤーの破棄・再構築を防ぐ）
+      if (el.offsetWidth === 0 || el.offsetHeight === 0) return
       setSize((prev) => (prev.width === el.offsetWidth && prev.height === el.offsetHeight ? prev : { width: el.offsetWidth, height: el.offsetHeight }))
     }
-    // Reveal.js は非表示スライドを opacity/transform で隠す（display:none にしない）ため、
-    // 現在表示中でないスライドでもマウント直後に実サイズが取れる
+    // jsdom の ResizeObserver モックは observe() で初回コールバックを配送しないため明示的に呼ぶ
     measure()
     const observer = new ResizeObserver(measure)
     observer.observe(el)

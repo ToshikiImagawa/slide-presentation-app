@@ -1,5 +1,7 @@
 /* 番号バッジ・記号バッジ（#202）。カードの中でも、キャンバス上の任意座標にも置ける */
 .badge {
+  --diagram-badge-size: 34px;
+
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -8,9 +10,9 @@
   height: var(--diagram-badge-size);
   padding: 0 6px;
   border-radius: 999px;
-  /* DiagramCard の filled のように地色が同じカラーパレット色になる面へ載っても輪郭が溶けないよう、
-     背景色トークンで細い縁を描く（暗い面では見えず、同色の面でだけバッジを切り出す） */
-  border: var(--theme-border-width) solid var(--theme-background);
+  /* 縁が必要かどうかは載る面が決める。地色が同じカラーパレット色になる DiagramCard の filled だけが
+     --diagram-badge-outline を宣言し、それ以外は透明（＝縁なし）になる */
+  border: var(--theme-border-width) solid var(--diagram-badge-outline, transparent);
   background: var(--diagram-color);
   font-family: var(--theme-font-heading);
   font-size: calc(var(--diagram-badge-size) * 0.5);

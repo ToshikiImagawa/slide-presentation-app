@@ -38,7 +38,7 @@ export function rectToPx(rect: NormRect, size: CanvasSize): PxRect {
 }
 
 /** px 矩形の中心 */
-export function centerOfPx(rect: PxRect): PxPoint {
+function centerOfPx(rect: PxRect): PxPoint {
   return { x: rect.x + rect.w / 2, y: rect.y + rect.h / 2 }
 }
 
@@ -58,30 +58,16 @@ export function boundaryPointPx(rect: PxRect, target: PxPoint): PxPoint {
   return { x: center.x + dx * scale, y: center.y + dy * scale }
 }
 
-/** x 方向の隙間（重なっている場合は負） */
-function horizontalGap(from: PxRect, to: PxRect): number {
-  if (to.x >= from.x + from.w) return to.x - (from.x + from.w)
-  if (from.x >= to.x + to.w) return from.x - (to.x + to.w)
-  return -1
-}
-
-/** y 方向の隙間（重なっている場合は負） */
-function verticalGap(from: PxRect, to: PxRect): number {
-  if (to.y >= from.y + from.h) return to.y - (from.y + from.h)
-  if (from.y >= to.y + to.h) return from.y - (to.y + to.h)
-  return -1
-}
-
 /**
  * 'auto' の経路方向を決める。直交経路はどちらかの軸に隙間が無いと相手の矩形を貫通してしまうため、
  * 両軸で重なっている場合だけは直交経路を諦めて中心同士を結ぶ直線（'direct'）にする。
  */
 function resolveRouting(from: PxRect, to: PxRect): 'horizontal' | 'vertical' | 'direct' {
-  const hGap = horizontalGap(from, to)
-  const vGap = verticalGap(from, to)
-  if (hGap < 0 && vGap < 0) return 'direct'
-  if (hGap < 0) return 'vertical'
-  if (vGap < 0) return 'horizontal'
+  const separatedX = to.x >= from.x + from.w || from.x >= to.x + to.w
+  const separatedY = to.y >= from.y + from.h || from.y >= to.y + to.h
+  if (!separatedX && !separatedY) return 'direct'
+  if (!separatedX) return 'vertical'
+  if (!separatedY) return 'horizontal'
 
   const fromCenter = centerOfPx(from)
   const toCenter = centerOfPx(to)
@@ -159,11 +145,8 @@ function round2(value: number): number {
   return Math.round(value * 100) / 100
 }
 
-/** 経路長の半分の位置にある点。折れ線でもラベルが線の上に載るようにするために使う */
+/** 経路長の半分の位置にある点。折れ線でもラベルが線の上に載るようにするために使う（2 点以上を前提） */
 export function pathMidpoint(points: PxPoint[]): PxPoint {
-  if (points.length === 0) return { x: 0, y: 0 }
-  if (points.length === 1) return points[0]
-
   const lengths = points.slice(1).map((p, i) => Math.hypot(p.x - points[i].x, p.y - points[i].y))
   const total = lengths.reduce((sum, l) => sum + l, 0)
   if (total === 0) return points[0]
@@ -179,7 +162,12 @@ export function pathMidpoint(points: PxPoint[]): PxPoint {
   return points[points.length - 1]
 }
 
-/** px 座標をキャンバス相対の % 文字列にする（HTML 要素をキャンバス上に置くため） */
+/** 正規化座標（0〜1）を CSS の % 文字列にする。HTML 要素はこの値で置くので px 計測を待たずに配置できる */
+export function normToPercent(value: number): string {
+  return `${value * 100}%`
+}
+
+/** px 座標をキャンバス相対の % 文字列にする（px 空間で組んだ経路の上に HTML 要素を載せるため。extent > 0 を前提） */
 export function pxToPercent(value: number, extent: number): string {
-  return extent === 0 ? '0%' : `${(value / extent) * 100}%`
+  return normToPercent(value / extent)
 }

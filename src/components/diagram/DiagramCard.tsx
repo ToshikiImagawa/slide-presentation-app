@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { resolveColorToken } from '../../applyTheme'
-import type { NormRect } from './geometry'
+import { normToPercent, type NormRect } from './geometry'
 import styles from './DiagramCard.module.css'
 
 type Props = {
@@ -25,10 +25,10 @@ type Props = {
 export function DiagramCard({ rect, title, children, color, variant = 'outline', badge }: Props) {
   const cssVar = resolveColorToken(color)
   const style = {
-    left: `${rect.x * 100}%`,
-    top: `${rect.y * 100}%`,
-    width: `${rect.w * 100}%`,
-    height: `${rect.h * 100}%`,
+    left: normToPercent(rect.x),
+    top: normToPercent(rect.y),
+    width: normToPercent(rect.w),
+    height: normToPercent(rect.h),
     '--diagram-color': `var(${cssVar})`,
   } as CSSProperties
 
@@ -37,8 +37,8 @@ export function DiagramCard({ rect, title, children, color, variant = 'outline',
   return (
     <div className={className} style={style}>
       {badge && <span className={styles.badge}>{badge}</span>}
-      {title !== undefined && title !== null && <span className={styles.title}>{title}</span>}
-      {children !== undefined && children !== null && <span className={styles.body}>{children}</span>}
+      {title != null && <span className={styles.title}>{title}</span>}
+      {children != null && <span className={styles.body}>{children}</span>}
     </div>
   )
 }
