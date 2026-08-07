@@ -1,0 +1,37 @@
+/* 画像スライド（#198）。本文領域（.content-area = セーフエリア内）の残り高さを flex:1 で受け取り、
+   grid-auto-rows:1fr で各 figure に確定した高さを与える。この確定高さがあることで FallbackImage が
+   付ける max-height:100% が解決でき、縦長・横長・正方形のいずれもセーフエリア内に収まる */
+.grid {
+  display: grid;
+  grid-auto-rows: 1fr;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  gap: 24px;
+}
+
+.figure {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 0;
+  min-height: 0;
+  min-width: 0;
+}
+
+/* キャプションの高さを差し引いた残りが画像の可用領域になる（flex:1 + min-height:0） */
+.imageArea {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 枠・角丸・影は #190 の意匠トークンから引く（#190 未マージでも var() のフォールバックで正しく描画される）。
+   読み込みに成功した画像にだけ当てる（FallbackImage は失敗時に破線のプレースホルダを描くため、枠を二重に当てない） */
+.image[data-state='loaded'] {
+  border: var(--theme-border-width, 1px) solid var(--theme-border);
+  border-radius: var(--theme-radius-md, 8px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, calc(0.3 * var(--theme-shadow-strength, 1)));
+}

@@ -121,6 +121,30 @@
           }
         ]
       }
+    },
+    {
+      "id": "layout-content-images",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (images)",
+        "images": [
+          {
+            "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0ODAgMjcwIiB3aWR0aD0iNDgwIiBoZWlnaHQ9IjI3MCI+PHJlY3Qgd2lkdGg9IjQ4MCIgaGVpZ2h0PSIyNzAiIGZpbGw9IiMxZjI0MzAiLz48ZyBmaWxsPSJub25lIiBzdHJva2U9IiMyZGQ0YmYiIHN0cm9rZS13aWR0aD0iMyI+PHJlY3QgeD0iMTQiIHk9IjE0IiB3aWR0aD0iNDUyIiBoZWlnaHQ9IjI0MiIvPjxjaXJjbGUgY3g9IjI0MCIgY3k9IjExNyIgcj0iNDUiLz48L2c+PHRleHQgeD0iMjQwIiB5PSIxOTciIGZvbnQtZmFtaWx5PSJIZWx2ZXRpY2EgTmV1ZSxBcmlhbCxzYW5zLXNlcmlmIiBmb250LXNpemU9IjI2IiBmb250LXdlaWdodD0iNzAwIiBmaWxsPSIjZjhmYWZjIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj4xNjo5PC90ZXh0Pjwvc3ZnPg==",
+            "alt": "Landscape sample image",
+            "caption": "Landscape (16:9)"
+          },
+          {
+            "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNzAgMzYwIiB3aWR0aD0iMjcwIiBoZWlnaHQ9IjM2MCI+PHJlY3Qgd2lkdGg9IjI3MCIgaGVpZ2h0PSIzNjAiIGZpbGw9IiMxZjI0MzAiLz48ZyBmaWxsPSJub25lIiBzdHJva2U9IiMyZGQ0YmYiIHN0cm9rZS13aWR0aD0iMyI+PHJlY3QgeD0iMTQiIHk9IjE0IiB3aWR0aD0iMjQyIiBoZWlnaHQ9IjMzMiIvPjxjaXJjbGUgY3g9IjEzNSIgY3k9IjE2MiIgcj0iNDUiLz48L2c+PHRleHQgeD0iMTM1IiB5PSIyNDIiIGZvbnQtZmFtaWx5PSJIZWx2ZXRpY2EgTmV1ZSxBcmlhbCxzYW5zLXNlcmlmIiBmb250LXNpemU9IjI2IiBmb250LXdlaWdodD0iNzAwIiBmaWxsPSIjZjhmYWZjIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj4zOjQ8L3RleHQ+PC9zdmc+",
+            "alt": "Portrait sample image",
+            "caption": "Portrait (3:4)"
+          },
+          {
+            "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMjAgMzIwIiB3aWR0aD0iMzIwIiBoZWlnaHQ9IjMyMCI+PHJlY3Qgd2lkdGg9IjMyMCIgaGVpZ2h0PSIzMjAiIGZpbGw9IiMxZjI0MzAiLz48ZyBmaWxsPSJub25lIiBzdHJva2U9IiMyZGQ0YmYiIHN0cm9rZS13aWR0aD0iMyI+PHJlY3QgeD0iMTQiIHk9IjE0IiB3aWR0aD0iMjkyIiBoZWlnaHQ9IjI5MiIvPjxjaXJjbGUgY3g9IjE2MCIgY3k9IjE0MiIgcj0iNDUiLz48L2c+PHRleHQgeD0iMTYwIiB5PSIyMjIiIGZvbnQtZmFtaWx5PSJIZWx2ZXRpY2EgTmV1ZSxBcmlhbCxzYW5zLXNlcmlmIiBmb250LXNpemU9IjI2IiBmb250LXdlaWdodD0iNzAwIiBmaWxsPSIjZjhmYWZjIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj4xOjE8L3RleHQ+PC9zdmc+",
+            "alt": "Square sample image",
+            "caption": "Square (1:1)"
+          }
+        ]
+      }
     }
   ]
 }

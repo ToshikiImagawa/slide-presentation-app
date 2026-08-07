@@ -37,7 +37,7 @@
 
 ## content
 
-コンテンツ表示用レイアウト。子要素のフィールドで描画が決まる。優先順位: `steps` → `tiles` → `component` → `body`/`items`（いずれかが指定されていたら以降は評価しない）。
+コンテンツ表示用レイアウト。子要素のフィールドで描画が決まる。優先順位: `steps` → `tiles` → `images` → `component` → `body`/`items`（いずれかが指定されていたら以降は評価しない）。
 
 ### body / items（プレーン本文）
 
@@ -106,6 +106,29 @@
 `accentColor` はアイコン背景・枠のアクセント色トークン名（`primary`/`accent`/`series1`〜`series6`/`success`/`warning`/`danger`/`neutral`等。省略時は`primary`）。
 
 `icon` はComponentRegistryに `Icon:<name>` として登録済みの任意アイコン名を指定できる（アドオン・ブランドテーマ提供分を含む）。推奨（デフォルト登録済み）アイコン: `Description`, `PlaylistAddCheck`, `Traffic`, `FactCheck`, `Memory`, `Search`。未登録名は破線枠フォールバック表示＋利用者への警告になる。
+
+### images（画像スライド）
+
+スクリーンショット・写真・外部で作成した図を主役にするスライド。画像は縦横比を保ってセーフエリア内に自動フィットするため、寸法指定は不要（`component` の `Image` と違い手動調整しない）。枠・角丸・影はテーマトークンに追従する。
+
+```json
+{
+  "id": "slide-id",
+  "layout": "content",
+  "content": {
+    "title": "タイトル",
+    "images": [
+      {
+        "src": "image/screenshot.png",
+        "alt": "代替テキスト",
+        "caption": "画像の下に表示するキャプション（<br/>等HTMLタグ利用可）"
+      }
+    ]
+  }
+}
+```
+
+1枚指定なら本文領域いっぱいの単一画像、2〜3枚なら横並びグリッドになる（4枚以上は3列で折返し）。`src` はパッケージ内 `image/` 配下の相対パス・外部URL・data URI を指定できる。読み込みに失敗した画像は破線枠のプレースホルダになる。
 
 ### component（カスタムコンポーネント）
 

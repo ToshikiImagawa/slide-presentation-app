@@ -13,7 +13,7 @@
       }
     },
     "content": {
-      "description": "コンテンツ表示用レイアウト。子要素のフィールドで描画が決まる。優先順位: steps→Timeline / tiles→FeatureTileGrid / component→カスタム。いずれも無指定の場合に限り body/items（プレーン本文）を描画する（#193）",
+      "description": "コンテンツ表示用レイアウト。子要素のフィールドで描画が決まる。優先順位: steps→Timeline / tiles→FeatureTileGrid / images→画像スライド / component→カスタム。いずれも無指定の場合に限り body/items（プレーン本文）を描画する（#193）",
       "contentFields": {
         "title": { "type": "string" },
         "steps": {
@@ -40,16 +40,25 @@
           }
         },
         "tileColumns": { "type": "number", "description": "tilesの列数。省略時はタイル数と同数の列（現行と同一の1行表示）。6枚以上のtilesを読める大きさで折返し表示したい場合に指定する" },
+        "images": {
+          "type": "array",
+          "description": "画像スライド（タイトル＋画像＋キャプション）。1枚指定で本文領域いっぱい、2〜3枚で横並びグリッド（4枚以上は3列で折返し）。画像は縦横比を保ってセーフエリア内に自動フィットし、枠・角丸・影はテーマトークンに追従する。寸法指定は不要（componentのImageと違い手動調整しない）",
+          "itemFields": {
+            "src": { "type": "string", "description": "画像パス（パッケージ内 image/ 配下の相対パス）・外部URL・data URI" },
+            "alt": { "type": "string", "description": "代替テキスト" },
+            "caption": { "type": "string", "description": "画像の下に表示するキャプション（<br/>等HTMLタグ利用可）" }
+          }
+        },
         "component": { "type": "object", "ref": "componentReference" },
         "footer": { "type": "string" },
         "body": {
           "type": "string",
-          "description": "プレーン本文の段落（改行は\\n）。steps/tiles/componentのいずれも無指定の場合のみ描画される。itemsと併用可。段落配列が必要な場合はtwo-columnのparagraphsを使う（1カラム全幅の自由記述文はbody、カラム構成用の複数ブロックはparagraphsという役割分担）"
+          "description": "プレーン本文の段落（改行は\\n）。steps/tiles/images/componentのいずれも無指定の場合のみ描画される。itemsと併用可。段落配列が必要な場合はtwo-columnのparagraphsを使う（1カラム全幅の自由記述文はbody、カラム構成用の複数ブロックはparagraphsという役割分担）"
         },
         "items": {
           "type": "array",
           "ref": "contentItem",
-          "description": "箇条書き（ネスト可）。steps/tiles/componentのいずれも無指定の場合のみ描画される。bodyと併用可"
+          "description": "箇条書き（ネスト可）。steps/tiles/images/componentのいずれも無指定の場合のみ描画される。bodyと併用可"
         }
       }
     },
