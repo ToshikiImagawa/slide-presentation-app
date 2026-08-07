@@ -67,6 +67,48 @@ describe('resolveMaster', () => {
     expect(resolved?.decorations).toEqual([{ type: 'logo', anchor: 'top-left', src: '/logo.png' }])
   })
 
+  // #189: 背景意匠。マスターごとに別の背景を割り当てられ、未指定なら undefined（背景要素を描かない）
+  describe('background の解決（#189）', () => {
+    it('background 未指定なら undefined を返す（デッキ既定の背景がそのまま見える）', () => {
+      const theme: ThemeData = { masters: { standard: { decorations: [] } }, masterMap: { content: 'standard' } }
+      expect(resolveMaster(theme, 'content')?.background).toBeUndefined()
+    })
+
+    it('マスターごとに別の背景を解決する', () => {
+      const theme: ThemeData = {
+        masters: {
+          title: { background: { type: 'fill', color: 'var(--theme-primary)' } },
+          body: { background: { type: 'grid', size: 24 } },
+        },
+        masterMap: { center: 'title', content: 'body' },
+      }
+      expect(resolveMaster(theme, 'center')?.background).toEqual({ type: 'fill', color: 'var(--theme-primary)' })
+      expect(resolveMaster(theme, 'content')?.background).toEqual({ type: 'grid', size: 24 })
+    })
+
+    it('extends 先の background を継承する', () => {
+      const theme: ThemeData = {
+        masters: {
+          base: { background: { type: 'plain' }, decorations: [] },
+          standard: { extends: 'base', decorations: [] },
+        },
+        masterMap: { content: 'standard' },
+      }
+      expect(resolveMaster(theme, 'content')?.background).toEqual({ type: 'plain' })
+    })
+
+    it('background は重ねられないため、自身の定義が extends 先より勝つ', () => {
+      const theme: ThemeData = {
+        masters: {
+          base: { background: { type: 'plain' } },
+          standard: { extends: 'base', background: { type: 'grid' } },
+        },
+        masterMap: { content: 'standard' },
+      }
+      expect(resolveMaster(theme, 'content')?.background).toEqual({ type: 'grid' })
+    })
+  })
+
   // #185: 解決順序（①opts.master → ②masterMap["layout/variant"] → ③masterMap["layout"] → ④解決なし）
   describe('解決順序（#185）', () => {
     const theme: ThemeData = {
@@ -167,6 +209,10 @@ describe('renderMasterText', () => {
 })
 
 describe('getMasterWarnings', () => {
+  /** masters.standard に定義1つだけを置いた theme の警告を返す（JSON 由来の型不一致も渡せるよう unknown で受ける）。
+   * 「警告が出ない」ことを確かめる正例は、リテラル自体が DSL の型検査になるので ThemeData 注釈付きで書く */
+  const warningsFor = (definition: unknown): string[] => getMasterWarnings({ masters: { standard: definition } } as unknown as ThemeData)
+
   it('theme 未指定なら警告なし', () => {
     expect(getMasterWarnings(undefined)).toEqual([])
   })
@@ -209,20 +255,17 @@ describe('getMasterWarnings', () => {
   })
 
   it('decoration.type の綴りミスを警告する', () => {
-    const theme = { masters: { standard: { decorations: [{ type: 'logooo', anchor: 'top-left' }] } } } as unknown as ThemeData
-    const warnings = getMasterWarnings(theme)
+    const warnings = warningsFor({ decorations: [{ type: 'logooo', anchor: 'top-left' }] })
     expect(warnings.some((w) => w.includes('.type: 不明な種別'))).toBe(true)
   })
 
   it('anchor の綴りミスを警告する', () => {
-    const theme = { masters: { standard: { decorations: [{ type: 'logo', anchor: 'top-lft', src: '/logo.png' }] } } } as unknown as ThemeData
-    const warnings = getMasterWarnings(theme)
+    const warnings = warningsFor({ decorations: [{ type: 'logo', anchor: 'top-lft', src: '/logo.png' }] })
     expect(warnings.some((w) => w.includes('.anchor: 不明な値'))).toBe(true)
   })
 
   it('only/layer の綴りミスを警告する', () => {
-    const theme = { masters: { standard: { decorations: [{ type: 'logo', anchor: 'top-left', src: '/logo.png', only: 'furst', layer: 'behind' }] } } } as unknown as ThemeData
-    const warnings = getMasterWarnings(theme)
+    const warnings = warningsFor({ decorations: [{ type: 'logo', anchor: 'top-left', src: '/logo.png', only: 'furst', layer: 'behind' }] })
     expect(warnings.some((w) => w.includes('.only: 不明な値'))).toBe(true)
     expect(warnings.some((w) => w.includes('.layer: 不明な値'))).toBe(true)
   })
@@ -257,6 +300,66 @@ describe('getMasterWarnings', () => {
   it('既知のテンプレート変数（ゼロ詰め書式つきを含む）では警告しない', () => {
     const theme: ThemeData = { masters: { standard: { decorations: [{ type: 'text', anchor: 'bottom-left', content: '第 {sectionNumber:02} 章 {sectionTitle} — {index}/{total}' }] } } }
     expect(getMasterWarnings(theme)).toEqual([])
+  })
+
+  // #189: 背景意匠と装飾共通プロパティ（opacity / rotate）の値検証
+  describe('background / opacity / rotate の検証（#189）', () => {
+    it('background.type の綴りミスを警告する', () => {
+      expect(warningsFor({ background: { type: 'gird' } })).toContain('theme.masters.standard.background.type: 不明な種別 "gird" です（plain/grid/fill/gradient/image のいずれかを指定してください）')
+    })
+
+    it('種別が不明な場合は以降のプロパティ検証をしない（警告は1件）', () => {
+      expect(warningsFor({ background: { type: 'gird', opacity: 5 } })).toHaveLength(1)
+    })
+
+    it('background.opacity が 0〜1 の範囲外なら警告する', () => {
+      expect(warningsFor({ background: { type: 'plain', opacity: 1.5 } })).toContain('theme.masters.standard.background.opacity: 0〜1 の数値を指定してください（"1.5"）')
+    })
+
+    it('grid.size が 0 以下・数値以外なら警告する', () => {
+      expect(warningsFor({ background: { type: 'grid', size: 0 } }).some((w) => w.includes('.size: 0 より大きい数値'))).toBe(true)
+      expect(warningsFor({ background: { type: 'grid', size: '24px' } }).some((w) => w.includes('.size: 0 より大きい数値'))).toBe(true)
+    })
+
+    it('fill に color がない場合は plain を勧めて警告する', () => {
+      expect(warningsFor({ background: { type: 'fill' } }).some((w) => w.includes('type: "plain" を使ってください'))).toBe(true)
+    })
+
+    it('gradient に from / to が揃っていない場合は警告する（背景・帯装飾で共通の検証）', () => {
+      expect(warningsFor({ background: { type: 'gradient', from: '#000' } })).toContain('theme.masters.standard.background: gradient には from / to の両方が必要です')
+      expect(warningsFor({ decorations: [{ type: 'band', anchor: 'top-center', gradient: { from: '#000' } }] })).toContain('theme.masters.standard.decorations[0].gradient: gradient には from / to の両方が必要です')
+    })
+
+    it('image の src 欠落と fit の綴りミスを警告する', () => {
+      const warnings = warningsFor({ background: { type: 'image', fit: 'fill' } })
+      expect(warnings.some((w) => w.includes('.src: image には画像パスが必要です'))).toBe(true)
+      expect(warnings.some((w) => w.includes('.fit: 不明な値'))).toBe(true)
+    })
+
+    it('装飾の opacity が 0〜1 の範囲外・数値以外なら警告する', () => {
+      expect(warningsFor({ decorations: [{ type: 'text', anchor: 'middle-center', content: 'c', opacity: '0.5' }] })).toContain('theme.masters.standard.decorations[0].opacity: 0〜1 の数値を指定してください（"0.5"）')
+    })
+
+    it('装飾の rotate が数値でないなら警告する', () => {
+      expect(warningsFor({ decorations: [{ type: 'band', anchor: 'top-center', rotate: '45deg' }] })).toContain('theme.masters.standard.decorations[0].rotate: 数値（deg）を指定してください（"45deg"）')
+    })
+
+    it('妥当な background / opacity / rotate では警告しない', () => {
+      const theme: ThemeData = {
+        masters: {
+          title: { background: { type: 'gradient', from: 'var(--theme-primary)', to: 'var(--theme-background)', angle: 135 } },
+          body: {
+            background: { type: 'grid', size: 24, opacity: 0.6 },
+            decorations: [
+              { type: 'text', anchor: 'middle-center', content: 'CONFIDENTIAL', opacity: 0, rotate: -30 },
+              { type: 'band', anchor: 'top-center', gradient: { from: 'var(--theme-primary)', to: 'var(--theme-accent)' } },
+            ],
+          },
+          cover: { background: { type: 'image', src: 'image/cover.png', fit: 'contain' } },
+        },
+      }
+      expect(getMasterWarnings(theme)).toEqual([])
+    })
   })
 
   it('tokens が存在しない masterKey を参照する場合に警告する', () => {

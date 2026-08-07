@@ -24,8 +24,8 @@ type Props = SlideFrameCommonProps & {
   children: ReactNode
 }
 
-/** 5レイアウト共通の section 生成を担う。.master-layer-back/front には resolveMaster が解決した
- * master の装飾（SlideMasterLayer）を描く（優先順: meta.master → masterMap["layout/variant"] →
+/** 5レイアウト共通の section 生成を担う。.master-layer-back/front の中身は resolveMaster が解決した
+ * master を渡して SlideMasterLayer に任せる（優先順: meta.master → masterMap["layout/variant"] →
  * masterMap["layout"]）。master が未解決（未指定・masterKey不明・extends循環）の場合は現行と完全同一の
  * DOMになる。.master-layer-front はロゴ（.slide-logo-inline）も持つ。
  * 余白は section ではなく .master-body に持たせることで、本編・発表者ビュー・編集プレビュー・PDF書き出しの
@@ -35,10 +35,12 @@ export function SlideFrame({ id, layout, variant, meta, logo, theme, ctx, bleed,
 
   return (
     <section className="slide-container" id={id} data-master={resolved?.masterKey} data-transition={meta?.transition} data-background-image={meta?.backgroundImage} data-background-color={meta?.backgroundColor}>
-      <div className="master-layer-back">{resolved && <SlideMasterLayer decorations={resolved.decorations} layer="back" ctx={ctx} />}</div>
+      <div className="master-layer-back">
+        <SlideMasterLayer master={resolved} layer="back" ctx={ctx} />
+      </div>
       <div className={bleed ? 'master-body bleed-image-layout' : 'master-body'}>{children}</div>
       <div className="master-layer-front">
-        {resolved && <SlideMasterLayer decorations={resolved.decorations} layer="front" ctx={ctx} />}
+        <SlideMasterLayer master={resolved} layer="front" ctx={ctx} />
         {logo && (
           <div className="slide-logo-inline">
             <FallbackImage src={logo.src} width={logo.width ?? 120} height={logo.height ?? 40} alt="Logo" />

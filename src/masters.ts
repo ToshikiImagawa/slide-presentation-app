@@ -1,19 +1,23 @@
 import { hasComponent } from './components/ComponentRegistry'
-import type { MasterDecoration, MasterDecorationOnly, MasterDefinition, MasterRenderContext, SlideData, ThemeData } from './data'
+import type { MasterBackground, MasterDecoration, MasterDecorationOnly, MasterDefinition, MasterGradient, MasterRenderContext, SlideData, ThemeData } from './data'
 
 const MASTER_DECORATION_TYPES = ['logo', 'band', 'rule', 'text', 'image', 'component'] as const
 const MASTER_ANCHORS = ['top-left', 'top-center', 'top-right', 'middle-left', 'middle-center', 'middle-right', 'bottom-left', 'bottom-center', 'bottom-right'] as const
 const MASTER_DECORATION_ONLY = ['first', 'last', 'not-first', 'all', 'middle', 'section-first', 'not-section-first'] as const
 const MASTER_DECORATION_LAYER = ['back', 'front'] as const
+const MASTER_BACKGROUND_TYPES = ['plain', 'grid', 'fill', 'gradient', 'image'] as const
+const MASTER_BACKGROUND_FITS = ['cover', 'contain'] as const
 
-export interface ResolvedMaster {
-  masterKey: string
-  decorations: MasterDecoration[]
-}
+/** extends が解けた状態のマスター定義（decorations は常に配列に正規化する）。継承できるフィールドは
+ * MasterDefinition 側の語彙で決まるため、フィールドを増やしてもこの型は追随不要 */
+type MergedMasterDefinition = Omit<MasterDefinition, 'extends' | 'decorations'> & { decorations: MasterDecoration[] }
+
+/** 合成済みのマスター定義に、採用された masterKey を添えた描画側の契約 */
+export type ResolvedMaster = MergedMasterDefinition & { masterKey: string }
 
 /**
- * masterKey を解決順序どおりに候補列挙し、extends チェーンを辿って decorations を合成する
- * （親→子の順にマージ）。解決順序: ①opts.master（スライド個別指定）→ ②masterMap["<layout>/<variant>"]
+ * masterKey を解決順序どおりに候補列挙し、extends チェーンを辿って定義を合成する。
+ * 解決順序: ①opts.master（スライド個別指定）→ ②masterMap["<layout>/<variant>"]
  * （opts.variant があるときのみ）→ ③masterMap["<layout>"] → ④解決なし。
  * 各候補は masters に存在し extends が循環していない場合のみ採用し、そうでなければ次の候補へ
  * フォールバックする（未解決の masterKey 指定は getMasterWarnings が警告する）。
@@ -27,17 +31,25 @@ export function resolveMaster(theme: ThemeData | undefined, layout: string, opts
 
   for (const masterKey of candidates) {
     if (!masterKey || !masters?.[masterKey] || isCircular(masters, masterKey)) continue
-    return { masterKey, decorations: collectDecorations(masters, masterKey) }
+    return { masterKey, ...collectDefinition(masters, masterKey) }
   }
 
   return undefined
 }
 
-function collectDecorations(masters: Record<string, MasterDefinition>, key: string): MasterDecoration[] {
+/**
+ * extends チェーンを1度だけ辿って定義を合成する（循環していないことは呼び出し側が確認済み）。
+ * フィールドごとのマージ規則: decorations は親→子の順に連結し、background は重ね合わせできないため
+ * 自身に近い定義が勝つ（#189）。継承対象のフィールドを増やすときはここに規則を1行足す。
+ */
+function collectDefinition(masters: Record<string, MasterDefinition>, key: string): MergedMasterDefinition {
   const definition = masters[key]
-  if (!definition) return []
-  const inherited = definition.extends ? collectDecorations(masters, definition.extends) : []
-  return [...inherited, ...(definition.decorations ?? [])]
+  if (!definition) return { decorations: [] }
+  const inherited = definition.extends ? collectDefinition(masters, definition.extends) : { decorations: [] }
+  return {
+    decorations: [...inherited.decorations, ...(definition.decorations ?? [])],
+    background: definition.background ?? inherited.background,
+  }
 }
 
 /**
@@ -119,6 +131,101 @@ export function renderMasterText(content: string, ctx: MasterRenderContext): str
   })
 }
 
+/** opacity は未指定（=1 相当）か 0〜1 の数値のみ許容する（JSON 由来のため文字列・NaN・Infinity も来る・#189） */
+function opacityWarnings(opacity: number | undefined, path: string): string[] {
+  if (opacity === undefined || (typeof opacity === 'number' && opacity >= 0 && opacity <= 1)) return []
+  return [`${path}.opacity: 0〜1 の数値を指定してください（"${opacity}"）`]
+}
+
+/** MasterGradient は背景（type: gradient）と帯装飾（band.gradient）で共有するため、検証も共有する（#189）。
+ * 片方が欠けると linear-gradient 自体が不正になり CSS 側で宣言ごと破棄される（無言で消える）ため警告する */
+function gradientWarnings(gradient: MasterGradient, path: string): string[] {
+  if (!gradient.from || !gradient.to) return [`${path}: gradient には from / to の両方が必要です`]
+  return []
+}
+
+/**
+ * 背景定義（#189）の値検証。種別が不明な場合は SlideMasterBackground が何も描けないため以降の検証は行わない。
+ * 必須プロパティ（fill の color 等）は型では強制できても JSON では欠けうるため、ここで警告する。
+ */
+function backgroundWarnings(background: MasterBackground, path: string): string[] {
+  if (!MASTER_BACKGROUND_TYPES.includes(background.type)) {
+    return [`${path}.type: 不明な種別 "${background.type}" です（${MASTER_BACKGROUND_TYPES.join('/')} のいずれかを指定してください）`]
+  }
+
+  const warnings = [...opacityWarnings(background.opacity, path)]
+
+  switch (background.type) {
+    case 'grid':
+      if (background.size !== undefined && !(typeof background.size === 'number' && background.size > 0)) {
+        warnings.push(`${path}.size: 0 より大きい数値（px）を指定してください（"${background.size}"）`)
+      }
+      break
+    case 'fill':
+      if (!background.color) {
+        warnings.push(`${path}.color: fill には塗り色が必要です（省略する場合は type: "plain" を使ってください）`)
+      }
+      break
+    case 'gradient':
+      warnings.push(...gradientWarnings(background, path))
+      break
+    case 'image':
+      if (!background.src) {
+        warnings.push(`${path}.src: image には画像パスが必要です`)
+      }
+      if (background.fit && !MASTER_BACKGROUND_FITS.includes(background.fit)) {
+        warnings.push(`${path}.fit: 不明な値 "${background.fit}" です（${MASTER_BACKGROUND_FITS.join('/')} のいずれかを指定してください）`)
+      }
+      break
+  }
+
+  return warnings
+}
+
+/**
+ * 装飾1件の値検証。種別が不明な場合は何も描けないため以降の検証は行わない（backgroundWarnings と同じ方針）。
+ * 共通プロパティ（anchor/only/layer/opacity/rotate）を見たあと、種別固有の規則を switch で並べる。
+ */
+function decorationWarnings(decoration: MasterDecoration, path: string): string[] {
+  if (!MASTER_DECORATION_TYPES.includes(decoration.type)) {
+    return [`${path}.type: 不明な種別 "${decoration.type}" です（${MASTER_DECORATION_TYPES.join('/')} のいずれかを指定してください）`]
+  }
+
+  const warnings = [...opacityWarnings(decoration.opacity, path)]
+  if (!MASTER_ANCHORS.includes(decoration.anchor)) {
+    warnings.push(`${path}.anchor: 不明な値 "${decoration.anchor}" です`)
+  }
+  if (decoration.only && !MASTER_DECORATION_ONLY.includes(decoration.only)) {
+    warnings.push(`${path}.only: 不明な値 "${decoration.only}" です`)
+  }
+  if (decoration.layer && !MASTER_DECORATION_LAYER.includes(decoration.layer)) {
+    warnings.push(`${path}.layer: 不明な値 "${decoration.layer}" です`)
+  }
+  if (decoration.rotate !== undefined && !Number.isFinite(decoration.rotate)) {
+    warnings.push(`${path}.rotate: 数値（deg）を指定してください（"${decoration.rotate}"）`)
+  }
+
+  switch (decoration.type) {
+    case 'band':
+      if (decoration.gradient) {
+        warnings.push(...gradientWarnings(decoration.gradient, `${path}.gradient`))
+      }
+      break
+    case 'text':
+      for (const name of unknownTextVariables(decoration.content)) {
+        warnings.push(`${path}.content: 不明なテンプレート変数 "{${name}}" です（${[...MASTER_TEXT_RESOLVERS.keys()].join('/')} のいずれかを指定してください）`)
+      }
+      break
+    case 'component':
+      if (!hasComponent(decoration.name)) {
+        warnings.push(`${path}.name: 未登録のコンポーネント "${decoration.name}" が指定されています（該当箇所は描画をスキップします）`)
+      }
+      break
+  }
+
+  return warnings
+}
+
 /** content 内のテンプレート変数のうち、renderMasterText が展開できない名前を重複なしで返す */
 function unknownTextVariables(content: string): string[] {
   const names = [...content.matchAll(MASTER_TEXT_PATTERN)].map(([, name]) => name).filter((name) => !MASTER_TEXT_RESOLVERS.has(name))
@@ -158,30 +265,12 @@ export function getMasterWarnings(theme?: ThemeData, slides?: SlideData[]): stri
     if (definition.extends && isCircular(masters, masterKey)) {
       warnings.push(`theme.masters.${masterKey}: extends が循環しています`)
     }
+    if (definition.background) {
+      warnings.push(...backgroundWarnings(definition.background, `theme.masters.${masterKey}.background`))
+    }
 
     for (const [i, decoration] of (definition.decorations ?? []).entries()) {
-      const path = `theme.masters.${masterKey}.decorations[${i}]`
-      if (!MASTER_DECORATION_TYPES.includes(decoration.type)) {
-        warnings.push(`${path}.type: 不明な種別 "${decoration.type}" です（logo/band/rule/text/image/component のいずれかを指定してください）`)
-        continue
-      }
-      if (!MASTER_ANCHORS.includes(decoration.anchor)) {
-        warnings.push(`${path}.anchor: 不明な値 "${decoration.anchor}" です`)
-      }
-      if (decoration.only && !MASTER_DECORATION_ONLY.includes(decoration.only)) {
-        warnings.push(`${path}.only: 不明な値 "${decoration.only}" です`)
-      }
-      if (decoration.layer && !MASTER_DECORATION_LAYER.includes(decoration.layer)) {
-        warnings.push(`${path}.layer: 不明な値 "${decoration.layer}" です`)
-      }
-      if (decoration.type === 'text') {
-        for (const name of unknownTextVariables(decoration.content)) {
-          warnings.push(`${path}.content: 不明なテンプレート変数 "{${name}}" です（${[...MASTER_TEXT_RESOLVERS.keys()].join('/')} のいずれかを指定してください）`)
-        }
-      }
-      if (decoration.type === 'component' && !hasComponent(decoration.name)) {
-        warnings.push(`${path}.name: 未登録のコンポーネント "${decoration.name}" が指定されています（該当箇所は描画をスキップします）`)
-      }
+      warnings.push(...decorationWarnings(decoration, `theme.masters.${masterKey}.decorations[${i}]`))
     }
   }
 

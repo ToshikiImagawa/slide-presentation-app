@@ -205,6 +205,17 @@ interface MasterDecorationBase {
   offset?: { x?: number; y?: number }
   only?: MasterDecorationOnly
   layer?: MasterDecorationLayer
+  /** 不透明度（0〜1）。省略時は 1。透かし（機密表記等）を薄く敷く用途（#189） */
+  opacity?: number
+  /** 回転角（deg・時計回り）。アンカー位置を保ったまま要素の中心を軸に回す。斜め帯・回転させた透かしに使う（#189） */
+  rotate?: number
+}
+
+/** 線形グラデーション（マスター背景と帯装飾で共通）。angle は CSS の linear-gradient と同じ deg（省略時 180 = 上→下） */
+export interface MasterGradient {
+  from: string
+  to: string
+  angle?: number
 }
 
 /** ロゴ装飾 */
@@ -215,10 +226,12 @@ export interface LogoMasterDecoration extends MasterDecorationBase {
   height?: number
 }
 
-/** 帯装飾（既定で辺いっぱいに伸びる） */
+/** 帯装飾（既定で辺いっぱいに伸びる）。gradient を指定すると color の代わりにグラデーションで塗る。
+ * 斜め帯は装飾共通の rotate で表現する（shape 装飾を増やさず 6 種を維持する・#189） */
 export interface BandMasterDecoration extends MasterDecorationBase {
   type: 'band'
   color?: string
+  gradient?: MasterGradient
   thickness?: number
   orientation?: 'horizontal' | 'vertical'
 }
@@ -260,9 +273,55 @@ export interface ComponentMasterDecoration extends MasterDecorationBase {
 /** マスター装飾（DSL膨張の歯止めとして6種に固定） */
 export type MasterDecoration = LogoMasterDecoration | BandMasterDecoration | RuleMasterDecoration | TextMasterDecoration | ImageMasterDecoration | ComponentMasterDecoration
 
-/** マスター定義。extends で他の master の decorations を継承できる（resolveMaster が循環を検出する） */
+/** マスター背景の共通プロパティ */
+interface MasterBackgroundBase {
+  /** 不透明度（0〜1）。省略時は 1。薄めるとデッキ既定の背景（body の格子）が透けて見える */
+  opacity?: number
+}
+
+/** 無地背景。テーマ背景色で塗り、デッキ既定の格子を隠す */
+export interface PlainMasterBackground extends MasterBackgroundBase {
+  type: 'plain'
+}
+
+/** 格子背景（デッキ既定の背景と同じ意匠。size で密度を変える）。
+ * 格子線の色はマスタースコープの tokens（`theme-background-grid`）で変えられる */
+export interface GridMasterBackground extends MasterBackgroundBase {
+  type: 'grid'
+  /** 格子の下地色。省略時は var(--theme-background) */
+  color?: string
+  /** 格子の間隔（px）。省略時はデッキ既定の格子と同じ間隔（--theme-background-grid-size） */
+  size?: number
+}
+
+/** 全面塗り背景（章扉の反転面等） */
+export interface FillMasterBackground extends MasterBackgroundBase {
+  type: 'fill'
+  color: string
+}
+
+/** グラデーション背景 */
+export interface GradientMasterBackground extends MasterBackgroundBase, MasterGradient {
+  type: 'gradient'
+}
+
+/** 画像背景（キャンバス全面に敷く。スライド個別の meta.backgroundImage と違いマスター単位で効く） */
+export interface ImageMasterBackground extends MasterBackgroundBase {
+  type: 'image'
+  src: string
+  /** 画像のフィット方法。省略時は cover */
+  fit?: 'cover' | 'contain'
+}
+
+/** マスター背景意匠（#189）。装飾と同じくDSL膨張の歯止めとして5種に固定 */
+export type MasterBackground = PlainMasterBackground | GridMasterBackground | FillMasterBackground | GradientMasterBackground | ImageMasterBackground
+
+/** マスター定義。extends で他の master の decorations / background を継承できる（resolveMaster が循環を検出する） */
 export interface MasterDefinition {
   extends?: string
+  /** 背景意匠。省略時は背景要素を描かず、デッキ既定の背景（body の格子）がそのまま見える（現行と完全同一・#189）。
+   * extends 先が背景を持つ場合は、自身に background を書いた方が勝つ */
+  background?: MasterBackground
   decorations?: MasterDecoration[]
 }
 

@@ -8,6 +8,11 @@
   --theme-background-rgb: 24, 26, 32;
   --theme-background-alt: #23262e;
   --theme-background-grid: #2f333d;
+  /* 格子背景の意匠（#189）。body のデッキ既定背景と master の grid 種別背景が同じ定義を共有する。
+     格子線の色は使う側の --theme-background-grid の解決に委ねるため、マスタースコープの
+     tokens（theme-background-grid）でマスターごとに線色を変えられる */
+  --theme-background-grid-image: linear-gradient(var(--theme-background-grid) 1px, transparent 1px), linear-gradient(90deg, var(--theme-background-grid) 1px, transparent 1px);
+  --theme-background-grid-size: 40px;
   --theme-text-heading: #f8fafc;
   --theme-text-body: #a3b0c7;
   --theme-text-subtitle: #c7cede;
@@ -101,8 +106,8 @@ body,
 
 body {
   background-color: var(--theme-background);
-  background-image: linear-gradient(var(--theme-background-grid) 1px, transparent 1px), linear-gradient(90deg, var(--theme-background-grid) 1px, transparent 1px);
-  background-size: 40px 40px;
+  background-image: var(--theme-background-grid-image);
+  background-size: var(--theme-background-grid-size) var(--theme-background-grid-size);
   margin: 0;
   font-family: var(--theme-font-body), serif;
 }
@@ -139,8 +144,8 @@ body {
   z-index: 1;
 }
 
-/* 装飾レイヤー（帯・背景装飾等）用のプレースホルダ。.master-layer-back は空、.master-layer-front は
-   ロゴ（.slide-logo-inline）を含む。装飾自体の実装は別チケット。
+/* 装飾レイヤー。.master-layer-back はマスター背景（.master-background）と back 装飾、
+   .master-layer-front は front 装飾とロゴ（.slide-logo-inline）を含む。
    .master-body（z-index:1）を挟んで背面・前面になるよう z-index を明示する
    （ロゴはコンテンツより手前に来る必要がある） */
 .master-layer-back,
@@ -156,6 +161,20 @@ body {
 
 .master-layer-front {
   z-index: 2;
+}
+
+/* マスター背景（#189）。.master-layer-back の最背面に敷く要素で、種別ごとの色・画像・不透明度は
+   SlideMasterBackground がインラインスタイルで与える */
+.master-background {
+  inset: 0;
+  position: absolute;
+}
+
+/* grid 種別は body のデッキ既定背景と同じ格子意匠を共有する。密度は --theme-background-grid-size の
+   インライン上書き（background.size）で変わる */
+.master-background-grid {
+  background-image: var(--theme-background-grid-image);
+  background-size: var(--theme-background-grid-size) var(--theme-background-grid-size);
 }
 
 .slides .slide-container::before {
@@ -390,8 +409,8 @@ code {
    引き継がないため、撮影対象の section 自身に同じ見た目を再現する（src/pdfExport.ts） */
 .pdf-capturing .slide-container {
   background-color: var(--theme-background);
-  background-image: linear-gradient(var(--theme-background-grid) 1px, transparent 1px), linear-gradient(90deg, var(--theme-background-grid) 1px, transparent 1px);
-  background-size: 40px 40px;
+  background-image: var(--theme-background-grid-image);
+  background-size: var(--theme-background-grid-size) var(--theme-background-grid-size);
 }
 
 /* .reveal .slides section.slide-container::after{display:none}（詳細度 0,3,2）より詳細度を上げて

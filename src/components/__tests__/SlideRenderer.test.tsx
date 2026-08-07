@@ -536,6 +536,44 @@ describe('SlideRenderer', () => {
       })
     })
 
+    // #189: マスター背景意匠（背景を持つマスターだけが .master-layer-back の最背面に背景要素を敷く）
+    describe('マスター背景（#189）', () => {
+      it('background を持たないテーマでは背景要素を描かない（現行と完全同一のDOM）', () => {
+        const contentSlide = testSlides.find((s) => s.layout === 'content')!
+        const { container } = renderWithTheme(<SlideRenderer slides={[contentSlide]} theme={masterTheme} />)
+        expect(container.querySelector('.master-background')).toBeNull()
+      })
+
+      it('マスターごとに別の背景（無地 / 格子 / 全面塗り）を割り当てられる（受け入れ基準）', () => {
+        const slides: SlideData[] = ['plain', 'grid', 'fill'].map((master, i) => ({ id: `s${i}`, layout: 'content', content: { title: `slide ${i}` }, meta: { master } }))
+        const theme: ThemeData = {
+          masters: {
+            plain: { background: { type: 'plain' } },
+            grid: { background: { type: 'grid', size: 24 } },
+            fill: { background: { type: 'fill', color: 'rgb(1, 2, 3)' } },
+          },
+        }
+        const { container } = renderWithTheme(<SlideRenderer slides={slides} theme={theme} />)
+        const backgroundOf = (index: number) => container.querySelectorAll('section.slide-container')[index].querySelector('.master-layer-back > .master-background') as HTMLElement
+        expect(backgroundOf(0).className).toBe('master-background')
+        expect(backgroundOf(1).className).toBe('master-background master-background-grid')
+        expect(backgroundOf(2).style.backgroundColor).toBe('rgb(1, 2, 3)')
+      })
+
+      it('透かし（低不透明度・回転させたテキスト装飾）をマスター装飾として置ける（受け入れ基準）', () => {
+        const contentSlide = testSlides.find((s) => s.layout === 'content')!
+        const theme: ThemeData = {
+          masters: { standard: { decorations: [{ type: 'text', anchor: 'middle-center', content: 'CONFIDENTIAL', opacity: 0.08, rotate: -30 }] } },
+          masterMap: { content: 'standard' },
+        }
+        const { container } = renderWithTheme(<SlideRenderer slides={[contentSlide]} theme={theme} />)
+        const watermark = container.querySelector('.master-layer-back > div') as HTMLElement
+        expect(watermark.textContent).toBe('CONFIDENTIAL')
+        expect(watermark.style.opacity).toBe('0.08')
+        expect(watermark.style.transform).toContain('rotate(-30deg)')
+      })
+    })
+
     // #191: 章（meta.section）を装飾テキストへ差し込む
     describe('章の概念（#191）', () => {
       const sectionTheme: ThemeData = {
