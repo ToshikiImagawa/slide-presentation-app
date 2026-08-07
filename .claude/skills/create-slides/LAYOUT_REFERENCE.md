@@ -41,7 +41,7 @@
 
 ### body / items（プレーン本文）
 
-`steps`/`tiles`/`component` のいずれも指定しない場合に描画される、タイトル＋左寄せ本文の基本形。`body`（段落）と `items`（箇条書き、ネスト可）は併用できる。
+`steps`/`tiles`/`images`/`component` のいずれも指定しない場合に描画される、タイトル＋左寄せ本文の基本形。`body`（段落）と `items`（箇条書き、ネスト可）は併用できる。
 
 ```json
 {
