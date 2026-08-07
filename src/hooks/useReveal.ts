@@ -1,9 +1,16 @@
 import { useCallback, useEffect, useRef } from 'react'
 import Reveal from 'reveal.js'
+import type { CanvasData } from '../data'
 
 /** Reveal.js の設計解像度（スライドの基準サイズ）。pdfExport.ts もPDFページサイズをこれに合わせる */
 export const SLIDE_WIDTH = 1280
 export const SLIDE_HEIGHT = 720
+
+/** テーマの canvas から実際のキャンバスサイズ（px）を解決する。未指定時は SLIDE_WIDTH/SLIDE_HEIGHT（現行と完全同一）。
+ * SlidePreview・PresenterViewWindow の縮小表示スケーラーが共通で使う（#188） */
+export function resolveCanvasSize(canvas?: CanvasData): { width: number; height: number } {
+  return { width: canvas?.width ?? SLIDE_WIDTH, height: canvas?.height ?? SLIDE_HEIGHT }
+}
 
 export interface UseRevealOptions {
   onSlideChanged?: (event: { indexh: number; indexv: number }) => void

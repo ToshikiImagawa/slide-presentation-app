@@ -4,7 +4,7 @@ import { getSpeakerNotes, getSlideSummary } from '../data'
 import { useTranslation } from '../i18n'
 import { FillProgress } from './FillProgress'
 import { SlideRenderer } from './SlideRenderer'
-import { SLIDE_WIDTH, SLIDE_HEIGHT } from '../hooks/useReveal'
+import { resolveCanvasSize } from '../hooks/useReveal'
 import styles from './PresenterViewWindow.module.css'
 
 const PREVIEW_GAP = 12
@@ -91,13 +91,12 @@ export function PresenterViewWindow({ slides, currentIndex, logo, theme, control
   const autoPlayLabel = t('presenterView.autoPlay')
   const autoSlideshowLabel = t('presenterView.autoSlideshow')
 
-  const canvasWidth = theme?.canvas?.width ?? SLIDE_WIDTH
-  const canvasHeight = theme?.canvas?.height ?? SLIDE_HEIGHT
-  const canvasAspectRatio = `${canvasWidth} / ${canvasHeight}`
+  const { width: canvasWidth, height: canvasHeight } = resolveCanvasSize(theme?.canvas)
+  const canvasAspectRatio = canvasWidth / canvasHeight
 
   const containerRef = useRef<HTMLDivElement>(null)
   const controlBarRef = useRef<HTMLDivElement>(null)
-  const { mainContentHeight, rightColumnWidth, previewHeight } = usePreviewLayout(containerRef, controlBarRef, canvasWidth / canvasHeight)
+  const { mainContentHeight, rightColumnWidth, previewHeight } = usePreviewLayout(containerRef, controlBarRef, canvasAspectRatio)
 
   // キーボード操作
   useEffect(() => {
@@ -225,8 +224,7 @@ export function PresenterViewWindow({ slides, currentIndex, logo, theme, control
 function PreviewSlide({ slide, logo, theme, index, total }: { slide: SlideData; logo?: LogoConfig; theme?: ThemeData; index: number; total: number }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [scale, setScale] = useState(0.3)
-  const canvasWidth = theme?.canvas?.width ?? SLIDE_WIDTH
-  const canvasHeight = theme?.canvas?.height ?? SLIDE_HEIGHT
+  const { width: canvasWidth, height: canvasHeight } = resolveCanvasSize(theme?.canvas)
 
   useEffect(() => {
     if (!containerRef.current) return

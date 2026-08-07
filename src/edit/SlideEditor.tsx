@@ -16,6 +16,7 @@ import { useTranslation } from '../i18n'
 import { applyPresentationTheme, fetchColorPalette, mergeThemeData } from '../applyTheme'
 import { getPackageAddonNames, resolveBrandTheme, resolveLocalAssetPaths } from '../localSlideLoader'
 import { slugify } from '../slugify'
+import { resolveCanvasSize } from '../hooks/useReveal'
 import type { ColorPalette, PresentationData, SlideData, ThemeData } from '../data'
 import type { GeneratedCandidate } from '../aiGenerate'
 import { pickBrandTemplate, loadBrandOverrides, saveBrandOverrides } from '../brand/io'
@@ -256,6 +257,8 @@ export function SlideEditor({
   const previewData = useMemo<PresentationData>(() => (source.baseDir ? resolveLocalAssetPaths(validData, source.baseDir) : validData), [validData, source.baseDir])
   // SlideRenderer は masters/masterMap を直接参照するため、本編と同様に brand→deck の合成済み theme をプレビューに渡す
   const effectiveTheme = useMemo(() => mergeThemeData(brandTheme, previewData.theme), [brandTheme, previewData.theme])
+  const { width: previewCanvasWidth, height: previewCanvasHeight } = resolveCanvasSize(effectiveTheme?.canvas)
+  const previewAspectRatio = previewCanvasWidth / previewCanvasHeight
   const slides = previewData.slides ?? []
   const clampedIndex = slides.length > 0 ? Math.min(selectedIndex, slides.length - 1) : 0
   const currentSlide: SlideData | undefined = slides[clampedIndex]
@@ -658,7 +661,7 @@ export function SlideEditor({
                   <Box
                     sx={{
                       width: '100%',
-                      aspectRatio: '16 / 9',
+                      aspectRatio: previewAspectRatio,
                       maxHeight: '100%',
                       position: 'relative',
                       border: '1px solid var(--fixed-border)',

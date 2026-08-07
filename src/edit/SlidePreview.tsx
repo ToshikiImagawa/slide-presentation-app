@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { LogoConfig, SlideData, ThemeData } from '../data'
 import { SlideRenderer } from '../components/SlideRenderer'
-import { SLIDE_WIDTH, SLIDE_HEIGHT } from '../hooks/useReveal'
+import { resolveCanvasSize } from '../hooks/useReveal'
 import styles from './SlidePreview.module.css'
 
 /**
@@ -13,8 +13,7 @@ import styles from './SlidePreview.module.css'
 export function SlidePreview({ slide, logo, theme, index, total }: { slide: SlideData; logo?: LogoConfig; theme?: ThemeData; index: number; total: number }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [scale, setScale] = useState(0.3)
-  const canvasWidth = theme?.canvas?.width ?? SLIDE_WIDTH
-  const canvasHeight = theme?.canvas?.height ?? SLIDE_HEIGHT
+  const { width: canvasWidth, height: canvasHeight } = resolveCanvasSize(theme?.canvas)
 
   useEffect(() => {
     if (!containerRef.current) return
