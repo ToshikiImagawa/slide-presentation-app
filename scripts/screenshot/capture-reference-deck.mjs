@@ -67,7 +67,10 @@ async function captureLocale(browser, bar, vp, locale, outDir) {
       await page.evaluate((h) => (window.location.hash = h), `#/${index}`)
       await page.evaluate(() => document.fonts.ready)
       await sleep(700)
-      const contentBuf = await page.screenshot({ fullPage: vp.fullPage })
+      // animations: 'disabled' で fadeInUp を最終状態に確定させる。Reveal.js は .present 付与のたびに
+      // アニメーションを再生し直すため、sleep だけでは撮影タイミングが揺れて実行ごとに最大 2.4% の
+      // ピクセル差が出る（git 差分ベースの回帰検知が機能しなくなる）
+      const contentBuf = await page.screenshot({ fullPage: vp.fullPage, animations: 'disabled' })
       const finalBuf = compositeChrome(contentBuf, bar)
       const name = `${String(index).padStart(2, '0')}-${slide.id}.png`
       writeFileSync(resolve(outDir, name), finalBuf)
