@@ -120,6 +120,8 @@ export interface CompiledBrandTheme {
   masterMap: Record<string, string>
   tokens: Record<string, Record<string, string>>
   logo: MediaAsset | null
+  /** `profile.slideSize` から生成したキャンバスサイズ（#188）。`slideSize` が無い場合は undefined（既定の 1280x720 のまま） */
+  canvas?: { width: number; height: number }
 }
 
 export type BrandFieldStatus = 'ok' | 'derived' | 'fallback' | 'missing'

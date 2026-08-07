@@ -79,13 +79,18 @@ export function compile(profile: BrandProfile, overrides: BrandOverrides): { the
   const logo = resolveLogo(profile, overrides)
   report.fields.logo = { status: logo ? 'ok' : 'missing', detail: logo ? undefined : 'ロゴ候補が無いか、人が未選択' }
 
-  const decorations = buildDecorations(profile, overrides, logo, report)
+  // キャンバス幅は SLIDE_WIDTH（1280）に固定し、高さだけ slideSize の実比率から算出する（#188）。
+  // 4:3 等の非16:9テンプレートでも、装飾の EMU→px 換算基準（canvasHeight）が実際の比率と一致するようにする
+  const canvasHeight = profile.slideSize ? Math.round((SLIDE_WIDTH * profile.slideSize.heightEmu) / profile.slideSize.widthEmu) : SLIDE_HEIGHT
+  const canvas = profile.slideSize ? { width: SLIDE_WIDTH, height: canvasHeight } : undefined
+
+  const decorations = buildDecorations(profile, overrides, logo, canvasHeight, report)
   const assignedLayouts = resolveAssignedLayouts(profile, overrides)
   const masters = { [BRAND_MASTER_KEY]: { decorations }, ...buildLayoutMasters(assignedLayouts) }
   const masterMap = { ...Object.fromEntries(LAYOUT_KINDS.map((layout) => [layout, BRAND_MASTER_KEY])), ...buildLayoutMasterMap(assignedLayouts) }
   const tokens = { [BRAND_MASTER_KEY]: buildTokens(colors) }
 
-  return { theme: { colors, fonts, masters, masterMap, tokens, logo }, report }
+  return { theme: { colors, fonts, masters, masterMap, tokens, logo, canvas }, report }
 }
 
 /** `resolveAssignedLayouts` が解決した1件。`key` は `overrides.layoutAssignments` のキー（`"<masterIndex>:<layoutIndex>"`）
@@ -226,13 +231,13 @@ function resolveLogo(profile: BrandProfile, overrides: BrandOverrides): MediaAss
   return profile.logoCandidates[overrides.selectedLogoIndex]?.image ?? null
 }
 
-/** EMU をスライド全体のサイズから 1280x720 の描画基準（`SLIDE_WIDTH`/`SLIDE_HEIGHT`）へ換算する */
+/** EMU をスライド全体のサイズから描画基準（幅は `SLIDE_WIDTH` 固定、高さは呼び出し元が渡す canvasHeight）へ換算する */
 function emuToPx(emu: number, slideEmu: number, canvasPx: number): number {
   if (slideEmu <= 0) return canvasPx
   return Math.round((emu / slideEmu) * canvasPx)
 }
 
-function buildDecorations(profile: BrandProfile, overrides: BrandOverrides, logo: MediaAsset | null, report: BrandImportReport): MasterDecoration[] {
+function buildDecorations(profile: BrandProfile, overrides: BrandOverrides, logo: MediaAsset | null, canvasHeight: number, report: BrandImportReport): MasterDecoration[] {
   const decorations: MasterDecoration[] = []
   if (logo) {
     const selected = overrides.selectedLogoIndex != null ? profile.logoCandidates[overrides.selectedLogoIndex] : undefined
@@ -242,7 +247,7 @@ function buildDecorations(profile: BrandProfile, overrides: BrandOverrides, logo
       anchor: 'bottom-right',
       src: mediaAssetToDataUrl(logo),
       width: size && profile.slideSize ? emuToPx(size.widthEmu, profile.slideSize.widthEmu, SLIDE_WIDTH) : undefined,
-      height: size && profile.slideSize ? emuToPx(size.heightEmu, profile.slideSize.heightEmu, SLIDE_HEIGHT) : undefined,
+      height: size && profile.slideSize ? emuToPx(size.heightEmu, profile.slideSize.heightEmu, canvasHeight) : undefined,
     })
   }
 
@@ -252,13 +257,13 @@ function buildDecorations(profile: BrandProfile, overrides: BrandOverrides, logo
     detail: selectedBands.length > 0 ? undefined : profile.bandCandidates.length > 0 ? '帯候補は検出済みだが人が未選択' : '帯候補が検出されなかった',
   }
   for (const band of selectedBands) {
-    decorations.push(bandToDecoration(band, profile.slideSize))
+    decorations.push(bandToDecoration(band, profile.slideSize, canvasHeight))
   }
   return decorations
 }
 
-function bandToDecoration(band: BandCandidate, slideSize: BrandProfile['slideSize']): MasterDecoration {
-  const thickness = slideSize ? emuToPx(band.thicknessEmu, band.orientation === 'horizontal' ? slideSize.heightEmu : slideSize.widthEmu, band.orientation === 'horizontal' ? SLIDE_HEIGHT : SLIDE_WIDTH) : undefined
+function bandToDecoration(band: BandCandidate, slideSize: BrandProfile['slideSize'], canvasHeight: number): MasterDecoration {
+  const thickness = slideSize ? emuToPx(band.thicknessEmu, band.orientation === 'horizontal' ? slideSize.heightEmu : slideSize.widthEmu, band.orientation === 'horizontal' ? canvasHeight : SLIDE_WIDTH) : undefined
   return { type: 'band', anchor: band.anchor, orientation: band.orientation, color: band.colorHex, thickness }
 }
 
@@ -292,5 +297,6 @@ export function mergeCompiledBrandTheme(base: ThemeData | undefined, compiled: C
     masters: { ...base?.masters, ...compiled.masters },
     masterMap: { ...base?.masterMap, ...compiled.masterMap },
     tokens: { ...base?.tokens, ...compiled.tokens },
+    ...(compiled.canvas ? { canvas: { ...base?.canvas, ...compiled.canvas } } : {}),
   }
 }

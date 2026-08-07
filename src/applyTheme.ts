@@ -1,5 +1,5 @@
 import { createElement } from 'react'
-import type { ColorPalette, FontDefinition, FontSource, SlideData, ThemeData } from './data'
+import type { CanvasData, ColorPalette, FontDefinition, FontSource, SafeArea, SlideData, ThemeData } from './data'
 import { buildMasterCss, getMasterWarnings } from './masters'
 import { hasComponent, registerComponent, unregisterOwner } from './components/ComponentRegistry'
 import { FallbackImage } from './components/FallbackImage'
@@ -231,9 +231,16 @@ function mergeFonts(a?: FontDefinition, b?: FontDefinition): FontDefinition | un
   return { ...a, ...b, ...(sources.length > 0 ? { sources } : {}) }
 }
 
+/** canvas は width/height をキー単位、safeArea をさらにその内側のキー単位でマージする（theme 側が優先） */
+function mergeCanvas(brand?: CanvasData, theme?: CanvasData): CanvasData | undefined {
+  if (!brand && !theme) return undefined
+  const safeArea: SafeArea | undefined = brand?.safeArea || theme?.safeArea ? { ...brand?.safeArea, ...theme?.safeArea } : undefined
+  return { width: theme?.width ?? brand?.width, height: theme?.height ?? brand?.height, ...(safeArea ? { safeArea } : {}) }
+}
+
 /**
  * brand（組織/ブランドテーマ・下地）と theme（デッキ固有・上書き）を合成する（純粋関数）。
- * colors/fonts/masters/masterMap/tokens はキー単位でマージし、同名キーは theme 側が優先する。
+ * colors/fonts/masters/masterMap/tokens/canvas はキー単位でマージし、同名キーは theme 側が優先する。
  * customCSS は brand→theme の順で連結する（CSS の後方優先規則により theme 側の指定が効く）。
  * SlideRenderer（本編・PDF・発表者ビュー・編集プレビューの4経路）が masters/masterMap を直接参照するため、
  * CSS 変数適用（applyThemeData）だけでなく描画に渡す theme 自体をこの関数で合成する必要がある。
@@ -248,6 +255,7 @@ export function mergeThemeData(brand?: ThemeData, theme?: ThemeData): ThemeData 
     masters: mergeRecord(brand?.masters, theme?.masters),
     masterMap: mergeRecord(brand?.masterMap, theme?.masterMap),
     tokens: mergeTokens(brand?.tokens, theme?.tokens),
+    canvas: mergeCanvas(brand?.canvas, theme?.canvas),
   }
 }
 
@@ -324,6 +332,24 @@ const themeFontToCssVar: Record<string, string> = {
   code: '--theme-font-code',
 }
 
+/** セーフエリアの辺 → CSS 変数。global.css の `.master-body` が `padding: var(--theme-safe-*, 60px)` で参照する（#188） */
+const SAFE_AREA_CSS_VARS: Record<keyof SafeArea, string> = {
+  top: '--theme-safe-top',
+  right: '--theme-safe-right',
+  bottom: '--theme-safe-bottom',
+  left: '--theme-safe-left',
+}
+
+/** セーフエリアの CSS 変数を適用する。未指定の辺は書き込まない（CSS 側の var() フォールバック 60px に委ねる） */
+function applySafeArea(root: HTMLElement, safeArea: SafeArea): void {
+  for (const [key, cssVar] of Object.entries(SAFE_AREA_CSS_VARS)) {
+    const value = safeArea[key as keyof SafeArea]
+    if (value != null) {
+      root.style.setProperty(cssVar, `${value}px`)
+    }
+  }
+}
+
 /** id の <style> 要素を作成（未存在時）または更新する（customCSS・master tokens CSS の注入で共通利用） */
 function upsertStyleElement(id: string, css: string): void {
   let styleEl = document.getElementById(id) as HTMLStyleElement | null
@@ -382,6 +408,10 @@ export function applyThemeData(themeData: ThemeData): void {
     if (themeData.fonts.baseFontSize != null) {
       applyBaseFontSize(root, themeData.fonts.baseFontSize)
     }
+  }
+
+  if (themeData.canvas?.safeArea) {
+    applySafeArea(root, themeData.canvas.safeArea)
   }
 
   if (themeData.icons) {
@@ -456,7 +486,7 @@ function getTileIconWarnings(slides?: SlideData[]): string[] {
 const RESETTABLE_COLOR_VARS = [...new Set(Object.values(THEME_COLOR_TOKENS))].flatMap((cssVar) => [cssVar, `${cssVar}-rgb`])
 
 /** applyTheme/applyThemeData が設定する CSS 変数の一覧（リセット対象） */
-const RESETTABLE_CSS_VARS: string[] = [...RESETTABLE_COLOR_VARS, ...Object.values(themeFontToCssVar), '--theme-font-size-base', ...Object.keys(fontSizeRatios)]
+const RESETTABLE_CSS_VARS: string[] = [...RESETTABLE_COLOR_VARS, ...Object.values(themeFontToCssVar), '--theme-font-size-base', ...Object.keys(fontSizeRatios), ...Object.values(SAFE_AREA_CSS_VARS)]
 
 /** sRGB の 0-255 値を WCAG の相対輝度換算用に線形化する */
 function linearizeChannel(value: number): number {

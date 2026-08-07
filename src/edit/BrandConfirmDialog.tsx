@@ -21,6 +21,7 @@ import { getContrastRatio, WCAG_AA_THRESHOLD } from '../applyTheme'
 import type { LogoConfig, SlideData, ThemeData } from '../data'
 import { compile, mediaAssetToDataUrl, mergeCompiledBrandTheme } from '../brand/compile'
 import { LAYOUT_ASSIGNMENT_SLOTS, MAPPED_COLOR_KEYS, type BandCandidate, type BrandFieldStatus, type BrandOverrides, type BrandProfile, type CompiledBrandTheme, type LayoutAssignmentSlot, type MappedColorKey } from '../brand/types'
+import { resolveCanvasSize } from '../hooks/useReveal'
 import { ColorSwatch } from './GeneratedDiffDialog'
 import { SlidePreview } from './SlidePreview'
 
@@ -80,6 +81,8 @@ export function BrandConfirmDialog({ open, profile, initialOverrides, previewSli
   const { theme: compiled, report } = useMemo(() => compile(profile, overrides), [profile, overrides])
 
   const previewMergedTheme = useMemo<ThemeData>(() => mergeCompiledBrandTheme(previewTheme, compiled), [previewTheme, compiled])
+  const previewCanvasSize = resolveCanvasSize(previewMergedTheme.canvas)
+  const previewAspectRatio = previewCanvasSize.width / previewCanvasSize.height
 
   const commitColorOverride = (key: MappedColorKey, draft: string) => {
     setColorDrafts((prev) => ({ ...prev, [key]: undefined }))
@@ -151,7 +154,7 @@ export function BrandConfirmDialog({ open, profile, initialOverrides, previewSli
             <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
               {t('brand.previewLabel', '取り込み後のプレビュー')}
             </Typography>
-            <Box sx={{ aspectRatio: '16 / 9', position: 'relative', border: '1px solid var(--fixed-border)', borderRadius: 1, overflow: 'hidden' }}>
+            <Box sx={{ aspectRatio: previewAspectRatio, position: 'relative', border: '1px solid var(--fixed-border)', borderRadius: 1, overflow: 'hidden' }}>
               <SlidePreview slide={previewSlide} logo={previewLogo} theme={previewMergedTheme} index={0} total={1} />
             </Box>
           </Box>

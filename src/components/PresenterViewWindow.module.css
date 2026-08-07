@@ -157,8 +157,8 @@
 }
 
 .previewScaler {
-  width: 1280px;
-  height: 720px;
+  width: var(--preview-canvas-width, 1280px);
+  height: var(--preview-canvas-height, 720px);
   transform-origin: top left;
   pointer-events: none;
 }
@@ -168,11 +168,12 @@
  * position: static, width: auto, padding: 60px 20px 等を強制するため、
  * プレビュー用にオーバーライドする。
  * CSS Modules のスコープ内なのでメイン画面に影響しない。
+ * width/height は --preview-canvas-* カスタムプロパティ経由（親の .previewScaler から継承。#188）
  */
 .previewReveal {
   position: relative !important;
-  width: 1280px !important;
-  height: 720px !important;
+  width: var(--preview-canvas-width, 1280px) !important;
+  height: var(--preview-canvas-height, 720px) !important;
   overflow: hidden !important;
   background-color: var(--theme-background) !important;
   font-family: var(--theme-font-body), serif;

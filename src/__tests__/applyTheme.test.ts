@@ -229,6 +229,30 @@ describe('mergeThemeData（brand→deck の合成・#170）', () => {
       tokens: undefined,
     })
   })
+
+  it('canvas は width/height を個別キーでマージし、同名キーは theme が優先される（#188）', () => {
+    const brand: ThemeData = { canvas: { width: 1280, height: 720 } }
+    const theme: ThemeData = { canvas: { height: 960 } }
+
+    const merged = mergeThemeData(brand, theme)
+
+    expect(merged?.canvas).toEqual({ width: 1280, height: 960 })
+  })
+
+  it('canvas.safeArea は辺単位でマージし、同名の辺は theme が優先される（#188）', () => {
+    const brand: ThemeData = { canvas: { safeArea: { top: 40, left: 40 } } }
+    const theme: ThemeData = { canvas: { safeArea: { top: 80 } } }
+
+    const merged = mergeThemeData(brand, theme)
+
+    expect(merged?.canvas?.safeArea).toEqual({ top: 80, left: 40 })
+  })
+
+  it('両方 canvas 未指定なら canvas は undefined', () => {
+    const merged = mergeThemeData({ colors: { primary: '#000000' } }, { colors: { accent: '#111111' } })
+
+    expect(merged?.canvas).toBeUndefined()
+  })
 })
 
 describe('applyBaseFontSize', () => {
@@ -349,6 +373,27 @@ describe('applyThemeData - fonts integration', () => {
   })
 })
 
+describe('applyThemeData - canvas.safeArea（#188）', () => {
+  beforeEach(() => {
+    document.documentElement.style.cssText = ''
+  })
+
+  it('指定した辺だけ --theme-safe-* CSS 変数を設定する', () => {
+    applyThemeData({ canvas: { safeArea: { top: 100, right: 20 } } })
+
+    expect(document.documentElement.style.getPropertyValue('--theme-safe-top')).toBe('100px')
+    expect(document.documentElement.style.getPropertyValue('--theme-safe-right')).toBe('20px')
+    expect(document.documentElement.style.getPropertyValue('--theme-safe-bottom')).toBe('')
+    expect(document.documentElement.style.getPropertyValue('--theme-safe-left')).toBe('')
+  })
+
+  it('canvas.safeArea 未指定時は CSS 変数を書き込まない（CSS 側の 60px フォールバックに委ねる）', () => {
+    applyThemeData({ canvas: { width: 1280, height: 960 } })
+
+    expect(document.documentElement.style.getPropertyValue('--theme-safe-top')).toBe('')
+  })
+})
+
 describe('applyThemeData - icons integration（#201）', () => {
   afterEach(() => {
     resetThemeOverrides()
@@ -382,6 +427,17 @@ describe('resetThemeOverrides', () => {
     expect(document.documentElement.style.getPropertyValue('--theme-text-body')).toBe('')
     expect(document.documentElement.style.getPropertyValue('--theme-font-heading')).toBe('')
     expect(document.documentElement.style.getPropertyValue('--theme-font-size-base')).toBe('')
+  })
+
+  it('前のプレゼンテーションで設定したセーフエリアの CSS 変数を消す（#188）', () => {
+    applyThemeData({ canvas: { safeArea: { top: 100, right: 20, bottom: 10, left: 5 } } })
+
+    resetThemeOverrides()
+
+    expect(document.documentElement.style.getPropertyValue('--theme-safe-top')).toBe('')
+    expect(document.documentElement.style.getPropertyValue('--theme-safe-right')).toBe('')
+    expect(document.documentElement.style.getPropertyValue('--theme-safe-bottom')).toBe('')
+    expect(document.documentElement.style.getPropertyValue('--theme-safe-left')).toBe('')
   })
 
   it('前のプレゼンテーションの customCSS を取り除く', () => {

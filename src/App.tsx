@@ -125,7 +125,11 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
     [sendSlideState],
   )
 
-  const { deckRef, goToNext, goToPrev, setNavigationLocked } = useReveal({ onSlideChanged: handleSlideChanged })
+  const { deckRef, goToNext, goToPrev, setNavigationLocked } = useReveal({
+    onSlideChanged: handleSlideChanged,
+    canvasWidth: effectiveTheme?.canvas?.width,
+    canvasHeight: effectiveTheme?.canvas?.height,
+  })
 
   // ref を最新値に更新
   goToNextRef.current = goToNext
@@ -214,7 +218,7 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
     // 書き出し中は .present を直接操作するため、その間にスライドが送られると撮影対象と競合する
     setNavigationLocked(true)
     try {
-      await exportSlidesToPdf(deckRef.current, data.meta?.title ?? 'slides')
+      await exportSlidesToPdf(deckRef.current, data.meta?.title ?? 'slides', effectiveTheme?.canvas?.width, effectiveTheme?.canvas?.height)
       setPdfExportState('idle')
     } catch (e) {
       console.error(e)
@@ -223,7 +227,7 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
     } finally {
       setNavigationLocked(false)
     }
-  }, [pdfExportState, data.meta?.title, showToast, t, setNavigationLocked])
+  }, [pdfExportState, data.meta?.title, effectiveTheme?.canvas, showToast, t, setNavigationLocked])
 
   // T キーでツールバーの表示・非表示をトグルする（入力中は無視）。ツールバーはプレゼンテーション画面固有の
   // ローカル状態なので、この購読も App が持つ（Root 所有ダイアログを開く ? キーは main.tsx 側）。

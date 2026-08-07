@@ -1,6 +1,6 @@
 .previewScaler {
-  width: 1280px;
-  height: 720px;
+  width: var(--preview-canvas-width, 1280px);
+  height: var(--preview-canvas-height, 720px);
   position: absolute;
   top: 50%;
   left: 50%;
@@ -13,11 +13,12 @@
  * プレビュー用にオーバーライドする。
  * CSS Modules のスコープ内なのでメイン画面に影響しない。
  * （発表者ビューの PresenterViewWindow.module.css と同一。将来は共通化を検討＝task-cleanup 候補）
+ * width/height は --preview-canvas-* カスタムプロパティ経由（親の .previewScaler から継承。#188）
  */
 .previewReveal {
   position: relative !important;
-  width: 1280px !important;
-  height: 720px !important;
+  width: var(--preview-canvas-width, 1280px) !important;
+  height: var(--preview-canvas-height, 720px) !important;
   overflow: hidden !important;
   background-color: var(--theme-background) !important;
   font-family: var(--theme-font-body), serif;

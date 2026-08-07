@@ -18,8 +18,10 @@ export type PdfExportResult = 'saved' | 'cancelled'
  * オフスクリーンへクローンする方式は .reveal .slides スコープのCSS（テーマ色・フラグメント等）が
  * 適用されない上、画像読み込み・IntersectionObserver駆動のアニメーションの状態も引き継がれないため、
  * ライブDOMの該当スライドを直接キャプチャする。
+ * canvasWidth/canvasHeight 省略時は SLIDE_WIDTH/SLIDE_HEIGHT（現行と完全同一の1280x720）。
+ * テーマの canvas サイズに合わせることで、用紙比率がキャンバス定義に追従する（#188）
  */
-export async function exportSlidesToPdf(deckEl: HTMLElement, title: string): Promise<PdfExportResult> {
+export async function exportSlidesToPdf(deckEl: HTMLElement, title: string, canvasWidth: number = SLIDE_WIDTH, canvasHeight: number = SLIDE_HEIGHT): Promise<PdfExportResult> {
   const slidesEl = deckEl.querySelector<HTMLElement>('.slides')
   const sections = Array.from(deckEl.querySelectorAll<HTMLElement>('.slides > section'))
   if (!slidesEl || sections.length === 0) {
@@ -62,7 +64,7 @@ export async function exportSlidesToPdf(deckEl: HTMLElement, title: string): Pro
   let pdf: JsPDF
   try {
     // sections.length > 0 は上でガード済みなので、1ページ目を持つ状態で作成できる
-    pdf = new jsPDF({ orientation: 'landscape', unit: 'px', format: [SLIDE_WIDTH, SLIDE_HEIGHT] })
+    pdf = new jsPDF({ orientation: 'landscape', unit: 'px', format: [canvasWidth, canvasHeight] })
     for (const [index, section] of sections.entries()) {
       // 対象以外は .future を付与して隠す（opacity:0・画面外transform）。
       // present/past/future のいずれも持たない状態は Reveal.js が想定しないため、通常のブロック要素として
@@ -79,8 +81,8 @@ export async function exportSlidesToPdf(deckEl: HTMLElement, title: string): Pro
       neutralizeSlidesScale()
 
       const canvas = await html2canvas(section, {
-        width: SLIDE_WIDTH,
-        height: SLIDE_HEIGHT,
+        width: canvasWidth,
+        height: canvasHeight,
         scale: CAPTURE_SCALE,
         // QrCodeCard等の外部画像（api.qrserver.com等）をCORSモードで再取得する。
         // 未対応だとcanvasが汚染され、その画像だけ空白になる
@@ -89,9 +91,9 @@ export async function exportSlidesToPdf(deckEl: HTMLElement, title: string): Pro
       const imageData = canvas.toDataURL('image/png')
 
       if (index > 0) {
-        pdf.addPage([SLIDE_WIDTH, SLIDE_HEIGHT], 'landscape')
+        pdf.addPage([canvasWidth, canvasHeight], 'landscape')
       }
-      pdf.addImage(imageData, 'PNG', 0, 0, SLIDE_WIDTH, SLIDE_HEIGHT)
+      pdf.addImage(imageData, 'PNG', 0, 0, canvasWidth, canvasHeight)
     }
   } finally {
     sections.forEach((s, i) => {
