@@ -15,9 +15,9 @@ export function QrCodeCard({ url, size = 200, sx }: Props) {
         width: 'fit-content',
         background: 'var(--theme-background)',
         p: '20px',
-        borderRadius: '12px',
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
-        border: '1px solid var(--theme-border)',
+        borderRadius: 'var(--theme-radius-md)',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, calc(0.08 * var(--theme-shadow-strength)))',
+        border: 'var(--theme-border-width) solid var(--theme-border)',
         ...sx,
       }}
     >

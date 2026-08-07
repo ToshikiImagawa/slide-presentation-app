@@ -26,7 +26,25 @@ export function FeatureTileGrid({ tiles, columns }: Props) {
       {tiles.map((tile) => {
         const cssVar = resolveColorToken(tile.accentColor)
         return (
-          <Card key={tile.title} sx={{ p: '30px' }}>
+          <Card
+            key={tile.title}
+            sx={{
+              p: '30px',
+              position: 'relative',
+              // カード左端の内側アクセントバー。--theme-card-accent-width は既定 0 のためテーマで
+              // 指定しない限り描画されない。border-left にすると 0px 指定時に左辺の境界線を食い潰すため
+              // 擬似要素で描く（角丸は Card 自身の overflow: hidden で切り抜かれる）
+              '&::before': {
+                content: '""',
+                position: 'absolute',
+                top: 0,
+                bottom: 0,
+                left: 0,
+                width: 'var(--theme-card-accent-width)',
+                background: `var(${cssVar})`,
+              },
+            }}
+          >
             <CardContent sx={{ p: 0, '&:last-child': { pb: 0 } }}>
               <Avatar
                 sx={{
@@ -34,8 +52,8 @@ export function FeatureTileGrid({ tiles, columns }: Props) {
                   height: 62,
                   mb: '20px',
                   bgcolor: `rgba(var(${cssVar}-rgb), 0.06)`,
-                  border: `1px solid rgba(var(${cssVar}-rgb), 0.12)`,
-                  borderRadius: '14px',
+                  border: `var(--theme-border-width) solid rgba(var(${cssVar}-rgb), 0.12)`,
+                  borderRadius: 'var(--theme-radius-md)',
                   color: `var(${cssVar})`,
                 }}
                 variant="rounded"

@@ -15,8 +15,8 @@ export function CodeBlockPanel({ header, items }: Props) {
       sx={{
         background: 'var(--theme-background-alt)',
         p: '20px',
-        borderRadius: '8px',
-        border: '1px solid var(--theme-border)',
+        borderRadius: 'var(--theme-radius-sm)',
+        border: 'var(--theme-border-width) solid var(--theme-border)',
         mt: '20px',
       }}
     >

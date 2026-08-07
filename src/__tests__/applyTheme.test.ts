@@ -114,6 +114,26 @@ describe('applyPresentationTheme', () => {
 
     expect(document.getElementById('sdd-master-tokens-css')?.textContent).toContain('--band-color: #ff0000;')
   })
+
+  it('意匠トークンは tokens の "*"（全体スコープ）から :root へ適用され、brand → theme の順で後勝ちする（#190）', async () => {
+    const brand: ThemeData = { tokens: { '*': { 'theme-radius-lg': '4px', 'theme-border-width': '2px' } } }
+    const theme: ThemeData = { tokens: { '*': { 'theme-border-width': '3px' } } }
+
+    await applyPresentationTheme(undefined, theme, brand)
+
+    const css = document.getElementById('sdd-master-tokens-css')?.textContent
+    expect(css).toContain(':root {')
+    expect(css).toContain('--theme-radius-lg: 4px;')
+    expect(css).toContain('--theme-border-width: 3px;')
+    expect(css).not.toContain('2px')
+  })
+
+  it('resetThemeOverrides で意匠トークンの :root 上書きが残らない', async () => {
+    await applyPresentationTheme(undefined, { tokens: { '*': { 'theme-radius-lg': '4px' } } })
+    resetThemeOverrides()
+
+    expect(document.getElementById('sdd-master-tokens-css')).toBeNull()
+  })
 })
 
 describe('fetchThemeData', () => {

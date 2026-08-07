@@ -295,6 +295,7 @@
       "two-column": "standard"
     },
     "tokens": {
+      "*": { "theme-radius-lg": "4px", "theme-border-width": "2px" },
       "standard": { "band-color": "#6c63ff" }
     }
   }
@@ -307,4 +308,16 @@
 
 `icons` はアイコン名 → SVGアセットパス（`image/`配下）または外部URL。ComponentRegistryに `Icon:<name>` として登録され、`content.tiles[].icon` から参照できる（ブランドテーマ提供アイコンの登録経路）。
 
-`tokens` は masterKey → CSS変数辞書。`section[data-master="masterKey"]` スコープの CSS 変数として出力される。
+`tokens` はスコープ → CSS変数辞書（キーは `--` を除いた変数名）。スコープは masterKey（`section[data-master="masterKey"]` スコープとして出力）または `"*"`（デッキ全体。`:root` として出力）。両方に同じ変数があれば masterKey 側が勝つ。
+
+意匠トークン（角丸・線幅・カード内側アクセント幅・影の強さ・表のゼブラ濃度）は `"*"` から一括で変えられる。企業テンプレートは色より「角の丸み・線の細さ」で個性が出るため、色を合わせても別物に見えるときはここを調整する。
+
+| トークン | 既定値 | 効く対象 |
+|---|---|---|
+| `theme-radius-sm` | `8px` | パネル・インラインコード・スライド番号の角丸 |
+| `theme-radius-md` | `12px` | QRコードカード・タイルのアイコンチップの角丸 |
+| `theme-radius-lg` | `16px` | カード（`tiles`）の角丸 |
+| `theme-border-width` | `1px` | カード・パネルの境界線の太さ |
+| `theme-card-accent-width` | `0px` | カード左端のアクセントバーの幅（`0` でバーなし。色は `tiles[].accentColor`） |
+| `theme-shadow-strength` | `1` | 影の濃さの倍率（`0` で影なし・`2` で倍） |
+| `theme-zebra-opacity` | `0.04` | 表の偶数行の背景の濃さ |

@@ -122,6 +122,16 @@ describe('buildMasterCss', () => {
   it('vars が空の masterKey はスキップする', () => {
     expect(buildMasterCss({ empty: {} })).toBe('')
   })
+
+  it('予約キー "*" は :root スコープで出力する（意匠トークンの全体指定。#190）', () => {
+    const css = buildMasterCss({ '*': { 'theme-radius-lg': '4px' } })
+    expect(css).toBe(':root { --theme-radius-lg: 4px; }')
+  })
+
+  it('全体スコープと masterKey スコープを併記できる', () => {
+    const css = buildMasterCss({ '*': { 'theme-border-width': '2px' }, standard: { 'theme-border-width': '3px' } })
+    expect(css).toBe(':root { --theme-border-width: 2px; }\nsection[data-master="standard"] { --theme-border-width: 3px; }')
+  })
 })
 
 describe('getMasterWarnings', () => {
@@ -188,6 +198,10 @@ describe('getMasterWarnings', () => {
   it('tokens が存在しない masterKey を参照する場合に警告する', () => {
     const warnings = getMasterWarnings({ tokens: { missing: { color: '#fff' } } })
     expect(warnings).toContain('theme.tokens.missing: 存在しない masterKey です')
+  })
+
+  it('tokens の予約キー "*"（全体スコープ）は masterKey として扱わないので警告しない（#190）', () => {
+    expect(getMasterWarnings({ tokens: { '*': { 'theme-radius-lg': '4px' } } })).toEqual([])
   })
 
   it('妥当な masters/masterMap/tokens では警告なし', () => {

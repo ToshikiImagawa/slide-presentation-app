@@ -147,7 +147,9 @@ export interface ThemeData {
   masters?: Record<string, MasterDefinition>
   /** レイアウト種別（SlideData.layout の値）→ masterKey の対応表。未指定のレイアウトは装飾なし（現行と完全同一のDOM） */
   masterMap?: Record<string, string>
-  /** masterKey ごとの CSS 変数トークン。buildMasterCss が section[data-master="key"] スコープで出力する */
+  /** CSS 変数トークン（キーは `--` を除いた変数名）。スコープキーは masterKey（buildMasterCss が
+   * section[data-master="key"] スコープで出力する）または "*"（全体スコープ = :root。#190 の意匠トークンを
+   * マスターに紐付けずデッキ全体へ指定する用途）。両方に同じ変数があれば masterKey 側が勝つ */
   tokens?: Record<string, Record<string, string>>
   /** キャンバスサイズ・セーフエリア（#188）。未指定時は現行と完全同一（1280x720 / 各辺60px） */
   canvas?: CanvasData

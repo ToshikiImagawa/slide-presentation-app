@@ -22,7 +22,7 @@ export function TimelineNode({ number, title, children }: Props) {
           fontSize: '20px',
           mx: 'auto',
           mb: '20px',
-          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
+          boxShadow: '0 2px 8px rgba(0, 0, 0, calc(0.06 * var(--theme-shadow-strength)))',
         }}
       >
         {number}

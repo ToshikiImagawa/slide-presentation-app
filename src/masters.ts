@@ -40,16 +40,24 @@ function collectDecorations(masters: Record<string, MasterDefinition>, key: stri
   return [...inherited, ...(definition.decorations ?? [])]
 }
 
-/** masterKey ごとの CSS 変数トークンから section[data-master="key"] スコープの CSS を生成する */
+/**
+ * theme.tokens の全体スコープを表す予約キー（#190）。masterKey ではなく :root へ出力するため、
+ * 意匠トークン（角丸・線幅等）をマスターに紐付けずデッキ全体へ一括指定できる。
+ * master スコープ（詳細度 0,1,1）の方が :root（0,1,0）より強いため、両方指定した場合は master 側が勝つ
+ */
+export const GLOBAL_TOKEN_SCOPE = '*'
+
+/** CSS 変数トークンから、masterKey は section[data-master="key"] スコープ・"*" は :root スコープの CSS を生成する */
 export function buildMasterCss(tokens: Record<string, Record<string, string>> | undefined): string {
   if (!tokens) return ''
   return Object.entries(tokens)
     .filter(([, vars]) => Object.keys(vars).length > 0)
-    .map(([masterKey, vars]) => {
+    .map(([scope, vars]) => {
       const decls = Object.entries(vars)
         .map(([name, value]) => `--${name}: ${value};`)
         .join(' ')
-      return `section[data-master="${masterKey}"] { ${decls} }`
+      const selector = scope === GLOBAL_TOKEN_SCOPE ? ':root' : `section[data-master="${scope}"]`
+      return `${selector} { ${decls} }`
     })
     .join('\n')
 }
@@ -110,6 +118,7 @@ export function getMasterWarnings(theme?: ThemeData, slides?: SlideData[]): stri
   }
 
   for (const masterKey of Object.keys(theme.tokens ?? {})) {
+    if (masterKey === GLOBAL_TOKEN_SCOPE) continue
     if (!masterKeys.has(masterKey)) {
       warnings.push(`theme.tokens.${masterKey}: 存在しない masterKey です`)
     }

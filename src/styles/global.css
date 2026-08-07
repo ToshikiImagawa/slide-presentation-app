@@ -37,6 +37,20 @@
   --theme-font-size-body1: 20px;
   --theme-font-size-body2: 16px;
 
+  /* 意匠トークン（#190）。角丸・境界線幅・カード内側アクセント幅・影の強さ・表のゼブラ濃度を
+     テーマから制御する。theme.tokens の "*"（全体スコープ）または masterKey スコープで上書きできる。
+     既定値は現行の見た目と一致させてあるため、未指定のデッキの描画は変わらない */
+  --theme-radius-sm: 8px;
+  --theme-radius-md: 12px;
+  --theme-radius-lg: 16px;
+  --theme-border-width: 1px;
+  /* カードの内側（左端）に立てるアクセントバーの幅。既定 0 は「バーなし」＝現行の見た目 */
+  --theme-card-accent-width: 0px;
+  /* 影の不透明度に掛ける倍率。0 で影なし、1 で現行、2 で倍の濃さ */
+  --theme-shadow-strength: 1;
+  /* 表の偶数行に敷く背景の不透明度（表コンポーネントが rgba() の alpha に使う） */
+  --theme-zebra-opacity: 0.04;
+
   /* 固定パレット（applyTheme が上書きしない。プレゼンのテーマ変更から独立させたいUI chrome用。editorUiTheme(src/theme.ts) と揃える） */
   --fixed-primary: #2dd4bf;
   --fixed-background: #181a20;
@@ -229,10 +243,10 @@ code {
   font-family: 'Roboto Mono', monospace;
   background: var(--theme-background-alt);
   padding: 4px 8px;
-  border-radius: 6px;
+  border-radius: var(--theme-radius-sm);
   color: var(--theme-code-text);
   font-size: 0.9em;
-  border: 1px solid var(--theme-border);
+  border: var(--theme-border-width) solid var(--theme-border);
 }
 
 /* 3. LAYOUTS */
@@ -340,8 +354,8 @@ code {
   color: var(--theme-text-muted);
   background: rgba(var(--theme-background-rgb), 0.9);
   font-family: 'Roboto Mono', monospace;
-  border: 1px solid var(--theme-border);
-  border-radius: 4px;
+  border: var(--theme-border-width) solid var(--theme-border);
+  border-radius: var(--theme-radius-sm);
 }
 
 .reveal .controls .navigate-left,
