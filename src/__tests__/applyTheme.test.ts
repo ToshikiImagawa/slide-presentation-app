@@ -127,13 +127,6 @@ describe('applyPresentationTheme', () => {
     expect(css).toContain('--theme-border-width: 3px;')
     expect(css).not.toContain('2px')
   })
-
-  it('resetThemeOverrides で意匠トークンの :root 上書きが残らない', async () => {
-    await applyPresentationTheme(undefined, { tokens: { '*': { 'theme-radius-lg': '4px' } } })
-    resetThemeOverrides()
-
-    expect(document.getElementById('sdd-master-tokens-css')).toBeNull()
-  })
 })
 
 describe('fetchThemeData', () => {
@@ -436,6 +429,14 @@ describe('resetThemeOverrides', () => {
   beforeEach(() => {
     document.documentElement.style.cssText = ''
     document.head.innerHTML = ''
+  })
+
+  it('意匠トークンの :root 上書き（tokens 由来の <style>）を消す（#190）', () => {
+    applyThemeData({ tokens: { '*': { 'theme-radius-lg': '4px' } } })
+
+    resetThemeOverrides()
+
+    expect(document.getElementById('sdd-master-tokens-css')).toBeNull()
   })
 
   it('前のプレゼンテーションで設定した色・フォントの CSS 変数を消す', () => {

@@ -31,9 +31,7 @@ export function FeatureTileGrid({ tiles, columns }: Props) {
             sx={{
               p: '30px',
               position: 'relative',
-              // カード左端の内側アクセントバー。--theme-card-accent-width は既定 0 のためテーマで
-              // 指定しない限り描画されない。border-left にすると 0px 指定時に左辺の境界線を食い潰すため
-              // 擬似要素で描く（角丸は Card 自身の overflow: hidden で切り抜かれる）
+              // カード左端のアクセントバー（既定幅 0 = 描画なし）。border-left にすると 0px 指定時に左辺の境界線を食い潰すため擬似要素で描く
               '&::before': {
                 content: '""',
                 position: 'absolute',

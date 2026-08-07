@@ -45,7 +45,7 @@ function collectDecorations(masters: Record<string, MasterDefinition>, key: stri
  * 意匠トークン（角丸・線幅等）をマスターに紐付けずデッキ全体へ一括指定できる。
  * master スコープ（詳細度 0,1,1）の方が :root（0,1,0）より強いため、両方指定した場合は master 側が勝つ
  */
-export const GLOBAL_TOKEN_SCOPE = '*'
+const GLOBAL_TOKEN_SCOPE = '*'
 
 /** CSS 変数トークンから、masterKey は section[data-master="key"] スコープ・"*" は :root スコープの CSS を生成する */
 export function buildMasterCss(tokens: Record<string, Record<string, string>> | undefined): string {
@@ -118,8 +118,7 @@ export function getMasterWarnings(theme?: ThemeData, slides?: SlideData[]): stri
   }
 
   for (const masterKey of Object.keys(theme.tokens ?? {})) {
-    if (masterKey === GLOBAL_TOKEN_SCOPE) continue
-    if (!masterKeys.has(masterKey)) {
+    if (masterKey !== GLOBAL_TOKEN_SCOPE && !masterKeys.has(masterKey)) {
       warnings.push(`theme.tokens.${masterKey}: 存在しない masterKey です`)
     }
   }

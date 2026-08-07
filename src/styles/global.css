@@ -37,18 +37,17 @@
   --theme-font-size-body1: 20px;
   --theme-font-size-body2: 16px;
 
-  /* 意匠トークン（#190）。角丸・境界線幅・カード内側アクセント幅・影の強さ・表のゼブラ濃度を
-     テーマから制御する。theme.tokens の "*"（全体スコープ）または masterKey スコープで上書きできる。
-     既定値は現行の見た目と一致させてあるため、未指定のデッキの描画は変わらない */
+  /* 意匠トークン（#190）。theme.tokens の "*"（全体スコープ）または masterKey スコープで上書きできる。
+     参照すべき箇所の一覧は CONTRIBUTING.md の「意匠トークン」節 */
   --theme-radius-sm: 8px;
   --theme-radius-md: 12px;
   --theme-radius-lg: 16px;
   --theme-border-width: 1px;
-  /* カードの内側（左端）に立てるアクセントバーの幅。既定 0 は「バーなし」＝現行の見た目 */
+  /* カード左端のアクセントバーの幅。既定 0 は「バーなし」＝現行の見た目 */
   --theme-card-accent-width: 0px;
-  /* 影の不透明度に掛ける倍率。0 で影なし、1 で現行、2 で倍の濃さ */
+  /* 影の不透明度に掛ける倍率（0 で影なし・2 で倍の濃さ）。絶対値ではなく倍率にして各影の相対的な深さを保つ */
   --theme-shadow-strength: 1;
-  /* 表の偶数行に敷く背景の不透明度（表コンポーネントが rgba() の alpha に使う） */
+  /* 表の偶数行に敷く背景の alpha。消費者は後続 issue の表コンポーネント（現時点では未参照） */
   --theme-zebra-opacity: 0.04;
 
   /* 固定パレット（applyTheme が上書きしない。プレゼンのテーマ変更から独立させたいUI chrome用。editorUiTheme(src/theme.ts) と揃える） */
