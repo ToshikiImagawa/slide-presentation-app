@@ -1,0 +1,59 @@
+/* 表（#194）。罫線・角丸・ヘッダ行の塗り・ゼブラはすべて意匠トークン（--theme-*）から引くのでテーマに追従する。
+   角丸は border-collapse: collapse の <table> 自体には安定してかからないため、外側の .wrapper に
+   border-radius + overflow: hidden を持たせて切り出す（DiagramCard等のカード面と同じ考え方）。 */
+.wrapper {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  border: var(--theme-border-width) solid var(--theme-border-light);
+  border-radius: var(--theme-radius-md);
+}
+
+.table {
+  width: 100%;
+  height: fit-content;
+  max-height: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-family: var(--theme-font-body);
+  color: var(--theme-text-body);
+  font-size: var(--theme-font-size-body1);
+}
+
+.th {
+  background: var(--theme-background-alt);
+  color: var(--theme-text-heading);
+  font-family: var(--theme-font-heading);
+  font-weight: 600;
+  padding: 12px 16px;
+  border-bottom: calc(var(--theme-border-width) * 2) solid var(--theme-border);
+}
+
+.td {
+  padding: 10px 16px;
+  border-bottom: var(--theme-border-width) solid var(--theme-border-light);
+}
+
+.tr:last-child .td {
+  border-bottom: none;
+}
+
+/* ゼブラ（偶数行）。rgba(var(--theme-*-rgb)) は色によって -rgb companion の有無が異なるため使わず、
+   color-mix で「テーマ色を透明に混ぜる」ことで --theme-zebra-opacity の濃さをそのまま反映する */
+.tr:nth-child(even) .td {
+  background: color-mix(in srgb, var(--theme-background-alt) calc(var(--theme-zebra-opacity) * 100%), transparent);
+}
+
+/* 行数・列数が多いスライド向けの縮小段階 */
+.wrapper[data-density='dense'] .th,
+.wrapper[data-density='dense'] .td {
+  padding: 8px 12px;
+  font-size: var(--theme-font-size-body2);
+}
+
+.wrapper[data-density='compact'] .th,
+.wrapper[data-density='compact'] .td {
+  padding: 5px 10px;
+  font-size: calc(var(--theme-font-size-body2) * 0.85);
+}

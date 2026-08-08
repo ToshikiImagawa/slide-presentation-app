@@ -246,6 +246,28 @@
           "color": "series2"
         }
       }
+    },
+    {
+      "id": "layout-content-table",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (table)",
+        "table": {
+          "columns": [
+            { "label": "Feature", "align": "left", "width": 2 },
+            { "label": "Free", "align": "center" },
+            { "label": "Pro", "align": "center" },
+            { "label": "Enterprise", "align": "center" }
+          ],
+          "rows": [
+            ["Price", "$0", "$12/mo", "Custom"],
+            ["Users", "1", "10", "Unlimited"],
+            ["Support", "Community", "Email", "Dedicated"],
+            ["SLA", "-", "99.9%", "99.99%"],
+            ["SSO", "-", "-", "Yes"]
+          ]
+        }
+      }
     }
   ]
 }

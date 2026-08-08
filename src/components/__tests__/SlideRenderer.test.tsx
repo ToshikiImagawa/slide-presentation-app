@@ -465,6 +465,41 @@ describe('SlideRenderer', () => {
     })
   })
 
+  // #194: 表（content.table → Table）
+  describe('contentスライド(table)', () => {
+    function renderContent(content: SlideData['content']) {
+      return renderWithTheme(<SlideRenderer slides={[{ id: 'test-table', layout: 'content', content: { title: 'タイトル', ...content } }]} />)
+    }
+
+    it('tableが指定された内容で描画される', () => {
+      const { getByTestId } = renderContent({ table: { columns: [{ label: '項目' }], rows: [['値']] } })
+      const table = getByTestId('table')
+      expect(table.textContent).toContain('項目')
+      expect(table.textContent).toContain('値')
+    })
+
+    it('tableがオブジェクトでない場合は描画せずbody/itemsへ落ちる', () => {
+      const { queryByTestId, container } = renderContent({ table: 'broken', body: '本文' })
+      expect(queryByTestId('table')).toBeNull()
+      expect(container.textContent).toContain('本文')
+    })
+
+    it('chartが指定されている場合はchart描画が優先される（既存の優先順位の維持）', () => {
+      const { queryByTestId } = renderContent({
+        chart: { type: 'bar', categories: ['A'], series: [{ values: [1] }] },
+        table: { columns: [{ label: '項目' }], rows: [['値']] },
+      })
+      expect(queryByTestId('chart')).not.toBeNull()
+      expect(queryByTestId('table')).toBeNull()
+    })
+
+    it('table指定時はcomponent/body/itemsを描画しない', () => {
+      const { getByTestId, container } = renderContent({ table: { columns: [{ label: '項目' }], rows: [['値']] }, body: '描画されない本文' })
+      expect(getByTestId('table')).not.toBeNull()
+      expect(container.textContent).not.toContain('描画されない本文')
+    })
+  })
+
   // #164: masters/masterMap/tokens と SlideMasterLayer。theme 未指定時は既存と完全同一のDOMになることも併せて確認する
   describe('masters（SlideMasterLayer 装飾描画）', () => {
     const masterTheme: ThemeData = {
