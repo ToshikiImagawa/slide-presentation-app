@@ -18,7 +18,8 @@
         "title": { "type": "string" },
         "steps": {
           "type": "array",
-          "description": "Timelineの各ステップ",
+          "maxItems": 6,
+          "description": "Timelineの各ステップ。推奨上限6件（超えると密度過多として自動修正対象になる）",
           "itemFields": {
             "number": { "type": "number" },
             "title": { "type": "string" },
@@ -28,15 +29,17 @@
         },
         "tiles": {
           "type": "array",
-          "description": "FeatureTileGridのタイル",
+          "maxItems": 8,
+          "description": "FeatureTileGridのタイル。推奨上限8枚（超えると密度過多として自動修正対象になる。多い場合はtileColumnsで折返すか複数スライドに分ける）",
           "itemFields": {
             "icon": {
               "type": "string",
-              "description": "ComponentRegistryに'Icon:<name>'で登録済みの任意アイコン名（builtinIcons一覧、アドオン/ブランドテーマ提供分を含む）。未登録名は破線枠フォールバック＋警告になる"
+              "iconName": true,
+              "description": "ComponentRegistryに'Icon:<name>'で登録済みの任意アイコン名（builtinIcons一覧、アドオン/ブランドテーマ提供分を含む）。未登録名はエラーになる"
             },
             "title": { "type": "string" },
             "description": { "type": "string", "description": "<br/>等HTMLタグ利用可" },
-            "accentColor": { "type": "string", "description": "アイコン背景・枠のアクセント色トークン名（primary/accent/series1-6/success/warning/danger/neutral等、theme.colorsのキーと同じ）。省略時は既定でprimary" }
+            "accentColor": { "type": "string", "colorToken": true, "description": "アイコン背景・枠のアクセント色トークン名（primary/accent/series1-6/success/warning/danger/neutral等、theme.colorsのキーと同じ）。省略時は既定でprimary" }
           }
         },
         "tileColumns": { "type": "number", "description": "tilesの列数。省略時はタイル数と同数の列（現行と同一の1行表示）。6枚以上のtilesを読める大きさで折返し表示したい場合に指定する" },
@@ -60,7 +63,8 @@
         "items": {
           "type": "array",
           "ref": "contentItem",
-          "description": "箇条書き（ネスト可）。steps/tiles/images/chart/table/componentのいずれも無指定の場合のみ描画される。bodyと併用可"
+          "maxItems": 7,
+          "description": "箇条書き（ネスト可）。steps/tiles/images/chart/table/componentのいずれも無指定の場合のみ描画される。bodyと併用可。推奨上限7件（超えると密度過多として自動修正対象になる）"
         }
       }
     },
@@ -105,14 +109,15 @@
   "chart": {
     "description": "content.chart のチャート指定（#204）。棒・折れ線・円・横棒・大数値＋推移の5種。寸法・座標は持たず本文領域いっぱいに自動で収まり、系列色・線幅・角丸はテーマトークンに追従する。軸ラベルは項目が12個を超えると等間隔に間引かれ、値ラベルは描画点が多いと既定で省かれる（表示は axis / legend / valueLabels で上書きできる）",
     "type": { "type": "string", "enum": ["bar", "line", "pie", "hbar", "kpi"], "description": "bar=縦棒（推移・比較） / line=折れ線（推移） / pie=円（構成比） / hbar=横棒（項目名が長い比較） / kpi=大数値＋推移線。省略時はbar" },
-    "categories": { "type": "array", "description": "項目名（横軸、円は内訳）の文字列配列。series[].values と同じ順序で対応する。kpiでは使わない" },
+    "categories": { "type": "array", "maxItems": 8, "description": "項目名（横軸、円は内訳）の文字列配列。series[].values と同じ順序で対応する。kpiでは使わない。推奨上限8件（超えると密度過多として自動修正対象になる）" },
     "series": {
       "type": "array",
-      "description": "系列。bar/line/hbarは複数系列を並べて描画し、pieはseries[0].valuesだけを構成比として使う（円の色はcategoriesの順にseries1〜series6が割り当たる）。kpiでは使わない",
+      "maxItems": 6,
+      "description": "系列。bar/line/hbarは複数系列を並べて描画し、pieはseries[0].valuesだけを構成比として使う（円の色はcategoriesの順にseries1〜series6が割り当たる）。kpiでは使わない。上限6件（series1〜series6の色数と一致するため、超えると色が重複する）",
       "itemFields": {
         "name": { "type": "string", "description": "凡例に出す系列名" },
         "values": { "type": "array", "description": "categoriesと同じ順序の数値配列" },
-        "color": { "type": "string", "description": "系列色のトークン名（series1〜series6/primary/accent/success/warning/danger/neutral等、theme.colorsのキーと同じ）。省略時は系列順にseries1〜series6" }
+        "color": { "type": "string", "colorToken": true, "description": "系列色のトークン名（series1〜series6/primary/accent/success/warning/danger/neutral等、theme.colorsのキーと同じ）。省略時は系列順にseries1〜series6" }
       }
     },
     "unit": { "type": "string", "description": "軸ラベル・値ラベルに付ける単位（\"%\" / \"件\" 等）。数値の直後に連結する" },
@@ -125,7 +130,7 @@
     "label": { "type": "string", "description": "type=kpi の大数値の見出し" },
     "delta": { "type": "string", "description": "type=kpi の増減注記（\"+12% 前年比\" 等）" },
     "trend": { "type": "array", "description": "type=kpi の推移線の数値配列（2点以上で描画。0基準ではなくデータ範囲に合わせるので変化が読める）" },
-    "color": { "type": "string", "description": "type=kpi の大数値・推移線の色トークン名。省略時はseries1" }
+    "color": { "type": "string", "colorToken": true, "description": "type=kpi の大数値・推移線の色トークン名。省略時はseries1" }
   },
   "table": {
     "description": "content.table の表指定（#194）。ヘッダー行＋本文行の表。寸法・座標は持たず本文領域いっぱいに自動で収まり、罫線・ゼブラ・ヘッダ行の塗り・角丸はテーマトークンに追従する。行数・列数が多いときはpadding・文字サイズが段階的に縮む",
@@ -138,7 +143,7 @@
         "width": { "type": "number", "description": "列幅の比率（例: 2は1の倍の幅）。省略時は全列等分" }
       }
     },
-    "rows": { "type": "array", "description": "本文行。各要素はcolumnsと同じ順序・数のセル文字列配列" }
+    "rows": { "type": "array", "maxItems": 10, "description": "本文行。各要素はcolumnsと同じ順序・数のセル文字列配列。推奨上限10行（超えると密度過多として自動修正対象になる）" }
   },
   "columnContentFields": {
     "description": "two-columnの left/right に指定可能なフィールド（すべてオプション、組み合わせ可）。componentを指定した場合は他のフィールドは無視される",
@@ -147,6 +152,8 @@
     "paragraphs": { "type": "array", "description": "段落テキストの配列（HTMLタグ可）。カラム内で複数ブロックを組み合わせる用途向け。1カラム全幅の自由記述文はcontent.bodyを使う" },
     "items": {
       "type": "array",
+      "maxItems": 6,
+      "description": "推奨上限6件（超えると密度過多として自動修正対象になる）",
       "itemFields": {
         "text": { "type": "string" },
         "emphasis": { "type": "boolean" },
@@ -172,11 +179,11 @@
   },
   "componentReference": {
     "description": "content.component / left.component 等で参照するカスタムコンポーネント",
-    "name": { "type": "string" },
+    "name": { "type": "string", "componentName": true, "description": "ComponentRegistryに登録済みのコンポーネント名（builtinComponents一覧、アドオン提供分を含む）。未登録名はエラーになる" },
     "props": { "type": "object" },
     "style": { "type": "object" }
   },
-  "builtinComponents": ["TerminalAnimation", "Image"],
+  "builtinComponents": ["TerminalAnimation", "Image", "Diagram"],
   "builtinIcons": ["Description", "PlaylistAddCheck", "Traffic", "FactCheck", "Memory", "Search"],
   "presentationMeta": {
     "description": "トップレベル meta（プレゼン全体の設定）",

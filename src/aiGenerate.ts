@@ -2,7 +2,8 @@ import { invoke } from '@tauri-apps/api/core'
 import type { ValidationError } from './data/types'
 import { parseSlides } from './edit/slidesSerialize'
 import { getSchemaConformanceErrors } from './data/slideContentSchema'
-import { getThemeWarnings } from './applyTheme'
+import { getThemeWarnings, THEME_COLOR_TOKENS } from './applyTheme'
+import { getRegisteredComponents } from './components/ComponentRegistry'
 
 /**
  * AI スライド生成の契約型＋invoke ラッパ＆オーケストレータ（#14）。
@@ -183,6 +184,41 @@ export async function cancelGenerate(): Promise<void> {
   await invoke('cancel_generation')
 }
 
+/** ComponentRegistry の登録名一覧を、アイコン名（'Icon:'接頭辞を外す）とコンポーネント名に分離する */
+function splitRegisteredNames(names: string[]): { components: string[]; icons: string[] } {
+  const ICON_PREFIX = 'Icon:'
+  const components: string[] = []
+  const icons: string[] = []
+  for (const name of names) {
+    if (name.startsWith(ICON_PREFIX)) {
+      icons.push(name.slice(ICON_PREFIX.length))
+    } else {
+      components.push(name)
+    }
+  }
+  return { components, icons }
+}
+
+/**
+ * 適用中テーマ・登録済みコンポーネント/アイコンから AI 生成へ渡す意匠制約テキストを組み立てる（#211）。
+ * レイアウト種別・content 構造・情報密度の推奨上限は `schema/slide-content-schema.json`
+ * （Rust の `system_prompt` に同梱済み）が単一ソースのため、ここでは実行時にしか分からない値
+ * （登録済みコンポーネント/アイコン名・現在の書体）と、全テーマ共通の色トークン名一覧のみを対象にする。
+ * 種別・アイコンを追加してもこの関数は変更不要（ComponentRegistry から動的に導出するため）。
+ */
+export function buildThemeConstraintsPrompt(): string {
+  const { components, icons } = splitRegisteredNames(getRegisteredComponents())
+  const computed = getComputedStyle(document.documentElement)
+  const heading = computed.getPropertyValue('--theme-font-heading').trim() || '(未設定)'
+  const body = computed.getPropertyValue('--theme-font-body').trim() || '(未設定)'
+  return [
+    `色トークン名（theme.colors のキー・accentColor・chart系のcolor等で使用可）: ${Object.keys(THEME_COLOR_TOKENS).join(', ')}`,
+    `登録済みコンポーネント名（component.name で使用可）: ${components.join(', ') || '(なし)'}`,
+    `登録済みアイコン名（tiles[].icon で使用可。'Icon:'接頭辞は付けない）: ${icons.join(', ') || '(なし)'}`,
+    `現在の書体: heading=${heading}, body=${body}`,
+  ].join('\n')
+}
+
 /**
  * 検証エラーを次試行の `repairFeedback` に載せる要約へ整形する（自動修正の再投入・FR-005）。
  * path が空（ルート／JSON 構文エラー）は `(root)` と表示する。
@@ -218,6 +254,8 @@ export async function generateSlides(request: GenerateRequest, onProgress?: (p: 
   // 検証エラー最小の候補を退避する（上限到達＝exhausted 時に返す・FR-005）
   let best: { slidesJson: string; errors: ValidationError[] } | null = null
   let repairFeedback = request.repairFeedback
+  // 適用中テーマ・登録済みコンポーネント/アイコンは試行中に変わらないため一度だけ組み立てる（#211）
+  const themeConstraints = buildThemeConstraintsPrompt()
 
   for (let attempt = 1; attempt <= MAX_GENERATE_ATTEMPTS; attempt++) {
     if (cancelRequested) return cancelledResult(attempt - 1)
@@ -226,7 +264,7 @@ export async function generateSlides(request: GenerateRequest, onProgress?: (p: 
 
     let candidate: string
     try {
-      candidate = await invoke<string>('generate_slides', { request: { ...request, repairFeedback } })
+      candidate = await invoke<string>('generate_slides', { request: { ...request, repairFeedback, themeConstraints } })
     } catch (e) {
       // ゲート拒否・タイムアウト・HTTP エラー・中断はいずれも Rust 側で Err になる。
       // 中断要求済みなら cancelled、それ以外は failed に分類する（Rust はキー等を漏らさず整形済み・NFR-004）。
