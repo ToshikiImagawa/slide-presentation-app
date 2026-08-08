@@ -275,22 +275,29 @@ const DEFAULT_FONT_SIZE_RATIOS: Record<string, number> = {
   body2: 0.8,
 }
 
-const DEFAULT_FONT_SIZE_RATIO_KEYS = Object.keys(DEFAULT_FONT_SIZE_RATIOS)
+/** CSS 変数名のプレフィックス（`--theme-font-size-base` 自身もこれに含まれる） */
+const FONT_SIZE_CSS_VAR_PREFIX = '--theme-font-size-'
 
 function fontSizeCssVar(key: string): string {
-  return `--theme-font-size-${key}`
+  return `${FONT_SIZE_CSS_VAR_PREFIX}${key}`
 }
-
-/** 直近の applyBaseFontSize が実際に設定した比率キー（既定にない段を追加された場合に備え、resetThemeOverrides での消し漏れを防ぐ） */
-let appliedFontSizeRatioKeys: string[] = DEFAULT_FONT_SIZE_RATIO_KEYS
 
 /** baseFontSize から各フォントサイズ CSS 変数を設定する。ratios を渡すと既定比率を上書き・追加できる（#187） */
 export function applyBaseFontSize(root: HTMLElement, baseFontSize: number, ratios?: Record<string, number>): void {
   const merged = { ...DEFAULT_FONT_SIZE_RATIOS, ...ratios }
   root.style.setProperty('--theme-font-size-base', `${baseFontSize}px`)
-  appliedFontSizeRatioKeys = Object.keys(merged)
   for (const [key, ratio] of Object.entries(merged)) {
     root.style.setProperty(fontSizeCssVar(key), `${baseFontSize * ratio}px`)
+  }
+}
+
+/** `applyBaseFontSize` が設定した CSS 変数をすべて消す。fontSizeRatios は既定にない段が動的に
+ * 追加される可能性があるため、固定のキー一覧ではなくプレフィックス一致で走査する（#187） */
+function removeFontSizeVars(root: HTMLElement): void {
+  for (const prop of Array.from(root.style)) {
+    if (prop.startsWith(FONT_SIZE_CSS_VAR_PREFIX)) {
+      root.style.removeProperty(prop)
+    }
   }
 }
 
@@ -377,18 +384,12 @@ function loadExternalFont(url: string): void {
 const FONT_SLOT_KEYS = ['heading', 'body', 'code'] as const
 type FontSlotKey = (typeof FONT_SLOT_KEYS)[number]
 
-const themeFontToCssVar: Record<FontSlotKey, string> = {
-  heading: '--theme-font-heading',
-  body: '--theme-font-body',
-  code: '--theme-font-code',
-}
-
-/** heading/body/code ごとの font-weight CSS 変数（#187）。既定値は global.css の :root に定義し、
- * theme.fonts.<slot> がオブジェクト形式で weight を持つ場合のみ上書きする */
-const themeFontWeightCssVar: Record<FontSlotKey, string> = {
-  heading: '--theme-font-weight-heading',
-  body: '--theme-font-weight-body',
-  code: '--theme-font-weight-code',
+/** heading/body/code ごとの font-family・font-weight CSS 変数（#187）。weight の既定値は
+ * global.css の :root に定義し、theme.fonts.<slot> がオブジェクト形式で weight を持つ場合のみ上書きする */
+const FONT_SLOT_CSS_VARS: Record<FontSlotKey, { family: string; weight: string }> = {
+  heading: { family: '--theme-font-heading', weight: '--theme-font-weight-heading' },
+  body: { family: '--theme-font-body', weight: '--theme-font-weight-body' },
+  code: { family: '--theme-font-code', weight: '--theme-font-weight-code' },
 }
 
 /** theme.fonts.baseFontSize 省略時に使う既定値（global.css の --theme-font-size-base の既定と同じ）。
@@ -467,12 +468,13 @@ export function applyThemeData(themeData: ThemeData): void {
     for (const key of FONT_SLOT_KEYS) {
       const spec = themeData.fonts[key]
       if (!spec) continue
+      const cssVars = FONT_SLOT_CSS_VARS[key]
       const familyValue = buildFontFamilyValue(spec)
       if (familyValue) {
-        root.style.setProperty(themeFontToCssVar[key], familyValue)
+        root.style.setProperty(cssVars.family, familyValue)
       }
       if (typeof spec === 'object' && spec.weight) {
-        root.style.setProperty(themeFontWeightCssVar[key], spec.weight)
+        root.style.setProperty(cssVars.weight, spec.weight)
       }
     }
 
@@ -563,15 +565,8 @@ function getTileIconWarnings(slides?: SlideData[]): string[] {
 const RESETTABLE_COLOR_VARS = [...new Set(Object.values(THEME_COLOR_TOKENS))].flatMap((cssVar) => [cssVar, `${cssVar}-rgb`])
 
 /** applyTheme/applyThemeData が設定する CSS 変数の一覧（リセット対象）。fontSizeRatios は既定にない
- * 段が動的に追加される可能性があるため、直近の適用結果（appliedFontSizeRatioKeys）を resetThemeOverrides 側で追加する */
-const RESETTABLE_CSS_VARS: string[] = [
-  ...RESETTABLE_COLOR_VARS,
-  ...Object.values(themeFontToCssVar),
-  ...Object.values(themeFontWeightCssVar),
-  '--theme-font-size-base',
-  ...DEFAULT_FONT_SIZE_RATIO_KEYS.map(fontSizeCssVar),
-  ...Object.values(SAFE_AREA_CSS_VARS),
-]
+ * 段が動的に追加される可能性があるため対象外とし、removeFontSizeVars でプレフィックス一致により別途消す */
+const RESETTABLE_CSS_VARS: string[] = [...RESETTABLE_COLOR_VARS, ...Object.values(FONT_SLOT_CSS_VARS).flatMap((v) => [v.family, v.weight]), ...Object.values(SAFE_AREA_CSS_VARS)]
 
 /** sRGB の 0-255 値を WCAG の相対輝度換算用に線形化する */
 function linearizeChannel(value: number): number {
@@ -611,10 +606,10 @@ export function getContrastRatio(colorA?: string, colorB?: string): number | nul
  */
 export function resetThemeOverrides(): void {
   const root = document.documentElement
-  for (const cssVar of [...RESETTABLE_CSS_VARS, ...appliedFontSizeRatioKeys.map(fontSizeCssVar)]) {
+  for (const cssVar of RESETTABLE_CSS_VARS) {
     root.style.removeProperty(cssVar)
   }
-  appliedFontSizeRatioKeys = DEFAULT_FONT_SIZE_RATIO_KEYS
+  removeFontSizeVars(root)
   document.getElementById('sdd-custom-theme-css')?.remove()
   document.getElementById('sdd-master-tokens-css')?.remove()
   document.querySelectorAll('style[id^="sdd-font-face-"]').forEach((el) => el.remove())
