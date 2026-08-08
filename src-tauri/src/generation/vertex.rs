@@ -166,7 +166,7 @@ pub(crate) fn build_request_body(req: &GenerateRequest, max_tokens: u32) -> Valu
   serde_json::json!({
       "anthropic_version": VERTEX_ANTHROPIC_VERSION,
       "max_tokens": max_tokens,
-      "system": super::system_prompt(),
+      "system": super::system_prompt(req.theme_constraints.as_deref()),
       "messages": [ { "role": "user", "content": super::user_prompt(req) } ],
   })
 }
@@ -220,6 +220,7 @@ mod tests {
       kind: SlideGeneratorKind::BuiltinVertex,
       base_slides: base.map(|s| s.to_string()),
       repair_feedback: feedback.map(|s| s.to_string()),
+      theme_constraints: None,
     }
   }
 
@@ -274,6 +275,18 @@ mod tests {
       .to_string();
     assert!(content.contains("{\"meta\":{\"title\":\"x\"}}"));
     assert!(content.contains("id が空"));
+  }
+
+  #[test]
+  fn build_request_body_passes_theme_constraints_into_system_prompt() {
+    // JS 側の意匠制約（buildThemeConstraintsPrompt）が system プロンプトへ渡ることを検証する（#211）
+    let mut req = req_with("量子コンピュータ入門", None, None);
+    req.theme_constraints = Some("色トークン名: primary, accent".to_string());
+    let body = build_request_body(&req, 8192);
+    assert!(body["system"]
+      .as_str()
+      .unwrap()
+      .contains("色トークン名: primary, accent"));
   }
 
   #[test]

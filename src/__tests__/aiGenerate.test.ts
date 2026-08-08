@@ -19,6 +19,7 @@ import {
   setGenerationEnabled,
   checkExternalAvailable,
   toGeneratedCandidate,
+  buildThemeConstraintsPrompt,
   MAX_GENERATE_ATTEMPTS,
 } from '../aiGenerate'
 import type { GenerateProgress, GenerateResult } from '../aiGenerate'
@@ -46,8 +47,8 @@ describe('aiGenerate オーケストレータ（generateSlides）', () => {
     expect(result.slidesJson).toBe(VALID)
     expect(result.validationErrors).toEqual([])
     expect(result.attempts).toBe(1)
-    // generate_slides に request が渡る
-    expect(h.invoke).toHaveBeenCalledWith('generate_slides', { request: { ...REQ, repairFeedback: undefined } })
+    // generate_slides に request が渡る（themeConstraints は毎試行で組み立てられる・#211）
+    expect(h.invoke).toHaveBeenCalledWith('generate_slides', { request: { ...REQ, repairFeedback: undefined, themeConstraints: buildThemeConstraintsPrompt() } })
   })
 
   it('検証エラーが続くと上限 N まで試行し exhausted で最良候補を退避する', async () => {
@@ -205,5 +206,23 @@ describe('aiGenerate invoke ラッパ', () => {
     h.invoke.mockResolvedValueOnce(config)
     await expect(getClaudeCliConfig()).resolves.toEqual(config)
     expect(h.invoke).toHaveBeenCalledWith('get_claude_cli_config')
+  })
+})
+
+describe('buildThemeConstraintsPrompt（テーマ由来の意匠制約テキスト・#211）', () => {
+  it('色トークン名一覧（THEME_COLOR_TOKENS）を含む', () => {
+    const prompt = buildThemeConstraintsPrompt()
+    expect(prompt).toContain('primary')
+    expect(prompt).toContain('series6')
+  })
+
+  it('ComponentRegistryの登録名から component.name / tiles[].icon で使用可な名前を分離して含む', async () => {
+    const { registerComponent, clearRegistry } = await import('../components/ComponentRegistry')
+    clearRegistry()
+    registerComponent('TerminalAnimation', () => null)
+    registerComponent('Icon:Description', () => null)
+    const prompt = buildThemeConstraintsPrompt()
+    expect(prompt).toContain('登録済みコンポーネント名（component.name で使用可）: TerminalAnimation')
+    expect(prompt).toContain("登録済みアイコン名（tiles[].icon で使用可。'Icon:'接頭辞は付けない）: Description")
   })
 })

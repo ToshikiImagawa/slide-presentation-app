@@ -53,6 +53,12 @@ pub struct GenerateRequest {
   pub base_slides: Option<String>,
   /// 自動修正の再試行時に JS オーケストレータが積む検証エラー要約（初回は `None`。FR-005）
   pub repair_feedback: Option<String>,
+  /// 適用中テーマ・登録済みコンポーネント/アイコンから JS 側が組み立てた意匠制約テキスト（#211）。
+  /// 色トークン名・コンポーネント/アイコン名はランタイム（ComponentRegistry・THEME_COLOR_TOKENS）に
+  /// しか存在しないため Rust 側では持たず、JS から都度渡してもらう（`aiGenerate.ts` の
+  /// `buildThemeConstraintsPrompt` が単一ソース）。レイアウト種別・情報密度上限は
+  /// `SLIDE_CONTENT_SCHEMA_JSON` 側にすでに同梱されているためここには含めない。
+  pub theme_constraints: Option<String>,
 }
 
 /// 生成の中断トークン（FR-010）。`cancel_generation` コマンドが立て、生成器は境界で参照する。
@@ -195,10 +201,12 @@ pub fn create_generator(
 const SLIDE_CONTENT_SCHEMA_JSON: &str = include_str!("../../../schema/slide-content-schema.json");
 
 /// 内蔵/外部 共通のシステムプロンプト（出力スキーマの指示）。送出スキーマ/テンプレートの単一真実源。
-pub(crate) fn system_prompt() -> String {
+/// `theme_constraints` は JS 側（`buildThemeConstraintsPrompt`）が組み立てた、実行時にしか分からない
+/// 意匠制約（色トークン名・登録済みコンポーネント/アイコン名・現在の書体）。空/`None` なら追記しない（#211）。
+pub(crate) fn system_prompt(theme_constraints: Option<&str>) -> String {
   // getValidationErrors（loader.ts）の検証規則に一致する最小スキーマ＋
-  // レイアウト別 content 構造の単一ソース（SLIDE_CONTENT_SCHEMA_JSON）を提示する
-  format!(
+  // レイアウト別 content 構造の単一ソース（SLIDE_CONTENT_SCHEMA_JSON。情報密度の推奨上限も含む）を提示する
+  let mut prompt = format!(
     "あなたはスライドプレゼンテーションの JSON（slides.json）を生成するアシスタントです。\n\
      出力は必ず単一の JSON オブジェクトのみとし、説明文・前置き・コードフェンス（```）を含めないでください。\n\
      構造:\n\
@@ -209,7 +217,15 @@ pub(crate) fn system_prompt() -> String {
      layout は \"center\" | \"content\" | \"two-column\" | \"bleed\" | \"custom\" のいずれかを推奨します。\n\
      以下は各 layout で有効な content フィールドの定義です。この定義に厳密に従い、未知のフィールドや型不一致を避けてください:\n\
      {SLIDE_CONTENT_SCHEMA_JSON}"
-  )
+  );
+
+  if let Some(trimmed) = theme_constraints.map(str::trim).filter(|s| !s.is_empty()) {
+    prompt.push_str(&format!(
+      "\n\n以下は現在のテーマ・登録状況に基づく追加の意匠制約です。値は必ずこの範囲に収めてください:\n{trimmed}"
+    ));
+  }
+
+  prompt
 }
 
 /// 生成リクエストからユーザープロンプトを構築する純関数（機密最小化の単一チョークポイント・NFR-004）。
@@ -275,6 +291,7 @@ mod tests {
       kind,
       base_slides: None,
       repair_feedback: None,
+      theme_constraints: None,
     }
   }
 
@@ -300,14 +317,19 @@ mod tests {
     assert_eq!(req.kind, SlideGeneratorKind::BuiltinVertex);
     assert!(req.base_slides.is_none());
     assert!(req.repair_feedback.is_none());
+    assert!(req.theme_constraints.is_none());
 
-    // camelCase のキーで往復する
+    // camelCase のキーで往復する（themeConstraints も含む・#211）
     let req2: GenerateRequest = serde_json::from_str(
-      r#"{"prompt":"p","kind":"external-claude-code","baseSlides":"{}","repairFeedback":"err"}"#,
+      r#"{"prompt":"p","kind":"external-claude-code","baseSlides":"{}","repairFeedback":"err","themeConstraints":"色トークン名: primary"}"#,
     )
     .unwrap();
     assert_eq!(req2.base_slides.as_deref(), Some("{}"));
     assert_eq!(req2.repair_feedback.as_deref(), Some("err"));
+    assert_eq!(
+      req2.theme_constraints.as_deref(),
+      Some("色トークン名: primary")
+    );
   }
 
   #[test]
@@ -343,10 +365,26 @@ mod tests {
   fn system_prompt_includes_slide_content_schema() {
     // schema/slide-content-schema.json（単一ソース）が system_prompt に同梱されていることを検証する。
     // ドリフト検知: このファイルを更新した際、schema 側の更新を忘れると失敗する
-    let prompt = system_prompt();
+    let prompt = system_prompt(None);
     assert!(prompt.contains("two-column"));
     assert!(prompt.contains("FactCheck"));
     assert!(prompt.contains("columnContentFields"));
+  }
+
+  #[test]
+  fn system_prompt_appends_theme_constraints_when_present() {
+    // JS 側（buildThemeConstraintsPrompt）が組み立てた意匠制約を追記する（#211）
+    let prompt = system_prompt(Some("色トークン名: primary, accent"));
+    assert!(prompt.contains("色トークン名: primary, accent"));
+  }
+
+  #[test]
+  fn system_prompt_omits_constraints_block_when_none_or_blank() {
+    // None・空文字・空白のみはいずれも追記しない（余計な指示でプロンプトを汚さない）
+    let without = system_prompt(None);
+    assert!(!without.contains("追加の意匠制約"));
+    let blank = system_prompt(Some("   "));
+    assert!(!blank.contains("追加の意匠制約"));
   }
 
   #[test]
