@@ -69,27 +69,17 @@ describe('Table', () => {
     expect(getAllByRole('row')).toHaveLength(1) // ヘッダーのみ
   })
 
-  it('行数が多いとdata-densityがdense/compactへ段階的に切り替わる', () => {
-    const columns = [{ label: 'a' }]
-    const normal = render(<Table columns={columns} rows={Array.from({ length: 3 }, () => ['x'])} />)
-    expect(normal.getByTestId('table').dataset.density).toBe('normal')
-    normal.unmount()
+  it.each([
+    [3, 1, 'normal'],
+    [7, 1, 'dense'],
+    [11, 1, 'compact'],
+    [1, 5, 'dense'],
+    [1, 7, 'compact'],
+  ] as const)('行数%i・列数%iのときdata-densityは%sになる', (rowCount, columnCount, expected) => {
+    const columns = Array.from({ length: columnCount }, (_, i) => ({ label: `c${i}` }))
+    const rows = Array.from({ length: rowCount }, () => Array.from({ length: columnCount }, () => 'x'))
+    const { getByTestId } = render(<Table columns={columns} rows={rows} />)
 
-    const dense = render(<Table columns={columns} rows={Array.from({ length: 7 }, () => ['x'])} />)
-    expect(dense.getByTestId('table').dataset.density).toBe('dense')
-    dense.unmount()
-
-    const compact = render(<Table columns={columns} rows={Array.from({ length: 11 }, () => ['x'])} />)
-    expect(compact.getByTestId('table').dataset.density).toBe('compact')
-  })
-
-  it('列数が多い場合もdata-densityがdense/compactへ切り替わる', () => {
-    const rows = [['a', 'b', 'c', 'd', 'e']]
-    const dense = render(<Table columns={Array.from({ length: 5 }, (_, i) => ({ label: `c${i}` }))} rows={rows} />)
-    expect(dense.getByTestId('table').dataset.density).toBe('dense')
-    dense.unmount()
-
-    const compact = render(<Table columns={Array.from({ length: 7 }, (_, i) => ({ label: `c${i}` }))} rows={rows} />)
-    expect(compact.getByTestId('table').dataset.density).toBe('compact')
+    expect(getByTestId('table').dataset.density).toBe(expected)
   })
 })
