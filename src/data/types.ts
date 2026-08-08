@@ -383,13 +383,28 @@ export interface FontSource {
   redistribution?: 'permitted' | 'internal-only' | 'prohibited'
 }
 
+/** 書体スロット（heading/body/code）の詳細指定。和欧混植・ウェイト指定用（#187） */
+export interface FontFamilySpec {
+  /** 欧文（ラテン文字）用の書体名 */
+  latin?: string
+  /** 和文（東アジア文字）用の書体名。CSS の font-family では latin の後に置かれ、
+   * latin でカバーされない文字（漢字・かな等）にブラウザの文字単位フォールバックで使われる */
+  ea?: string
+  /** font-weight（例: '400', '700', 'normal', 'bold'）。省略時は既定ウェイト（heading: 700 / body・code: 400） */
+  weight?: string
+}
+
 /** フォント定義 */
 export interface FontDefinition {
-  heading?: string
-  body?: string
-  code?: string
+  /** 文字列指定は単一書体名（後方互換）。オブジェクト指定で和欧混植・ウェイトを個別に持てる（#187） */
+  heading?: string | FontFamilySpec
+  body?: string | FontFamilySpec
+  code?: string | FontFamilySpec
   /** 基本フォントサイズ（px）。デフォルト 20px。全サイズをこの値を基準に比率で算出 */
   baseFontSize?: number
+  /** 型階層の比率テーブル（キー → base比率）の上書き。未指定のキーは既定比率を使い、
+   * 既定にないキーを追加すると型階層に段を追加できる（#187） */
+  fontSizeRatios?: Record<string, number>
   /** フォントソースの配列 */
   sources?: FontSource[]
 }

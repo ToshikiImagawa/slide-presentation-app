@@ -31,6 +31,10 @@
   --theme-font-heading: 'Noto Sans JP', 'Inter', sans-serif;
   --theme-font-body: 'Noto Sans JP', 'Inter', sans-serif;
   --theme-font-code: 'Roboto Mono', monospace;
+  /* Font weight variables（theme.fonts.<slot>.weight で上書き。#187） */
+  --theme-font-weight-heading: 700;
+  --theme-font-weight-body: 400;
+  --theme-font-weight-code: 400;
 
   /* Font size variables (overridden by baseFontSize) */
   --theme-font-size-base: 20px;

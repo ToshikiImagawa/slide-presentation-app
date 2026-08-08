@@ -1,5 +1,5 @@
 import { createElement } from 'react'
-import type { CanvasData, ColorPalette, FontDefinition, FontSource, SafeArea, SlideData, ThemeData } from './data'
+import type { CanvasData, ColorPalette, FontDefinition, FontFamilySpec, FontSource, SafeArea, SlideData, ThemeData } from './data'
 import { buildMasterCss, getMasterWarnings } from './masters'
 import { hasComponent, registerComponent, unregisterOwner } from './components/ComponentRegistry'
 import { FallbackImage } from './components/FallbackImage'
@@ -226,11 +226,13 @@ function mergeTokens(a?: Record<string, Record<string, string>>, b?: Record<stri
   return result
 }
 
-/** sources は連結（重複登録は loadFontSources 側の styleId 判定でスキップされる）、他のキーは後勝ち */
+/** sources は連結（重複登録は loadFontSources 側の styleId 判定でスキップされる）、
+ * fontSizeRatios はキー単位でマージ（tokens と同様、片方だけが持つ段を消さない）、他のキーは後勝ち */
 function mergeFonts(a?: FontDefinition, b?: FontDefinition): FontDefinition | undefined {
   if (!a && !b) return undefined
   const sources = [...(a?.sources ?? []), ...(b?.sources ?? [])]
-  return { ...a, ...b, ...(sources.length > 0 ? { sources } : {}) }
+  const fontSizeRatios = mergeRecord(a?.fontSizeRatios, b?.fontSizeRatios)
+  return { ...a, ...b, ...(sources.length > 0 ? { sources } : {}), ...(fontSizeRatios ? { fontSizeRatios } : {}) }
 }
 
 /** canvas は width/height をキー単位、safeArea をさらにその内側のキー単位でマージする（theme 側が優先） */
@@ -261,28 +263,79 @@ export function mergeThemeData(brand?: ThemeData, theme?: ThemeData): ThemeData 
   }
 }
 
-/** フォントサイズ比率（body1 = 1.0 基準） */
-const fontSizeRatios: Record<string, number> = {
-  '--theme-font-size-h1': 3.6,
-  '--theme-font-size-h2': 2.4,
-  '--theme-font-size-h3': 1.2,
-  '--theme-font-size-h4': 1.0,
-  '--theme-font-size-subtitle1': 1.4,
-  '--theme-font-size-body1': 1.0,
-  '--theme-font-size-body2': 0.8,
+/** フォントサイズ比率（body1 = 1.0 基準）の既定値。キーは theme.fonts.fontSizeRatios と共通で、
+ * `--theme-font-size-<キー>` として CSS 変数化される。既定にないキーを追加すると型階層に段を増やせる（#187） */
+const DEFAULT_FONT_SIZE_RATIOS: Record<string, number> = {
+  h1: 3.6,
+  h2: 2.4,
+  h3: 1.2,
+  h4: 1.0,
+  subtitle1: 1.4,
+  body1: 1.0,
+  body2: 0.8,
 }
 
-/** baseFontSize から各フォントサイズ CSS 変数を設定する */
-export function applyBaseFontSize(root: HTMLElement, baseFontSize: number): void {
+/** CSS 変数名のプレフィックス（`--theme-font-size-base` 自身もこれに含まれる） */
+const FONT_SIZE_CSS_VAR_PREFIX = '--theme-font-size-'
+
+function fontSizeCssVar(key: string): string {
+  return `${FONT_SIZE_CSS_VAR_PREFIX}${key}`
+}
+
+/** baseFontSize から各フォントサイズ CSS 変数を設定する。ratios を渡すと既定比率を上書き・追加できる（#187） */
+export function applyBaseFontSize(root: HTMLElement, baseFontSize: number, ratios?: Record<string, number>): void {
+  const merged = { ...DEFAULT_FONT_SIZE_RATIOS, ...ratios }
   root.style.setProperty('--theme-font-size-base', `${baseFontSize}px`)
-  for (const [cssVar, ratio] of Object.entries(fontSizeRatios)) {
-    root.style.setProperty(cssVar, `${baseFontSize * ratio}px`)
+  for (const [key, ratio] of Object.entries(merged)) {
+    root.style.setProperty(fontSizeCssVar(key), `${baseFontSize * ratio}px`)
+  }
+}
+
+/** `applyBaseFontSize` が設定した CSS 変数をすべて消す。fontSizeRatios は既定にない段が動的に
+ * 追加される可能性があるため、固定のキー一覧ではなくプレフィックス一致で走査する（#187） */
+function removeFontSizeVars(root: HTMLElement): void {
+  for (const prop of Array.from(root.style)) {
+    if (prop.startsWith(FONT_SIZE_CSS_VAR_PREFIX)) {
+      root.style.removeProperty(prop)
+    }
   }
 }
 
 /** フォントソースが @font-face / <link> のどちらにも展開されない（読み込みが何も起きない）か */
 function hasFontSourceContent(source: FontSource): boolean {
   return Boolean(source.src || source.url || source.localName)
+}
+
+/** 有効な CSS font-weight のキーワード（normal/bold/bolder/lighter）。数値は100刻みの100〜900のみ許可する（#187） */
+const VALID_FONT_WEIGHT_KEYWORDS = new Set(['normal', 'bold', 'bolder', 'lighter'])
+
+function isValidFontWeight(weight: string): boolean {
+  return VALID_FONT_WEIGHT_KEYWORDS.has(weight) || /^[1-9]00$/.test(weight)
+}
+
+/** sources の中に、指定した書体名（latin/ea のいずれか）と weight が一致する @font-face 登録があるか */
+function hasMatchingFontSource(sources: FontSource[], familyNames: (string | undefined)[], weight: string): boolean {
+  return sources.some((source) => familyNames.includes(source.family) && (source.weight ?? 'normal') === weight)
+}
+
+/**
+ * heading/body/code の weight 指定を検査する（#187）。
+ * ①形式が不正な font-weight でないか、②sources が定義されている場合は、その weight を提供する
+ * @font-face（同一 family + weight）が実際に登録されているか（無いと太字化されず期待通り表示されない）
+ */
+function getFontWeightWarnings(fonts?: FontDefinition): string[] {
+  const warnings: string[] = []
+  const sources = fonts?.sources ?? []
+  for (const key of FONT_SLOT_KEYS) {
+    const spec = fonts?.[key]
+    if (!spec || typeof spec !== 'object' || !spec.weight) continue
+    if (!isValidFontWeight(spec.weight)) {
+      warnings.push(`theme.fonts.${key}.weight: "${spec.weight}" は有効な font-weight ではありません`)
+    } else if (sources.length > 0 && !hasMatchingFontSource(sources, [spec.latin, spec.ea], spec.weight)) {
+      warnings.push(`theme.fonts.${key}.weight: "${spec.weight}" に対応する書体が theme.fonts.sources に登録されていません`)
+    }
+  }
+  return warnings
 }
 
 /** フォントソースを動的にロードする */
@@ -328,10 +381,27 @@ function loadExternalFont(url: string): void {
   document.head.appendChild(link)
 }
 
-const themeFontToCssVar: Record<string, string> = {
-  heading: '--theme-font-heading',
-  body: '--theme-font-body',
-  code: '--theme-font-code',
+const FONT_SLOT_KEYS = ['heading', 'body', 'code'] as const
+type FontSlotKey = (typeof FONT_SLOT_KEYS)[number]
+
+/** heading/body/code ごとの font-family・font-weight CSS 変数（#187）。weight の既定値は
+ * global.css の :root に定義し、theme.fonts.<slot> がオブジェクト形式で weight を持つ場合のみ上書きする */
+const FONT_SLOT_CSS_VARS: Record<FontSlotKey, { family: string; weight: string }> = {
+  heading: { family: '--theme-font-heading', weight: '--theme-font-weight-heading' },
+  body: { family: '--theme-font-body', weight: '--theme-font-weight-body' },
+  code: { family: '--theme-font-code', weight: '--theme-font-weight-code' },
+}
+
+/** theme.fonts.baseFontSize 省略時に使う既定値（global.css の --theme-font-size-base の既定と同じ）。
+ * fontSizeRatios だけを指定したテーマでも型階層を適用できるようにする（#187） */
+const DEFAULT_BASE_FONT_SIZE = 20
+
+/** 書体指定（文字列 or FontFamilySpec）から CSS font-family 値を組み立てる。
+ * 欧文（latin）→ 和文（ea）の順に並べることで、ラテン文字は latin 側、
+ * latin にない文字（漢字・かな等）は ea 側が使われる（ブラウザの文字単位フォールバック・#187） */
+function buildFontFamilyValue(spec: string | FontFamilySpec): string {
+  if (typeof spec === 'string') return spec
+  return [spec.latin, spec.ea].filter((name): name is string => Boolean(name)).join(', ')
 }
 
 /** セーフエリアの辺 → CSS 変数。global.css の `.master-body` が `padding: var(--theme-safe-*, 60px)` で参照する（#188） */
@@ -395,11 +465,16 @@ export function applyThemeData(themeData: ThemeData): void {
   applyDerivedSeriesColors(root, themeData.colors)
 
   if (themeData.fonts) {
-    for (const [key, value] of Object.entries(themeData.fonts)) {
-      if (!value || typeof value !== 'string') continue
-      const cssVar = themeFontToCssVar[key]
-      if (cssVar) {
-        root.style.setProperty(cssVar, value)
+    for (const key of FONT_SLOT_KEYS) {
+      const spec = themeData.fonts[key]
+      if (!spec) continue
+      const cssVars = FONT_SLOT_CSS_VARS[key]
+      const familyValue = buildFontFamilyValue(spec)
+      if (familyValue) {
+        root.style.setProperty(cssVars.family, familyValue)
+      }
+      if (typeof spec === 'object' && spec.weight) {
+        root.style.setProperty(cssVars.weight, spec.weight)
       }
     }
 
@@ -407,8 +482,8 @@ export function applyThemeData(themeData: ThemeData): void {
       loadFontSources(themeData.fonts.sources)
     }
 
-    if (themeData.fonts.baseFontSize != null) {
-      applyBaseFontSize(root, themeData.fonts.baseFontSize)
+    if (themeData.fonts.baseFontSize != null || themeData.fonts.fontSizeRatios) {
+      applyBaseFontSize(root, themeData.fonts.baseFontSize ?? DEFAULT_BASE_FONT_SIZE, themeData.fonts.fontSizeRatios)
     }
   }
 
@@ -455,6 +530,8 @@ export function getThemeWarnings(theme?: ThemeData, slides?: SlideData[]): strin
       }
     }
 
+    warnings.push(...getFontWeightWarnings(theme.fonts))
+
     for (const [name, src] of Object.entries(theme.icons ?? {})) {
       if (!src) {
         warnings.push(`theme.icons.${name}: srcが指定されていません`)
@@ -487,8 +564,9 @@ function getTileIconWarnings(slides?: SlideData[]): string[] {
 /** THEME_COLOR_TOKENS が指す CSS 変数（重複除去）と、その `-rgb` companion */
 const RESETTABLE_COLOR_VARS = [...new Set(Object.values(THEME_COLOR_TOKENS))].flatMap((cssVar) => [cssVar, `${cssVar}-rgb`])
 
-/** applyTheme/applyThemeData が設定する CSS 変数の一覧（リセット対象） */
-const RESETTABLE_CSS_VARS: string[] = [...RESETTABLE_COLOR_VARS, ...Object.values(themeFontToCssVar), '--theme-font-size-base', ...Object.keys(fontSizeRatios), ...Object.values(SAFE_AREA_CSS_VARS)]
+/** applyTheme/applyThemeData が設定する CSS 変数の一覧（リセット対象）。fontSizeRatios は既定にない
+ * 段が動的に追加される可能性があるため対象外とし、removeFontSizeVars でプレフィックス一致により別途消す */
+const RESETTABLE_CSS_VARS: string[] = [...RESETTABLE_COLOR_VARS, ...Object.values(FONT_SLOT_CSS_VARS).flatMap((v) => [v.family, v.weight]), ...Object.values(SAFE_AREA_CSS_VARS)]
 
 /** sRGB の 0-255 値を WCAG の相対輝度換算用に線形化する */
 function linearizeChannel(value: number): number {
@@ -531,6 +609,7 @@ export function resetThemeOverrides(): void {
   for (const cssVar of RESETTABLE_CSS_VARS) {
     root.style.removeProperty(cssVar)
   }
+  removeFontSizeVars(root)
   document.getElementById('sdd-custom-theme-css')?.remove()
   document.getElementById('sdd-master-tokens-css')?.remove()
   document.querySelectorAll('style[id^="sdd-font-face-"]').forEach((el) => el.remove())

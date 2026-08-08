@@ -1,4 +1,4 @@
-import type { MasterAnchor, MasterDefinition } from '../data'
+import type { FontFamilySpec, MasterAnchor, MasterDefinition } from '../data'
 
 /** `p:clrMap` 適用後の 12 キー（Rust `brand::MappedColors` と同じ並び・camelCase）。 */
 export const MAPPED_COLOR_KEYS = ['bg1', 'tx1', 'bg2', 'tx2', 'accent1', 'accent2', 'accent3', 'accent4', 'accent5', 'accent6', 'hlink', 'folHlink'] as const
@@ -115,7 +115,8 @@ export interface BrandOverrides {
  * `ThemeData` へそのまま合成でき、`colors` は theme/<slug>.json 相当の 12 キーをそのまま保持する */
 export interface CompiledBrandTheme {
   colors: Record<MappedColorKey, string>
-  fonts: { heading?: string; body?: string }
+  /** 抽出した latin/ea/major/minor を潰さずに写す（#187）。取得できなかったスロットは省略する */
+  fonts: { heading?: FontFamilySpec; body?: FontFamilySpec }
   masters: Record<string, MasterDefinition>
   masterMap: Record<string, string>
   tokens: Record<string, Record<string, string>>

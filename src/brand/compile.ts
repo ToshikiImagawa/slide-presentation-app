@@ -1,11 +1,12 @@
 import { getContrastRatio, hexToRgbTuple, rgbTupleToHex, THEME_COLOR_TOKENS, WCAG_AA_THRESHOLD } from '../applyTheme'
 import { SLIDE_WIDTH, SLIDE_HEIGHT } from '../hooks/useReveal'
 import { slugify } from '../slugify'
-import type { MasterDecoration, MasterDefinition, ThemeData } from '../data'
+import type { FontFamilySpec, MasterDecoration, MasterDefinition, ThemeData } from '../data'
 import {
   LAYOUT_ASSIGNMENT_SLOTS,
   MAPPED_COLOR_KEYS,
   type BandCandidate,
+  type BrandFontFace,
   type BrandImportReport,
   type BrandOverrides,
   type BrandProfile,
@@ -216,9 +217,20 @@ function colorDistance(a: string, b: string): number {
   return Math.sqrt((ar - br) ** 2 + (ag - bg) ** 2 + (ab - bb) ** 2)
 }
 
-function resolveFonts(profile: BrandProfile, overrides: BrandOverrides, report: BrandImportReport): { heading?: string; body?: string } {
-  const heading = overrides.fontOverrides?.heading ?? profile.fonts.major.latin ?? profile.fonts.major.jpan ?? undefined
-  const body = overrides.fontOverrides?.body ?? profile.fonts.minor.latin ?? profile.fonts.minor.jpan ?? undefined
+/** OOXML の書体組（major/minor）1つから FontFamilySpec を組み立てる（#187）。
+ * latin/ea を潰さずに両方写し、和文は script 固有の jpan（Japanese script override）が
+ * 定義されていれば ea より優先する（PowerPoint 自体の書体解決順に合わせる）。
+ * manualOverride（確認ダイアログで人が上書きした文字列。既存の fontOverrides は string のみ）は latin 側に反映する */
+function resolveFontFace(face: BrandFontFace, manualOverride?: string): FontFamilySpec | undefined {
+  const latin = manualOverride ?? face.latin ?? undefined
+  const ea = face.jpan ?? face.ea ?? undefined
+  if (!latin && !ea) return undefined
+  return { ...(latin ? { latin } : {}), ...(ea ? { ea } : {}) }
+}
+
+function resolveFonts(profile: BrandProfile, overrides: BrandOverrides, report: BrandImportReport): { heading?: FontFamilySpec; body?: FontFamilySpec } {
+  const heading = resolveFontFace(profile.fonts.major, overrides.fontOverrides?.heading)
+  const body = resolveFontFace(profile.fonts.minor, overrides.fontOverrides?.body)
   report.fields['fonts.heading'] = { status: heading ? 'ok' : 'fallback', detail: heading ? undefined : 'テンプレートから見出し書体を抽出できず既定フォントを使用' }
   report.fields['fonts.body'] = { status: body ? 'ok' : 'fallback', detail: body ? undefined : 'テンプレートから本文書体を抽出できず既定フォントを使用' }
   return { heading, body }
