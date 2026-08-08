@@ -466,16 +466,46 @@ can be used in the same slide.
 
 The following fields can be specified in `theme.fonts`.
 
-| Field          | Type         | Default                               | Description                                                           |
-|----------------|--------------|---------------------------------------|-----------------------------------------------------------------------|
-| `heading`      | string       | `'Noto Sans JP', 'Inter', sans-serif` | Heading font                                                          |
-| `body`         | string       | `'Noto Sans JP', 'Inter', sans-serif` | Body font                                                             |
-| `code`         | string       | `'Roboto Mono', monospace`            | Code block font                                                       |
-| `baseFontSize` | number       | `20`                                  | Base font size (px). All font sizes are automatically scaled by ratio |
-| `sources`      | FontSource[] | —                                     | Array of font sources                                                 |
+| Field             | Type                       | Default                               | Description                                                              |
+|-------------------|----------------------------|----------------------------------------|---------------------------------------------------------------------------|
+| `heading`         | string \| FontFamilySpec   | `'Noto Sans JP', 'Inter', sans-serif` | Heading font                                                              |
+| `body`            | string \| FontFamilySpec   | `'Noto Sans JP', 'Inter', sans-serif` | Body font                                                                 |
+| `code`            | string \| FontFamilySpec   | `'Roboto Mono', monospace`            | Code block font                                                          |
+| `baseFontSize`    | number                     | `20`                                  | Base font size (px). All font sizes are automatically scaled by ratio    |
+| `fontSizeRatios`  | Record<string, number>     | see table below                       | Overrides the type scale ratio table. Keys can be overridden or added   |
+| `sources`         | FontSource[]                | —                                     | Array of font sources                                                    |
 
-Changing `baseFontSize` causes all font sizes from H1 to Body2 to be automatically calculated based on the ratio from
-the base value.
+Changing `baseFontSize` causes every step in `fontSizeRatios` (7 steps, H1 through Body2, by default) to be
+automatically calculated based on the ratio from the base value.
+
+`heading`/`body`/`code` accept either a plain string (single font name) or an object (`FontFamilySpec`) for
+mixing Latin and Japanese typefaces and specifying a weight.
+
+| Field     | Type   | Description                                                                                  |
+|-----------|--------|------------------------------------------------------------------------------------------------|
+| `latin`   | string | Font name for Latin characters                                                                 |
+| `ea`      | string | Font name for East Asian characters. Used for characters not covered by `latin` (kanji, kana, etc.) |
+| `weight`  | string | font-weight (e.g. `'400'`, `'700'`, `'normal'`, `'bold'`). Defaults to 700 for heading, 400 for body |
+
+```json
+{
+  "fonts": {
+    "heading": { "latin": "Poppins", "ea": "Noto Sans JP", "weight": "700" },
+    "body": { "latin": "Inter", "ea": "Noto Sans JP" }
+  }
+}
+```
+
+`fontSizeRatios` overrides or adds ratios for the type scale (relative to `body1` = 1.0). Adding a key that isn't
+in the defaults adds a new step to the type scale (e.g. a small step for captions or footnotes).
+
+```json
+{
+  "fonts": {
+    "fontSizeRatios": { "h1": 4.0, "caption": 0.6 }
+  }
+}
+```
 
 Load local or external fonts using `sources`.
 

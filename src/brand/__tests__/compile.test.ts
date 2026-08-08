@@ -252,16 +252,23 @@ describe('compile（#168 の並置比較・取り込み確認）', () => {
   })
 
   describe('フォント', () => {
-    it('抽出できた書体名を採用する', () => {
+    it('抽出できた書体名を latin として採用する（#187）', () => {
       const { theme, report } = compile(profile(), {})
-      expect(theme.fonts.heading).toBe('Trebuchet MS')
-      expect(theme.fonts.body).toBe('Calibri')
+      expect(theme.fonts.heading).toEqual({ latin: 'Trebuchet MS' })
+      expect(theme.fonts.body).toEqual({ latin: 'Calibri' })
       expect(report.fields['fonts.heading']?.status).toBe('ok')
     })
 
-    it('人の上書きを優先する', () => {
+    it('ea/jpan も latin を潰さずに写す。jpan が定義されていれば ea より優先する（#187）', () => {
+      const p = profile({ fonts: { major: { latin: 'Trebuchet MS', ea: 'MS PGothic', cs: null, jpan: 'MS PGothic (Jpan)' }, minor: { latin: 'Calibri', ea: 'MS PGothic', cs: null, jpan: null } } })
+      const { theme } = compile(p, {})
+      expect(theme.fonts.heading).toEqual({ latin: 'Trebuchet MS', ea: 'MS PGothic (Jpan)' })
+      expect(theme.fonts.body).toEqual({ latin: 'Calibri', ea: 'MS PGothic' })
+    })
+
+    it('人の上書きを latin として優先する', () => {
       const { theme } = compile(profile(), { fontOverrides: { heading: 'Custom Sans' } })
-      expect(theme.fonts.heading).toBe('Custom Sans')
+      expect(theme.fonts.heading).toEqual({ latin: 'Custom Sans' })
     })
 
     it('抽出できなければ fallback として報告する', () => {

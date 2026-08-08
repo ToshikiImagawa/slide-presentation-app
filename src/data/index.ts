@@ -18,6 +18,7 @@ export type {
   SafeArea,
   ColorPalette,
   FontDefinition,
+  FontFamilySpec,
   FontSource,
   ValidationError,
   MasterAnchor,

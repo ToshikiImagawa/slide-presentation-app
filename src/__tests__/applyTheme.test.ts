@@ -214,6 +214,15 @@ describe('mergeThemeData（brand→deck の合成・#170）', () => {
     ])
   })
 
+  it('fonts.fontSizeRatios はキー単位でマージし、同名キーは theme が優先される（#187）', () => {
+    const brand: ThemeData = { fonts: { fontSizeRatios: { h1: 4.0, caption: 0.6 } } }
+    const theme: ThemeData = { fonts: { fontSizeRatios: { h1: 3.6 } } }
+
+    const merged = mergeThemeData(brand, theme)
+
+    expect(merged?.fonts?.fontSizeRatios).toEqual({ h1: 3.6, caption: 0.6 })
+  })
+
   it('icons はキー単位でマージし、同名キーは theme が優先される（#201）', () => {
     const brand: ThemeData = { icons: { rocket: 'image/icons/rocket-brand.svg', logo: 'image/icons/logo.svg' } }
     const theme: ThemeData = { icons: { rocket: 'image/icons/rocket-deck.svg' } }
@@ -298,6 +307,20 @@ describe('applyBaseFontSize', () => {
     expect(root.style.getPropertyValue('--theme-font-size-body1')).toBe('24px')
     expect(parseFloat(root.style.getPropertyValue('--theme-font-size-body2'))).toBeCloseTo(19.2)
   })
+
+  it('ratios で既定の比率を上書きできる（#187）', () => {
+    applyBaseFontSize(root, 20, { h1: 2.0 })
+
+    expect(root.style.getPropertyValue('--theme-font-size-h1')).toBe('40px')
+    // 上書きしていない段は既定比率のまま
+    expect(root.style.getPropertyValue('--theme-font-size-h2')).toBe('48px')
+  })
+
+  it('ratios で既定にない段を追加できる（型階層の拡張・#187）', () => {
+    applyBaseFontSize(root, 20, { caption: 0.6 })
+
+    expect(root.style.getPropertyValue('--theme-font-size-caption')).toBe('12px')
+  })
 })
 
 describe('loadFontSources', () => {
@@ -369,6 +392,39 @@ describe('applyThemeData - fonts integration', () => {
 
     const style = document.getElementById('sdd-font-face-testfont-normal-normal')
     expect(style).not.toBeNull()
+  })
+
+  it('文字列指定はそのまま font-family CSS 変数へ設定する（後方互換）', () => {
+    applyThemeData({ fonts: { heading: 'CustomHeading' } })
+
+    expect(document.documentElement.style.getPropertyValue('--theme-font-heading')).toBe('CustomHeading')
+  })
+
+  it('オブジェクト指定は「欧文 → 和文」の順で font-family を組み立てる（和欧混植・#187）', () => {
+    applyThemeData({ fonts: { heading: { latin: 'Poppins', ea: 'Noto Sans JP' } } })
+
+    expect(document.documentElement.style.getPropertyValue('--theme-font-heading')).toBe('Poppins, Noto Sans JP')
+  })
+
+  it('オブジェクト指定の weight を font-weight CSS 変数へ設定する（#187）', () => {
+    applyThemeData({ fonts: { heading: { latin: 'Poppins', weight: '900' }, body: { latin: 'Inter', weight: '300' } } })
+
+    expect(document.documentElement.style.getPropertyValue('--theme-font-weight-heading')).toBe('900')
+    expect(document.documentElement.style.getPropertyValue('--theme-font-weight-body')).toBe('300')
+  })
+
+  it('weight 未指定のオブジェクト指定では font-weight CSS 変数を設定しない（既定のカスケードに委ねる）', () => {
+    applyThemeData({ fonts: { heading: { latin: 'Poppins' } } })
+
+    expect(document.documentElement.style.getPropertyValue('--theme-font-weight-heading')).toBe('')
+  })
+
+  it('fonts.fontSizeRatios のみの指定でも既定 baseFontSize（20px）で型階層を適用する（#187）', () => {
+    applyThemeData({ fonts: { fontSizeRatios: { caption: 0.6 } } })
+
+    expect(document.documentElement.style.getPropertyValue('--theme-font-size-base')).toBe('20px')
+    expect(document.documentElement.style.getPropertyValue('--theme-font-size-caption')).toBe('12px')
+    expect(document.documentElement.style.getPropertyValue('--theme-font-size-h1')).toBe('72px')
   })
 
   it('フォント名の文字列プロパティのみ CSS 変数に設定する', () => {
@@ -448,6 +504,15 @@ describe('resetThemeOverrides', () => {
     expect(document.documentElement.style.getPropertyValue('--theme-text-body')).toBe('')
     expect(document.documentElement.style.getPropertyValue('--theme-font-heading')).toBe('')
     expect(document.documentElement.style.getPropertyValue('--theme-font-size-base')).toBe('')
+  })
+
+  it('前のプレゼンテーションで設定した font-weight と、動的に追加した型階層の段を消す（#187）', () => {
+    applyThemeData({ fonts: { heading: { latin: 'Poppins', weight: '900' }, fontSizeRatios: { caption: 0.6 } } })
+
+    resetThemeOverrides()
+
+    expect(document.documentElement.style.getPropertyValue('--theme-font-weight-heading')).toBe('')
+    expect(document.documentElement.style.getPropertyValue('--theme-font-size-caption')).toBe('')
   })
 
   it('前のプレゼンテーションで設定したセーフエリアの CSS 変数を消す（#188）', () => {
@@ -724,6 +789,45 @@ describe('getThemeWarnings', () => {
   it('slides を渡すと content.tiles[].icon が未登録の場合に警告する', () => {
     const warnings = getThemeWarnings(undefined, [{ id: 's1', layout: 'content', content: { tiles: [{ icon: 'NoSuchIcon', title: 'A', description: 'a' }] } }])
     expect(warnings.some((w) => w.includes('slides[0].content.tiles[0].icon') && w.includes('NoSuchIcon'))).toBe(true)
+  })
+
+  // #187: heading/body/code がオブジェクト形式の場合の weight 検証
+  it('文字列指定（後方互換）では weight 検証をスキップし警告しない', () => {
+    expect(getThemeWarnings({ fonts: { heading: 'Poppins' } })).toEqual([])
+  })
+
+  it('不正な形式の weight を警告する', () => {
+    const warnings = getThemeWarnings({ fonts: { heading: { latin: 'Poppins', weight: 'super-bold' } } })
+    expect(warnings.some((w) => w.includes('theme.fonts.heading.weight') && w.includes('super-bold'))).toBe(true)
+  })
+
+  it('有効な weight（100刻みの数値・キーワード）では形式警告を出さない', () => {
+    expect(getThemeWarnings({ fonts: { heading: { latin: 'Poppins', weight: '700' } } })).toEqual([])
+    expect(getThemeWarnings({ fonts: { body: { latin: 'Inter', weight: 'bold' } } })).toEqual([])
+  })
+
+  it('sources が定義されているのに、指定した weight に対応する @font-face が無ければ警告する', () => {
+    const warnings = getThemeWarnings({
+      fonts: {
+        heading: { latin: 'Poppins', weight: '700' },
+        sources: [{ family: 'Poppins', src: '/poppins-400.woff2', weight: '400' }],
+      },
+    })
+    expect(warnings.some((w) => w.includes('theme.fonts.heading.weight') && w.includes('登録されていません'))).toBe(true)
+  })
+
+  it('sources に一致する family + weight の @font-face があれば警告しない', () => {
+    const warnings = getThemeWarnings({
+      fonts: {
+        heading: { latin: 'Poppins', weight: '700' },
+        sources: [{ family: 'Poppins', src: '/poppins-700.woff2', weight: '700' }],
+      },
+    })
+    expect(warnings).toEqual([])
+  })
+
+  it('sources が定義されていない場合は書体登録チェックをスキップする（Webセーフフォント運用を妨げない）', () => {
+    expect(getThemeWarnings({ fonts: { heading: { latin: 'Georgia', weight: '700' } } })).toEqual([])
   })
 })
 

@@ -460,15 +460,43 @@ xattr -dr com.apple.quarantine "/Applications/Slide Presentation App.app"
 
 `theme.fonts` には以下のフィールドを指定できます。
 
-| フィールド     | 型           | 既定値                                | 説明                                                            |
-|----------------|--------------|---------------------------------------|-----------------------------------------------------------------|
-| `heading`      | string       | `'Noto Sans JP', 'Inter', sans-serif` | 見出しフォント                                                  |
-| `body`         | string       | `'Noto Sans JP', 'Inter', sans-serif` | 本文フォント                                                    |
-| `code`         | string       | `'Roboto Mono', monospace`            | コードブロックのフォント                                        |
-| `baseFontSize` | number       | `20`                                  | 基本フォントサイズ（px）。全フォントサイズが比率で自動スケール  |
-| `sources`      | FontSource[] | —                                     | フォントソースの配列                                            |
+| フィールド        | 型                          | 既定値                                | 説明                                                                    |
+|-------------------|-----------------------------|----------------------------------------|-------------------------------------------------------------------------|
+| `heading`         | string \| FontFamilySpec    | `'Noto Sans JP', 'Inter', sans-serif` | 見出しフォント                                                          |
+| `body`            | string \| FontFamilySpec    | `'Noto Sans JP', 'Inter', sans-serif` | 本文フォント                                                            |
+| `code`            | string \| FontFamilySpec    | `'Roboto Mono', monospace`            | コードブロックのフォント                                                |
+| `baseFontSize`    | number                      | `20`                                  | 基本フォントサイズ（px）。全フォントサイズが比率で自動スケール          |
+| `fontSizeRatios`  | Record<string, number>      | 下表参照                              | 型階層の比率テーブル上書き。キー単位で上書き・追加ができる              |
+| `sources`         | FontSource[]                | —                                     | フォントソースの配列                                                    |
 
-`baseFontSize` を変更すると、H1 から Body2 までのすべてのフォントサイズが基準値からの比率で自動計算されます。
+`baseFontSize` を変更すると、`fontSizeRatios` の各段（既定は H1〜Body2 の7段）がすべて基準値からの比率で自動計算されます。
+
+`heading`/`body`/`code` は文字列（単一書体名）に加えて、和欧混植・ウェイト指定用のオブジェクト（`FontFamilySpec`）でも指定できます。
+
+| フィールド | 型     | 説明                                                                                          |
+|-----------|--------|-----------------------------------------------------------------------------------------------|
+| `latin`   | string | 欧文（ラテン文字）用の書体名                                                                  |
+| `ea`      | string | 和文（東アジア文字）用の書体名。`latin` でカバーされない文字（漢字・かな等）に使われる          |
+| `weight`  | string | font-weight（例: `'400'`, `'700'`, `'normal'`, `'bold'`）。省略時は見出し700・本文400          |
+
+```json
+{
+  "fonts": {
+    "heading": { "latin": "Poppins", "ea": "Noto Sans JP", "weight": "700" },
+    "body": { "latin": "Inter", "ea": "Noto Sans JP" }
+  }
+}
+```
+
+`fontSizeRatios` で型階層の比率（`body1` = 1.0 基準）を上書き・追加できます。既定にないキーを追加すると型階層に段を増やせます（キャプション・注記用の小さい段等）。
+
+```json
+{
+  "fonts": {
+    "fontSizeRatios": { "h1": 4.0, "caption": 0.6 }
+  }
+}
+```
 
 `sources` でローカルフォントや外部フォントを読み込みます。
 
