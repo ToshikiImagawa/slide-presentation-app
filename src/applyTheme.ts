@@ -456,8 +456,10 @@ const FONT_SLOT_KEYS = ['heading', 'body', 'code'] as const
 type FontSlotKey = (typeof FONT_SLOT_KEYS)[number]
 
 /** heading/body/code ごとの font-family・font-weight CSS 変数（#187）。weight の既定値は
- * global.css の :root に定義し、theme.fonts.<slot> がオブジェクト形式で weight を持つ場合のみ上書きする */
-const FONT_SLOT_CSS_VARS: Record<FontSlotKey, { family: string; weight: string }> = {
+ * global.css の :root に定義し、theme.fonts.<slot> がオブジェクト形式で weight を持つ場合のみ上書きする。
+ * AI 生成へ渡す意匠制約（`aiGenerate.ts` の `buildThemeConstraintsPrompt`）も現在の書体を読むためにこれを参照するので export する
+ * （変数名を 2 箇所で持つと、改名時に生成プロンプトが黙って「(未設定)」になる） */
+export const FONT_SLOT_CSS_VARS: Record<FontSlotKey, { family: string; weight: string }> = {
   heading: { family: '--theme-font-heading', weight: '--theme-font-weight-heading' },
   body: { family: '--theme-font-body', weight: '--theme-font-weight-body' },
   code: { family: '--theme-font-code', weight: '--theme-font-weight-code' },
