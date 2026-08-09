@@ -27,6 +27,7 @@ npm run generate-icons       # resources/icon.svg から src-tauri/icons/ を再
 npm run generate-screenshots       # README 用スクリーンショット撮影（Playwright WebKit・macOS 専用・e2e スモーク兼用）
 npm run screenshots:compare        # 実アプリ画像とモック画像の手動比較（pixelmatch）
 npm run reference-deck:screenshots # 基準見本デッキ（全スライド種別を1枚ずつ網羅）の一括撮影（Playwright WebKit・macOS 専用）
+npm run reference-deck:diff        # 基準見本デッキの HEAD 版と作業ツリー版を比較（下端マスク付き・バウンディングボックス出力）
 npm run generate-docs              # README.md / CHANGELOG.md を PDF 化（docs/ に出力・puppeteer）
 ```
 
@@ -36,14 +37,15 @@ npm run generate-docs              # README.md / CHANGELOG.md を PDF 化（docs
 
 - **`npm run test:e2e`** — Playwright **Test** によるアサーション付き E2E（`playwright.config.ts` + `e2e/*.spec.ts`）。`en` / `ja` の 2 プロジェクトで実行し、期待値は `assets/locales/*.json` と fixture から読み込む（ハードコードしない）。テキスト内容ベースなので **Linux CI 可**（`.github/workflows/ci.yml` の `E2E (Playwright)` ジョブ）。
 - **`npm run generate-screenshots`** — README 用スクリーンショット撮影。**e2e スモークも兼ねる**（各シナリオの待受が失敗すると非ゼロ終了）。
-- **`npm run reference-deck:screenshots`** — 全スライド種別を1枚ずつ並べた基準見本デッキ（`scripts/screenshot/fixtures/reference-deck.{ja,en}.json`。Epic #212 で種別を追加するたびに1枚増える）の一括撮影。`capture-screenshots.mjs`（README 用の厳選ショットを `scenarios.mjs` に手動列挙する設計）とは別スクリプト `capture-reference-deck.mjs` にしている。fixture のスライド数を動的に読み取ってループ撮影するため、種別追加時にこのスクリプト側の変更は不要（fixture に1枚追加するだけで済む）。出力は `resources/reference-deck/{en,ja}/` にコミットし、テーマ差し替え前後の **git 差分ベースの回帰検知**に使う（#209 の前提）。
+- **`npm run reference-deck:screenshots`** — 全スライド種別を1枚ずつ並べた基準見本デッキ（`scripts/screenshot/fixtures/reference-deck.{ja,en}.json`。Epic #212 で種別を追加するたびに1枚増える）の一括撮影。`capture-screenshots.mjs`（README 用の厳選ショットを `scenarios.mjs` に手動列挙する設計）とは別スクリプト `capture-reference-deck.mjs` にしている。fixture のスライド数を動的に読み取ってループ撮影するため、種別追加時にこのスクリプト側の変更は不要（fixture に1枚追加するだけで済む）。出力は `resources/reference-deck/{en,ja}/` にコミットする。
+- **`npm run reference-deck:diff`**（`scripts/screenshot/diff-reference-deck.mjs`）— 基準見本デッキの回帰検知の比較本体（#246）。git の `HEAD` 版と作業ツリー版を pixelmatch + pngjs で比較し、差分が出た画素のバウンディングボックスを出力する。単純な git 差分（画像が1bitでも変わればコミット差分に出る）だけでは、**種別を1枚追加すると既存の全枚に差分が出る**問題があるため、比較前に下端 `--mask-bottom`（既定 120px）を全幅マスクする。ページ番号（`slideNumber: 'c/t'`）・進捗バー・前後移動の矢印はいずれも総枚数に依存する Reveal.js 標準機能（`controls`/`slideNumber`/`progress`。`src/hooks/useReveal.ts`）で、矢印は既定値で下端から論理px 58px（= 実測 2倍解像度で 116px）の高さがあり、デッキ先頭・末尾のスライドは総枚数が変わると矢印の表示/非表示が切り替わって差分がその高さまで及ぶ。既定 120px はこの実測値に余白を加えた値。`06-layout-bleed` / `07-layout-custom`（`TerminalAnimation`。JS 駆動アニメーションのため `animations: 'disabled'` でも止まらない残差が本文中央に出る。PR #242 実測）は既知の残差として一覧に必ず明示し、差分があっても失敗にしない（黙って除外はしない）。これら以外の画素差分は実装の変化として扱う。
 
 スクリーンショット撮影の仕組み:
 
 - `vite --mode screenshot` を起動し、Tauri IPC を `src/__screenshot__/`（`tauri-store` / `tauri-event` / `tauri-webview`）へ **Vite alias で差し替え**て素のブラウザで boot させる（本番ビルドには非混入。`@tauri-apps/api/core` は実物の plugin-fs/dialog が依存するため alias しない）。
 - スライド内容はロケール別 fixture `scripts/screenshot/fixtures/slides.{ja,en}.json` を `/slides.json` として配信する（`Accept-Language` で出し分け）。基準見本デッキ用の `reference-deck.{ja,en}.json` は同じ仕組みで `/reference-deck.json` として配信され、`VITE_SLIDES_PATH`（`src/sampleSlides.ts` の `loadBundledSampleSlides` が読む既存の env var）でホーム画面「サンプルを開く」の取得先をそちらに切り替える。
 - Playwright **WebKit** で撮影し、`scripts/screenshot/chrome.mjs` が macOS ウィンドウ枠を合成。**en / ja の 2 ロケール**で撮影し、`resources/screenshots/en/`・`resources/screenshots/ja/` に出力する（Playwright の context `locale` で UI 言語と fixture を切り替え）。
-- シナリオは `scripts/screenshot/scenarios.mjs`（`home` / `presentation` / `toolbar` / `settings` / `shortcuts` / `edit` / `presenter-view` / `layout-*` / `logo`）。撮影キーは `VIEWPORTS`（`viewports.mjs`）にも同名で登録が必要。待受は `data-testid` で行うため、新シナリオが UI に到達できないときはコンポーネント側に testid を足す。回帰検知は **git 差分ベース**（閾値自動判定はしない）。
+- シナリオは `scripts/screenshot/scenarios.mjs`（`home` / `presentation` / `toolbar` / `settings` / `shortcuts` / `edit` / `presenter-view` / `layout-*` / `logo`）。撮影キーは `VIEWPORTS`（`viewports.mjs`）にも同名で登録が必要。待受は `data-testid` で行うため、新シナリオが UI に到達できないときはコンポーネント側に testid を足す。README 用スクリーンショット（`generate-screenshots`）の回帰検知は **git 差分ベース**（閾値自動判定はしない）。基準見本デッキ（`reference-deck:screenshots`）は上記の `reference-deck:diff` を使う。
 - **日本語フォント・WebKit 描画差のため macOS で実行する**（CI は `.github/workflows/screenshots.yml` の macOS ランナー・手動 dispatch）。
 - E2E は `e2e/` にある: Playwright（`*.spec.ts`・配線済み・上記）と、実機 Tauri WebView 用の WebdriverIO 雛形（`*.e2e.ts.sample`・未配線）。詳細は `e2e/README.md`。
 - ドキュメントは英日 2 言語: `README.md` / `CHANGELOG.md` / `CONTRIBUTING.md`（英語）と `README.ja.md` / `CHANGELOG.ja.md` / `CONTRIBUTING.ja.md`（日本語）。英語版は `en/`、日本語版は `ja/` のスクリーンショットを参照する。`npm run generate-docs` が PDF 化するのは README / CHANGELOG の 4 ファイルのみ（CONTRIBUTING は対象外）。

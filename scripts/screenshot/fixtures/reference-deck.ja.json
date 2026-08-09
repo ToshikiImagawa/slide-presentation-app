@@ -38,10 +38,14 @@
       "layout": "content",
       "content": {
         "title": "layout: content (tiles)",
+        "tileColumns": 3,
         "tiles": [
           { "icon": "Description", "title": "タイル1", "description": "icon / title / description を指定" },
-          { "icon": "Search", "title": "タイル2", "description": "3カラムのグリッドで描画" },
-          { "icon": "Memory", "title": "タイル3", "description": "アイコンは MUI アイコン名で指定" }
+          { "icon": "Search", "title": "タイル2", "description": "アイコンは MUI アイコン名で指定" },
+          { "icon": "Memory", "title": "タイル3", "description": "tileColumns で列数を指定" },
+          { "icon": "PlaylistAddCheck", "title": "タイル4", "description": "列数を超えると次の行へ折返す" },
+          { "icon": "Traffic", "title": "タイル5", "description": "6枚以上でも読める大きさを保つ" },
+          { "icon": "FactCheck", "title": "タイル6", "description": "既定は列数=タイル数（1行）" }
         ]
       }
     },
@@ -114,10 +118,7 @@
           { "text": "body: 複数行に対応した段落テキスト", "emphasis": true },
           {
             "text": "items: 箇条書き（ネスト可）",
-            "items": [
-              { "text": "子要素にもさらに items を指定できる" },
-              { "text": "emphasis: true で太字強調", "emphasis": true }
-            ]
+            "items": [{ "text": "子要素にもさらに items を指定できる" }, { "text": "emphasis: true で太字強調", "emphasis": true }]
           }
         ]
       }
