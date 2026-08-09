@@ -34,12 +34,12 @@
           "itemFields": {
             "icon": {
               "type": "string",
-              "iconName": true,
+              "stringConstraint": "iconName",
               "description": "ComponentRegistryに'Icon:<name>'で登録済みの任意アイコン名（builtinIcons一覧、アドオン/ブランドテーマ提供分を含む）。未登録名はエラーになる"
             },
             "title": { "type": "string" },
             "description": { "type": "string", "description": "<br/>等HTMLタグ利用可" },
-            "accentColor": { "type": "string", "colorToken": true, "description": "アイコン背景・枠のアクセント色トークン名（primary/accent/series1-6/success/warning/danger/neutral等、theme.colorsのキーと同じ）。省略時は既定でprimary" }
+            "accentColor": { "type": "string", "stringConstraint": "colorToken", "description": "アイコン背景・枠のアクセント色トークン名（primary/accent/series1-6/success/warning/danger/neutral等、theme.colorsのキーと同じ）。省略時は既定でprimary" }
           }
         },
         "tileColumns": { "type": "number", "description": "tilesの列数。省略時はタイル数と同数の列（現行と同一の1行表示）。6枚以上のtilesを読める大きさで折返し表示したい場合に指定する" },
@@ -117,7 +117,7 @@
       "itemFields": {
         "name": { "type": "string", "description": "凡例に出す系列名" },
         "values": { "type": "array", "description": "categoriesと同じ順序の数値配列" },
-        "color": { "type": "string", "colorToken": true, "description": "系列色のトークン名（series1〜series6/primary/accent/success/warning/danger/neutral等、theme.colorsのキーと同じ）。省略時は系列順にseries1〜series6" }
+        "color": { "type": "string", "stringConstraint": "colorToken", "description": "系列色のトークン名（series1〜series6/primary/accent/success/warning/danger/neutral等、theme.colorsのキーと同じ）。省略時は系列順にseries1〜series6" }
       }
     },
     "unit": { "type": "string", "description": "軸ラベル・値ラベルに付ける単位（\"%\" / \"件\" 等）。数値の直後に連結する" },
@@ -130,7 +130,7 @@
     "label": { "type": "string", "description": "type=kpi の大数値の見出し" },
     "delta": { "type": "string", "description": "type=kpi の増減注記（\"+12% 前年比\" 等）" },
     "trend": { "type": "array", "description": "type=kpi の推移線の数値配列（2点以上で描画。0基準ではなくデータ範囲に合わせるので変化が読める）" },
-    "color": { "type": "string", "colorToken": true, "description": "type=kpi の大数値・推移線の色トークン名。省略時はseries1" }
+    "color": { "type": "string", "stringConstraint": "colorToken", "description": "type=kpi の大数値・推移線の色トークン名。省略時はseries1" }
   },
   "table": {
     "description": "content.table の表指定（#194）。ヘッダー行＋本文行の表。寸法・座標は持たず本文領域いっぱいに自動で収まり、罫線・ゼブラ・ヘッダ行の塗り・角丸はテーマトークンに追従する。行数・列数が多いときはpadding・文字サイズが段階的に縮む",
@@ -179,7 +179,7 @@
   },
   "componentReference": {
     "description": "content.component / left.component 等で参照するカスタムコンポーネント",
-    "name": { "type": "string", "componentName": true, "description": "ComponentRegistryに登録済みのコンポーネント名（builtinComponents一覧、アドオン提供分を含む）。未登録名はエラーになる" },
+    "name": { "type": "string", "stringConstraint": "componentName", "description": "ComponentRegistryに登録済みのコンポーネント名（builtinComponents一覧、アドオン提供分を含む）。未登録名はエラーになる" },
     "props": { "type": "object" },
     "style": { "type": "object" }
   },

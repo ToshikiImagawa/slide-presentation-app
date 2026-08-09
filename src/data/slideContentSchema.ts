@@ -9,10 +9,13 @@ import { hasComponent } from '../components/ComponentRegistry'
  * `schema/slide-content-schema.json`（Rust `system_prompt()` と共有する単一ソース）を参照し、
  * 「知らない layout」「既知フィールドの型不一致」に加え、テーマ由来の制約違反（未登録のコンポーネント/アイコン名・
  * 未定義の色トークン・情報密度の推奨上限超過）を検出する（#211）。判定対象のフィールドは
- * schema 側の `colorToken`/`iconName`/`componentName`/`maxItems` で宣言し、種別追加時もこのファイルは変更不要にする。
+ * schema 側の `stringConstraint`/`maxItems` で宣言し、種別追加時もこのファイルは変更不要にする。
  * 一般用途の `getValidationErrors`（loader.ts）は手動編集・アドオン拡張を阻害しないよう意図的に緩いため変更せず、
  * この検証は `aiGenerate.ts` の自動修正ループでのみ追加適用する。
  */
+
+/** 文字列フィールドが従うべき制約の種類（#211）。STRING_CONSTRAINT_CHECKS のキーと対応する */
+type StringConstraintKind = 'colorToken' | 'iconName' | 'componentName'
 
 interface FieldDef {
   type?: string | string[]
@@ -20,12 +23,8 @@ interface FieldDef {
   ref?: string
   fields?: FieldMap
   itemFields?: FieldMap
-  /** 値がテーマの色トークン名（THEME_COLOR_TOKENSのキー）である必要があるフィールド（#211） */
-  colorToken?: boolean
-  /** 値がComponentRegistryに'Icon:<値>'で登録済みのアイコン名である必要があるフィールド（#211） */
-  iconName?: boolean
-  /** 値がComponentRegistryに登録済みのコンポーネント名である必要があるフィールド（#211） */
-  componentName?: boolean
+  /** 値が STRING_CONSTRAINT_CHECKS の対応する判定を満たす必要があるフィールド（#211） */
+  stringConstraint?: StringConstraintKind
   /** 配列の推奨上限件数。超過は情報密度過多としてエラーにする（#211） */
   maxItems?: number
 }
@@ -57,8 +56,12 @@ const REF_MAPS: Record<string, FieldMap> = {
   table: stripMetaKeys(SCHEMA.table),
 }
 
-/** テーマの色トークン名（THEME_COLOR_TOKENSのキー）の集合。colorToken フィールドの値検証に使う（#211） */
-const COLOR_TOKEN_NAMES = new Set(Object.keys(THEME_COLOR_TOKENS))
+/** stringConstraint の種類ごとの判定関数とエラーメッセージ用の期待値表記。新しい種類を追加してもここに1行足すだけで済む（#211） */
+const STRING_CONSTRAINT_CHECKS: Record<StringConstraintKind, { test: (value: string) => boolean; expected: string }> = {
+  colorToken: { test: (value) => Boolean(THEME_COLOR_TOKENS[value]), expected: Object.keys(THEME_COLOR_TOKENS).join('|') },
+  iconName: { test: (value) => hasComponent(`Icon:${value}`), expected: '登録済みのアイコン名' },
+  componentName: { test: (value) => hasComponent(value), expected: '登録済みのコンポーネント名' },
+}
 
 /** 生成が指定してよい layout の一覧（schemaの単一ソースから導出） */
 export const ALLOWED_LAYOUTS = Object.keys(SCHEMA.layouts)
@@ -103,17 +106,10 @@ function checkFieldValue(value: unknown, def: FieldDef, path: string, errors: Va
     addError(errors, path, `${path}は${def.enum.join('|')}のいずれかである必要があります`, def.enum.join('|'), value)
     return
   }
-  if (typeof value === 'string') {
-    if (def.colorToken && !COLOR_TOKEN_NAMES.has(value)) {
-      addError(errors, path, `${path}はテーマの色トークン名である必要があります`, [...COLOR_TOKEN_NAMES].join('|'), value)
-      return
-    }
-    if (def.iconName && !hasComponent(`Icon:${value}`)) {
-      addError(errors, path, `${path}は登録済みのアイコン名である必要があります`, '登録済みアイコン名', value)
-      return
-    }
-    if (def.componentName && !hasComponent(value)) {
-      addError(errors, path, `${path}は登録済みのコンポーネント名である必要があります`, '登録済みコンポーネント名', value)
+  if (typeof value === 'string' && def.stringConstraint) {
+    const { test, expected } = STRING_CONSTRAINT_CHECKS[def.stringConstraint]
+    if (!test(value)) {
+      addError(errors, path, `${path}は${expected}である必要があります`, expected, value)
       return
     }
   }
