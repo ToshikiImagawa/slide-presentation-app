@@ -29,6 +29,7 @@ npm run generate-screenshots       # README 用スクリーンショット撮影
 npm run screenshots:compare        # 実アプリ画像とモック画像の手動比較（pixelmatch）
 npm run reference-deck:screenshots # 基準見本デッキ（全スライド種別を1枚ずつ網羅）の一括撮影（Playwright WebKit・macOS 専用）
 npm run reference-deck:diff        # 基準見本デッキの HEAD 版と作業ツリー版を比較（下端マスク付き・バウンディングボックス出力）
+npm run reference-deck:inspect     # 基準見本デッキ全枚数の見た目破綻検査（はみ出し・セーフエリア侵入・装飾重なり。DOM実測ベース・Linux 可）
 npm run generate-docs              # README.md / CHANGELOG.md を PDF 化（docs/ に出力・puppeteer）
 ```
 
@@ -53,6 +54,15 @@ npm run generate-docs              # README.md / CHANGELOG.md を PDF 化（docs
 - **README は利用者向け・CONTRIBUTING は開発者向け**に分ける。セットアップ・npm コマンド・アドオンの実装方法・`public/` の扱い・CLI でのパッケージ書き出し（`export:slides`）と `VITE_SLIDE_PACKAGE` は CONTRIBUTING に置く。テスト・E2E・CI / リリースの手順はどちらにも書かない（`CLAUDE.md` と各ワークフローが真実源）。
 - README のスクリーンショットは **冒頭のヒーロー 1 枚（`presentation.png`）＋各機能節にインライン 1 枚**で、同じ画像を 2 度使わない。`resources/screenshots/{en,ja}/` の 14 枚すべてがちょうど 1 回参照される状態を保つ。
 - **キーボードショートカットの一覧は `ShortcutsDialog`（アプリ内）が唯一の真実源**。README には表を置かず、`?` で開ける旨と `shortcuts.png` のみを載せる（実装との乖離を防ぐため）。キーを追加・変更したら `ShortcutsDialog.tsx` の定数と `assets/locales/*.json` を更新する。
+
+### 見た目の自動検証（#209）
+
+見た目の破綻検出は「静的な JSON 検証」と「DOM 実測」の 2 系統に分かれ、いずれも**検証エラーではなく警告**として扱う（既存の警告方針: 描画は継続する。`getThemeWarnings`・`getMasterWarnings` と同じ思想）。
+
+- **コントラスト検証**（`getThemeWarnings`。`src/applyTheme.ts`）— WCAG AA（4.5:1・`WCAG_AA_THRESHOLD`）を、`theme.colors` 直書き・`theme.tokens`（masterKey スコープの CSS 変数上書き・#190）・`theme.masters[].background`（`fill`/`gradient` の全面塗り）の3経路すべてに適用する。算出は `getContrastRatio`（1つの算出元。ブランド取り込み時の収束処理 `brand/compile.ts` の `convergeContrast` と共有）。**文字色・背景色の両方が同一スコープで明示されている組だけ検証する**（片方がグローバル CSS の既定値に委ねられている場合、その既定値を TS 側に複製すると二重管理になるため対象外にする）。
+- **はみ出し・セーフエリア侵入・マスター装飾との重なり**（`getVisualCheckWarnings`。`src/visualChecks.ts`）— JSON だけでは判定できないため、実際にレンダリングされた `<section class="slide-container">` を `getBoundingClientRect` で実測する。①スライド領域（`section` 自体の矩形）を超える要素＝はみ出し、②`.master-body` の padding（セーフエリア。#188）に侵入する要素＝セーフエリア侵入、③`.master-layer-back`/`.master-layer-front` の装飾要素と矩形が重なる要素＝装飾との重なり、の3種を返す。
+  - **ライブアプリ**: `useVisualCheckWarnings`（`src/hooks/useVisualCheckWarnings.ts`）が現在表示中のスライド（`section.present`）をスライド切り替えの都度実測し、警告があれば `App.tsx` がトースト表示する（`visualCheck.warning`。編集中の見た目の破綻もその場で気づける）。
+  - **CI**: `npm run reference-deck:inspect`（`scripts/screenshot/inspect-reference-deck.mjs`）が基準見本デッキ（`resources/reference-deck/` の元になる fixture・#208）全枚数を検査し、警告が1件でもあれば非ゼロ終了する。ロジックはライブアプリと共有し複製しない: `src/visualChecks.ts` は `vite --mode screenshot` の時だけ `window.__VISUAL_CHECK__` として検出関数を公開し（`src/__screenshot__/` の Tauri IPC モックと同じ「screenshot モード限定で window に生やす」規約）、CI スクリプトは Playwright の `page.evaluate` 経由でそれを呼ぶだけ。**ピクセル比較（`reference-deck:diff`）と違い、撮影の非決定性・フォント描画差の影響を受けないため Linux CI（`ci.yml` の `Visual Check` ジョブ）で実行できる**（macOS 専用の `screenshots.yml` とは独立）。
 
 ## アーキテクチャ
 

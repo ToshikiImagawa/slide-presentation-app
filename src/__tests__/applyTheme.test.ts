@@ -886,6 +886,62 @@ describe('getThemeWarnings', () => {
   it('sources が定義されていない場合は書体登録チェックをスキップする（Webセーフフォント運用を妨げない）', () => {
     expect(getThemeWarnings({ fonts: { heading: { latin: 'Georgia', weight: '700' } } })).toEqual([])
   })
+
+  // #209: theme.colors 直書きのコントラスト検証
+  describe('コントラスト検証（#209）', () => {
+    it('theme.colors で文字色/背景色の両方が明示され AA 未達なら警告する', () => {
+      const warnings = getThemeWarnings({ colors: { textBody: '#ffffff', background: '#f0f0f0' } })
+      expect(warnings.some((w) => w.includes('theme.colors') && w.includes('textBody') && w.includes('background') && w.includes('WCAG AA'))).toBe(true)
+    })
+
+    it('theme.colors で AA を満たす組は警告しない', () => {
+      expect(getThemeWarnings({ colors: { textBody: '#000000', background: '#ffffff' } })).toEqual([])
+    })
+
+    it('文字色・背景色のどちらか一方しか明示されていない場合は検証しない（既定値の複製を避ける）', () => {
+      expect(getThemeWarnings({ colors: { textBody: '#ffffff' } })).toEqual([])
+      expect(getThemeWarnings({ colors: { background: '#f0f0f0' } })).toEqual([])
+    })
+
+    it('theme.tokens（masterKey スコープ）で AA 未達なら警告する', () => {
+      const warnings = getThemeWarnings({ tokens: { promo: { 'theme-text-body': '#eeeeee', 'theme-background': '#ffffff' } } })
+      expect(warnings.some((w) => w.includes('theme.tokens.promo') && w.includes('textBody') && w.includes('background'))).toBe(true)
+    })
+
+    it('theme.tokens で AA を満たす組は警告しない', () => {
+      const theme = { masters: { promo: { decorations: [] } }, tokens: { promo: { 'theme-text-body': '#000000', 'theme-background': '#ffffff' } } }
+      expect(getThemeWarnings(theme)).toEqual([])
+    })
+
+    it('masters の全面塗り背景（fill）が本文文字色と AA 未達なら警告する', () => {
+      const theme = { colors: { textBody: '#ffffff' }, masters: { promo: { decorations: [], background: { type: 'fill' as const, color: '#f5f5f5' } } } }
+      const warnings = getThemeWarnings(theme)
+      expect(warnings.some((w) => w.includes('theme.masters.promo.background'))).toBe(true)
+    })
+
+    it('masters の全面塗り背景（gradient）は from/to の両方を検証する', () => {
+      // from（黒地に近い#111111）は本文色（黒）と AA 未達、to（白地に近い#eeeeee）は十分な明度差で AA 達成
+      const theme = { colors: { textBody: '#000000' }, masters: { promo: { decorations: [], background: { type: 'gradient' as const, from: '#111111', to: '#eeeeee' } } } }
+      const warnings = getThemeWarnings(theme)
+      expect(warnings.some((w) => w.includes('theme.masters.promo.background') && w.includes('from'))).toBe(true)
+      expect(warnings.some((w) => w.includes('theme.masters.promo.background') && w.includes('to'))).toBe(false)
+    })
+
+    it('masters の background が plain/grid/image の場合は塗り色が不定のため検証しない', () => {
+      const theme = { colors: { textBody: '#ffffff' }, masters: { promo: { decorations: [], background: { type: 'plain' as const } } } }
+      expect(getThemeWarnings(theme)).toEqual([])
+    })
+
+    it('masters 背景の検証は tokens の上書きを theme.colors より優先する', () => {
+      const theme = {
+        colors: { textBody: '#ffffff' },
+        tokens: { promo: { 'theme-text-body': '#000000' } },
+        masters: { promo: { decorations: [], background: { type: 'fill' as const, color: '#f5f5f5' } } },
+      }
+      const warnings = getThemeWarnings(theme)
+      expect(warnings.some((w) => w.includes('theme.masters.promo.background'))).toBe(false)
+    })
+  })
 })
 
 describe('getContrastRatio（WCAG コントラスト比・#166）', () => {

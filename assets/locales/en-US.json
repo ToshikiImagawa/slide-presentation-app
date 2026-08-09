@@ -33,6 +33,9 @@
       "applyFailed": "Failed to apply the theme",
       "colorWarning": "Some theme settings could not be applied"
     },
+    "visualCheck": {
+      "warning": "Detected overflow, safe-area intrusion, or overlap with a master decoration (see console for details)"
+    },
     "settings": {
       "title": "Settings",
       "language": "Language",

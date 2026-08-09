@@ -578,11 +578,108 @@ export function applyThemeData(themeData: ThemeData): void {
   }
 }
 
+/** コントラスト検証の対象にする背景色キー（THEME_COLOR_TOKENS/ColorPalette 側の語彙。#209） */
+const BACKGROUND_COLOR_KEYS: readonly string[] = ['background', 'backgroundAlt']
+
+/**
+ * WCAG AA 未達を警告文へ整形する。ratio が null（色として解釈不可）または閾値以上なら null を返す
+ * （呼び出し元は null をフィルタする）。getContrastRatio/WCAG_AA_THRESHOLD を単一の算出元とする（#168 と共有）。
+ */
+function contrastWarning(scope: string, textLabel: string, textColor: string, bgLabel: string, bgColor: string): string | null {
+  const ratio = getContrastRatio(textColor, bgColor)
+  if (ratio === null || ratio >= WCAG_AA_THRESHOLD) return null
+  return `${scope}: ${textLabel}(${textColor}) と ${bgLabel}(${bgColor}) のコントラスト比が ${ratio.toFixed(2)}:1 で WCAG AA（${WCAG_AA_THRESHOLD}:1）未満です`
+}
+
+/**
+ * `theme.colors` 直書きのコントラスト検証（#209）。文字色キー×背景色キーの組のうち、
+ * 両方が明示されている組だけを検証する（片方が未指定＝グローバルCSSの既定値に委ねる場合、
+ * その既定値をここで複製すると二重管理になるため対象外とする）。
+ */
+function getColorPaletteContrastWarnings(colors: ColorPalette): string[] {
+  const warnings: string[] = []
+  for (const textKey of TEXT_COLOR_KEYS) {
+    const textColor = (colors as Record<string, string | undefined>)[textKey]
+    if (!textColor) continue
+    for (const bgKey of BACKGROUND_COLOR_KEYS) {
+      const bgColor = (colors as Record<string, string | undefined>)[bgKey]
+      if (!bgColor) continue
+      const warning = contrastWarning('theme.colors', textKey, textColor, bgKey, bgColor)
+      if (warning) warnings.push(warning)
+    }
+  }
+  return warnings
+}
+
+/** tokens の1スコープ（masterKey または "*"）分の生変数から、文字色/背景色キーの値だけを抜き出す */
+function extractColorTokens(vars: Record<string, string>, keys: readonly string[]): Array<[string, string]> {
+  return keys.map((key): [string, string | undefined] => [key, vars[THEME_COLOR_TOKENS[key].replace(/^--/, '')]]).filter((entry): entry is [string, string] => Boolean(entry[1]))
+}
+
+/**
+ * `theme.tokens`（masterKey スコープの CSS 変数トークン。#190）のコントラスト検証（#209）。
+ * 同一スコープ内で文字色/背景色の両方が上書きされている組だけを検証する
+ * （CSS_VAR_NAME_TO_COLOR_KEY は逆引き用のマップとして定義済みだが、キー一覧の走査は
+ * extractColorTokens に委ね、ここでは検証ロジックのみを持つ）。
+ */
+function getTokenContrastWarnings(tokens: Record<string, Record<string, string>>): string[] {
+  const warnings: string[] = []
+  for (const [scope, vars] of Object.entries(tokens)) {
+    const textEntries = extractColorTokens(vars, TEXT_COLOR_KEYS)
+    const bgEntries = extractColorTokens(vars, BACKGROUND_COLOR_KEYS)
+    for (const [textLabel, textColor] of textEntries) {
+      for (const [bgLabel, bgColor] of bgEntries) {
+        const warning = contrastWarning(`theme.tokens.${scope}`, textLabel, textColor, bgLabel, bgColor)
+        if (warning) warnings.push(warning)
+      }
+    }
+  }
+  return warnings
+}
+
+/** masterKey の本文文字色（textBody）を解決する。tokens の上書き→theme.colors の順（#209）。
+ * どちらにも無ければ（グローバルCSS既定値に委ねる場合）呼び出し元で検証をスキップする */
+function resolveEffectiveTextBody(theme: ThemeData, masterKey: string): string | undefined {
+  const varName = THEME_COLOR_TOKENS.textBody.replace(/^--/, '')
+  return theme.tokens?.[masterKey]?.[varName] ?? theme.colors?.textBody ?? theme.colors?.text
+}
+
+/**
+ * マスターの全面塗り背景（`background.type` が `fill`/`gradient`）と本文文字色のコントラスト検証（#209）。
+ * `grid`/`image`/`plain` は下地色が不定または画像なので対象外（fill/gradient のみ塗り色が確定する）。
+ */
+function getMasterBackgroundContrastWarnings(theme: ThemeData): string[] {
+  const warnings: string[] = []
+  for (const [masterKey, master] of Object.entries(theme.masters ?? {})) {
+    const background = master.background
+    if (!background || (background.type !== 'fill' && background.type !== 'gradient')) continue
+    const textColor = resolveEffectiveTextBody(theme, masterKey)
+    if (!textColor) continue
+
+    const scope = `theme.masters.${masterKey}.background`
+    if (background.type === 'fill') {
+      const warning = contrastWarning(scope, 'textBody', textColor, 'color', background.color)
+      if (warning) warnings.push(warning)
+    } else {
+      for (const [stopLabel, stopColor] of [
+        ['from', background.from],
+        ['to', background.to],
+      ] as const) {
+        const warning = contrastWarning(scope, 'textBody', textColor, stopLabel, stopColor)
+        if (warning) warnings.push(warning)
+      }
+    }
+  }
+  return warnings
+}
+
 /**
  * `theme.colors`（ColorPalette）を検査し、反映されない/意図せぬ結果になる設定を警告として返す。
  * 検証エラーではなく警告（描画は継続する）: 通常ロード経路のトースト通知と、
  * AI 生成の自動修正ループの `repairFeedback` の両方に載せて利用者・AI 双方に伝える。
  * slides を渡すと slides[].meta.master（スライド個別指定）の存在しない masterKey 参照も検出する（省略可）。
+ * コントラスト検証（WCAG AA・#168 の閾値/算出関数を再利用）は theme.colors 直書き・tokens（masterKey
+ * スコープ）・masters の全面塗り背景の3経路すべてに適用する（#209。取り込み時収束は brand/compile.ts が別途担う）。
  */
 export function getThemeWarnings(theme?: ThemeData, slides?: SlideData[]): string[] {
   const warnings: string[] = []
@@ -596,6 +693,14 @@ export function getThemeWarnings(theme?: ThemeData, slides?: SlideData[]): strin
         warnings.push(`theme.colors.${key}: "${value}" は有効な色として解釈できません`)
       }
     }
+
+    if (theme.colors) {
+      warnings.push(...getColorPaletteContrastWarnings(theme.colors))
+    }
+    if (theme.tokens) {
+      warnings.push(...getTokenContrastWarnings(theme.tokens))
+    }
+    warnings.push(...getMasterBackgroundContrastWarnings(theme))
 
     for (const source of theme.fonts?.sources ?? []) {
       if (!hasFontSourceContent(source)) {
