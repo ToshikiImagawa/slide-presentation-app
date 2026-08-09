@@ -200,6 +200,12 @@ function splitRegisteredNames(names: string[]): { components: string[]; icons: s
 }
 
 /**
+ * heading/body の書体 CSS 変数名。`applyTheme.ts` の `FONT_SLOT_CSS_VARS`（非export）と対応する値だが、
+ * 同ファイルは編集対象外（wave 8 契約）のため、ここに1箇所だけ複製して参照元を集約する。
+ */
+const THEME_FONT_CSS_VARS = { heading: '--theme-font-heading', body: '--theme-font-body' } as const
+
+/**
  * 適用中テーマ・登録済みコンポーネント/アイコンから AI 生成へ渡す意匠制約テキストを組み立てる（#211）。
  * レイアウト種別・content 構造・情報密度の推奨上限は `schema/slide-content-schema.json`
  * （Rust の `system_prompt` に同梱済み）が単一ソースのため、ここでは実行時にしか分からない値
@@ -209,8 +215,8 @@ function splitRegisteredNames(names: string[]): { components: string[]; icons: s
 export function buildThemeConstraintsPrompt(): string {
   const { components, icons } = splitRegisteredNames(getRegisteredComponents())
   const computed = getComputedStyle(document.documentElement)
-  const heading = computed.getPropertyValue('--theme-font-heading').trim() || '(未設定)'
-  const body = computed.getPropertyValue('--theme-font-body').trim() || '(未設定)'
+  const heading = computed.getPropertyValue(THEME_FONT_CSS_VARS.heading).trim() || '(未設定)'
+  const body = computed.getPropertyValue(THEME_FONT_CSS_VARS.body).trim() || '(未設定)'
   return [
     `色トークン名（theme.colors のキー・accentColor・chart系のcolor等で使用可）: ${Object.keys(THEME_COLOR_TOKENS).join(', ')}`,
     `登録済みコンポーネント名（component.name で使用可）: ${components.join(', ') || '(なし)'}`,
