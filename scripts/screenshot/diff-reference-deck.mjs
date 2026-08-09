@@ -13,7 +13,7 @@
  *   が旧デッキの最終スライドだったケースで y=1325 まで到達）。本文領域そのものは無変化なので、
  *   比較前に下端 maskBottom px を全幅マスクしてから比較する（既定 120px = 58px論理px×2 に
  *   アンチエイリアス分の余白を加えた実測ベースの値）。
- * - TerminalAnimation（JS 駆動アニメーション。layout-bleed / layout-custom スライドで使用）は
+ * - TerminalAnimation（JS 駆動アニメーション。fixture から使用スライドを導出する）は
  *   `page.screenshot({ animations: 'disabled' })` 後も 0.02% 程度の残差が残る（PR #242 実測）。
  *   この残差は下端ではなく本文中央（y=527..557 付近）に出るため下端マスクでは対処できず、
  *   既知の残差として別扱いする（差分検出しても失敗にしないが、必ず出力に明示する）。
@@ -34,12 +34,46 @@ import { LOCALES } from './vite-runtime.mjs'
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const DECK_DIR = 'resources/reference-deck'
 
-// JS 駆動アニメーション（TerminalAnimation）の既知の残差（PR #242）。下端マスクでは対処できない
-// （本文中央に出る）ため、差分が出ても失敗にしないが、無条件に一覧を出力し黙って除外しない。
-// ファイル名は連番プレフィックス（00-, 01-, ...）を除いた slide id で判定する。デッキへのスライド
-// 挿入で連番がずれても既知残差の判定が壊れないようにするため。
-const KNOWN_RESIDUAL_IDS = new Set(['layout-bleed', 'layout-custom'])
+// JS 駆動アニメーション（`animations: 'disabled'` では停止できない）を持つコンポーネント。
+// これが唯一のハードコード対象で、どのスライドが該当するかは fixture から導出する。
+const JS_ANIMATED_COMPONENTS = new Set(['TerminalAnimation'])
 const KNOWN_RESIDUAL_NOTE = 'JS 駆動アニメーション（TerminalAnimation）の既知の残差。animations: "disabled" では停止できない（PR #242 / issue #246）'
+
+/** content 以下（component / left.component / right.component）で参照されるコンポーネント名を集める */
+function componentNamesOf(content) {
+  const names = []
+  const visit = (node) => {
+    if (!node || typeof node !== 'object') return
+    if (typeof node.name === 'string') names.push(node.name)
+  }
+  visit(content?.component)
+  for (const side of ['left', 'right']) visit(content?.[side]?.component)
+  return names
+}
+
+/**
+ * JS 駆動アニメーションを含むスライド id を fixture から導出する。
+ * ハードコードしないのは、TerminalAnimation を使うスライドが 3 枚（layout-content-component /
+ * layout-bleed / layout-custom）あり、2 枚と決め打つと残り 1 枚が誤検知として CI を落とすため
+ * （実際に発生した。既知残差の枚数は実行ごとに揺れるので実測からの推定も当てにならない）。
+ */
+function deriveKnownResidualIds() {
+  const ids = new Set()
+  for (const locale of LOCALES) {
+    const path = resolve(ROOT, `scripts/screenshot/fixtures/reference-deck.${locale.lang}.json`)
+    if (!existsSync(path)) continue
+    for (const slide of JSON.parse(readFileSync(path, 'utf8')).slides ?? []) {
+      if (!slide?.id) continue
+      if (componentNamesOf(slide.content).some((n) => JS_ANIMATED_COMPONENTS.has(n))) ids.add(slide.id)
+    }
+  }
+  return ids
+}
+
+// 下端マスクでは対処できない（本文中央に出る）ため、差分が出ても失敗にしないが、
+// 無条件に一覧を出力し黙って除外しない。ファイル名は連番プレフィックス（00-, 01-, ...）を除いた
+// slide id で判定する。デッキへのスライド挿入で連番がずれても判定が壊れないようにするため。
+const KNOWN_RESIDUAL_IDS = deriveKnownResidualIds()
 
 function slideIdOf(name) {
   return name.replace(/^\d+-/, '').replace(/\.png$/, '')
