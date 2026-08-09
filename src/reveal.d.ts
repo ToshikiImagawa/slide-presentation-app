@@ -18,6 +18,8 @@ declare module 'reveal.js' {
     help?: boolean
     touch?: boolean
     navigationMode?: string
+    /** 現在スライドから何枚先まで data-src → src 遅延読み込みの昇格対象にするか（既定 3） */
+    viewDistance?: number
   }
 
   class Reveal {

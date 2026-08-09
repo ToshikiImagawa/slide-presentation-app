@@ -142,6 +142,50 @@ describe('exportSlidesToPdf', () => {
     }
   })
 
+  // #224: FallbackImage は viewDistance 近傍のみ読む遅延読み込み（data-src）を出すため、
+  // 撮影対象の全スライド分を撮影前に一括で src へ昇格させ、撮影後は元の遅延状態へ戻す
+  describe('遅延読み込み画像の一括昇格（#224）', () => {
+    function appendLazyImage(section: Element, dataSrc: string): HTMLImageElement {
+      const img = document.createElement('img')
+      img.setAttribute('data-src', dataSrc)
+      // jsdom は img.src 設定で読み込みを行わないため complete が false のままになり、
+      // waitForSlideReady が IMAGE_LOAD_TIMEOUT_MS まで待ってしまう。読み込み済み扱いにする
+      Object.defineProperty(img, 'complete', { value: true, configurable: true })
+      section.appendChild(img)
+      return img
+    }
+
+    it('data-src のみの img を撮影中は src へ昇格し、撮影後は元の遅延読み込み状態へ戻す', async () => {
+      h.save.mockResolvedValue('/tmp/my-deck.pdf')
+      const deck = buildDeck(2)
+      const sections = deck.querySelectorAll('section')
+      const img = appendLazyImage(sections[1], 'image/foo.png')
+
+      const srcDuringCapture: Array<string | null> = []
+      h.html2canvas.mockImplementation(async (el: HTMLElement) => {
+        srcDuringCapture.push(el.querySelector('img')?.getAttribute('src') ?? null)
+        return { toDataURL: () => 'data:image/png;base64,dummy' }
+      })
+
+      await exportSlidesToPdf(deck, 'my-deck')
+
+      expect(srcDuringCapture[1]).toBe('image/foo.png')
+      expect(img.getAttribute('src')).toBeNull()
+      expect(img.getAttribute('data-src')).toBe('image/foo.png')
+    })
+
+    it('既に src を持つ img（読み込み済み）には触れない', async () => {
+      h.save.mockResolvedValue('/tmp/my-deck.pdf')
+      const deck = buildDeck(1)
+      const img = appendLazyImage(deck.querySelector('section')!, 'image/foo.png')
+      img.setAttribute('src', 'image/foo.png')
+
+      await exportSlidesToPdf(deck, 'my-deck')
+
+      expect(img.getAttribute('src')).toBe('image/foo.png')
+    })
+  })
+
   describe('キャンバスサイズ（#188）', () => {
     it('canvasWidth/canvasHeight 省略時は 1280x720（現行と完全同一）', async () => {
       h.save.mockResolvedValue('/tmp/my-deck.pdf')

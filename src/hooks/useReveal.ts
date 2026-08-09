@@ -68,6 +68,9 @@ export function useReveal(options?: UseRevealOptions): UseRevealReturn {
       help: false,
       touch: true,
       navigationMode: 'linear',
+      // 既定値のまま明示: FallbackImage が出す `data-src` は、現在スライドから viewDistance
+      // 枚以内に近づいたときだけ Reveal.js 組み込みの遅延読み込みが `src` へ昇格させる（#224）
+      viewDistance: 3,
     })
 
     deck.initialize()
