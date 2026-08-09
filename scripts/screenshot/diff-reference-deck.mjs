@@ -13,7 +13,7 @@
  *   が旧デッキの最終スライドだったケースで y=1325 まで到達）。本文領域そのものは無変化なので、
  *   比較前に下端 maskBottom px を全幅マスクしてから比較する（既定 120px = 58px論理px×2 に
  *   アンチエイリアス分の余白を加えた実測ベースの値）。
- * - TerminalAnimation（JS 駆動アニメーション。06-layout-bleed / 07-layout-custom）は
+ * - TerminalAnimation（JS 駆動アニメーション。layout-bleed / layout-custom スライドで使用）は
  *   `page.screenshot({ animations: 'disabled' })` 後も 0.02% 程度の残差が残る（PR #242 実測）。
  *   この残差は下端ではなく本文中央（y=527..557 付近）に出るため下端マスクでは対処できず、
  *   既知の残差として別扱いする（差分検出しても失敗にしないが、必ず出力に明示する）。
@@ -29,15 +29,25 @@ import { basename, dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import pixelmatch from 'pixelmatch'
 import { PNG } from 'pngjs'
+import { LOCALES } from './vite-runtime.mjs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const DECK_DIR = 'resources/reference-deck'
-const LOCALES = ['en', 'ja']
 
 // JS 駆動アニメーション（TerminalAnimation）の既知の残差（PR #242）。下端マスクでは対処できない
 // （本文中央に出る）ため、差分が出ても失敗にしないが、無条件に一覧を出力し黙って除外しない。
-const KNOWN_RESIDUAL_FILES = new Set(['06-layout-bleed.png', '07-layout-custom.png'])
+// ファイル名は連番プレフィックス（00-, 01-, ...）を除いた slide id で判定する。デッキへのスライド
+// 挿入で連番がずれても既知残差の判定が壊れないようにするため。
+const KNOWN_RESIDUAL_IDS = new Set(['layout-bleed', 'layout-custom'])
 const KNOWN_RESIDUAL_NOTE = 'JS 駆動アニメーション（TerminalAnimation）の既知の残差。animations: "disabled" では停止できない（PR #242 / issue #246）'
+
+function slideIdOf(name) {
+  return name.replace(/^\d+-/, '').replace(/\.png$/, '')
+}
+
+function isKnownResidual(name) {
+  return KNOWN_RESIDUAL_IDS.has(slideIdOf(name))
+}
 
 function parseArgs(argv) {
   const result = { base: 'HEAD', maskBottom: 120 }
@@ -48,55 +58,53 @@ function parseArgs(argv) {
   return result
 }
 
-/** git ref 側の PNG を読む。存在しない（新規追加ファイル）場合は null */
-function readRefPng(base, relPath) {
+/** git コマンドを実行し、失敗（対象が存在しない等）した場合は null を返す */
+function tryGit(args, options) {
   try {
-    const buf = execFileSync('git', ['show', `${base}:${relPath}`], { maxBuffer: 1024 * 1024 * 64, stdio: ['ignore', 'pipe', 'ignore'] })
-    return PNG.sync.read(buf)
+    return execFileSync('git', args, { stdio: ['ignore', 'pipe', 'ignore'], ...options })
   } catch {
     return null
   }
 }
 
-/** git ref 側のディレクトリに存在する png ファイル名一覧 */
-function refFileNames(base, dir) {
-  try {
-    const out = execFileSync('git', ['ls-tree', '--name-only', base, `${DECK_DIR}/${dir}/`], { encoding: 'utf-8', stdio: ['ignore', 'pipe', 'ignore'] })
-    return out
-      .split('\n')
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .map((p) => basename(p))
-      .filter((name) => name.endsWith('.png'))
-  } catch {
-    return []
-  }
+/** git ref 側の PNG を読む。存在しない（新規追加ファイル）場合は null */
+function readRefPng(base, relPath) {
+  const buf = tryGit(['show', `${base}:${relPath}`], { maxBuffer: 1024 * 1024 * 64 })
+  return buf ? PNG.sync.read(buf) : null
 }
 
-/** 下端 maskBottom px を全幅にわたって同一色で塗りつぶす（ページ番号・進捗バー領域） */
+/** git ref 側のディレクトリに存在する png ファイル名一覧 */
+function refFileNames(base, dir) {
+  const out = tryGit(['ls-tree', '--name-only', base, `${DECK_DIR}/${dir}/`], { encoding: 'utf-8' })
+  if (!out) return []
+  return out
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((p) => basename(p))
+    .filter((name) => name.endsWith('.png'))
+}
+
+/** 下端 maskBottom px を全幅にわたって同一色（不透明黒）で塗りつぶす（ページ番号・進捗バー領域） */
 function maskBottomRows(png, maskBottom) {
-  const startY = Math.max(0, png.height - maskBottom)
-  for (let y = startY; y < png.height; y++) {
-    for (let x = 0; x < png.width; x++) {
-      const idx = (png.width * y + x) << 2
-      png.data[idx] = 0
-      png.data[idx + 1] = 0
-      png.data[idx + 2] = 0
-      png.data[idx + 3] = 255
-    }
-  }
+  const rowBytes = png.width * 4
+  const startOffset = Math.max(0, png.height - maskBottom) * rowBytes
+  const endOffset = png.height * rowBytes
+  png.data.fill(0, startOffset, endOffset)
+  for (let i = startOffset + 3; i < endOffset; i += 4) png.data[i] = 255 // alpha
 }
 
 const DIFF_COLOR = [255, 0, 0]
 
-/** pixelmatch の出力バッファから diffColor で描画された画素のバウンディングボックスを求める */
-function boundingBoxOf(output, width, height) {
+/** pixelmatch の出力バッファから diffColor で描画された画素のバウンディングボックスを求める（マスク済みの下端は差分が出ないため走査対象外） */
+function boundingBoxOf(output, width, height, maskBottom) {
   const [dr, dg, db] = DIFF_COLOR
+  const scanHeight = height - maskBottom
   let minX = Infinity
   let minY = Infinity
   let maxX = -Infinity
   let maxY = -Infinity
-  for (let y = 0; y < height; y++) {
+  for (let y = 0; y < scanHeight; y++) {
     for (let x = 0; x < width; x++) {
       const idx = (width * y + x) << 2
       if (output[idx] === dr && output[idx + 1] === dg && output[idx + 2] === db && output[idx + 3] === 255) {
@@ -110,19 +118,23 @@ function boundingBoxOf(output, width, height) {
   return maxX === -Infinity ? null : { minX, maxX, minY, maxY }
 }
 
+function formatBBox(bbox) {
+  return `x=${bbox.minX}..${bbox.maxX} y=${bbox.minY}..${bbox.maxY}`
+}
+
 function compareFile(base, locale, name, maskBottom) {
   const relPath = `${DECK_DIR}/${locale}/${name}`
   const workPath = resolve(ROOT, relPath)
   const refPng = readRefPng(base, relPath)
   const workExists = existsSync(workPath)
 
-  if (!refPng && workExists) return { name, status: 'added' }
-  if (refPng && !workExists) return { name, status: 'removed' }
-  if (!refPng || !workExists) return { name, status: 'missing' }
+  if (!refPng && !workExists) return { name, status: 'missing', failure: true }
+  if (!refPng) return { name, status: 'added', failure: false }
+  if (!workExists) return { name, status: 'removed', failure: true }
 
   const workPng = PNG.sync.read(readFileSync(workPath))
   if (refPng.width !== workPng.width || refPng.height !== workPng.height) {
-    return { name, status: 'resolution-mismatch', refSize: [refPng.width, refPng.height], workSize: [workPng.width, workPng.height] }
+    return { name, status: 'resolution-mismatch', failure: true, refSize: [refPng.width, refPng.height], workSize: [workPng.width, workPng.height] }
   }
 
   maskBottomRows(refPng, maskBottom)
@@ -136,57 +148,55 @@ function compareFile(base, locale, name, maskBottom) {
     diffColor: DIFF_COLOR,
   })
 
-  if (mismatch === 0) return { name, status: 'match' }
+  if (mismatch === 0) return { name, status: 'match', failure: false }
 
-  const bbox = boundingBoxOf(output, width, height)
-  return { name, status: KNOWN_RESIDUAL_FILES.has(name) ? 'known-residual' : 'diff', mismatch, bbox }
+  const bbox = boundingBoxOf(output, width, height, maskBottom)
+  const known = isKnownResidual(name)
+  return { name, status: known ? 'known-residual' : 'diff', failure: !known, mismatch, bbox }
+}
+
+function formatResultLine(result, base) {
+  switch (result.status) {
+    case 'match':
+      return `  ✅ ${result.name}`
+    case 'known-residual':
+      return `  ⚠️  ${result.name}: 既知の残差として無視（差分 ${result.mismatch}px, bbox ${formatBBox(result.bbox)}）`
+    case 'diff':
+      return `  ❌ ${result.name}: 差分 ${result.mismatch}px, bbox ${formatBBox(result.bbox)}`
+    case 'added':
+      return `  ➕ ${result.name}: ${base} に存在しない（新規追加）`
+    case 'removed':
+      return `  ➖ ${result.name}: 作業ツリーに存在しない（削除）`
+    case 'resolution-mismatch':
+      return `  ❌ ${result.name}: 解像度不一致（${base}=${result.refSize.join('x')} / 作業ツリー=${result.workSize.join('x')}）`
+    case 'missing':
+      return `  ❌ ${result.name}: ${base}・作業ツリーの両方に存在しない`
+    default:
+      return `  ❌ ${result.name}: 不明な状態 (${result.status})`
+  }
 }
 
 function main() {
   const { base, maskBottom } = parseArgs(process.argv.slice(2))
   console.log(`[diff] 基準: ${base} vs 作業ツリー / 下端マスク: ${maskBottom}px`)
-  console.log(`[diff] 既知の残差として除外（差分があっても失敗にしない）: ${[...KNOWN_RESIDUAL_FILES].join(', ')}`)
+  console.log(`[diff] 既知の残差として除外（差分があっても失敗にしない）: ${[...KNOWN_RESIDUAL_IDS].join(', ')}`)
   console.log(`       理由: ${KNOWN_RESIDUAL_NOTE}\n`)
 
   let hasFailure = false
   const summary = {}
   const bump = (status) => (summary[status] = (summary[status] ?? 0) + 1)
 
-  for (const locale of LOCALES) {
-    const dir = resolve(ROOT, DECK_DIR, locale)
-    const workNames = existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith('.png')) : []
+  for (const { dir: locale } of LOCALES) {
+    const workDir = resolve(ROOT, DECK_DIR, locale)
+    const workNames = existsSync(workDir) ? readdirSync(workDir).filter((f) => f.endsWith('.png')) : []
     const names = [...new Set([...refFileNames(base, locale), ...workNames])].sort()
 
     console.log(`## ${locale} (${names.length}枚)`)
     for (const name of names) {
       const result = compareFile(base, locale, name, maskBottom)
       bump(result.status)
-      switch (result.status) {
-        case 'match':
-          console.log(`  ✅ ${name}`)
-          break
-        case 'known-residual':
-          console.log(`  ⚠️  ${name}: 既知の残差として無視（差分 ${result.mismatch}px, bbox x=${result.bbox.minX}..${result.bbox.maxX} y=${result.bbox.minY}..${result.bbox.maxY}）`)
-          break
-        case 'diff':
-          console.log(`  ❌ ${name}: 差分 ${result.mismatch}px, bbox x=${result.bbox.minX}..${result.bbox.maxX} y=${result.bbox.minY}..${result.bbox.maxY}`)
-          hasFailure = true
-          break
-        case 'added':
-          console.log(`  ➕ ${name}: ${base} に存在しない（新規追加）`)
-          break
-        case 'removed':
-          console.log(`  ➖ ${name}: 作業ツリーに存在しない（削除）`)
-          hasFailure = true
-          break
-        case 'resolution-mismatch':
-          console.log(`  ❌ ${name}: 解像度不一致（${base}=${result.refSize.join('x')} / 作業ツリー=${result.workSize.join('x')}）`)
-          hasFailure = true
-          break
-        default:
-          console.log(`  ❌ ${name}: 不明な状態 (${result.status})`)
-          hasFailure = true
-      }
+      console.log(formatResultLine(result, base))
+      if (result.failure) hasFailure = true
     }
     console.log('')
   }
