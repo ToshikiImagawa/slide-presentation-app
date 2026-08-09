@@ -8,10 +8,10 @@
  * 規則を単一真実源に保つ。
  */
 
-import { readFileSync, writeFileSync, mkdirSync, cpSync, existsSync, rmSync } from 'fs'
+import { readFileSync, writeFileSync, mkdirSync, existsSync, rmSync } from 'fs'
 import { resolve, dirname } from 'path'
 import { fileURLToPath, pathToFileURL } from 'url'
-import { extractAssetPaths, extractProhibitedFontPaths } from './export-slides.mjs'
+import { extractAssetPaths, excludeProhibitedFonts, mapAssetPaths, copyAssets } from './export-slides.mjs'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -24,49 +24,23 @@ export function parseArgs(args) {
     if (args[i] === '--name' && args[i + 1]) result.name = args[++i]
     else if (args[i] === '--theme' && args[i + 1]) result.theme = args[++i]
     else if (args[i] === '--source' && args[i + 1]) result.source = args[++i]
-    // 配布先の公開URL基準（例: GitHub Releases の特定タグの download URL）。バージョンごとに異なる URL を渡すことで
-    // バージョニングを表現する（theme.json 自体のファイル名にはバージョンを持たせない。指定時はアセット参照をこの URL 基準の
-    // 絶対URLへ焼き込む。未指定時は相対パスのまま出力し、実行側の fetchThemeData（resolveRemoteAssetPaths）
-    // による取得元URL基準の解決に委ねる（ディレクトリ構造を保って配置するホスティングを想定）
+    // 配布先の公開URL基準。指定時はアセット参照を絶対URLへ焼き込む（バージョニングの表現方法。詳細は usage/CONTRIBUTING 参照）
     else if (args[i] === '--base-url' && args[i + 1]) result.baseUrl = args[++i]
     else if (args[i] === '--strict') result.strict = true
   }
   return result
 }
 
-// --- redistribution: 'prohibited' なフォントを除外した上で書き出し対象アセットを確定する（#171 と対称） ---
+// --- redistribution: 'prohibited' なフォントを除外した上で書き出し対象アセットを確定する（#171 と単一真実源） ---
 export function resolveExportedAssets(themeData) {
-  const paths = new Set(extractAssetPaths(themeData))
-  for (const prohibited of extractProhibitedFontPaths(themeData)) {
-    if (paths.delete(prohibited)) {
-      console.warn(`Warning: ${prohibited} は redistribution: 'prohibited' のため書き出し対象から除外しました`)
-    }
-  }
-  return [...paths]
+  return [...excludeProhibitedFonts(new Set(extractAssetPaths(themeData)), themeData)]
 }
 
 // --- ThemeData 内のアセット参照パスを baseUrl 基準の絶対URLへ書き換える（純粋関数）。
-//     src/applyTheme.ts の resolveRemoteAssetPaths と対称の規則（image/voice/theme/font 接頭辞） ---
+//     src/applyTheme.ts の resolveRemoteAssetPaths と対称の規則。木構造走査自体は export-slides.mjs の
+//     mapAssetPaths（image/voice/theme/font 接頭辞）を再利用し、リーフの変換だけを差し替える ---
 export function bakeBaseUrl(value, baseUrl) {
-  const prefixes = ['image/', 'voice/', 'theme/', 'font/']
-  if (typeof value === 'string') {
-    const normalized = value.replace(/^\//, '')
-    if (prefixes.some((p) => normalized.startsWith(p))) {
-      return new URL(normalized, baseUrl).href
-    }
-    return value
-  }
-  if (Array.isArray(value)) {
-    return value.map((item) => bakeBaseUrl(item, baseUrl))
-  }
-  if (value && typeof value === 'object') {
-    const result = {}
-    for (const [key, v] of Object.entries(value)) {
-      result[key] = bakeBaseUrl(v, baseUrl)
-    }
-    return result
-  }
-  return value
+  return mapAssetPaths(value, (normalized) => new URL(normalized, baseUrl).href)
 }
 
 // --- メイン処理 ---
@@ -100,20 +74,7 @@ function main() {
   if (existsSync(outDir)) rmSync(outDir, { recursive: true })
   mkdirSync(outDir, { recursive: true })
 
-  let copiedCount = 0
-  const missingAssets = []
-  for (const assetPath of assetPaths) {
-    const src = resolve(sourceDir, assetPath)
-    const dest = resolve(outDir, assetPath)
-    if (existsSync(src)) {
-      mkdirSync(dirname(dest), { recursive: true })
-      cpSync(src, dest)
-      copiedCount++
-    } else {
-      missingAssets.push(src)
-      console.warn(`Warning: ${src} が見つかりません（スキップ）`)
-    }
-  }
+  const { copiedCount, missingAssets } = copyAssets(sourceDir, outDir, assetPaths)
   console.log(`Copied ${copiedCount}/${assetPaths.length} assets`)
   // 参照だけが残った配布物は開いた先でロゴ・フォント欠けになるため、配布物を作る場合はここで止める
   if (args.strict && missingAssets.length > 0) {

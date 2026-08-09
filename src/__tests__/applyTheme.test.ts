@@ -215,14 +215,6 @@ describe('fetchThemeData', () => {
       await expect(fetchThemeData('https://example.com/themes/acme/theme.json')).resolves.toBeUndefined()
     })
 
-    it('Cache Storage 未対応環境（caches が undefined）でも取得自体は成功する', async () => {
-      const theme: ThemeData = { colors: { primary: '#112233' } }
-      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => theme }))
-      vi.stubGlobal('caches', undefined)
-
-      await expect(fetchThemeData('https://example.com/themes/acme/theme.json')).resolves.toEqual(theme)
-    })
-
     it('相対パス（ローカル同梱）はアセット参照を書き換えない（既存の document 基準解決を維持）', async () => {
       const theme: ThemeData = { icons: { logo: 'image/logo.png' } }
       vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => theme }))

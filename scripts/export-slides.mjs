@@ -48,25 +48,38 @@ export function selectAddons(addons, selected) {
   return list.filter((addon) => selected.includes(addon?.name))
 }
 
+// --- アセット参照と判定する接頭辞。src/localSlideLoader.ts の ASSET_PATH_PREFIXES と同じ規則 ---
+export const ASSET_PATH_PREFIXES = ['image/', 'voice/', 'theme/', 'font/']
+
+// --- JSON内の値を再帰的に走査し、アセットパス（ASSET_PATH_PREFIXES 接頭辞に一致する文字列）だけを
+//     transform で書き換える。transform 未指定時は先頭スラッシュの正規化のみ行う。
+//     extractAssetPaths（収集）と scripts/export-theme.mjs の bakeBaseUrl（絶対URL書き換え）が
+//     同じ木構造走査を共有するための汎用ヘルパー ---
+export function mapAssetPaths(value, transform = (path) => path) {
+  if (typeof value === 'string') {
+    const normalized = value.replace(/^\//, '')
+    return ASSET_PATH_PREFIXES.some((prefix) => normalized.startsWith(prefix)) ? transform(normalized) : value
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => mapAssetPaths(item, transform))
+  }
+  if (value && typeof value === 'object') {
+    const result = {}
+    for (const [key, v] of Object.entries(value)) {
+      result[key] = mapAssetPaths(v, transform)
+    }
+    return result
+  }
+  return value
+}
+
 // --- JSON内のアセットパスを再帰抽出 ---
 export function extractAssetPaths(obj) {
   const paths = new Set()
-  const prefixes = ['image/', 'voice/', 'theme/', 'font/']
-
-  function walk(value) {
-    if (typeof value === 'string') {
-      const normalized = value.replace(/^\//, '')
-      if (prefixes.some((p) => normalized.startsWith(p))) {
-        paths.add(normalized)
-      }
-    } else if (Array.isArray(value)) {
-      value.forEach(walk)
-    } else if (value && typeof value === 'object') {
-      Object.values(value).forEach(walk)
-    }
-  }
-
-  walk(obj)
+  mapAssetPaths(obj, (normalized) => {
+    paths.add(normalized)
+    return normalized
+  })
   return [...paths]
 }
 
@@ -82,13 +95,24 @@ export function extractProhibitedFontPaths(themeData) {
   return paths
 }
 
+// --- themeData 内の redistribution: 'prohibited' なパスを paths（Set）から除外し、警告する（#171）。
+//     scripts/export-theme.mjs（テーマ単体配布）とも共有する、除外規則の単一真実源 ---
+export function excludeProhibitedFonts(paths, themeData) {
+  for (const prohibited of extractProhibitedFontPaths(themeData)) {
+    if (paths.delete(prohibited)) {
+      console.warn(`Warning: ${prohibited} は redistribution: 'prohibited' のため書き出し対象から除外しました`)
+    }
+  }
+  return paths
+}
+
 // --- meta.brandTheme の参照先 JSON を1段だけ辿り、その中のアセット参照も合成する ---
 // ランタイム側の解決（src/localSlideLoader.ts の resolveBrandTheme）と対称に、meta.brandTheme
 // フィールドだけを対象にする（theme/ 配下の JSON という見た目だけで判定すると meta.themeColors
 // の参照先まで誤って2段目の探索対象になってしまう）
 export function extractAssetPathsDeep(obj, sourceDir, { strict = false } = {}) {
   const paths = new Set(extractAssetPaths(obj))
-  const prohibited = new Set(extractProhibitedFontPaths(obj?.theme))
+  excludeProhibitedFonts(paths, obj?.theme)
 
   const brandThemePath = obj?.meta?.brandTheme
   if (typeof brandThemePath === 'string') {
@@ -98,7 +122,7 @@ export function extractAssetPathsDeep(obj, sourceDir, { strict = false } = {}) {
       try {
         const themeData = JSON.parse(readFileSync(themeJsonPath, 'utf-8'))
         for (const nested of extractAssetPaths(themeData)) paths.add(nested)
-        for (const p of extractProhibitedFontPaths(themeData)) prohibited.add(p)
+        excludeProhibitedFonts(paths, themeData)
       } catch (error) {
         const message = `${themeJsonPath} の読み込みに失敗しました（参照アセットの2段目探索をスキップ）: ${error.message}`
         if (strict) {
@@ -110,13 +134,27 @@ export function extractAssetPathsDeep(obj, sourceDir, { strict = false } = {}) {
     }
   }
 
-  for (const p of prohibited) {
-    if (paths.delete(p)) {
-      console.warn(`Warning: ${p} は redistribution: 'prohibited' のため書き出し対象から除外しました`)
+  return [...paths]
+}
+
+// --- assetPaths を sourceDir から outDir へコピーする（相対構造を保つ）。見つからないものはスキップし missingAssets に集める。
+//     export-slides.mjs / export-theme.mjs の両方の書き出しコマンドが共有するコピー処理 ---
+export function copyAssets(sourceDir, outDir, assetPaths) {
+  let copiedCount = 0
+  const missingAssets = []
+  for (const assetPath of assetPaths) {
+    const src = resolve(sourceDir, assetPath)
+    const dest = resolve(outDir, assetPath)
+    if (existsSync(src)) {
+      mkdirSync(dirname(dest), { recursive: true })
+      cpSync(src, dest)
+      copiedCount++
+    } else {
+      missingAssets.push(src)
+      console.warn(`Warning: ${src} が見つかりません（スキップ）`)
     }
   }
-
-  return [...paths]
+  return { copiedCount, missingAssets }
 }
 
 // --- アドオン manifest の bundle をパッケージ相対（addons/xxx）へ書き換える ---
@@ -231,20 +269,7 @@ function main() {
   console.log('Copied slides.json')
 
   // アセットファイルコピー
-  let copiedCount = 0
-  const missingAssets = []
-  for (const assetPath of assetPaths) {
-    const src = resolve(sourceDir, assetPath)
-    const dest = resolve(outDir, assetPath)
-    if (existsSync(src)) {
-      mkdirSync(dirname(dest), { recursive: true })
-      cpSync(src, dest)
-      copiedCount++
-    } else {
-      missingAssets.push(src)
-      console.warn(`Warning: ${src} が見つかりません（スキップ）`)
-    }
-  }
+  const { copiedCount, missingAssets } = copyAssets(sourceDir, outDir, assetPaths)
   console.log(`Copied ${copiedCount}/${assetPaths.length} assets`)
   // 参照だけが残ったパッケージは開いた先で無音・画像欠けになるため、配布物を作る場合はここで止める
   if (args.strict && missingAssets.length > 0) {

@@ -199,9 +199,10 @@ export async function applyTheme(path?: string): Promise<boolean> {
 /** JSON 内の image/voice/theme/font 参照を判定する接頭辞（src/localSlideLoader.ts の ASSET_PATH_PREFIXES・scripts/export-slides.mjs の extractAssetPaths と同じ規則） */
 const ASSET_PATH_PREFIXES = ['image/', 'voice/', 'theme/', 'font/']
 
-/** https(s) の絶対 URL かどうか（相対パス・ローカル同梱パスはここで書き換えず document.baseURI 基準の既存解決に委ねる） */
+/** https の絶対 URL かどうか（相対パス・ローカル同梱パスはここで書き換えず document.baseURI 基準の既存解決に委ねる。
+ * src/localSlideLoader.ts の isRemoteUrl と同じ https 限定の規則。#40: リモート取得は https スキームのみに限定する） */
 function isAbsoluteHttpUrl(path: string): boolean {
-  return /^https?:\/\//i.test(path)
+  return /^https:\/\//i.test(path)
 }
 
 /** ThemeData 内のアセット参照パスを、取得元 URL を基準にした絶対 URL へ書き換える（純粋関数）。
@@ -257,20 +258,26 @@ async function writeCachedThemeData(path: string, themeData: ThemeData): Promise
  * 外部 JSON から ThemeData 全体（meta.brandTheme の参照先）を取得する。theme-colors.json（12キーのみ）とは異なり、
  * fonts/masters/masterMap/tokens/customCSS を含む ThemeData 構造をそのまま返す。
  *
- * https(s) URL の場合、内部のアセット参照を取得元 URL 基準の絶対 URL へ書き換え（#210）、成功結果を Cache Storage
+ * https URL の場合、内部のアセット参照を取得元 URL 基準の絶対 URL へ書き換え（#210）、成功結果を Cache Storage
  * に保存する。取得に失敗した場合（オフライン・404 等）は直近の成功分をキャッシュから返し、無ければ undefined
  * にする（テーマは装飾であり、失敗させてスライド自体を開けなくしない・既存カスケードの方針を踏襲）。
  */
 export async function fetchThemeData(path: string): Promise<ThemeData | undefined> {
   const isRemote = isAbsoluteHttpUrl(path)
+  const fallback = () => (isRemote ? readCachedThemeData(path) : undefined)
+
   try {
     const res = await fetch(path)
-    if (!res.ok) return isRemote ? readCachedThemeData(path) : undefined
-    const themeData = isRemote ? resolveRemoteAssetPaths((await res.json()) as ThemeData, path) : ((await res.json()) as ThemeData)
-    if (isRemote) await writeCachedThemeData(path, themeData)
-    return themeData
+    if (!res.ok) return fallback()
+
+    const themeData = (await res.json()) as ThemeData
+    if (!isRemote) return themeData
+
+    const resolved = resolveRemoteAssetPaths(themeData, path)
+    await writeCachedThemeData(path, resolved)
+    return resolved
   } catch {
-    return isRemote ? readCachedThemeData(path) : undefined
+    return fallback()
   }
 }
 
