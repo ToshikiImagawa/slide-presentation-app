@@ -289,8 +289,11 @@ distinguishes versioned and `latest` sample downloads in `src/sampleSlides.ts`.
 
 ### Behavior
 
-- Local (bundled/`.spkg`) `meta.brandTheme` references already resolve fully offline via `resolveBrandTheme`
-  (`src/localSlideLoader.ts`) — no network involved, and the caching above only applies to the remote-URL path.
+- `resolveBrandTheme` (`src/localSlideLoader.ts`, used when opening a local `.spkg`) resolves `meta.brandTheme`
+  the same way regardless of where the deck itself came from: a relative path resolves fully offline against
+  the package's `baseDir` (no network involved), while an `https://` URL delegates to `fetchThemeData` above —
+  so a local `.spkg` deck that points `meta.brandTheme` at a remote URL still needs one successful fetch before
+  offline reapply works, exactly like the browser/bundled path.
 - `--strict` at export time is the equivalent of the accept criterion "a theme that references a missing
   asset should not silently ship with a broken logo/font" — use it when building a distributable, and leave
   it off for local iteration.

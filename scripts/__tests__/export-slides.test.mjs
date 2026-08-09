@@ -192,6 +192,34 @@ describe('extractAssetPathsDeep（#170: meta.brandTheme 参照先を1段だけ�
     expect(paths.sort()).toEqual(['theme/brand.json'])
     warnSpy.mockRestore()
   })
+
+  it('#171: deck 側の theme が prohibited と宣言した src を、meta.brandTheme 参照先（2段目）が permitted で再参照しても除外漏れにしない（除外は union で判定する）', () => {
+    mkdirSync(join(dir, 'theme'))
+    writeFileSync(join(dir, 'theme', 'brand.json'), JSON.stringify({ fonts: { sources: [{ family: 'Corp', src: 'font/corp.woff2', redistribution: 'permitted' }] } }))
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    const paths = extractAssetPathsDeep(
+      { meta: { brandTheme: 'theme/brand.json' }, theme: { fonts: { sources: [{ family: 'Corp', src: 'font/corp.woff2', redistribution: 'prohibited' }] } } },
+      dir,
+    )
+
+    expect(paths.sort()).toEqual(['theme/brand.json'])
+    warnSpy.mockRestore()
+  })
+
+  it('#171: deck 側の theme と meta.brandTheme 参照先の両方が同じ src を prohibited とする場合、警告は1回だけ発火する', () => {
+    mkdirSync(join(dir, 'theme'))
+    writeFileSync(join(dir, 'theme', 'brand.json'), JSON.stringify({ fonts: { sources: [{ family: 'Corp', src: 'font/corp.woff2', redistribution: 'prohibited' }] } }))
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    extractAssetPathsDeep(
+      { meta: { brandTheme: 'theme/brand.json' }, theme: { fonts: { sources: [{ family: 'Corp', src: 'font/corp.woff2', redistribution: 'prohibited' }] } } },
+      dir,
+    )
+
+    expect(warnSpy.mock.calls.filter(([msg]) => msg.includes('font/corp.woff2')).length).toBe(1)
+    warnSpy.mockRestore()
+  })
 })
 
 describe('extractProhibitedFontPaths（#171: 再配布禁止フォントのゲート）', () => {

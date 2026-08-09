@@ -6,6 +6,7 @@ import { LazyStore } from '@tauri-apps/plugin-store'
 import { validatePresentationData } from './data'
 import type { PresentationData, ThemeData } from './data'
 import { SLIDE_PACKAGE_ARCHIVE_EXTENSIONS, isSlidePackageArchivePath } from './slidePackageArchive'
+import { fetchThemeData } from './applyTheme'
 
 const ASSET_PATH_PREFIXES = ['image/', 'voice/', 'theme/', 'font/']
 const RECENT_PACKAGES_KEY = 'recentSlidePackages'
@@ -291,19 +292,18 @@ async function resolvePackageEntry(selectedPath: string, download?: SlidePackage
 }
 
 /**
- * meta.brandTheme（外部 ThemeData 参照）を読み込む。https URL 参照は fetch、それ以外は baseDir 基準のローカルファイルとして読む。
- * resolveLocalAssetPaths に1段だけ乗せることで、参照先 JSON 内のロゴ画像・フォントファイル等のアセット参照も同じ規則で
- * asset URL 化する（DC-003: baseDir 基準のアセット解決規則を単一真実源に保つ）。取得・パースに失敗した場合は undefined
- * を返し、テーマ下地なしで続行する（ブランドテーマは装飾であり、失敗させてスライド自体を開けなくしない）。
+ * meta.brandTheme（外部 ThemeData 参照）を読み込む。https URL 参照は applyTheme.ts の fetchThemeData に委譲し
+ * （取得元URL基準のアセット絶対URL解決・Cache Storage によるオフライン再適用を、ローカル .spkg 内からの参照でも
+ * 同じ規則で受けられるようにする・#210）、それ以外は baseDir 基準のローカルファイルとして読む。
+ * ローカル参照は resolveLocalAssetPaths に1段だけ乗せることで、参照先 JSON 内のロゴ画像・フォントファイル等のアセット
+ * 参照も同じ規則で asset URL 化する（DC-003: baseDir 基準のアセット解決規則を単一真実源に保つ）。
+ * 取得・パースに失敗した場合は undefined を返し、テーマ下地なしで続行する（ブランドテーマは装飾であり、
+ * 失敗させてスライド自体を開けなくしない）。
  */
 export async function resolveBrandTheme(brandPath: string | undefined, baseDir: string): Promise<ThemeData | undefined> {
   if (!brandPath) return undefined
+  if (isRemoteUrl(brandPath)) return fetchThemeData(brandPath)
   try {
-    if (isRemoteUrl(brandPath)) {
-      const res = await fetch(brandPath)
-      if (!res.ok) return undefined
-      return (await res.json()) as ThemeData
-    }
     const raw = await readTextFile(`${baseDir}/${brandPath.replace(/^\//, '')}`)
     return resolveLocalAssetPaths(JSON.parse(raw), baseDir)
   } catch (error) {

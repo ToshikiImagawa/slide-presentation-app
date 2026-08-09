@@ -273,8 +273,11 @@ npm run export:theme -- --name acme-brand --theme theme/acme-brand.json
 
 ### 挙動
 
-- ローカル（同梱・`.spkg`）の `meta.brandTheme` 参照は `resolveBrandTheme`（`src/localSlideLoader.ts`）で
-  ネットワークを介さず完全にオフラインで解決されます。上記のキャッシュはリモートURL経路にのみ適用されます。
+- `resolveBrandTheme`（`src/localSlideLoader.ts`。ローカル `.spkg` を開く際に使われる）は、デッキ自体の取得元に
+  関わらず `meta.brandTheme` を同じ規則で解決します。相対パスならパッケージの `baseDir` 基準で完全にオフライン
+  解決され、`https://` URL なら上記の `fetchThemeData` に委譲されます。つまりローカル `.spkg` デッキが
+  `meta.brandTheme` にリモート URL を指定している場合、ブラウザ・同梱経路と同じく、オフライン再適用が効くまでに
+  一度は取得の成功が必要です。
 - エクスポート時の `--strict` は「参照アセットが欠けたテーマを、ロゴやフォントが欠けたまま黙って配布物にしない」
   という受け入れ基準に対応します。配布物を作る際は指定し、ローカルでの試行時は外してください。
 

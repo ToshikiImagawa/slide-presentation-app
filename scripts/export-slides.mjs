@@ -52,10 +52,9 @@ export function selectAddons(addons, selected) {
 export const ASSET_PATH_PREFIXES = ['image/', 'voice/', 'theme/', 'font/']
 
 // --- JSON内の値を再帰的に走査し、アセットパス（ASSET_PATH_PREFIXES 接頭辞に一致する文字列）だけを
-//     transform で書き換える。transform 未指定時は先頭スラッシュの正規化のみ行う。
-//     extractAssetPaths（収集）と scripts/export-theme.mjs の bakeBaseUrl（絶対URL書き換え）が
-//     同じ木構造走査を共有するための汎用ヘルパー ---
-export function mapAssetPaths(value, transform = (path) => path) {
+//     transform で書き換える。extractAssetPaths（収集）と scripts/export-theme.mjs の bakeBaseUrl
+//     （絶対URL書き換え）が同じ木構造走査を共有するための汎用ヘルパー ---
+export function mapAssetPaths(value, transform) {
   if (typeof value === 'string') {
     const normalized = value.replace(/^\//, '')
     return ASSET_PATH_PREFIXES.some((prefix) => normalized.startsWith(prefix)) ? transform(normalized) : value
@@ -95,12 +94,18 @@ export function extractProhibitedFontPaths(themeData) {
   return paths
 }
 
-// --- themeData 内の redistribution: 'prohibited' なパスを paths（Set）から除外し、警告する（#171）。
+// --- themeData（複数可）の redistribution: 'prohibited' なパスを合成してから paths（Set）から除外し、警告する（#171）。
+//     複数ソースをまとめて渡すのは、片方が prohibited・もう片方が同じパスを permitted で参照するようなケースでも
+//     union で確実に除外するため（どちらかが禁止と言えば禁止。除外漏れを防ぐ）。
 //     scripts/export-theme.mjs（テーマ単体配布）とも共有する、除外規則の単一真実源 ---
-export function excludeProhibitedFonts(paths, themeData) {
-  for (const prohibited of extractProhibitedFontPaths(themeData)) {
-    if (paths.delete(prohibited)) {
-      console.warn(`Warning: ${prohibited} は redistribution: 'prohibited' のため書き出し対象から除外しました`)
+export function excludeProhibitedFonts(paths, ...themeDataList) {
+  const prohibited = new Set()
+  for (const themeData of themeDataList) {
+    for (const p of extractProhibitedFontPaths(themeData)) prohibited.add(p)
+  }
+  for (const p of prohibited) {
+    if (paths.delete(p)) {
+      console.warn(`Warning: ${p} は redistribution: 'prohibited' のため書き出し対象から除外しました`)
     }
   }
   return paths
@@ -112,7 +117,7 @@ export function excludeProhibitedFonts(paths, themeData) {
 // の参照先まで誤って2段目の探索対象になってしまう）
 export function extractAssetPathsDeep(obj, sourceDir, { strict = false } = {}) {
   const paths = new Set(extractAssetPaths(obj))
-  excludeProhibitedFonts(paths, obj?.theme)
+  const themeSources = [obj?.theme]
 
   const brandThemePath = obj?.meta?.brandTheme
   if (typeof brandThemePath === 'string') {
@@ -122,7 +127,7 @@ export function extractAssetPathsDeep(obj, sourceDir, { strict = false } = {}) {
       try {
         const themeData = JSON.parse(readFileSync(themeJsonPath, 'utf-8'))
         for (const nested of extractAssetPaths(themeData)) paths.add(nested)
-        excludeProhibitedFonts(paths, themeData)
+        themeSources.push(themeData)
       } catch (error) {
         const message = `${themeJsonPath} の読み込みに失敗しました（参照アセットの2段目探索をスキップ）: ${error.message}`
         if (strict) {
@@ -133,6 +138,9 @@ export function extractAssetPathsDeep(obj, sourceDir, { strict = false } = {}) {
       }
     }
   }
+
+  // obj.theme と nested themeData の両方の prohibited を合成してから1回だけ除外する（除外漏れ防止）
+  excludeProhibitedFonts(paths, ...themeSources)
 
   return [...paths]
 }
