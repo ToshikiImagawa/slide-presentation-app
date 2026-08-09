@@ -38,10 +38,14 @@
       "layout": "content",
       "content": {
         "title": "layout: content (tiles)",
+        "tileColumns": 3,
         "tiles": [
           { "icon": "Description", "title": "Tile 1", "description": "Specify icon / title / description" },
-          { "icon": "Search", "title": "Tile 2", "description": "Renders as a 3-column grid" },
-          { "icon": "Memory", "title": "Tile 3", "description": "Icons are specified by MUI icon name" }
+          { "icon": "Search", "title": "Tile 2", "description": "Icons are specified by MUI icon name" },
+          { "icon": "Memory", "title": "Tile 3", "description": "tileColumns sets the column count" },
+          { "icon": "PlaylistAddCheck", "title": "Tile 4", "description": "Wraps onto the next row past the column count" },
+          { "icon": "Traffic", "title": "Tile 5", "description": "Stays readable with 6+ tiles" },
+          { "icon": "FactCheck", "title": "Tile 6", "description": "Default column count equals tile count (1 row)" }
         ]
       }
     },
@@ -114,10 +118,7 @@
           { "text": "body: multi-line paragraph text", "emphasis": true },
           {
             "text": "items: bullet list (nestable)",
-            "items": [
-              { "text": "Child items can have their own items" },
-              { "text": "emphasis: true renders bold text", "emphasis": true }
-            ]
+            "items": [{ "text": "Child items can have their own items" }, { "text": "emphasis: true renders bold text", "emphasis": true }]
           }
         ]
       }
