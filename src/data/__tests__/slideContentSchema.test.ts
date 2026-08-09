@@ -1,11 +1,19 @@
-import { describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it } from 'vitest'
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
 import { ALLOWED_LAYOUTS, getSchemaConformanceErrors } from '../slideContentSchema'
+import { registerComponent } from '../../components/ComponentRegistry'
+import { registerDefaultComponents } from '../../components/registerDefaults'
 import samplesManifest from '../../../samples/manifest.json'
 import type { PresentationData } from '../types'
 
 const projectRoot = resolve(import.meta.dirname, '../../..')
+
+// componentName/iconName の検証（#211）は ComponentRegistry の登録状態に依存するため、
+// 配布サンプル・既存テストが参照する既定コンポーネント/アイコンを事前に登録しておく
+beforeAll(() => {
+  registerDefaultComponents()
+})
 
 describe('ALLOWED_LAYOUTS', () => {
   it('SlideRendererが対応する5種のlayoutを含む', () => {
@@ -40,12 +48,92 @@ describe('getSchemaConformanceErrors', () => {
     expect(errors[0].path).toBe('slides[0].content.steps')
   })
 
-  it('tiles.icon はenum固定を撤廃しているため任意のアイコン名でもエラーにしない（アドオン/ブランド提供アイコンの参照を許容・#201）', () => {
+  it('tiles.iconはComponentRegistryに登録済みなら任意のアイコン名でもエラーにしない（アドオン/ブランド提供アイコンの参照を許容・#201/#211）', () => {
+    registerComponent('Icon:CustomBrandIcon', () => null, 'test-brand-theme')
     const data: PresentationData = {
       meta: { title: 't' },
       slides: [{ id: 's1', layout: 'content', content: { title: 'x', tiles: [{ icon: 'CustomBrandIcon', title: 't', description: 'd' }] } }],
     }
     expect(getSchemaConformanceErrors(data)).toEqual([])
+  })
+
+  it('tiles.iconがComponentRegistryに未登録の場合はエラーにする（テーマ由来の制約違反・#211）', () => {
+    const data: PresentationData = {
+      meta: { title: 't' },
+      slides: [{ id: 's1', layout: 'content', content: { title: 'x', tiles: [{ icon: 'NotRegisteredIcon', title: 't', description: 'd' }] } }],
+    }
+    const errors = getSchemaConformanceErrors(data)
+    expect(errors).toHaveLength(1)
+    expect(errors[0].path).toBe('slides[0].content.tiles[0].icon')
+  })
+
+  it('tiles.accentColorがTHEME_COLOR_TOKENSにない値の場合はエラーにする（テーマ由来の制約違反・#211）', () => {
+    const data: PresentationData = {
+      meta: { title: 't' },
+      slides: [{ id: 's1', layout: 'content', content: { title: 'x', tiles: [{ icon: 'Description', title: 't', description: 'd', accentColor: 'purple' }] } }],
+    }
+    const errors = getSchemaConformanceErrors(data)
+    expect(errors).toHaveLength(1)
+    expect(errors[0].path).toBe('slides[0].content.tiles[0].accentColor')
+  })
+
+  it('tilesが推奨上限（8件）を超える場合はエラーにする（情報密度・#211）', () => {
+    const tiles = Array.from({ length: 9 }, (_, i) => ({ icon: 'Description', title: `t${i}`, description: 'd' }))
+    const data: PresentationData = {
+      meta: { title: 't' },
+      slides: [{ id: 's1', layout: 'content', content: { title: 'x', tiles } }],
+    }
+    const errors = getSchemaConformanceErrors(data)
+    expect(errors).toHaveLength(1)
+    expect(errors[0].path).toBe('slides[0].content.tiles')
+  })
+
+  it('componentReference.nameがComponentRegistryに未登録の場合はエラーにする（テーマ由来の制約違反・#211）', () => {
+    const data: PresentationData = {
+      meta: { title: 't' },
+      slides: [{ id: 's1', layout: 'custom', content: { component: { name: 'NotRegisteredComponent' } } }],
+    }
+    const errors = getSchemaConformanceErrors(data)
+    expect(errors).toHaveLength(1)
+    expect(errors[0].path).toBe('slides[0].content.component.name')
+  })
+
+  it('componentReference.nameがComponentRegistryに登録済みならエラーにしない', () => {
+    const data: PresentationData = {
+      meta: { title: 't' },
+      slides: [{ id: 's1', layout: 'custom', content: { component: { name: 'TerminalAnimation' } } }],
+    }
+    expect(getSchemaConformanceErrors(data)).toEqual([])
+  })
+
+  it('chart.series[].colorがTHEME_COLOR_TOKENSにない値の場合はエラーにする（テーマ由来の制約違反・#211）', () => {
+    const data: PresentationData = {
+      meta: { title: 't' },
+      slides: [{ id: 's1', layout: 'content', content: { title: 'x', chart: { type: 'bar', categories: ['Q1'], series: [{ name: '今期', values: [1], color: 'not-a-token' }] } } }],
+    }
+    const errors = getSchemaConformanceErrors(data)
+    expect(errors).toHaveLength(1)
+    expect(errors[0].path).toBe('slides[0].content.chart.series[0].color')
+  })
+
+  it('chart.categoriesが推奨上限（8件）を超える場合はエラーにする（情報密度・#211）', () => {
+    const data: PresentationData = {
+      meta: { title: 't' },
+      slides: [{ id: 's1', layout: 'content', content: { title: 'x', chart: { type: 'bar', categories: Array.from({ length: 9 }, (_, i) => `C${i}`) } } }],
+    }
+    const errors = getSchemaConformanceErrors(data)
+    expect(errors).toHaveLength(1)
+    expect(errors[0].path).toBe('slides[0].content.chart.categories')
+  })
+
+  it('table.rowsが推奨上限（10行）を超える場合はエラーにする（情報密度・#211）', () => {
+    const data: PresentationData = {
+      meta: { title: 't' },
+      slides: [{ id: 's1', layout: 'content', content: { title: 'x', table: { columns: [{ label: 'a' }], rows: Array.from({ length: 11 }, (_, i) => [`r${i}`]) } } }],
+    }
+    const errors = getSchemaConformanceErrors(data)
+    expect(errors).toHaveLength(1)
+    expect(errors[0].path).toBe('slides[0].content.table.rows')
   })
 
   it('tileColumns が数値でない場合エラーにする', () => {

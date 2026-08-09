@@ -51,7 +51,7 @@ impl SlideGenerator for ClaudeCodeGenerator {
     }
 
     let binary = resolve_claude_binary()?;
-    let args = build_cli_args(&self.model);
+    let args = build_cli_args(&self.model, req.theme_constraints.as_deref());
     let prompt = super::user_prompt(req);
 
     // in-flight のサブプロセスをキャンセルと競わせる。キャンセル時は run_cli future（child 所有）が drop され、
@@ -208,7 +208,7 @@ fn candidate_paths() -> Vec<PathBuf> {
 /// CLI 起動引数を構築する（tools なし単発を保証・ユーザ環境の MCP を無視）。
 /// `--tools ""` で全ツールを無効化し、モデルのツール呼び出しによる `--max-turns 1` 消費（#157）を防ぐ。
 /// `--system-prompt`（完全上書き）を使い、`--append-system-prompt` によるグローバル CLAUDE.md 混入（#157）を防ぐ。
-fn build_cli_args(model: &str) -> Vec<String> {
+fn build_cli_args(model: &str, theme_constraints: Option<&str>) -> Vec<String> {
   let mut args = vec![
     "--print".to_string(),
     "--output-format".to_string(),
@@ -219,7 +219,7 @@ fn build_cli_args(model: &str) -> Vec<String> {
     "--tools".to_string(),
     "".to_string(),
     "--system-prompt".to_string(),
-    super::system_prompt(),
+    super::system_prompt(theme_constraints),
   ];
   if let Some(alias) = map_model_to_cli_alias(model) {
     args.push("--model".to_string());
@@ -276,7 +276,7 @@ mod tests {
 
   #[test]
   fn build_cli_args_has_expected_flags_and_model() {
-    let args = build_cli_args("claude-opus-4-8");
+    let args = build_cli_args("claude-opus-4-8", None);
     assert!(args.contains(&"--print".to_string()));
     // --output-format json
     let ofi = args.iter().position(|a| a == "--output-format").unwrap();
@@ -298,8 +298,16 @@ mod tests {
 
   #[test]
   fn build_cli_args_omits_model_for_unknown() {
-    let args = build_cli_args("gpt-4o");
+    let args = build_cli_args("gpt-4o", None);
     assert!(!args.contains(&"--model".to_string()));
+  }
+
+  #[test]
+  fn build_cli_args_passes_theme_constraints_into_system_prompt() {
+    // JS 側の意匠制約（buildThemeConstraintsPrompt）が --system-prompt へ渡ることを検証する（#211）
+    let args = build_cli_args("claude-opus-4-8", Some("色トークン名: primary, accent"));
+    let spi = args.iter().position(|a| a == "--system-prompt").unwrap();
+    assert!(args[spi + 1].contains("色トークン名: primary, accent"));
   }
 
   #[test]
