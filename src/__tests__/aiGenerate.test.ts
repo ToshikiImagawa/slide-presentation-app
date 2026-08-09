@@ -47,7 +47,7 @@ describe('aiGenerate オーケストレータ（generateSlides）', () => {
     expect(result.slidesJson).toBe(VALID)
     expect(result.validationErrors).toEqual([])
     expect(result.attempts).toBe(1)
-    // generate_slides に request が渡る（themeConstraints は毎試行で組み立てられる・#211）
+    // generate_slides に request が渡る（themeConstraints は試行の前に一度だけ組み立てられ、各試行の request に付与される・#211）
     expect(h.invoke).toHaveBeenCalledWith('generate_slides', { request: { ...REQ, repairFeedback: undefined, themeConstraints: buildThemeConstraintsPrompt() } })
   })
 
