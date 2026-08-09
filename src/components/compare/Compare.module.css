@@ -1,0 +1,67 @@
+/* 比較スライド（#200）。2ペインはグリッドの stretch で高さが揃う。
+   面・枠・角丸はテーブル・タイルと同じ意匠トークンから引くのでテーマに追従する */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 40px;
+  height: 100%;
+}
+
+.pane {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 24px 28px;
+  overflow: hidden;
+  border: var(--theme-border-width) solid var(--theme-border-light);
+  border-radius: var(--theme-radius-lg);
+  background: var(--theme-background-alt);
+}
+
+.heading {
+  margin-bottom: 16px;
+  font-family: var(--theme-font-heading);
+  font-size: var(--theme-font-size-h3);
+  font-weight: 600;
+  color: var(--theme-text-heading);
+}
+
+.items {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.mark {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--mark-color);
+  color: var(--theme-background);
+  font-family: var(--theme-font-heading);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.text {
+  font-family: var(--theme-font-body);
+  font-size: var(--theme-font-size-body1);
+  line-height: 1.5;
+  color: var(--theme-text-body);
+}

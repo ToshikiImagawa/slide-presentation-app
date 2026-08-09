@@ -37,7 +37,7 @@
 
 ## content
 
-コンテンツ表示用レイアウト。子要素のフィールドで描画が決まる。優先順位: `steps` → `tiles` → `images` → `chart` → `table` → `component` → `body`/`items`（いずれかが指定されていたら以降は評価しない）。
+コンテンツ表示用レイアウト。子要素のフィールドで描画が決まる。優先順位: `steps` → `tiles` → `images` → `chart` → `table` → `compare` → `flow` → `component` → `body`/`items`（いずれかが指定されていたら以降は評価しない）。
 
 ### body / items（プレーン本文）
 
@@ -224,6 +224,66 @@
       "props": {},
       "style": { "height": "400px" }
     }
+  }
+}
+```
+
+### compare（比較）
+
+可否・採用/非採用・Before/After 等の2ペイン比較。左右ペインの高さは自動で揃う。
+
+```json
+{
+  "id": "slide-id",
+  "layout": "content",
+  "content": {
+    "title": "タイトル",
+    "compare": {
+      "left": {
+        "heading": "採用する",
+        "items": [
+          { "text": "既存トークンを再利用する", "status": "pass" },
+          { "text": "新規CSS変数を追加しない", "status": "pass" }
+        ]
+      },
+      "right": {
+        "heading": "採用しない",
+        "items": [
+          { "text": "色値のハードコード", "status": "fail" },
+          { "text": "検証は手動のみ", "status": "warn" },
+          { "text": "対象外の項目" }
+        ]
+      }
+    }
+  }
+}
+```
+
+各ペインの `items[].status` は状態記号・状態色を出す（省略時は記号なしの通常項目）。
+
+| `status` | 記号 | 色トークン |
+|---|---|---|
+| `pass` | ✓ | `success` |
+| `fail` | ✕ | `danger` |
+| `warn` | ! | `warning` |
+| `neutral` | – | `neutral` |
+
+### flow（横フロー）
+
+工程の連なりを「左から右への流れ」で見せる横フロー。3〜5工程を想定し、工程間の矢印は自動でカード境界に接する（矢印プリミティブは `src/components/diagram/` の共通部品を再利用しており、#200 では再実装しない）。カード幅・文字サイズは工程数から自動で決まる。
+
+```json
+{
+  "id": "slide-id",
+  "layout": "content",
+  "content": {
+    "title": "タイトル",
+    "flow": [
+      { "title": "要件定義", "description": "課題を洗い出す" },
+      { "title": "実装" },
+      { "title": "レビュー" },
+      { "title": "リリース", "description": "本番反映" }
+    ]
   }
 }
 ```

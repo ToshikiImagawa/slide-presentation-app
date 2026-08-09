@@ -17,6 +17,8 @@ import { FeatureTileGrid } from './FeatureTileGrid'
 import { ImageFigureGrid } from './ImageFigureGrid'
 import { Chart, type ChartSpec } from './chart'
 import { Table, type TableSpec } from './table'
+import { Compare, type CompareSpec } from './compare'
+import { Flow, type FlowStep } from './flow'
 import { AccentText } from './AccentText'
 import { CommandList } from './CommandList'
 import { UnderlinedHeading } from './UnderlinedHeading'
@@ -274,6 +276,16 @@ function renderContentChildren(content: SlideData['content']): ReactNode {
   // table があれば表（#194）
   if (content.table && typeof content.table === 'object') {
     return <Table {...(content.table as TableSpec)} />
+  }
+
+  // compare があれば比較（#200）
+  if (content.compare && typeof content.compare === 'object') {
+    return <Compare {...(content.compare as CompareSpec)} />
+  }
+
+  // flow があれば横フロー（#200）
+  if (content.flow) {
+    return <Flow steps={content.flow as FlowStep[]} />
   }
 
   // component があればそれを描画

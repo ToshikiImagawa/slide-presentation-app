@@ -13,7 +13,7 @@
       }
     },
     "content": {
-      "description": "コンテンツ表示用レイアウト。子要素のフィールドで描画が決まる。優先順位: steps→Timeline / tiles→FeatureTileGrid / images→画像スライド / chart→チャート / table→表 / component→カスタム。いずれも無指定の場合に限り body/items（プレーン本文）を描画する（#193）",
+      "description": "コンテンツ表示用レイアウト。子要素のフィールドで描画が決まる。優先順位: steps→Timeline / tiles→FeatureTileGrid / images→画像スライド / chart→チャート / table→表 / compare→比較 / flow→横フロー / component→カスタム。いずれも無指定の場合に限り body/items（プレーン本文）を描画する（#193・#200）",
       "contentFields": {
         "title": { "type": "string" },
         "steps": {
@@ -54,6 +54,16 @@
         },
         "chart": { "type": "object", "ref": "chart" },
         "table": { "type": "object", "ref": "table" },
+        "compare": { "type": "object", "ref": "compare" },
+        "flow": {
+          "type": "array",
+          "maxItems": 5,
+          "description": "横フローの工程カード（#200）。3〜5工程を想定。工程間の矢印は自動で描き、カード境界に接する。工程数に応じてカード幅・文字サイズを自動調整する。推奨上限5件（超えると密度過多として自動修正対象になる）",
+          "itemFields": {
+            "title": { "type": "string" },
+            "description": { "type": "string" }
+          }
+        },
         "component": { "type": "object", "ref": "componentReference" },
         "footer": { "type": "string" },
         "body": {
@@ -144,6 +154,28 @@
       }
     },
     "rows": { "type": "array", "maxItems": 10, "description": "本文行。各要素はcolumnsと同じ順序・数のセル文字列配列。推奨上限10行（超えると密度過多として自動修正対象になる）" }
+  },
+  "compare": {
+    "description": "content.compare の2ペイン比較指定（#200）。可否・採用/非採用・Before/Afterの比較に使う。左右ペインは高さが自動で揃う",
+    "left": { "type": "object", "ref": "comparePane" },
+    "right": { "type": "object", "ref": "comparePane" }
+  },
+  "comparePane": {
+    "description": "content.compare.left / content.compare.right の指定",
+    "heading": { "type": "string" },
+    "items": {
+      "type": "array",
+      "maxItems": 8,
+      "description": "推奨上限8件（超えると密度過多として自動修正対象になる）",
+      "itemFields": {
+        "text": { "type": "string" },
+        "status": {
+          "type": "string",
+          "enum": ["pass", "fail", "warn", "neutral"],
+          "description": "状態記号・状態色（pass=✓success色 / fail=✕danger色 / warn=!warning色 / neutral=–neutral色）。省略時は記号なしの通常項目"
+        }
+      }
+    }
   },
   "columnContentFields": {
     "description": "two-columnの left/right に指定可能なフィールド（すべてオプション、組み合わせ可）。componentを指定した場合は他のフィールドは無視される",

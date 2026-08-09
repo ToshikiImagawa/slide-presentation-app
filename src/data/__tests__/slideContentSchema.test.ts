@@ -277,6 +277,70 @@ describe('getSchemaConformanceErrors', () => {
     expect(errors[0].path).toBe('slides[0].content.table.columns')
   })
 
+  it('content.compareの正常な指定はエラーにしない（#200 比較）', () => {
+    const data: PresentationData = {
+      meta: { title: 't' },
+      slides: [
+        {
+          id: 's1',
+          layout: 'content',
+          content: {
+            title: 'x',
+            compare: {
+              left: { heading: '採用する', items: [{ text: '項目A', status: 'pass' }] },
+              right: { heading: '採用しない', items: [{ text: '項目B', status: 'fail' }] },
+            },
+          },
+        },
+      ],
+    }
+    expect(getSchemaConformanceErrors(data)).toEqual([])
+  })
+
+  it('content.compare.left.items[].statusがpass/fail/warn/neutral以外だとエラーにする', () => {
+    const data = {
+      meta: { title: 't' },
+      slides: [{ id: 's1', layout: 'content', content: { title: 'x', compare: { left: { items: [{ text: 'a', status: 'ok' }] } } } }],
+    } as unknown as PresentationData
+    const errors = getSchemaConformanceErrors(data)
+    expect(errors).toHaveLength(1)
+    expect(errors[0].path).toBe('slides[0].content.compare.left.items[0].status')
+  })
+
+  it('content.compare.left.itemsが推奨上限（8件）を超える場合はエラーにする（情報密度・#211）', () => {
+    const data: PresentationData = {
+      meta: { title: 't' },
+      slides: [{ id: 's1', layout: 'content', content: { title: 'x', compare: { left: { items: Array.from({ length: 9 }, (_, i) => ({ text: `${i}` })) } } } }],
+    }
+    const errors = getSchemaConformanceErrors(data)
+    expect(errors).toHaveLength(1)
+    expect(errors[0].path).toBe('slides[0].content.compare.left.items')
+  })
+
+  it('content.flowの正常な指定はエラーにしない（#200 横フロー）', () => {
+    const data: PresentationData = {
+      meta: { title: 't' },
+      slides: [
+        {
+          id: 's1',
+          layout: 'content',
+          content: { title: 'x', flow: [{ title: '要件定義' }, { title: '実装', description: '本体の実装' }, { title: 'リリース' }] },
+        },
+      ],
+    }
+    expect(getSchemaConformanceErrors(data)).toEqual([])
+  })
+
+  it('content.flowが推奨上限（5件）を超える場合はエラーにする（情報密度・#211）', () => {
+    const data: PresentationData = {
+      meta: { title: 't' },
+      slides: [{ id: 's1', layout: 'content', content: { title: 'x', flow: Array.from({ length: 6 }, (_, i) => ({ title: `工程${i}` })) } }],
+    }
+    const errors = getSchemaConformanceErrors(data)
+    expect(errors).toHaveLength(1)
+    expect(errors[0].path).toBe('slides[0].content.flow')
+  })
+
   it('未知フィールドはエラーにしない（拡張・アドオンを阻害しない）', () => {
     const data: PresentationData = {
       meta: { title: 't' },
