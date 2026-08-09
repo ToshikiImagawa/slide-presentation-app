@@ -14,6 +14,8 @@ type Props = {
   variant?: 'outline' | 'filled' | 'plain'
   /** 左上に重ねるバッジ（番号バッジ等） */
   badge?: ReactNode
+  /** title/body のフォントサイズに掛ける倍率。省略時は1（カードが並ぶ数が多く1枚あたりが狭いときに縮める用途・#200） */
+  scale?: number
 }
 
 /**
@@ -22,7 +24,7 @@ type Props = {
  * 位置は正規化座標をそのまま % 指定に載せるため、キャンバスサイズが変わっても相対配置が保たれる
  * （px へ落とさないのでサイズ計測の完了を待つ必要もない）。
  */
-export function DiagramCard({ rect, title, children, color, variant = 'outline', badge }: Props) {
+export function DiagramCard({ rect, title, children, color, variant = 'outline', badge, scale }: Props) {
   const cssVar = resolveColorToken(color)
   const style = {
     left: normToPercent(rect.x),
@@ -30,6 +32,7 @@ export function DiagramCard({ rect, title, children, color, variant = 'outline',
     width: normToPercent(rect.w),
     height: normToPercent(rect.h),
     '--diagram-color': `var(${cssVar})`,
+    ...(scale != null ? { '--diagram-font-scale': scale } : {}),
   } as CSSProperties
 
   const className = [styles.card, variant === 'filled' && styles.filled, variant === 'plain' && styles.plain, badge && styles.withBadge].filter(Boolean).join(' ')

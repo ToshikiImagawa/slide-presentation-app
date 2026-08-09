@@ -43,22 +43,6 @@
   gap: 10px;
 }
 
-.mark {
-  display: inline-flex;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 999px;
-  background: var(--mark-color);
-  color: var(--theme-background);
-  font-family: var(--theme-font-heading);
-  font-size: 14px;
-  font-weight: 700;
-  line-height: 1;
-}
-
 .text {
   font-family: var(--theme-font-body);
   font-size: var(--theme-font-size-body1);

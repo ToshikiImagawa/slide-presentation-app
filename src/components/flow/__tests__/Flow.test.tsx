@@ -37,18 +37,19 @@ describe('Flow', () => {
     expect(container.querySelectorAll('polyline')).toHaveLength(2)
   })
 
-  it('4工程以上ではタイトルのフォントサイズが縮む（工程数に応じたカード幅・文字サイズの決定ロジック）', () => {
+  it('4工程以上ではカードのフォント縮小率（DiagramCardのscaleプロパティ）が下がる（工程数に応じたカード幅・文字サイズの決定ロジック）', () => {
     const three = render(<Flow steps={THREE_STEPS} />)
     const five = render(<Flow steps={[{ title: 'a' }, { title: 'b' }, { title: 'c' }, { title: 'd' }, { title: 'e' }]} />)
 
-    expect(three.getByText('要件定義').style.fontSize).toBe('calc(var(--theme-font-size-h4) * 1)')
-    expect(five.getByText('a').style.fontSize).toBe('calc(var(--theme-font-size-h4) * 0.8)')
+    const threeCard = three.getByText('要件定義').parentElement as HTMLElement
+    const fiveCard = five.getByText('a').parentElement as HTMLElement
+    expect(threeCard.style.getPropertyValue('--diagram-font-scale')).toBe('1')
+    expect(fiveCard.style.getPropertyValue('--diagram-font-scale')).toBe('0.8')
   })
 
   it('工程数に応じてカード幅が狭くなる', () => {
     const { getByText } = render(<Flow steps={[{ title: 'a' }, { title: 'b' }, { title: 'c' }, { title: 'd' }, { title: 'e' }]} />)
-    // タイトル文字列(fontSize指定のspan) → title用span → カード本体(left/top/width/height指定のdiv)
-    const card = getByText('a').parentElement!.parentElement as HTMLElement
+    const card = getByText('a').parentElement as HTMLElement
     // (1 - 0.035*4) / 5 = 0.172 → 17.2%
     expect(card.style.width).toBe('17.2%')
   })

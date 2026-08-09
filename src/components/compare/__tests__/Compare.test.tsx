@@ -39,11 +39,11 @@ describe('Compare', () => {
     expect(row.querySelector('span')?.textContent).toBe('補足')
   })
 
-  it('状態色はカラーパレットキーから CSS 変数で解決する（テーマに追従する）', () => {
+  it('状態色はカラーパレットキーから CSS 変数で解決する（テーマに追従する。DiagramBadge・#202 を再利用）', () => {
     const { getByText } = render(<Compare {...PLAN} />)
-    expect(getByText('✓').style.getPropertyValue('--mark-color')).toBe('var(--theme-success)')
-    expect(getByText('✕').style.getPropertyValue('--mark-color')).toBe('var(--theme-danger)')
-    expect(getByText('!').style.getPropertyValue('--mark-color')).toBe('var(--theme-warning)')
+    expect(getByText('✓').style.getPropertyValue('--diagram-color')).toBe('var(--theme-success)')
+    expect(getByText('✕').style.getPropertyValue('--diagram-color')).toBe('var(--theme-danger)')
+    expect(getByText('!').style.getPropertyValue('--diagram-color')).toBe('var(--theme-warning)')
   })
 
   it('2ペインが同じグリッドの行に配置される（高さが揃う）', () => {

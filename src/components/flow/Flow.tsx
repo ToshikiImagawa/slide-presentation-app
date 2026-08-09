@@ -35,12 +35,10 @@ export function Flow({ steps }: { steps?: FlowStep[] }) {
 
   return (
     <DiagramCanvas>
-      {rects.slice(1).map((rect, i) => (
-        <Connector key={`arrow-${i}`} from={rects[i]} to={rect} />
-      ))}
+      {rects.map((rect, i) => i > 0 && <Connector key={`arrow-${i}`} from={rects[i - 1]} to={rect} />)}
       {list.map((step, i) => (
-        <DiagramCard key={i} rect={rects[i]} badge={<DiagramBadge>{i + 1}</DiagramBadge>} title={<span style={{ fontSize: `calc(var(--theme-font-size-h4) * ${fontScale})` }}>{step.title}</span>}>
-          {step.description && <span style={{ fontSize: `calc(var(--theme-font-size-body2) * ${fontScale})` }}>{step.description}</span>}
+        <DiagramCard key={i} rect={rects[i]} scale={fontScale} badge={<DiagramBadge>{i + 1}</DiagramBadge>} title={step.title}>
+          {step.description}
         </DiagramCard>
       ))}
     </DiagramCanvas>
