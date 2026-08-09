@@ -206,6 +206,78 @@ VITE_SLIDE_PACKAGE=@slides/my-presentation
 - `public/` に同名ファイルが存在する場合は `public/` のファイルが優先される（パッケージはフォールバック）
 - `npm run build` 時、パッケージのアセットは `dist/` にコピーされる（既存ファイルは上書きしない）
 
+## ブランドテーマ単体の配布
+
+`meta.brandTheme`（外部 `ThemeData` JSON への参照。[意匠トークン](#意匠トークン)・`applyThemeData` 参照）を使うと、
+色だけのシンプルなテーマから、フォント・masters・トークン・ロゴまで含むフルセットのテーマまで、複数デッキへ
+組織単位で同じブランドテーマを適用できます。本節では、そのテーマをスライドデッキから独立して単体配布する方法
+を説明します（#210）。
+
+### 配布形式
+
+ブランドテーマ単体の配布物は、**`ThemeData` の JSON ファイルと、それが参照するアセットファイル**（`image/`・
+`font/`・`theme/` 接頭辞。スライドパッケージと同じ規則）であり、`.spkg` アーカイブではありません。
+`fetchThemeData`（`src/applyTheme.ts`）はこの JSON を `fetch()` で直接取得するため、展開ステップを設計する必要
+がありません。組織側は `theme.json` とそのアセットのサブディレクトリを安定した URL でホストし、
+`meta.brandTheme` にその `theme.json` を指定します。
+
+`meta.brandTheme` が `https://` URL の場合、`fetchThemeData` は取得したテーマ内の `image/`・`font/`・`theme/`
+接頭辞を持つアセット参照を、**テーマ自身の取得元 URL を基準にした絶対URL**へ書き換えます（ローカル `.spkg`
+のアセットを `baseDir` 基準で解決する `resolveLocalAssetPaths` と対称の規則）。これをしないと、
+`font/corp.woff2` のような相対パスがテーマの配布元ではなくアプリ自身のオリジン基準で解決されてしまい 404
+になります。ローカル・相対パスの `meta.brandTheme` 参照（デッキに同梱されたテーマ）はこの書き換えの対象外
+です。すでに document の base URI 基準で正しく解決されるためです。
+
+### エクスポート（配布可能なテーマの作成）
+
+```bash
+npm run export:theme -- --name acme-brand --theme theme/acme-brand.json
+```
+
+| オプション    | 必須 | 説明                                                                                |
+|---------------|:----:|-------------------------------------------------------------------------------------|
+| `--name`      | はい | `dist-themes/` 配下の出力ディレクトリ名                                             |
+| `--theme`     | はい | source ディレクトリ配下のテーマ JSON ファイル名                                     |
+| `--source`    |      | テーマ JSON と参照アセットの基準ディレクトリ（既定: `public`）                       |
+| `--base-url`  |      | アセット参照に絶対URLとして焼き込む配布先の公開URL基準（下記参照）                   |
+| `--strict`    |      | 参照アセットが1つでも欠けていたら失敗させる（配布物のビルド用。既定は警告のみ）       |
+
+`dist-themes/{name}/theme.json` と、参照されるアセットファイルが `--source` と同じディレクトリ構造で書き出され
+ます。`redistribution: 'prohibited'`（#171）を指定したフォントソースはコピー対象から除外されます。
+`export-slides.mjs` が `.spkg` から除外する際の規則（`extractAssetPaths` / `extractProhibitedFontPaths`）を
+そのまま再利用しているため、規則は単一真実源です。
+
+`--base-url`（例: 特定タグの GitHub Releases ダウンロード URL）を指定すると、書き出す `theme.json` にアセット
+参照の絶対URLを直接焼き込みます。これがバージョン付きテーマを公開する際の推奨方法です。`theme.json` とその
+アセットファイルを同じリリースに個別に添付し、そのリリースの `--base-url` を指定してバージョンごとに一度
+エクスポートを実行し、`meta.brandTheme` に出力された `theme.json` の URL を指定します。`--base-url` を指定
+しない場合、アセット参照は相対パスのまま残るため、出力ディレクトリをそのまま（`image/`・`font/` 等のサブ
+ディレクトリ構造を保って）ホストする運用でのみ機能します（上記の `fetchThemeData` の絶対URL解決でも動作します
+が、エクスポート時に URL を焼き込む方が挙動を把握しやすくなります）。
+
+### バージョニング・キャッシュ・オフライン再適用
+
+配布物自体にバージョンフィールドは持たせません。バージョニングは `meta.brandTheme` がどの URL を指すか
+（バージョンタグ付きのリリース か、常に最新を指す "latest" か）で表現します。`src/sampleSlides.ts` の
+`resolveSamplePackageName` がバージョン付き取得と `latest` 取得を区別しているのと同じ考え方です。
+
+`fetchThemeData` は常にネットワーク取得を先に試み、その後フォールバックします。
+
+- 取得に成功した場合、解決済みの `ThemeData` を `meta.brandTheme` の URL をキーに Cache Storage API
+  （`caches`）へ保存します。
+- 取得に失敗した場合（オフライン・404 等）、同じキーでキャッシュを読み、直前に成功した取得結果を返します。
+  これにより、以前ブランドテーマを適用したデッキをオフラインで再度開いても見た目が保たれます。
+- キャッシュも無い場合（初回取得・Cache Storage 未対応環境）は `undefined` を返し、デッキは自身の
+  `theme`/`theme-colors.json` のカスケードにフォールバックします。ブランドテーマは装飾であるため、取得失敗が
+  デッキを開けなくすることはありません（`applyPresentationTheme` のカスケード参照）。
+
+### 挙動
+
+- ローカル（同梱・`.spkg`）の `meta.brandTheme` 参照は `resolveBrandTheme`（`src/localSlideLoader.ts`）で
+  ネットワークを介さず完全にオフラインで解決されます。上記のキャッシュはリモートURL経路にのみ適用されます。
+- エクスポート時の `--strict` は「参照アセットが欠けたテーマを、ロゴやフォントが欠けたまま黙って配布物にしない」
+  という受け入れ基準に対応します。配布物を作る際は指定し、ローカルでの試行時は外してください。
+
 ## リリース手順
 
 1. バージョンを上げます。`prepare-release` skill を使うか、`package.json`・`src-tauri/Cargo.toml`・

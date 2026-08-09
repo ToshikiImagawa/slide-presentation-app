@@ -166,6 +166,71 @@ describe('fetchThemeData', () => {
 
     await expect(fetchThemeData('/theme/brand.json')).resolves.toBeUndefined()
   })
+
+  describe('リモート配布（https URL・#210）', () => {
+    it('取得したテーマ内のアセット参照を取得元URL基準の絶対URLへ書き換える', async () => {
+      const theme: ThemeData = { icons: { logo: 'image/logo.png' }, fonts: { sources: [{ family: 'Corp', src: 'font/corp.woff2' }] } }
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => theme }))
+      vi.stubGlobal('caches', undefined)
+
+      const result = await fetchThemeData('https://example.com/themes/acme/theme.json')
+
+      expect(result?.icons?.logo).toBe('https://example.com/themes/acme/image/logo.png')
+      expect(result?.fonts?.sources?.[0].src).toBe('https://example.com/themes/acme/font/corp.woff2')
+    })
+
+    it('取得に成功したテーマを Cache Storage へ保存する', async () => {
+      const theme: ThemeData = { colors: { primary: '#112233' } }
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => theme }))
+      const put = vi.fn().mockResolvedValue(undefined)
+      vi.stubGlobal('caches', { open: vi.fn().mockResolvedValue({ put, match: vi.fn() }) })
+
+      await fetchThemeData('https://example.com/themes/acme/theme.json')
+
+      expect(put).toHaveBeenCalledWith('https://example.com/themes/acme/theme.json', expect.anything())
+    })
+
+    it('オフライン時（fetch が例外）は直近キャッシュのテーマを返す（オフライン再適用）', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network')))
+      const cachedTheme: ThemeData = { colors: { primary: '#445566' } }
+      const match = vi.fn().mockResolvedValue({ json: async () => cachedTheme })
+      vi.stubGlobal('caches', { open: vi.fn().mockResolvedValue({ put: vi.fn(), match }) })
+
+      await expect(fetchThemeData('https://example.com/themes/acme/theme.json')).resolves.toEqual(cachedTheme)
+      expect(match).toHaveBeenCalledWith('https://example.com/themes/acme/theme.json')
+    })
+
+    it('404 の場合も直近キャッシュのテーマを返す', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 404 }))
+      const cachedTheme: ThemeData = { colors: { primary: '#445566' } }
+      vi.stubGlobal('caches', { open: vi.fn().mockResolvedValue({ put: vi.fn(), match: vi.fn().mockResolvedValue({ json: async () => cachedTheme }) }) })
+
+      await expect(fetchThemeData('https://example.com/themes/acme/theme.json')).resolves.toEqual(cachedTheme)
+    })
+
+    it('キャッシュも無い場合は undefined を返す（取得失敗時に利用を妨げない）', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network')))
+      vi.stubGlobal('caches', { open: vi.fn().mockResolvedValue({ put: vi.fn(), match: vi.fn().mockResolvedValue(undefined) }) })
+
+      await expect(fetchThemeData('https://example.com/themes/acme/theme.json')).resolves.toBeUndefined()
+    })
+
+    it('Cache Storage 未対応環境（caches が undefined）でも取得自体は成功する', async () => {
+      const theme: ThemeData = { colors: { primary: '#112233' } }
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => theme }))
+      vi.stubGlobal('caches', undefined)
+
+      await expect(fetchThemeData('https://example.com/themes/acme/theme.json')).resolves.toEqual(theme)
+    })
+
+    it('相対パス（ローカル同梱）はアセット参照を書き換えない（既存の document 基準解決を維持）', async () => {
+      const theme: ThemeData = { icons: { logo: 'image/logo.png' } }
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => theme }))
+      vi.stubGlobal('caches', undefined)
+
+      await expect(fetchThemeData('/theme/brand.json')).resolves.toEqual(theme)
+    })
+  })
 })
 
 describe('mergeThemeData（brand→deck の合成・#170）', () => {
