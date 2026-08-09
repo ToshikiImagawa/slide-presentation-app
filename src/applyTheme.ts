@@ -196,17 +196,88 @@ export async function applyTheme(path?: string): Promise<boolean> {
   return ok
 }
 
-/**
- * 外部 JSON から ThemeData 全体（meta.brandTheme の参照先）を取得する。theme-colors.json（12キーのみ）とは異なり、
- * fonts/masters/masterMap/tokens/customCSS を含む ThemeData 構造をそのまま返す。取得・パースに失敗した場合は undefined
- */
-export async function fetchThemeData(path: string): Promise<ThemeData | undefined> {
+/** JSON 内の image/voice/theme/font 参照を判定する接頭辞（src/localSlideLoader.ts の ASSET_PATH_PREFIXES・scripts/export-slides.mjs の extractAssetPaths と同じ規則） */
+const ASSET_PATH_PREFIXES = ['image/', 'voice/', 'theme/', 'font/']
+
+/** https の絶対 URL かどうか（相対パス・ローカル同梱パスはここで書き換えず document.baseURI 基準の既存解決に委ねる。
+ * src/localSlideLoader.ts の isRemoteUrl と同じ https 限定の規則。#40: リモート取得は https スキームのみに限定する） */
+function isAbsoluteHttpUrl(path: string): boolean {
+  return /^https:\/\//i.test(path)
+}
+
+/** ThemeData 内のアセット参照パスを、取得元 URL を基準にした絶対 URL へ書き換える（純粋関数）。
+ * ローカル .spkg 同梱時の resolveLocalAssetPaths（baseDir 基準）と対称に、配布元 URL 基準で解決する（#210）。
+ * これがないと、リモート配布されたテーマ内のロゴ・フォント相対参照が document 基準で解決され 404 になる。 */
+export function resolveRemoteAssetPaths<T>(value: T, themeUrl: string): T {
+  if (typeof value === 'string') {
+    const normalized = value.replace(/^\//, '')
+    if (ASSET_PATH_PREFIXES.some((prefix) => normalized.startsWith(prefix))) {
+      return new URL(normalized, themeUrl).href as unknown as T
+    }
+    return value
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => resolveRemoteAssetPaths(item, themeUrl)) as unknown as T
+  }
+  if (value && typeof value === 'object') {
+    const result: Record<string, unknown> = {}
+    for (const [key, v] of Object.entries(value as Record<string, unknown>)) {
+      result[key] = resolveRemoteAssetPaths(v, themeUrl)
+    }
+    return result as T
+  }
+  return value
+}
+
+/** meta.brandTheme のオフライン再適用用キャッシュ名（#210）。内容不変を前提に、直近成功分を1件だけ保持する */
+const BRAND_THEME_CACHE_NAME = 'sdd-brand-theme-cache-v1'
+
+/** Cache Storage から path をキーに取得する。API 未対応環境（jsdom・古い WebView 等）や読み取り失敗時は undefined */
+async function readCachedThemeData(path: string): Promise<ThemeData | undefined> {
+  if (typeof caches === 'undefined') return undefined
   try {
-    const res = await fetch(path)
-    if (!res.ok) return undefined
-    return (await res.json()) as ThemeData
+    const cached = await (await caches.open(BRAND_THEME_CACHE_NAME)).match(path)
+    if (!cached) return undefined
+    return (await cached.json()) as ThemeData
   } catch {
     return undefined
+  }
+}
+
+/** Cache Storage へ path をキーに保存する。書き込み失敗（API 未対応・容量制限等）は取得自体の成功を妨げないため無視する */
+async function writeCachedThemeData(path: string, themeData: ThemeData): Promise<void> {
+  if (typeof caches === 'undefined') return
+  try {
+    await (await caches.open(BRAND_THEME_CACHE_NAME)).put(path, new Response(JSON.stringify(themeData)))
+  } catch {
+    // キャッシュ書き込み失敗は無視する
+  }
+}
+
+/**
+ * 外部 JSON から ThemeData 全体（meta.brandTheme の参照先）を取得する。theme-colors.json（12キーのみ）とは異なり、
+ * fonts/masters/masterMap/tokens/customCSS を含む ThemeData 構造をそのまま返す。
+ *
+ * https URL の場合、内部のアセット参照を取得元 URL 基準の絶対 URL へ書き換え（#210）、成功結果を Cache Storage
+ * に保存する。取得に失敗した場合（オフライン・404 等）は直近の成功分をキャッシュから返し、無ければ undefined
+ * にする（テーマは装飾であり、失敗させてスライド自体を開けなくしない・既存カスケードの方針を踏襲）。
+ */
+export async function fetchThemeData(path: string): Promise<ThemeData | undefined> {
+  const isRemote = isAbsoluteHttpUrl(path)
+  const fallback = () => (isRemote ? readCachedThemeData(path) : undefined)
+
+  try {
+    const res = await fetch(path)
+    if (!res.ok) return fallback()
+
+    const themeData = (await res.json()) as ThemeData
+    if (!isRemote) return themeData
+
+    const resolved = resolveRemoteAssetPaths(themeData, path)
+    await writeCachedThemeData(path, resolved)
+    return resolved
+  } catch {
+    return fallback()
   }
 }
 

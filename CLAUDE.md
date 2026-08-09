@@ -23,6 +23,7 @@ npm run test:watch   # テスト監視モード
 npm run test:e2e     # Playwright E2E（アサーション付き・en/ja 2ロケール・Linux 可）
 npm run export:slides   # スライド内容を .spkg として書き出す（--source / --slides / --name / --version / --addons / --strict）
 npm run export:samples  # samples/manifest.json の全ロケールを .spkg 化（リリース時に Releases へ添付）
+npm run export:theme    # ブランドテーマ単体（ThemeData JSON + アセット）を配布用に書き出す（--source / --theme / --name / --base-url / --strict）
 npm run generate-icons       # resources/icon.svg から src-tauri/icons/ を再生成（macOS 専用: sips + tauri icon）
 npm run generate-screenshots       # README 用スクリーンショット撮影（Playwright WebKit・macOS 専用・e2e スモーク兼用）
 npm run screenshots:compare        # 実アプリ画像とモック画像の手動比較（pixelmatch）

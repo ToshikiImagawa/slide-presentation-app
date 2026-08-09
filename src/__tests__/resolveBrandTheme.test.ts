@@ -64,6 +64,16 @@ describe('resolveBrandTheme', () => {
     expect(h.readTextFile).not.toHaveBeenCalled()
   })
 
+  it('https URL の場合、参照先ロゴ・フォントのアセット参照は取得元URL基準の絶対URLへ解決される（applyTheme.ts の fetchThemeData に委譲・#210）', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ icons: { logo: 'image/logo.png' }, fonts: { sources: [{ family: 'Corp', src: 'font/corp.woff2' }] } }) }))
+    vi.stubGlobal('caches', undefined)
+
+    const result = await resolveBrandTheme('https://cdn.example.com/theme/brand.json', '/pkg')
+
+    expect(result?.icons?.logo).toBe('https://cdn.example.com/theme/image/logo.png')
+    expect(result?.fonts?.sources?.[0].src).toBe('https://cdn.example.com/theme/font/corp.woff2')
+  })
+
   it('fetch が失敗した場合は undefined を返す（テーマ下地なしで続行）', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 404 }))
 
