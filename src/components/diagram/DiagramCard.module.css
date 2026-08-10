@@ -50,7 +50,7 @@
 
 .title {
   font-family: var(--theme-font-heading);
-  font-size: var(--theme-font-size-h4);
+  font-size: calc(var(--theme-font-size-h4) * var(--diagram-font-scale, 1));
   font-weight: 600;
   line-height: 1.3;
   color: var(--theme-text-heading);
@@ -58,7 +58,7 @@
 
 .body {
   font-family: var(--theme-font-body);
-  font-size: var(--theme-font-size-body2);
+  font-size: calc(var(--theme-font-size-body2) * var(--diagram-font-scale, 1));
   line-height: 1.4;
   color: var(--theme-text-body);
 }

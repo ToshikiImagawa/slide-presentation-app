@@ -270,6 +270,47 @@
           ]
         }
       }
+    },
+    {
+      "id": "layout-content-compare",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (compare)",
+        "compare": {
+          "left": {
+            "heading": "自社ホスティング",
+            "items": [
+              { "text": "初期費用ゼロ", "status": "pass" },
+              { "text": "データを社外に出さない", "status": "pass" },
+              { "text": "運用は自チームで担う", "status": "warn" },
+              { "text": "スケールには増強作業が要る", "status": "fail" }
+            ]
+          },
+          "right": {
+            "heading": "マネージドサービス",
+            "items": [
+              { "text": "運用負荷が小さい", "status": "pass" },
+              { "text": "スケールが自動", "status": "pass" },
+              { "text": "月額コストが発生", "status": "warn" },
+              { "text": "リージョン障害の影響を受ける", "status": "fail" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "layout-content-flow",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (flow)",
+        "flow": [
+          { "title": "要件定義", "description": "課題と受け入れ基準を洗い出す" },
+          { "title": "設計", "description": "データ構造とAPIを決める" },
+          { "title": "実装", "description": "小さく分けて進める" },
+          { "title": "レビュー", "description": "設計原則との整合を確認" },
+          { "title": "リリース", "description": "見本デッキで回帰を確認" }
+        ]
+      }
     }
   ]
 }

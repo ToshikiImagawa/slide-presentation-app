@@ -269,6 +269,47 @@
           ]
         }
       }
+    },
+    {
+      "id": "layout-content-compare",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (compare)",
+        "compare": {
+          "left": {
+            "heading": "Self-hosted",
+            "items": [
+              { "text": "No upfront cost", "status": "pass" },
+              { "text": "Data stays in-house", "status": "pass" },
+              { "text": "Ops owned by your team", "status": "warn" },
+              { "text": "Scaling needs manual work", "status": "fail" }
+            ]
+          },
+          "right": {
+            "heading": "Managed service",
+            "items": [
+              { "text": "Low operational overhead", "status": "pass" },
+              { "text": "Scales automatically", "status": "pass" },
+              { "text": "Monthly cost applies", "status": "warn" },
+              { "text": "Exposed to region outages", "status": "fail" }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "layout-content-flow",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (flow)",
+        "flow": [
+          { "title": "Requirements", "description": "Surface issues and acceptance criteria" },
+          { "title": "Design", "description": "Decide data shape and API" },
+          { "title": "Build", "description": "Ship in small increments" },
+          { "title": "Review", "description": "Check against design principles" },
+          { "title": "Release", "description": "Verify with the reference deck" }
+        ]
+      }
     }
   ]
 }

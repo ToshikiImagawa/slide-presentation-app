@@ -500,6 +500,65 @@ describe('SlideRenderer', () => {
     })
   })
 
+  // #200: 比較（content.compare → Compare）
+  describe('contentスライド(compare)', () => {
+    function renderContent(content: SlideData['content']) {
+      return renderWithTheme(<SlideRenderer slides={[{ id: 'test-compare', layout: 'content', content: { title: 'タイトル', ...content } }]} />)
+    }
+
+    it('compareが指定された内容で描画される', () => {
+      const { getByTestId } = renderContent({ compare: { left: { heading: '採用する', items: [{ text: '項目A', status: 'pass' }] }, right: { heading: '採用しない' } } })
+      expect(getByTestId('compare').textContent).toContain('採用する')
+      expect(getByTestId('compare').textContent).toContain('項目A')
+    })
+
+    it('compareがオブジェクトでない場合は描画せずbody/itemsへ落ちる', () => {
+      const { queryByTestId, container } = renderContent({ compare: 'broken', body: '本文' })
+      expect(queryByTestId('compare')).toBeNull()
+      expect(container.textContent).toContain('本文')
+    })
+
+    it('tableが指定されている場合はtable描画が優先される（既存の優先順位の維持）', () => {
+      const { queryByTestId } = renderContent({
+        table: { columns: [{ label: '項目' }], rows: [['値']] },
+        compare: { left: { heading: '見出し' } },
+      })
+      expect(queryByTestId('table')).not.toBeNull()
+      expect(queryByTestId('compare')).toBeNull()
+    })
+
+    it('compare指定時はflow/component/body/itemsを描画しない', () => {
+      const { getByTestId, container } = renderContent({ compare: { left: { heading: '見出し' } }, flow: [{ title: '工程1' }], body: '描画されない本文' })
+      expect(getByTestId('compare')).not.toBeNull()
+      expect(container.textContent).not.toContain('工程1')
+      expect(container.textContent).not.toContain('描画されない本文')
+    })
+  })
+
+  // #200: 横フロー（content.flow → Flow）
+  describe('contentスライド(flow)', () => {
+    function renderContent(content: SlideData['content']) {
+      return renderWithTheme(<SlideRenderer slides={[{ id: 'test-flow', layout: 'content', content: { title: 'タイトル', ...content } }]} />)
+    }
+
+    it('flowが指定された工程数だけカードを描画する', () => {
+      const { getByText } = renderContent({ flow: [{ title: '工程1' }, { title: '工程2' }, { title: '工程3' }] })
+      expect(getByText('工程1')).not.toBeNull()
+      expect(getByText('工程3')).not.toBeNull()
+    })
+
+    it('flowが空配列の場合は何も描画しない（tiles/steps等の他の配列フィールドと同様、bodyへは落ちない）', () => {
+      const { container } = renderContent({ flow: [], body: '本文' })
+      expect(container.textContent).not.toContain('本文')
+    })
+
+    it('compareが指定されている場合はcompare描画が優先される（既存の優先順位の維持）', () => {
+      const { getByTestId, container } = renderContent({ compare: { left: { heading: '見出し' } }, flow: [{ title: '工程1' }] })
+      expect(getByTestId('compare')).not.toBeNull()
+      expect(container.textContent).not.toContain('工程1')
+    })
+  })
+
   // #164: masters/masterMap/tokens と SlideMasterLayer。theme 未指定時は既存と完全同一のDOMになることも併せて確認する
   describe('masters（SlideMasterLayer 装飾描画）', () => {
     const masterTheme: ThemeData = {
