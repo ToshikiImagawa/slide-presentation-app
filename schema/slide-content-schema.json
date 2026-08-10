@@ -357,7 +357,7 @@
     },
     "tokens": {
       "type": "object",
-      "description": "masterKey → { CSS変数名: 値 } 。section[data-master=\"masterKey\"] スコープのCSS変数として出力される"
+      "description": "スコープキー → { CSS変数名: 値 } 。masterKey は section[data-master=\"masterKey\"] スコープ、\"*\"（デッキ全体）は :root スコープのCSS変数として出力される。両方に同じCSS変数があればmasterKeyスコープが勝つ"
     }
   }
 }
