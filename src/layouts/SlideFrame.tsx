@@ -28,15 +28,17 @@ type Props = SlideFrameCommonProps & {
  * master を渡して SlideMasterLayer に任せる（優先順: meta.master → masterMap["layout/variant"] →
  * masterMap["layout"]）。master が未解決（未指定・masterKey不明・extends循環）の場合は現行と完全同一の
  * DOMになる。.master-layer-front はロゴ（.slide-logo-inline）も持つ。
+ * meta.backgroundColor/backgroundImage は SlideMasterLayer の back レイヤーで描く（#236）。Reveal.js の
+ * 背景レイヤー（data-background-*・.backgrounds）は本編でしか効かないため使わない。
  * 余白は section ではなく .master-body に持たせることで、本編・発表者ビュー・編集プレビュー・PDF書き出しの
  * 4経路の見た目を一致させる */
 export function SlideFrame({ id, layout, variant, meta, logo, theme, ctx, bleed, children }: Props) {
   const resolved = resolveMaster(theme, layout, { master: meta?.master, variant })
 
   return (
-    <section className="slide-container" id={id} data-master={resolved?.masterKey} data-transition={meta?.transition} data-background-image={meta?.backgroundImage} data-background-color={meta?.backgroundColor}>
+    <section className="slide-container" id={id} data-master={resolved?.masterKey} data-transition={meta?.transition}>
       <div className="master-layer-back">
-        <SlideMasterLayer master={resolved} layer="back" ctx={ctx} />
+        <SlideMasterLayer master={resolved} layer="back" ctx={ctx} meta={meta} />
       </div>
       <div className={bleed ? 'master-body bleed-image-layout' : 'master-body'}>{children}</div>
       <div className="master-layer-front">

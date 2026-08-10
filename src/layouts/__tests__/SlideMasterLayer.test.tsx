@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { render } from '@testing-library/react'
 import { SlideMasterLayer } from '../SlideMasterLayer'
 import { clearRegistry, registerDefaultComponent } from '../../components/ComponentRegistry'
-import type { MasterBackground, MasterDecoration, MasterDecorationOnly, MasterRenderContext, SectionInfo } from '../../data'
+import type { MasterBackground, MasterDecoration, MasterDecorationOnly, MasterRenderContext, SectionInfo, SlideMeta } from '../../data'
 
 const ctx: MasterRenderContext = { index: 0, total: 1 }
 
@@ -178,5 +178,46 @@ describe('マスター背景', () => {
 
   it('opacity を指定すると背景全体を薄くする（デッキ既定の背景が透ける）', () => {
     expect(backgroundEl({ type: 'fill', color: '#000', opacity: 0.2 }).style.opacity).toBe('0.2')
+  })
+})
+
+// #236: スライド個別背景（meta.backgroundColor/backgroundImage）とマスター背景の優先順位
+describe('スライド個別背景（#236）', () => {
+  function renderBackLayerWithMeta(meta: SlideMeta, master?: { decorations?: MasterDecoration[]; background?: MasterBackground }): HTMLElement {
+    const { container } = render(<SlideMasterLayer master={master ? { masterKey: 'standard', decorations: master.decorations ?? [], background: master.background } : undefined} layer="back" ctx={ctx} meta={meta} />)
+    return container
+  }
+
+  it('meta.backgroundColor があるとマスター背景を描かず個別指定が勝つ', () => {
+    const el = renderBackLayerWithMeta({ backgroundColor: '#ff0000' }, { background: { type: 'fill', color: '#00ff00' } }).querySelector('.master-background') as HTMLElement
+    expect(el.style.backgroundColor).toBe('rgb(255, 0, 0)')
+  })
+
+  it('meta.backgroundImage があるとマスター背景を描かず個別指定が勝つ（既定 cover）', () => {
+    const el = renderBackLayerWithMeta({ backgroundImage: 'image/bg.png' }, { background: { type: 'plain' } }).querySelector('.master-background') as HTMLElement
+    expect(el.style.backgroundImage).toBe('url("image/bg.png")')
+    expect(el.style.backgroundSize).toBe('cover')
+  })
+
+  it('backgroundColor と backgroundImage を両方指定すると両方を反映する（色を下地に画像を重ねる）', () => {
+    const el = renderBackLayerWithMeta({ backgroundColor: '#123456', backgroundImage: 'image/bg.png' }).querySelector('.master-background') as HTMLElement
+    expect(el.style.backgroundColor).toBe('rgb(18, 52, 86)')
+    expect(el.style.backgroundImage).toBe('url("image/bg.png")')
+  })
+
+  it('meta 背景指定があれば master が未解決でも背景要素を描く（4経路一致のため section 内描画に統一）', () => {
+    const el = renderBackLayerWithMeta({ backgroundColor: '#ff0000' }).querySelector('.master-background') as HTMLElement
+    expect(el).not.toBeNull()
+    expect(el.style.backgroundColor).toBe('rgb(255, 0, 0)')
+  })
+
+  it('meta 背景指定が無ければ現行どおり master.background を描く', () => {
+    const el = renderBackLayerWithMeta({}, { background: { type: 'fill', color: '#00ff00' } }).querySelector('.master-background') as HTMLElement
+    expect(el.style.backgroundColor).toBe('rgb(0, 255, 0)')
+  })
+
+  it('front レイヤーには meta 背景を描かない（背景は back の最背面だけ）', () => {
+    const { container } = render(<SlideMasterLayer master={undefined} layer="front" ctx={ctx} meta={{ backgroundColor: '#ff0000' }} />)
+    expect(container.querySelector('.master-background')).toBeNull()
   })
 })

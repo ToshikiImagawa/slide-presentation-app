@@ -1,28 +1,32 @@
 import type { CSSProperties } from 'react'
 import { FallbackImage } from '../components/FallbackImage'
 import { hasComponent, renderRegisteredComponent } from '../components/ComponentRegistry'
-import type { MasterBackground, MasterDecoration, MasterDecorationLayer, MasterGradient, MasterRenderContext } from '../data'
+import type { MasterBackground, MasterDecoration, MasterDecorationLayer, MasterGradient, MasterRenderContext, SlideMeta } from '../data'
 import type { ResolvedMaster } from '../masters'
 import { matchesDecorationOnly, renderMasterText } from '../masters'
 
 type Props = {
-  /** resolveMaster が解決したマスター。未解決（undefined）なら何も描かない（現行と完全同一のDOM） */
+  /** resolveMaster が解決したマスター。未解決（undefined）でも meta 個別背景があれば描く */
   master: ResolvedMaster | undefined
   layer: MasterDecorationLayer
   ctx: MasterRenderContext
+  /** slides[].meta。backgroundColor/backgroundImage は back レイヤーで theme.masters[key].background より
+   * 優先する（#236: スライド個別指定が勝つ。theme.tokens の masterKey スコープが全体スコープに勝つのと同型） */
+  meta?: SlideMeta
 }
 
 /**
- * 指定レイヤー（back/front）の中身を組み立てる。back レイヤーは最背面にマスター背景（#189）を敷き、
+ * 指定レイヤー（back/front）の中身を組み立てる。back レイヤーは最背面に背景（#189・#236）を敷き、
  * その上に該当レイヤーの装飾（only 条件を満たすもの）を宣言順で描く。
  * レイヤー内の重なり順を知るのはこのコンポーネントだけで、SlideFrame は2つのレイヤー div を並べるだけ。
  */
-export function SlideMasterLayer({ master, layer, ctx }: Props) {
-  if (!master) return null
-  const visible = master.decorations.filter((d) => (d.layer ?? 'back') === layer && matchesDecorationOnly(d.only, ctx))
+export function SlideMasterLayer({ master, layer, ctx, meta }: Props) {
+  const metaBackgroundStyle = layer === 'back' ? metaBackgroundElementStyle(meta) : undefined
+  if (!master && !metaBackgroundStyle) return null
+  const visible = master?.decorations.filter((d) => (d.layer ?? 'back') === layer && matchesDecorationOnly(d.only, ctx)) ?? []
   return (
     <>
-      {layer === 'back' && master.background && <MasterBackgroundElement background={master.background} />}
+      {layer === 'back' && (metaBackgroundStyle ? <div className="master-background" style={metaBackgroundStyle} /> : master?.background && <MasterBackgroundElement background={master.background} />)}
       {visible.map((decoration, i) => (
         <MasterDecorationElement key={i} decoration={decoration} ctx={ctx} />
       ))}
@@ -91,6 +95,21 @@ function backgroundStyle(background: MasterBackground): CSSProperties {
 
     case 'image':
       return { ...base, backgroundImage: `url(${background.src})`, backgroundSize: background.fit ?? 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }
+  }
+}
+
+/**
+ * meta.backgroundColor / backgroundImage（スライド個別背景）の style を組み立てる。どちらも無ければ undefined
+ * を返す（#236）。両方指定時は Reveal.js の従来挙動（色を下地に画像を重ねる）に合わせて両方を反映する。
+ * fit は選択肢を持たないため既定の cover 固定（Reveal.js の data-background-image 既定と同じ）。
+ * .master-background と同じ要素・レイヤーで描くことで、本編・発表者ビュー・編集プレビュー・PDF書き出しの
+ * 4経路すべてで効くようにする（従来の data-background-* は Reveal.js の背景レイヤー経由のため4経路中1つしか効かなかった）
+ */
+function metaBackgroundElementStyle(meta: SlideMeta | undefined): CSSProperties | undefined {
+  if (!meta?.backgroundColor && !meta?.backgroundImage) return undefined
+  return {
+    ...(meta.backgroundColor ? { backgroundColor: meta.backgroundColor } : {}),
+    ...(meta.backgroundImage ? { backgroundImage: `url(${meta.backgroundImage})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' } : {}),
   }
 }
 
