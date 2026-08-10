@@ -1,8 +1,12 @@
 import { createElement } from 'react'
-import type { CanvasData, ColorPalette, FontDefinition, FontFamilySpec, FontSource, SafeArea, SlideData, ThemeData } from './data'
+import type { CanvasData, ColorPalette, FontDefinition, FontFamilySpec, FontSource, SafeArea, SlideContent, SlideData, ThemeData } from './data'
 import { buildMasterCss, getMasterWarnings } from './masters'
 import { hasComponent, registerComponent, unregisterOwner } from './components/ComponentRegistry'
 import { FallbackImage } from './components/FallbackImage'
+// getChartSpecIssues/ChartSpec は chart/index.ts 経由だと Chart.tsx → chartScale.ts → applyTheme.ts の循環importになるため、
+// 依存を持たない validateChart.ts / types.ts から直接importする
+import { getChartSpecIssues } from './components/chart/validateChart'
+import type { ChartSpec } from './components/chart/types'
 
 /** 6桁hex（#rrggbb）を [r, g, b] へ分解する（hexToRgb・relativeLuminance・brand/compile.ts の mix 計算が共有する） */
 export function hexToRgbTuple(hex: string): [number, number, number] {
@@ -730,7 +734,56 @@ export function getThemeWarnings(theme?: ThemeData, slides?: SlideData[]): strin
 
   warnings.push(...getMasterWarnings(theme, slides))
   warnings.push(...getTileIconWarnings(slides))
+  warnings.push(...getChartWarnings(slides))
 
+  return warnings
+}
+
+/** ComponentReference が Chart を指す場合、その props を ChartSpec として取り出す */
+function chartSpecFromComponentRef(ref: unknown): ChartSpec | undefined {
+  const component = ref as { name?: unknown; props?: Record<string, unknown> } | undefined
+  return component?.name === 'Chart' ? ((component.props ?? {}) as ChartSpec) : undefined
+}
+
+/** スライド1件から検証すべき ChartSpec を集める（content.chart の短縮記法・component 参照は content/left/right の3箇所・#241） */
+function collectChartSpecs(content: SlideContent): Array<{ path: string; spec: ChartSpec }> {
+  const specs: Array<{ path: string; spec: ChartSpec }> = []
+  if (content.chart && typeof content.chart === 'object') {
+    specs.push({ path: 'content.chart', spec: content.chart as ChartSpec })
+  }
+
+  const rootChart = chartSpecFromComponentRef(content.component)
+  if (rootChart) specs.push({ path: 'content.component.props', spec: rootChart })
+
+  for (const side of ['left', 'right'] as const) {
+    const columnChart = chartSpecFromComponentRef((content[side] as Record<string, unknown> | undefined)?.component)
+    if (columnChart) specs.push({ path: `content.${side}.component.props`, spec: columnChart })
+  }
+
+  return specs
+}
+
+/** ChartSpec の色トークン参照が未知でないか検査する（#241）。seriesColor 経由だと未知トークンが `primary` へ黙って
+ * フォールバックし判定できないため、THEME_COLOR_TOKENS を直接照合する */
+function getChartColorTokenIssues(spec: ChartSpec): string[] {
+  const colors: unknown[] = [spec.color, ...(Array.isArray(spec.series) ? spec.series.map((entry) => entry?.color) : [])]
+  return colors.filter((color): color is string => typeof color === 'string' && !THEME_COLOR_TOKENS[color]).map((color) => `未知の色トークン名です: "${color}"`)
+}
+
+/**
+ * content.chart の短縮記法・component: { name: "Chart" } の両方について、指定ミスを検出する（#241）。
+ * `type` の綴りミスや `series`/`categories` 未指定は白紙描画（Chart.tsx が console.warn + null を返す）になり
+ * 原因が伝わらないため、getChartSpecIssues（Chart.tsx と共有する単一の真実源）と色トークン照合をここに集約する。
+ */
+function getChartWarnings(slides?: SlideData[]): string[] {
+  const warnings: string[] = []
+  for (const [index, slide] of (slides ?? []).entries()) {
+    for (const { path, spec } of collectChartSpecs(slide.content)) {
+      for (const issue of [...getChartSpecIssues(spec), ...getChartColorTokenIssues(spec)]) {
+        warnings.push(`slides[${index}].${path}: ${issue}`)
+      }
+    }
+  }
   return warnings
 }
 

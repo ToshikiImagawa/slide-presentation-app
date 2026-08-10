@@ -270,6 +270,10 @@
 
 `series[].color` と `kpi` の `color` は色トークン名（`series1`〜`series6`/`primary`/`accent`/`success`/`warning`/`danger`/`neutral` 等）。省略時は系列順に `series1`〜`series6` が割り当たる（円は `categories` の順）。
 
+`content.chart` の短縮記法は `layout: content` 専用だが、`Chart` は ComponentRegistry にも登録されているため `component: { name: "Chart", props: {...} }`（`props` は上記と同じフィールド）でも置ける。two-column の各カラム（`left.component`/`right.component`）・bleed・custom など、`component` を受け付けるすべての経路から使え、チャートと箇条書きを左右に並べるレイアウトも組める。
+
+`type` の綴りミス・`categories`/`series` が両方空・`kpi` で `value`/`trend` が両方無い・未知の色トークン名は、いずれの経路で指定してもトースト表示（開発中）と AI 自動修復のフィードバックに載る（`getThemeWarnings`）。
+
 ### table（表）
 
 比較表・マイルストーン表・仕様表等のためのヘッダー行＋本文行の表。寸法・座標の指定はなく本文領域いっぱいに自動で収まり、罫線・ゼブラ・ヘッダ行の塗り・角丸はテーマトークンに追従する。

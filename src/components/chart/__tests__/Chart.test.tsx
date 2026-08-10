@@ -52,6 +52,15 @@ describe('Chart', () => {
     expect(container.firstChild).toBeNull()
     warn.mockRestore()
   })
+
+  it('kpi で value も trend も無ければ描画せず警告する（#241）', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const { container } = render(<Chart type="kpi" label="MAU" />)
+
+    expect(container.firstChild).toBeNull()
+    expect(warn).toHaveBeenCalled()
+    warn.mockRestore()
+  })
 })
 
 describe('Chart（縦棒）', () => {
