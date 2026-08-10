@@ -1,0 +1,69 @@
+/* 目次（#195）。行の組みだけを持ち、文字色・フォント・文字サイズはすべて意匠トークン（--theme-*）から引くので
+   テーマに追従する。列数はSlideRendererから渡るインラインstyleのgrid-template-columnsで決まる（Timelineと同じ方式）。
+   項目が増えたとき（多列時は行数）の行間・文字サイズはdata-densityで段階的に詰める（Checklistと同じ方式） */
+.list {
+  display: grid;
+  column-gap: 40px;
+  row-gap: 20px;
+  align-content: center;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.list[data-density='dense'] {
+  row-gap: 14px;
+}
+
+.list[data-density='compact'] {
+  row-gap: 10px;
+}
+
+.item {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  min-width: 0;
+}
+
+.number {
+  flex: 0 0 auto;
+  min-width: 2.2em;
+  font-family: var(--theme-font-heading);
+  font-weight: var(--theme-font-weight-heading);
+  font-size: var(--theme-font-size-h4);
+  color: var(--theme-primary);
+}
+
+/* タイトルとページ番号の間はドットの導線で結ぶ（紙の目次と同じ表記） */
+.title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-family: var(--theme-font-heading);
+  font-size: var(--theme-font-size-h4);
+  color: var(--theme-text-heading);
+  border-bottom: var(--theme-border-width) dotted var(--theme-border);
+}
+
+.page {
+  flex: 0 0 auto;
+  font-family: var(--theme-font-body);
+  font-size: var(--theme-font-size-body2);
+  color: var(--theme-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.list[data-density='dense'] .number,
+.list[data-density='dense'] .title,
+.list[data-density='compact'] .number,
+.list[data-density='compact'] .title {
+  font-size: var(--theme-font-size-body1);
+}
+
+.list[data-density='compact'] .page {
+  font-size: calc(var(--theme-font-size-body2) * 0.85);
+}

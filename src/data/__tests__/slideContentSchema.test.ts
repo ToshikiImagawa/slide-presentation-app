@@ -341,6 +341,48 @@ describe('getSchemaConformanceErrors', () => {
     expect(errors[0].path).toBe('slides[0].content.flow')
   })
 
+  it('content.tocの正常な指定はエラーにしない（#195 目次）', () => {
+    const data: PresentationData = {
+      meta: { title: 't' },
+      slides: [
+        { id: 's1', layout: 'content', content: { title: 'x', toc: {} } },
+        { id: 's2', layout: 'content', content: { title: 'x', toc: { numberFormat: '{sectionNumber:02}', columns: 2 } } },
+        { id: 's3', layout: 'content', content: { title: 'x', toc: { items: [{ number: '01', title: '導入', page: 3 }] } } },
+      ],
+    }
+    expect(getSchemaConformanceErrors(data)).toEqual([])
+  })
+
+  it('content.toc.itemsが配列でない場合エラーにする', () => {
+    const data = {
+      meta: { title: 't' },
+      slides: [{ id: 's1', layout: 'content', content: { title: 'x', toc: { items: 'broken' } } }],
+    } as unknown as PresentationData
+    const errors = getSchemaConformanceErrors(data)
+    expect(errors).toHaveLength(1)
+    expect(errors[0].path).toBe('slides[0].content.toc.items')
+  })
+
+  it('content.toc.itemsが推奨上限（12件）を超える場合はエラーにする（情報密度・#211）', () => {
+    const data: PresentationData = {
+      meta: { title: 't' },
+      slides: [{ id: 's1', layout: 'content', content: { title: 'x', toc: { items: Array.from({ length: 13 }, (_, i) => ({ title: `章${i}`, page: i + 1 })) } } }],
+    }
+    const errors = getSchemaConformanceErrors(data)
+    expect(errors).toHaveLength(1)
+    expect(errors[0].path).toBe('slides[0].content.toc.items')
+  })
+
+  it('content.toc.columnsが数値でない場合エラーにする', () => {
+    const data = {
+      meta: { title: 't' },
+      slides: [{ id: 's1', layout: 'content', content: { title: 'x', toc: { columns: '2' } } }],
+    } as unknown as PresentationData
+    const errors = getSchemaConformanceErrors(data)
+    expect(errors).toHaveLength(1)
+    expect(errors[0].path).toBe('slides[0].content.toc.columns')
+  })
+
   it('未知フィールドはエラーにしない（拡張・アドオンを阻害しない）', () => {
     const data: PresentationData = {
       meta: { title: 't' },

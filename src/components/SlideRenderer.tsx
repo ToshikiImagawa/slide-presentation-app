@@ -3,6 +3,7 @@ import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import type { ContentItem, LogoConfig, MasterRenderContext, SectionInfo, SlideContent, SlideData, ThemeData } from '../data'
 import { buildSections, findSectionAt } from '../sections'
+import { renderMasterText } from '../masters'
 import { componentFillsContentArea, renderRegisteredComponent, resolveComponent } from './ComponentRegistry'
 import { BleedLayout, ContentLayout, MessageLayout, SectionLayout, SlideFrame, TitleLayout } from '../layouts'
 import type { SlideFrameCommonProps } from '../layouts/SlideFrame'
@@ -13,6 +14,7 @@ import { TwoColumnGrid, type ColumnSpec } from './TwoColumnGrid'
 import { CodeBlockPanel } from './CodeBlockPanel'
 import { TitledBulletList } from './TitledBulletList'
 import { Checklist } from './Checklist'
+import { Toc, type TocItemData } from './Toc'
 import { Timeline } from './Timeline'
 import { TimelineNode } from './TimelineNode'
 import { FeatureTileGrid } from './FeatureTileGrid'
@@ -322,6 +324,25 @@ function renderChecklist(content: SlideContent): ReactNode {
   return <Checklist items={checklist.map((item) => ({ title: item.title, description: item.description ? renderHtml(item.description) : undefined, checked: item.checked }))} />
 }
 
+/**
+ * content.tocを目次としてレンダリングする（#195）。items指定時は手書きモード。省略時はsections（buildSectionsで
+ * 導出済み）から章番号・章タイトル・開始ページ番号を自動導出する。開始ページはstartIndex+1
+ * （Revealの1始まりのページ表示と一致）。章番号の書式はrenderMasterTextの{sectionNumber:0N}記法を再利用し、
+ * 書式解析を複製しない（#191）
+ */
+function renderToc(content: SlideContent, ctx: MasterRenderContext): ReactNode {
+  const toc = content.toc as { items?: Array<{ number?: string; title: string; page: string | number }>; numberFormat?: string; columns?: number }
+  const numberFormat = toc.numberFormat ?? '{sectionNumber}'
+  const items: TocItemData[] = toc.items
+    ? toc.items.map((item) => ({ number: item.number, title: item.title, page: String(item.page) }))
+    : (ctx.sections ?? []).map((section) => ({
+        number: renderMasterText(numberFormat, { index: section.startIndex, total: ctx.total, section }),
+        title: section.title,
+        page: String(section.startIndex + 1),
+      }))
+  return <Toc items={items} columns={toc.columns} />
+}
+
 /** tilesをFeatureTileGridとしてレンダリング */
 function renderTiles(content: SlideContent): ReactNode {
   const tiles = content.tiles as Array<{ icon: string; title: string; description: string; accentColor?: string }>
@@ -366,7 +387,9 @@ type ContentBranch = {
   /** 本文領域を .content-area の fill 変種にするか（#225）。
    * component は「広がるかどうか」を描画側が name から知り得ないので、登録側の宣言（traits）を引く関数で受ける */
   fill: boolean | ((content: SlideContent) => boolean)
-  render: (content: SlideContent) => ReactNode
+  /** ctx は toc（章からの自動導出・#195）だけが使う。他の分岐は content のみを使うので
+   * 引数を減らした関数を渡せる（TSの関数型は引数を減らす方向に代入可能） */
+  render: (content: SlideContent, ctx: MasterRenderContext) => ReactNode
 }
 
 /**
@@ -380,6 +403,7 @@ type ContentBranch = {
 const CONTENT_BRANCHES: ContentBranch[] = [
   { match: (content) => Boolean(content.steps), fill: false, render: renderSteps },
   { match: (content) => Boolean(content.checklist), fill: false, render: renderChecklist },
+  { match: (content) => Boolean(content.toc) && typeof content.toc === 'object', fill: false, render: renderToc },
   { match: (content) => Boolean(content.tiles), fill: false, render: renderTiles },
   { match: (content) => Boolean(content.images), fill: true, render: renderImages },
   // チャート（#204）・表（#194）は本文領域の残り高さを埋める
@@ -399,8 +423,8 @@ function resolveContentBranch(content: SlideContent): ContentBranch | undefined 
 }
 
 /** contentスライドの子要素をレンダリング */
-function renderContentChildren(content: SlideContent): ReactNode {
-  return resolveContentBranch(content)?.render(content) ?? null
+function renderContentChildren(content: SlideContent, ctx: MasterRenderContext): ReactNode {
+  return resolveContentBranch(content)?.render(content, ctx) ?? null
 }
 
 /** 本文領域の残り高さいっぱいに広がる子を描くか（.content-area の fill 変種・#225） */
@@ -415,7 +439,7 @@ function renderContentSlide(slide: SlideData, logo: LogoConfig | undefined, them
   const variant = getVariant(content)
   return (
     <ContentLayout id={slide.id} layout={slide.layout} variant={variant} title={content.title ?? ''} meta={slide.meta} logo={logo} theme={theme} ctx={ctx} fill={fillsContentArea(content)}>
-      {renderContentChildren(content)}
+      {renderContentChildren(content, ctx)}
     </ContentLayout>
   )
 }
@@ -481,6 +505,6 @@ export function SlideRenderer({ slides, logo, theme }: SlideRendererProps) {
  * （3経路: 本編・発表者ビュー・編集プレビューで必須）。sections はデッキ全体から buildSections で導出した章で、
  * 章を持たないデッキでは空配列を渡す（省略可にすると配線もれが「章が無い」として静かに埋もれる・#191） */
 SlideRenderer.Slide = function SlideRendererSlide({ slide, index, total, sections, logo, theme }: { slide: SlideData; index: number; total: number; sections: SectionInfo[]; logo?: LogoConfig; theme?: ThemeData }) {
-  const ctx: MasterRenderContext = { index, total, section: findSectionAt(sections, index) }
+  const ctx: MasterRenderContext = { index, total, section: findSectionAt(sections, index), sections }
   return <>{renderSlide(slide, logo, theme, ctx)}</>
 }
