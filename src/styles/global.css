@@ -182,8 +182,12 @@ body {
 }
 
 /* マスター背景（#189）。.master-layer-back の最背面に敷く要素で、種別ごとの色・画像・不透明度は
-   SlideMasterBackground がインラインスタイルで与える */
+   SlideMasterBackground がインラインスタイルで与える。既定の下地色はここに置く（#239）。
+   plain/grid のインライン省略時はこの値がそのまま使われ、fill は必須の color で必ず上書きされ、
+   gradient/image（cover 全面表示時）は下地が透けて見えないが、image の fit: contain の余白では
+   この色が下地になる（デッキ既定の格子を透かすのではなく、テーマ背景色で塗ることに統一する） */
 .master-background {
+  background-color: var(--theme-background);
   inset: 0;
   position: absolute;
 }
@@ -193,6 +197,17 @@ body {
 .master-background-grid {
   background-image: var(--theme-background-grid-image);
   background-size: var(--theme-background-grid-size) var(--theme-background-grid-size);
+}
+
+/* band/rule の既定色（#239）。JSON側が color/gradient を明示指定したときはインラインで上書きする */
+.master-decoration-band,
+.master-decoration-rule {
+  background-color: var(--theme-primary);
+}
+
+/* text 装飾の既定色（#239）。JSON側が color を明示指定したときはインラインで上書きする */
+.master-decoration-text {
+  color: var(--theme-text-body);
 }
 
 /* スライド上端のブランド帯。同じ意匠を .reveal .slides section.slide-container::before（詳細度が高く

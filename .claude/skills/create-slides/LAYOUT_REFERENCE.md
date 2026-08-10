@@ -584,6 +584,8 @@
 | `gradient` | `from` / `to`（必須）/ `angle`（deg・省略時 180 = 上→下） | グラデーション |
 | `image` | `src`（必須）/ `fit`（`cover`/`contain`・省略時 `cover`） | 画像を全面に敷く |
 
+`plain`/`grid`（`color` 省略時）に加え、`gradient` の半透明部分・`image` の `fit: contain` の余白の下地も既定でテーマ背景色になる（#239。真実源は `global.css` の `.master-background`）。
+
 格子線の色は `tokens` の masterKey スコープで `theme-background-grid` を上書きすればマスターごとに変えられる。
 
 `only` は装飾を出すスライドの絞り込み条件。

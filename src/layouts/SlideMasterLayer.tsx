@@ -69,7 +69,14 @@ function linearGradient(gradient: MasterGradient): string {
   return `linear-gradient(${gradient.angle ?? 180}deg, ${gradient.from}, ${gradient.to})`
 }
 
-/** master の background（無地/格子/全面塗り/グラデーション/画像）を全面に敷く要素（#189） */
+/**
+ * master の background（無地/格子/全面塗り/グラデーション/画像）を全面に敷く要素（#189）。
+ * 既定の下地色（テーマ背景色）は .master-background（global.css）に持たせる（#239）。JSON側は
+ * 明示指定（fill の color・grid の color 上書き）のときだけインラインで上書きし、plain・グラデーション・
+ * 画像（cover 全面表示時は見えないが、image の fit: contain の余白と gradient の半透明部分では下地として
+ * 透ける）は CSS の既定に委ねる。デッキ既定の格子を透かす旧来のグレーゾーン挙動より、常にテーマ背景色を
+ * 下地にする方が「背景意匠の下は必ずテーマ背景色」という一貫した仕様になり、意図が説明しやすい
+ */
 function MasterBackgroundElement({ background }: { background: MasterBackground }) {
   const className = background.type === 'grid' ? 'master-background master-background-grid' : 'master-background'
   return <div className={className} style={backgroundStyle(background)} />
@@ -79,12 +86,12 @@ function backgroundStyle(background: MasterBackground): CSSProperties {
   const base: CSSProperties = { opacity: background.opacity }
   switch (background.type) {
     case 'plain':
-      return { ...base, backgroundColor: 'var(--theme-background)' }
+      return base
 
     case 'grid': {
       // 格子の意匠自体は .master-background-grid（global.css）に持たせ、密度だけCSS変数で上書きする
       const density = background.size !== undefined ? ({ '--theme-background-grid-size': `${background.size}px` } as CSSProperties) : undefined
-      return { ...base, backgroundColor: background.color ?? 'var(--theme-background)', ...density }
+      return { ...base, ...(background.color ? { backgroundColor: background.color } : {}), ...density }
     }
 
     case 'fill':
@@ -139,20 +146,28 @@ function MasterDecorationElement({ decoration, ctx }: { decoration: MasterDecora
       )
 
     case 'band': {
+      // 既定色（var(--theme-primary)）は .master-decoration-band（global.css）に持たせる（#239）。
+      // JSON側は color/gradient を明示指定したときだけインラインで上書きする
       const style = decorationStyle(decoration, decoration.orientation ?? 'horizontal')
       const sizeStyle = stripeSize(decoration.orientation, decoration.thickness ?? 8)
-      const paint = decoration.gradient ? { backgroundImage: linearGradient(decoration.gradient) } : { backgroundColor: decoration.color ?? 'var(--theme-primary)' }
-      return <div style={{ ...style, ...sizeStyle, ...paint }} />
+      const paint = decoration.gradient ? { backgroundImage: linearGradient(decoration.gradient) } : decoration.color ? { backgroundColor: decoration.color } : {}
+      return <div className="master-decoration-band" style={{ ...style, ...sizeStyle, ...paint }} />
     }
 
     case 'rule': {
+      // 既定色は .master-decoration-rule（global.css）に持たせる（#239）
       const style = decorationStyle(decoration)
       const sizeStyle = stripeSize(decoration.orientation, decoration.thickness ?? 2, decoration.length ?? 200)
-      return <div style={{ ...style, ...sizeStyle, backgroundColor: decoration.color ?? 'var(--theme-primary)' }} />
+      return <div className="master-decoration-rule" style={{ ...style, ...sizeStyle, ...(decoration.color ? { backgroundColor: decoration.color } : {}) }} />
     }
 
     case 'text':
-      return <div style={{ ...decorationStyle(decoration), color: decoration.color ?? 'var(--theme-text-body)', fontSize: decoration.fontSize, whiteSpace: 'nowrap' }}>{renderMasterText(decoration.content, ctx)}</div>
+      // 既定色は .master-decoration-text（global.css）に持たせる（#239）
+      return (
+        <div className="master-decoration-text" style={{ ...decorationStyle(decoration), ...(decoration.color ? { color: decoration.color } : {}), fontSize: decoration.fontSize, whiteSpace: 'nowrap' }}>
+          {renderMasterText(decoration.content, ctx)}
+        </div>
+      )
 
     case 'component':
       // 未登録コンポーネントは FallbackComponent の破線枠が全スライドに並ぶのを避けるため、装飾自体を描画しない

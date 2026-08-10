@@ -113,10 +113,40 @@ describe('SlideMasterLayer', () => {
       expect(styleOf({ type: 'band', anchor: 'bottom-center', gradient: { from: '#000', to: '#fff' } }).backgroundImage).toBe('linear-gradient(180deg, rgb(0, 0, 0), rgb(255, 255, 255))')
     })
 
-    it('gradient 未指定時は既存どおり color で塗る', () => {
-      const style = styleOf({ type: 'band', anchor: 'top-center' })
-      expect(style.backgroundColor).toBe('var(--theme-primary)')
-      expect(style.backgroundImage).toBe('')
+    it('color 指定時はインラインで上書きする', () => {
+      expect(styleOf({ type: 'band', anchor: 'top-center', color: '#123456' }).backgroundColor).toBe('rgb(18, 52, 86)')
+    })
+  })
+
+  // #239: 装飾の既定色は global.css のクラス（.master-decoration-*）に持たせ、インラインでは指定しない
+  describe('装飾の既定色（#239）', () => {
+    it('band は color/gradient 未指定時、既定色をインラインで指定せず .master-decoration-band に委ねる', () => {
+      const el = renderBackLayer({ decorations: [{ type: 'band', anchor: 'top-center' }] }).firstElementChild as HTMLElement
+      expect(el.className).toBe('master-decoration-band')
+      expect(el.style.backgroundColor).toBe('')
+      expect(el.style.backgroundImage).toBe('')
+    })
+
+    it('rule は color 未指定時、既定色をインラインで指定せず .master-decoration-rule に委ねる', () => {
+      const el = renderBackLayer({ decorations: [{ type: 'rule', anchor: 'bottom-center' }] }).firstElementChild as HTMLElement
+      expect(el.className).toBe('master-decoration-rule')
+      expect(el.style.backgroundColor).toBe('')
+    })
+
+    it('rule は color 指定時はインラインで上書きする', () => {
+      const el = renderBackLayer({ decorations: [{ type: 'rule', anchor: 'bottom-center', color: '#123456' }] }).firstElementChild as HTMLElement
+      expect(el.style.backgroundColor).toBe('rgb(18, 52, 86)')
+    })
+
+    it('text は color 未指定時、既定色をインラインで指定せず .master-decoration-text に委ねる', () => {
+      const el = renderBackLayer({ decorations: [{ type: 'text', anchor: 'bottom-center', content: 'x' }] }).firstElementChild as HTMLElement
+      expect(el.className).toBe('master-decoration-text')
+      expect(el.style.color).toBe('')
+    })
+
+    it('text は color 指定時はインラインで上書きする', () => {
+      const el = renderBackLayer({ decorations: [{ type: 'text', anchor: 'bottom-center', content: 'x', color: '#123456' }] }).firstElementChild as HTMLElement
+      expect(el.style.color).toBe('rgb(18, 52, 86)')
     })
   })
 })
@@ -140,18 +170,24 @@ describe('マスター背景', () => {
     expect(container.children[0].className).toBe('master-background')
   })
 
-  it('plain はテーマ背景色の無地で塗る（デッキ既定の格子を隠す）', () => {
+  // #239: 既定の下地色（テーマ背景色）は .master-background（global.css）に持たせ、インラインでは
+  // 指定しない（plain・grid の color 未指定・gradient・image は CSS の既定に委ねる）
+  it('plain は下地色をインラインで指定せず .master-background の既定色（テーマ背景色）に委ねる（デッキ既定の格子を隠す）', () => {
     const el = backgroundEl({ type: 'plain' })
     expect(el.className).toBe('master-background')
-    expect(el.style.backgroundColor).toBe('var(--theme-background)')
+    expect(el.style.backgroundColor).toBe('')
     expect(el.style.backgroundImage).toBe('')
   })
 
-  it('grid は global.css の格子意匠クラスを付け、下地はテーマ背景色にする', () => {
+  it('grid は global.css の格子意匠クラスを付け、下地色（color 未指定時）も .master-background の既定に委ねる', () => {
     const el = backgroundEl({ type: 'grid' })
     expect(el.className).toBe('master-background master-background-grid')
-    expect(el.style.backgroundColor).toBe('var(--theme-background)')
+    expect(el.style.backgroundColor).toBe('')
     expect(el.style.getPropertyValue('--theme-background-grid-size')).toBe('')
+  })
+
+  it('grid の color を指定すると下地色をインラインで上書きする', () => {
+    expect(backgroundEl({ type: 'grid', color: '#123456' }).style.backgroundColor).toBe('rgb(18, 52, 86)')
   })
 
   it('grid の size は格子の密度をCSS変数の上書きで変える', () => {
