@@ -23,6 +23,7 @@ import { Chart, type ChartSpec } from './chart'
 import { Table, type TableSpec } from './table'
 import { Compare, type CompareSpec } from './compare'
 import { Flow, type FlowStep } from './flow'
+import { ClassDiagram, type ClassDiagramSpec, HierarchyDiagram, type HierarchyDiagramSpec, OrgChart, type OrgChartSpec, ServerDiagram, type ServerDiagramSpec } from './structureDiagram'
 import { AccentText } from './AccentText'
 import { Quote } from './Quote'
 import { BigMessage } from './BigMessage'
@@ -413,6 +414,12 @@ const CONTENT_BRANCHES: ContentBranch[] = [
   { match: (content) => Boolean(content.compare) && typeof content.compare === 'object', fill: true, render: (content) => <Compare {...(content.compare as CompareSpec)} /> },
   // 横フロー（#200）は DiagramCanvas に載るので埋める
   { match: (content) => Boolean(content.flow), fill: true, render: (content) => <Flow steps={content.flow as FlowStep[]} /> },
+  // 構成図（#205）はいずれも Diagram（DiagramCanvas）に載るので埋める。ノード/エッジの共通データ構造は
+  // schema/slide-content-schema.json の structureNode/structureEdge が単一ソース（#206/#207も同じ形に乗る想定）
+  { match: (content) => Boolean(content.hierarchyDiagram) && typeof content.hierarchyDiagram === 'object', fill: true, render: (content) => <HierarchyDiagram {...(content.hierarchyDiagram as HierarchyDiagramSpec)} /> },
+  { match: (content) => Boolean(content.serverDiagram) && typeof content.serverDiagram === 'object', fill: true, render: (content) => <ServerDiagram {...(content.serverDiagram as ServerDiagramSpec)} /> },
+  { match: (content) => Boolean(content.orgChart) && typeof content.orgChart === 'object', fill: true, render: (content) => <OrgChart {...(content.orgChart as OrgChartSpec)} /> },
+  { match: (content) => Boolean(content.classDiagram) && typeof content.classDiagram === 'object', fill: true, render: (content) => <ClassDiagram {...(content.classDiagram as ClassDiagramSpec)} /> },
   { match: (content) => Boolean(content.component), fill: (content) => componentFillsContentArea(content.component!.name), render: (content) => renderComponent(content.component!) },
   // 上のいずれも無指定の場合のみ、プレーン本文（body/items）を描画する（#193）
   { match: (content) => Boolean(content.body) || Boolean(content.items?.length), fill: false, render: renderBody },

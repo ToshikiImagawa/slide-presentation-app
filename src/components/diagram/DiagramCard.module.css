@@ -61,6 +61,8 @@
   font-size: calc(var(--theme-font-size-body2) * var(--diagram-font-scale, 1));
   line-height: 1.4;
   color: var(--theme-text-body);
+  /* 他の本文フィールドと同じ "改行は\n" 規約に揃える（UMLクラス図の属性・メソッド列等・#205） */
+  white-space: pre-line;
 }
 
 /* カード左上に重ねる番号バッジ。カードの角丸に食い込まないよう内側へ寄せる */

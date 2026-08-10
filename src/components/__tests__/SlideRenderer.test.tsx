@@ -774,6 +774,49 @@ describe('SlideRenderer', () => {
     })
   })
 
+  // #205: 構成図（content.hierarchyDiagram/serverDiagram/orgChart/classDiagram → structureDiagram/）
+  describe('contentスライド(構成図)', () => {
+    function renderContent(content: SlideData['content']) {
+      return renderWithTheme(<SlideRenderer slides={[{ id: 'test-structure-diagram', layout: 'content', content: { title: 'タイトル', ...content } }]} />)
+    }
+
+    it('hierarchyDiagramの層タイトルを描画する', () => {
+      const { getByText } = renderContent({ hierarchyDiagram: { layers: [{ title: 'プレゼンテーション層' }, { title: 'データ層' }] } })
+      expect(getByText('プレゼンテーション層')).not.toBeNull()
+      expect(getByText('データ層')).not.toBeNull()
+    })
+
+    it('serverDiagramのゾーン・ノードラベルを描画する', () => {
+      const { getByText } = renderContent({ serverDiagram: { zones: [{ title: 'パブリック', nodes: [{ id: 'lb', label: 'LB' }] }] } })
+      expect(getByText('パブリック')).not.toBeNull()
+      expect(getByText('LB')).not.toBeNull()
+    })
+
+    it('orgChartのノードラベルを描画する', () => {
+      const { getByText } = renderContent({
+        orgChart: {
+          nodes: [
+            { id: 'ceo', label: 'CEO' },
+            { id: 'cto', label: 'CTO', parent: 'ceo' },
+          ],
+        },
+      })
+      expect(getByText('CEO')).not.toBeNull()
+      expect(getByText('CTO')).not.toBeNull()
+    })
+
+    it('classDiagramのクラス名を描画する', () => {
+      const { getByText } = renderContent({ classDiagram: { classes: [{ id: 'user', label: 'User' }] } })
+      expect(getByText('User')).not.toBeNull()
+    })
+
+    it('複数の構成図フィールドが同時にあってもhierarchyDiagramが優先される（既存の優先順位パターンと同じ先勝ち）', () => {
+      const { getByText, queryByText } = renderContent({ hierarchyDiagram: { layers: [{ title: '層' }] }, orgChart: { nodes: [{ id: 'a', label: 'ノード' }] } })
+      expect(getByText('層')).not.toBeNull()
+      expect(queryByText('ノード')).toBeNull()
+    })
+  })
+
   // #256: 本文領域の fill 変種（.content-area-fill）と「埋める要素」（.content-area-fill-item）の対応。
   // 分岐順と fill の判定は CONTENT_BRANCHES の1か所に集約したので、その表が DOM に現れるかを全分岐で検査する
   // （fill を付けて -item を付け忘れると .content-area の主軸配置が stretch に変わり、静かに崩れる）
@@ -789,6 +832,10 @@ describe('SlideRenderer', () => {
       { name: 'table', content: { table: { columns: [{ label: '項目' }], rows: [['値']] } }, fill: true },
       { name: 'compare', content: { compare: { left: { heading: '見出し' } } }, fill: true },
       { name: 'flow', content: { flow: [{ title: '工程1' }, { title: '工程2' }] }, fill: true },
+      { name: 'hierarchyDiagram', content: { hierarchyDiagram: { layers: [{ title: '層1' }] } }, fill: true },
+      { name: 'serverDiagram', content: { serverDiagram: { zones: [{ title: 'ゾーン', nodes: [{ id: 'n', label: 'ノード' }] }] } }, fill: true },
+      { name: 'orgChart', content: { orgChart: { nodes: [{ id: 'a', label: 'ノード' }] } }, fill: true },
+      { name: 'classDiagram', content: { classDiagram: { classes: [{ id: 'a', label: 'クラス' }] } }, fill: true },
       { name: 'component:Diagram（登録側が fillsContentArea を宣言）', content: { component: { name: 'Diagram', props: { nodes: [{ id: 'a', rect: { x: 0, y: 0, w: 0.3, h: 0.3 }, title: 'カード' }] } } }, fill: true },
       { name: 'component:TerminalAnimation（既定は埋めない）', content: { component: { name: 'TerminalAnimation' } }, fill: false },
       { name: 'body/items', content: { body: '本文' }, fill: false },

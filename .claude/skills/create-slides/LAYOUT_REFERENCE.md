@@ -378,6 +378,101 @@
 }
 ```
 
+### 構成図（階層構成図・サーバ/クラウド構成図・組織図・UMLクラス図・#205）
+
+4種の構成図はいずれも `src/components/diagram/` の共通プリミティブ（#202）に座標を渡す層として実装されており、ノード/エッジのデータ構造を共有する（種別ごとに独自DSLを作らない。`schema/slide-content-schema.json` の `structureNode`/`structureEdge` が単一ソース）。配置は「配列順による明示指定」または「決定的な自動配置」のいずれかで決まり、乱数・力学モデルは使わない。矢印・コネクタはノードの境界に自動で接する。
+
+#### hierarchyDiagram（階層構成図）
+
+層を上から下へ積む構造図。層の配列順がそのまま配置の明示指定になる（自動配置は使わない）。隣接する層同士は自動で線を結ぶ。
+
+```json
+{
+  "id": "slide-id",
+  "layout": "content",
+  "content": {
+    "title": "3層アーキテクチャ",
+    "hierarchyDiagram": {
+      "layers": [
+        { "title": "プレゼンテーション層", "description": "Web UI・モバイルアプリ" },
+        { "title": "ビジネス層", "description": "API・ドメインロジック" },
+        { "title": "データ層", "description": "RDB・キャッシュ" }
+      ]
+    }
+  }
+}
+```
+
+#### serverDiagram（サーバ/クラウド構成図）
+
+ゾーン（サブネット等の枠）ごとにノードを横一列に並べる。ゾーン・ノードの配列順がそのまま配置の明示指定になる。ゾーンをまたぐノード間の接続は `connections` で id 同士を結ぶ。
+
+```json
+{
+  "id": "slide-id",
+  "layout": "content",
+  "content": {
+    "title": "サーバ構成",
+    "serverDiagram": {
+      "zones": [
+        { "title": "パブリックサブネット", "nodes": [{ "id": "lb", "label": "ロードバランサ" }] },
+        { "title": "プライベートサブネット", "nodes": [{ "id": "app1", "label": "APIサーバ" }, { "id": "app2", "label": "APIサーバ" }] },
+        { "title": "データ層", "nodes": [{ "id": "db", "label": "RDS" }] }
+      ],
+      "connections": [
+        { "from": "lb", "to": "app1" },
+        { "from": "lb", "to": "app2" },
+        { "from": "app1", "to": "db" },
+        { "from": "app2", "to": "db" }
+      ]
+    }
+  }
+}
+```
+
+#### orgChart（組織図・体制図）
+
+`nodes[].parent` で親子関係を明示指定すると、行（親からの深さ）と列位置（決定的な自動配置。乱数・力学モデルは使わない）が自動で決まる。親子の接続線も自動で引く。`parent` を省略したノードはルート（複数可）。
+
+```json
+{
+  "id": "slide-id",
+  "layout": "content",
+  "content": {
+    "title": "組織図",
+    "orgChart": {
+      "nodes": [
+        { "id": "ceo", "label": "CEO" },
+        { "id": "cto", "label": "CTO", "parent": "ceo" },
+        { "id": "coo", "label": "COO", "parent": "ceo" },
+        { "id": "eng", "label": "エンジニアリング部長", "parent": "cto" }
+      ]
+    }
+  }
+}
+```
+
+#### classDiagram（UMLクラス図）
+
+属性・メソッドを持つクラスボックスと関係線。`classes[].row`/`col` を指定すると明示配置、省略時は決定的な自動グリッド配置になる。`relations[].type`（association/inheritance/implements/dependency）で関係線の見た目の既定値（実線/破線・矢印/三角）が決まる。
+
+```json
+{
+  "id": "slide-id",
+  "layout": "content",
+  "content": {
+    "title": "クラス図",
+    "classDiagram": {
+      "classes": [
+        { "id": "user", "label": "User", "attributes": ["id: string", "name: string"], "methods": ["login(): void"] },
+        { "id": "admin", "label": "Admin", "attributes": ["role: string"] }
+      ],
+      "relations": [{ "from": "admin", "to": "user", "type": "inheritance" }]
+    }
+  }
+}
+```
+
 ## two-column
 
 左右2カラムレイアウト。各カラムには以下を組み合わせて配置できる。
