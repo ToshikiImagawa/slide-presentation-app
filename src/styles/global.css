@@ -52,6 +52,16 @@
   --theme-radius-md: 12px;
   --theme-radius-lg: 16px;
   --theme-border-width: 1px;
+  /* 装飾的な太線の意匠（#228）。ヘアラインの --theme-border-width とは別軸で、
+     線の向きと役割（縦のアクセント / 面を横断する装飾線 / 要素を囲む枠）ごとに分ける */
+  /* 見出し（.slide-title）左端のアクセントバーの太さ */
+  --theme-heading-accent-width: 6px;
+  /* スライド上端に走るブランド帯の太さ（スライドフレーム側の装飾） */
+  --theme-frame-rule-width: 4px;
+  /* 本文中の装飾的な区切り線の太さ（Timeline を貫く水平線など） */
+  --theme-rule-width: 4px;
+  /* 番号バッジ（TimelineNode）を囲むリングの太さ。太くすると内側の面積が減って数字が読めなくなるため横断線とは別軸 */
+  --theme-node-ring-width: 3px;
   /* カード左端のアクセントバーの幅。既定 0 は「バーなし」＝現行の見た目 */
   --theme-card-accent-width: 0px;
   /* 影の不透明度に掛ける倍率（0 で影なし・2 で倍の濃さ）。絶対値ではなく倍率にして各影の相対的な深さを保つ */
@@ -181,13 +191,15 @@ body {
   background-size: var(--theme-background-grid-size) var(--theme-background-grid-size);
 }
 
+/* スライド上端のブランド帯。同じ意匠を .reveal .slides section.slide-container::before（詳細度が高く
+   Reveal.js のスタイルに勝つため必要）でも宣言しており、太さは両方が同じトークンを参照する */
 .slides .slide-container::before {
   content: '';
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
-  height: 4px;
+  height: var(--theme-frame-rule-width);
   background: var(--theme-primary);
   z-index: 10;
 }
@@ -357,7 +369,7 @@ code {
   margin-bottom: 40px;
   width: 100%;
   text-align: left;
-  border-left: 6px solid var(--theme-primary);
+  border-left: var(--theme-heading-accent-width) solid var(--theme-primary);
   padding-left: 20px;
 }
 
@@ -390,7 +402,7 @@ code {
   top: 0;
   left: 0;
   right: 0;
-  height: 4px;
+  height: var(--theme-frame-rule-width);
   background: var(--theme-primary);
   z-index: 10;
 }

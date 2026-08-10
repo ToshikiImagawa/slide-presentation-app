@@ -13,7 +13,7 @@
   top: 24px;
   left: 0;
   right: 0;
-  height: 4px;
+  height: var(--theme-rule-width);
   background: var(--theme-border);
   z-index: 0;
 }

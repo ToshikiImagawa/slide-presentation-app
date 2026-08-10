@@ -16,7 +16,7 @@ export function TimelineNode({ number, title, children }: Props) {
           width: 50,
           height: 50,
           bgcolor: 'var(--theme-background)',
-          border: '3px solid var(--theme-primary)',
+          border: 'var(--theme-node-ring-width) solid var(--theme-primary)',
           color: 'var(--theme-primary)',
           fontWeight: 700,
           fontSize: '20px',

@@ -98,30 +98,43 @@ its plain theme and the user gets a single actionable notice rather than a broke
 
 ## Design Tokens
 
-Slide components must not hardcode corner radii, border widths, accent widths, shadow opacities, or table
-zebra shading. Reference the CSS variables below instead — they are declared in `src/styles/global.css` and
-can be overridden per deck from `theme.tokens`. A component that hardcodes these values will not follow a
-brand theme, which is exactly what makes a themed deck still look "not ours".
+Slide components must not hardcode corner radii, border widths, rule widths, accent widths, shadow
+opacities, or table zebra shading. Reference the CSS variables below instead — they are declared in
+`src/styles/global.css` and can be overridden per deck from `theme.tokens`. A component that hardcodes these
+values will not follow a brand theme, which is exactly what makes a themed deck still look "not ours".
 
-| Token                        | Default | What it controls                                                                            |
-|------------------------------|---------|---------------------------------------------------------------------------------------------|
-| `--theme-radius-sm`          | `8px`   | Panels and small chrome (`CodeBlockPanel`, inline `code`, Reveal's slide number)             |
-| `--theme-radius-md`          | `12px`  | Mid-size surfaces and elements nested inside a card (`QrCodeCard`, the tile icon chip)       |
-| `--theme-radius-lg`          | `16px`  | Cards (`MuiCard`, i.e. `FeatureTileGrid` tiles)                                              |
-| `--theme-border-width`       | `1px`   | Hairline borders on cards and panels. Thick accent strokes keep their own component values   |
-| `--theme-card-accent-width`  | `0px`   | Accent bar on a card's inner (left) edge. `0` means no bar, which is the default appearance  |
-| `--theme-shadow-strength`    | `1`     | Multiplier applied to shadow opacities. `0` disables shadows, `2` doubles them               |
-| `--theme-zebra-opacity`      | `0.04`  | Alpha of the background shaded on a table's even rows                                        |
+| Token                          | Default | What it controls                                                                            |
+|--------------------------------|---------|---------------------------------------------------------------------------------------------|
+| `--theme-radius-sm`            | `8px`   | Panels and small chrome (`CodeBlockPanel`, inline `code`, Reveal's slide number)             |
+| `--theme-radius-md`            | `12px`  | Mid-size surfaces and elements nested inside a card (`QrCodeCard`, the tile icon chip)       |
+| `--theme-radius-lg`            | `16px`  | Cards (`MuiCard`, i.e. `FeatureTileGrid` tiles)                                              |
+| `--theme-border-width`         | `1px`   | Hairline borders on cards and panels (decorative thick strokes have their own tokens below)  |
+| `--theme-heading-accent-width` | `6px`   | Accent bar on the left edge of a slide heading (`.slide-title`)                               |
+| `--theme-frame-rule-width`     | `4px`   | Brand band running along the top edge of a slide (`.slide-container::before`)                 |
+| `--theme-rule-width`           | `4px`   | Decorative rules inside the body (the horizontal line crossing `Timeline`)                    |
+| `--theme-node-ring-width`      | `3px`   | Ring around a numbered node badge (`TimelineNode`)                                            |
+| `--theme-card-accent-width`    | `0px`   | Accent bar on a card's inner (left) edge. `0` means no bar, which is the default appearance  |
+| `--theme-shadow-strength`      | `1`     | Multiplier applied to shadow opacities. `0` disables shadows, `2` doubles them               |
+| `--theme-zebra-opacity`        | `0.04`  | Alpha of the background shaded on a table's even rows                                        |
+
+The four decorative stroke tokens are separate axes because corporate templates vary them independently: a
+heading's vertical accent belongs to typography, the top band belongs to the slide frame, body rules are a
+content-level separator, and a ring wrapping a badge cannot follow a crossing rule's width without shrinking
+the area its number needs. Do not fold them into `--theme-border-width` — that one is the 1px hairline axis.
 
 Usage rules:
 
-- Corner radii and border widths go straight into the property: `border-radius: var(--theme-radius-md)`,
-  `border: var(--theme-border-width) solid var(--theme-border)`.
+- Corner radii, border widths, and rule widths go straight into the property:
+  `border-radius: var(--theme-radius-md)`, `border: var(--theme-border-width) solid var(--theme-border)`,
+  `height: var(--theme-rule-width)`.
 - Shadow opacity is a multiplier, so keep the component's own alpha and multiply it:
   `box-shadow: 0 2px 8px rgba(0, 0, 0, calc(0.04 * var(--theme-shadow-strength)))`. This keeps each shadow's
   relative depth while letting one theme knob scale all of them.
 - `--theme-card-accent-width` defaults to `0`, so draw the bar with a pseudo element rather than
   `border-left` — a `0px` border would eat the card's hairline border on that edge.
+- The slide's top band is declared twice in `global.css` (`.slides .slide-container::before` and the
+  higher-specificity `.reveal .slides section.slide-container::before`, which is what beats Reveal.js's own
+  styles). Both must read `--theme-frame-rule-width`, or the more specific one wins and the token has no effect.
 - Components with a deliberately theme-independent look (`TerminalAnimation`, which hardcodes its terminal
   colors) and fallback/error UI (`FallbackImage`, the unresolved-component placeholder) stay outside this
   system on purpose.
@@ -134,7 +147,7 @@ as `:root`). When both set the same variable, the `masterKey` scope wins.
 {
   "theme": {
     "tokens": {
-      "*": { "theme-radius-lg": "4px", "theme-border-width": "2px", "theme-card-accent-width": "6px" },
+      "*": { "theme-radius-lg": "4px", "theme-border-width": "2px", "theme-heading-accent-width": "10px", "theme-card-accent-width": "6px" },
       "standard": { "theme-shadow-strength": "0" }
     }
   }
