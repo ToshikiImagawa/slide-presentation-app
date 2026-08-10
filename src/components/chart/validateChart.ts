@@ -1,9 +1,10 @@
 import type { ChartSpec, ChartType } from './types'
 
-export const CHART_TYPES: ChartType[] = ['bar', 'line', 'pie', 'hbar', 'kpi']
+const CHART_TYPES: ChartType[] = ['bar', 'line', 'pie', 'hbar', 'kpi']
 
-/** JSON 由来の値は配列でない可能性があるため、判定前に配列だけを通す（不正なデッキで判定自体を落とさない） */
-function asArray<T>(value: T[] | undefined): T[] {
+/** JSON 由来の値は配列でない可能性があるため、判定前に配列だけを通す（不正なデッキで判定自体を落とさない）。
+ * Chart.tsx の描画準備（resolveSeries/resolveCategories）と getChartColorTokenIssues（applyTheme.ts）が共有する */
+export function asArray<T>(value: T[] | undefined): T[] {
   return Array.isArray(value) ? value : []
 }
 

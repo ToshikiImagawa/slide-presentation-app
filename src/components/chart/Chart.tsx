@@ -1,7 +1,7 @@
 import { BarChart } from './BarChart'
 import { buildAxisScale, defaultValueLabels, formatValue, seriesColor } from './chartScale'
 import { ChartLegend, type LegendEntry } from './ChartLegend'
-import { getChartSpecIssues } from './validateChart'
+import { asArray, getChartSpecIssues } from './validateChart'
 import { HBarChart } from './HBarChart'
 import { KpiTrend } from './KpiTrend'
 import { LineChart } from './LineChart'
@@ -11,11 +11,6 @@ import styles from './Chart.module.css'
 
 /** チャートのルート要素。高さは ContentLayout の fill 変種（global.css の .content-area-fill-item・#225）から受け取る（#256） */
 const ROOT_CLASS_NAME = `content-area-fill-item ${styles.chart}`
-
-/** JSON 由来の値は配列でない可能性があるため、描画前に配列だけを通す（不正なデッキでデッキ全体を落とさない） */
-function asArray<T>(value: T[] | undefined): T[] {
-  return Array.isArray(value) ? value : []
-}
 
 /** 系列を描画用に正規化する。値は数値化し（非数値は NaN として各種別が描画から除く）、色は系列順のトークンで補う */
 function resolveSeries(spec: ChartSpec): ResolvedSeries[] {

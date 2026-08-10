@@ -5,7 +5,7 @@ import { hasComponent, registerComponent, unregisterOwner } from './components/C
 import { FallbackImage } from './components/FallbackImage'
 // getChartSpecIssues/ChartSpec は chart/index.ts 経由だと Chart.tsx → chartScale.ts → applyTheme.ts の循環importになるため、
 // 依存を持たない validateChart.ts / types.ts から直接importする
-import { getChartSpecIssues } from './components/chart/validateChart'
+import { asArray, getChartSpecIssues } from './components/chart/validateChart'
 import type { ChartSpec } from './components/chart/types'
 
 /** 6桁hex（#rrggbb）を [r, g, b] へ分解する（hexToRgb・relativeLuminance・brand/compile.ts の mix 計算が共有する） */
@@ -766,7 +766,7 @@ function collectChartSpecs(content: SlideContent): Array<{ path: string; spec: C
 /** ChartSpec の色トークン参照が未知でないか検査する（#241）。seriesColor 経由だと未知トークンが `primary` へ黙って
  * フォールバックし判定できないため、THEME_COLOR_TOKENS を直接照合する */
 function getChartColorTokenIssues(spec: ChartSpec): string[] {
-  const colors: unknown[] = [spec.color, ...(Array.isArray(spec.series) ? spec.series.map((entry) => entry?.color) : [])]
+  const colors: unknown[] = [spec.color, ...asArray(spec.series).map((entry) => entry?.color)]
   return colors.filter((color): color is string => typeof color === 'string' && !THEME_COLOR_TOKENS[color]).map((color) => `未知の色トークン名です: "${color}"`)
 }
 
