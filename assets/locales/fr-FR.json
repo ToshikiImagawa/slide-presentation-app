@@ -33,6 +33,9 @@
       "applyFailed": "Échec de l'application du thème",
       "colorWarning": "Certains paramètres du thème n'ont pas pu être appliqués"
     },
+    "visualCheck": {
+      "warning": "Débordement, intrusion dans la zone de sécurité ou chevauchement avec une décoration détecté (voir la console pour plus de détails)"
+    },
     "settings": {
       "title": "Paramètres",
       "language": "Langue",

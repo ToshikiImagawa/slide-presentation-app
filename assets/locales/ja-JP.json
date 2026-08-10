@@ -33,6 +33,9 @@
       "applyFailed": "テーマの適用に失敗しました",
       "colorWarning": "一部のテーマ設定を反映できませんでした"
     },
+    "visualCheck": {
+      "warning": "はみ出し・セーフエリア侵入・装飾との重なりを検出しました（詳細はコンソールを確認してください）"
+    },
     "settings": {
       "title": "設定",
       "language": "言語",

@@ -118,6 +118,25 @@ jobs:
           path: playwright-report/
           retention-days: 7
 
+  visual-check:
+    name: Visual Check (reference deck)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+      - run: npm ci
+      # はみ出し・セーフエリア侵入・マスター装飾との重なりは DOM 実測（getBoundingClientRect）で判定するため、
+      # ピクセル比較（reference-deck:diff）と違い撮影の非決定性の影響を受けず、フォント描画差にも依存しない。
+      # e2e ジョブと同様に WebKit を Linux で実行できる（#209）
+      - name: Install Playwright WebKit
+        run: npx playwright install --with-deps webkit
+      - name: Inspect reference deck
+        run: npm run reference-deck:inspect
+
   build:
     name: Build (frontend)
     needs: [quality, test, rust]

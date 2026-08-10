@@ -21,6 +21,7 @@ import { useAutoSlideshow } from './hooks/useAutoSlideshow'
 import { usePresenterView } from './hooks/usePresenterView'
 import { useCircularProgress } from './hooks/useCircularProgress'
 import { useReveal } from './hooks/useReveal'
+import { useVisualCheckWarnings } from './hooks/useVisualCheckWarnings'
 import { applyThemeData, mergeThemeData } from './applyTheme'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useI18n } from './i18n'
@@ -209,6 +210,16 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
       applyThemeData(effectiveTheme)
     }
   }, [effectiveTheme])
+
+  // 表示中スライドのはみ出し・セーフエリア侵入・マスター装飾との重なりを実測し、あればトースト通知する（#209）。
+  // CI での見本デッキ全枚数検査（scripts/screenshot/inspect-reference-deck.mjs）も同じ検出ロジック（visualChecks.ts）を使う
+  const visualCheckWarnings = useVisualCheckWarnings(deckRef, currentIndex)
+  useEffect(() => {
+    if (visualCheckWarnings.length > 0) {
+      console.warn('[visual-check]', visualCheckWarnings)
+      showToast(t('visualCheck.warning'))
+    }
+  }, [visualCheckWarnings, showToast, t])
 
   const handleToggleToolbar = useCallback(() => setToolbarHidden((prev) => !prev), [])
 
