@@ -1,6 +1,7 @@
 /* 大メッセージ・締めスライド（#197）。全画面に短い主張を1つだけ置く。
-   文字色は theme.colors / theme.tokens で明示される変数だけを使う（マスターの全面塗り背景と
-   組み合わせたときも getThemeWarnings のコントラスト検証が効く組にする・#209） */
+   色は --theme-* の文字色トークン（TEXT_COLOR_KEYS）だけを使い、背景は塗らない。
+   全面塗りはマスター側（theme.masters[].background）の責務で、その塗り色と文字色トークンの組が
+   getThemeWarnings のコントラスト検証にかかる（#209）。ここで背景を塗ると検証から外れる */
 .message {
   display: flex;
   flex-direction: column;
@@ -12,7 +13,7 @@
   margin: 0;
   font-family: var(--theme-font-heading);
   font-size: var(--theme-font-size-h1);
-  font-weight: 700;
+  font-weight: var(--theme-font-weight-heading);
   line-height: 1.25;
   color: var(--theme-text-body);
   overflow-wrap: break-word;

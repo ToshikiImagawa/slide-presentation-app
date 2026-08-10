@@ -1,14 +1,15 @@
-import type { ReactNode } from 'react'
+import type { ComponentType, ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import type { ContentItem, LogoConfig, MasterRenderContext, SectionInfo, SlideContent, SlideData, ThemeData } from '../data'
 import { buildSections, findSectionAt } from '../sections'
 import { componentFillsContentArea, renderRegisteredComponent, resolveComponent } from './ComponentRegistry'
 import { BleedLayout, ContentLayout, MessageLayout, SectionLayout, SlideFrame, TitleLayout } from '../layouts'
+import type { SlideFrameCommonProps } from '../layouts/SlideFrame'
 import { SlideHeading } from './SlideHeading'
 import { SubtitleText } from './SubtitleText'
 import { BulletList } from './BulletList'
-import { TwoColumnGrid } from './TwoColumnGrid'
+import { TwoColumnGrid, type ColumnSpec } from './TwoColumnGrid'
 import { CodeBlockPanel } from './CodeBlockPanel'
 import { TitledBulletList } from './TitledBulletList'
 import { Checklist } from './Checklist'
@@ -124,8 +125,9 @@ function renderClosingBody(content: SlideContent): ReactNode {
   )
 }
 
-/** center レイアウトのラッパー（いずれもタイトルバーを持たない）。SlideFrameCommonProps + children を受ける */
-type CenterWrapper = typeof TitleLayout
+/** center レイアウトのラッパー（いずれもタイトルバーを持たない）。契約は SlideFrameCommonProps（SlideFrame.tsx）が
+ * 持つので、特定のラッパーの実装から型を借りない（借りると片方に固有 prop が付いた瞬間に他が代入不可になる） */
+type CenterWrapper = ComponentType<SlideFrameCommonProps & { children: ReactNode }>
 
 /**
  * center スライドの variant ごとの描画。**この表が variant の唯一の真実源** で、
@@ -141,6 +143,10 @@ const CENTER_VARIANTS: Record<string, { wrapper: CenterWrapper; render: (content
   'message-inverse': { wrapper: MessageLayout, render: renderMessageBody },
   closing: { wrapper: MessageLayout, render: renderClosingBody },
 }
+
+/** 描画できる center の variant 一覧。schema の enum との一致は SlideRenderer.test.tsx が固定する
+ * （片方だけに足すと「描けるのに AI 生成が弾かれる」食い違いが静かに起きる） */
+export const CENTER_VARIANT_NAMES: readonly string[] = Object.keys(CENTER_VARIANTS)
 
 /** centerスライドをレンダリング（variant で章扉・引用・大メッセージ・締めに切り替わる） */
 function renderCenterSlide(slide: SlideData, logo: LogoConfig | undefined, theme: ThemeData | undefined, ctx: MasterRenderContext): ReactNode {
@@ -164,32 +170,27 @@ function renderTwoColumnSlide(slide: SlideData, logo: LogoConfig | undefined, th
 
   return (
     <ContentLayout id={slide.id} layout={slide.layout} variant={variant} title={content.title ?? ''} meta={slide.meta} logo={logo} theme={theme} ctx={ctx}>
-      <TwoColumnGrid left={renderColumnContent(leftData)} right={renderColumnContent(rightData)} leftFill={columnFillsHeight(leftData)} rightFill={columnFillsHeight(rightData)} />
+      <TwoColumnGrid left={renderColumnContent(leftData)} right={renderColumnContent(rightData)} />
     </ContentLayout>
   )
 }
 
 /**
- * カラムの内容が残り高さを埋めるか（fill ホストをカラム側に付けるかの判定・#259）。
+ * カラムコンテンツをレンダリングし、そのカラムを fill ホストにするか（#259）を併せて返す。
  *
- * 本文領域の fill 変種（fillsContentArea）と同じく、登録側の traits（componentFillsContentArea）を
- * 唯一の真実源にする。カラムで「埋める要素」を描くのは component 経路だけなので、判定も component だけを見る
- * （heading / paragraphs / items 等はいずれも内容サイズの要素で、残り高さを必要としない）。
+ * **描く分岐と fill の判定を同じ 1 か所に置く**（`CONTENT_BRANCHES` と同じ理由。判定を別関数で分岐順ごと
+ * 複製すると、分岐を足したときに判定が黙ってズレる）。残り高さを必要とするのは登録側が
+ * `fillsContentArea` を宣言したコンポーネントだけで、他のフィールド（heading / paragraphs / items 等）は
+ * いずれも内容サイズの要素なので fill にしない。
  * ContentLayout に fill を渡す方法では直らない理由は global.css の fill 変種の契約に記載。
  */
-function columnFillsHeight(data: Record<string, unknown> | undefined): boolean {
-  const ref = data?.component as { name?: string } | undefined
-  return typeof ref?.name === 'string' && componentFillsContentArea(ref.name)
-}
-
-/** カラムコンテンツをレンダリング */
-function renderColumnContent(data: Record<string, unknown> | undefined): ReactNode {
-  if (!data) return null
+function renderColumnContent(data: Record<string, unknown> | undefined): ColumnSpec {
+  if (!data) return { content: null }
 
   // コンポーネント参照
   if (data.component) {
     const ref = data.component as { name: string; props?: Record<string, unknown>; style?: Record<string, string | number> }
-    return renderComponent(ref)
+    return { content: renderComponent(ref), fill: componentFillsContentArea(ref.name) }
   }
 
   const elements: ReactNode[] = []
@@ -267,7 +268,7 @@ function renderColumnContent(data: Record<string, unknown> | undefined): ReactNo
     elements.push(<QrCodeCard key="qrCode" url={data.qrCode} />)
   }
 
-  return elements.length === 1 ? elements[0] : <Box sx={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>{elements}</Box>
+  return { content: elements.length === 1 ? elements[0] : <Box sx={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>{elements}</Box> }
 }
 
 /** ContentItem配列を再帰的に箇条書きとしてレンダリング（ネスト可・#193） */

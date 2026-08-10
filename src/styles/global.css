@@ -319,6 +319,11 @@ code {
       静かに消えるだけなので、getVisualCheckWarnings（src/visualChecks.ts）が高さ 0 の
       .content-area-fill-item を警告として検出する（見本デッキ全枚数の CI 検査で担保する）。 */
 .content-area-fill {
+  /* ホストの要件（flex 列・子の縮みを許す）はここで満たす。名乗るだけで成立させ、
+     ホストごとに同じ宣言を私的に再導出させない（確定高さの与え方だけは区画側の責務） */
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   justify-content: stretch;
 }
 
@@ -370,8 +375,10 @@ code {
   object-position: center;
 }
 
-/* Section Title */
-.section-title-layout {
+/* Section Title / 1枚1メッセージ（引用・大メッセージ・締め・#197）。
+   いずれもタイトルバーを持たず、中身を本文領域の中央に主役として置く */
+.section-title-layout,
+.message-layout {
   text-align: center;
   display: flex;
   flex-direction: column;
@@ -380,16 +387,10 @@ code {
   height: 100%;
 }
 
-/* 1枚1メッセージ（引用・大メッセージ・締め・#197）。タイトルバーを持たず、中身を中央の主役として置く。
-   背景は塗らない（全面塗りはマスター側の責務。MessageLayout のコメント参照） */
+/* 1枚1メッセージは中身の間隔と行長を主役向けに広げる。背景は塗らない
+   （全面塗りはマスター側の責務。MessageLayout のコメント参照） */
 .message-layout {
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
   gap: 32px;
-  height: 100%;
   max-width: 1000px;
 }
 
@@ -472,6 +473,7 @@ code {
 .pdf-capturing .content-area,
 .pdf-capturing .title-layout,
 .pdf-capturing .section-title-layout,
+.pdf-capturing .message-layout,
 .pdf-capturing .bleed-content {
   animation: none !important;
   opacity: 1 !important;

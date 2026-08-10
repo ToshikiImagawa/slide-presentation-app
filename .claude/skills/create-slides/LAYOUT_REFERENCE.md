@@ -69,6 +69,8 @@
 
 `variant: "message-inverse"` — 大メッセージの全面塗り。**塗り色と文字色はスライド側では指定せず、テーマの `masters[].background`（`type: "fill"`）と `tokens` の masterKey スコープで持つ**（`masterMap` の `"center/message-inverse"` から解決する）。両者のコントラストは WCAG AA で自動検証されるため、この組み合わせで指定する（スライド側やコンポーネント CSS で塗ると検証から外れる）。
 
+そのため **マスターを割り当てていないデッキでは `message` と同じ見た目になる**（塗りはテーマの担当で、スライド側は「反転面である」ことだけを宣言する）。反転面を使うなら `theme.masters` / `theme.masterMap` / `theme.tokens` を併せて書く。ブランドテーマ取り込み（PPT/Google スライド由来）は現状この枠にマスターを割り当てないので、同じく手書きする必要がある。
+
 `variant: "closing"` — 締め。結びの一言に連絡先（`qrCode` / `githubRepo`）を添えられる。マスターの全面塗りやロゴの全面配置（`decorations` の `logo`）と組み合わせて終わる。
 
 ```json

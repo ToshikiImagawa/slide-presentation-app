@@ -1,7 +1,8 @@
 import { describe, expect, it, beforeEach } from 'vitest'
 import { render } from '@testing-library/react'
 import { ThemeProvider } from '@mui/material/styles'
-import { SlideRenderer } from '../SlideRenderer'
+import { CENTER_VARIANT_NAMES, SlideRenderer } from '../SlideRenderer'
+import schemaJson from '../../../schema/slide-content-schema.json'
 import { registerDefaultComponents } from '../registerDefaults'
 import type { SlideData, ThemeData } from '../../data'
 import { theme } from '../../theme'
@@ -731,13 +732,15 @@ describe('SlideRenderer', () => {
       expect(inverse).toBe(pale)
     })
 
-    it('全面塗り（message-inverse）は masterMap["center/message-inverse"] からマスターを解決する', () => {
+    // 全面塗り（message-inverse）・締め（closing）は塗りをマスターに委ねるので、variant が
+    // masterMap["center/<variant>"] の解決に届いていることが成立条件になる
+    it.each(messageVariants)('variant: %s は masterMap["center/<variant>"] からマスターを解決する', (variant) => {
       const theme: ThemeData = {
         masters: { inverse: { background: { type: 'fill', color: '#1f2430' }, decorations: [] } },
-        masterMap: { 'center/message-inverse': 'inverse' },
+        masterMap: Object.fromEntries(messageVariants.map((v) => [`center/${v}`, 'inverse'])),
         tokens: { inverse: { 'theme-text-body': '#ffffff' } },
       }
-      const { container } = renderCenter({ variant: 'message-inverse', message: '全面塗りの主張' }, theme)
+      const { container } = renderCenter({ variant, message: '全面塗りの主張', quote: '引用文' }, theme)
       expect(container.querySelector('section.slide-container')!.getAttribute('data-master')).toBe('inverse')
     })
 
@@ -759,6 +762,13 @@ describe('SlideRenderer', () => {
       expect(container.querySelector('h1')!.textContent).toContain('表紙タイトル')
       expect(container.querySelector('.message-layout')).toBeNull()
     })
+
+    // 描画できる variant（CENTER_VARIANTS）と、AI生成プロンプト・厳格チェックが参照するスキーマの enum は
+    // 別ファイルにあるため、片方だけに足すと「描けるのに生成が弾かれる（またはその逆）」が静かに起きる
+    it('描画できる variant の一覧がスキーマの enum と一致する', () => {
+      const schemaEnum = (schemaJson as { layouts: { center: { contentFields: { variant: { enum: string[] } } } } }).layouts.center.contentFields.variant.enum
+      expect([...CENTER_VARIANT_NAMES].sort()).toEqual([...schemaEnum].sort())
+    })
   })
 
   // #259: two-column のカラムに置いた「埋めるコンポーネント」の高さ解決。
@@ -774,8 +784,8 @@ describe('SlideRenderer', () => {
       return { container, columns }
     }
 
-    it('埋めるコンポーネント（Diagram）を置いたカラムだけが fill ホストを名乗る', () => {
-      const { columns } = renderTwoColumn({
+    it('埋めるコンポーネント（Diagram）を置いたカラムだけが fill ホストを名乗り、本文領域には付かない', () => {
+      const { container, columns } = renderTwoColumn({
         left: { component: { name: 'Diagram', props: { nodes: [{ id: 'a', rect: { x: 0, y: 0, w: 0.3, h: 0.3 }, title: 'カード' }] } } },
         right: { heading: '右カラム', paragraphs: ['右の本文'] },
       })
@@ -783,6 +793,8 @@ describe('SlideRenderer', () => {
       expect(columns[1].classList.contains('content-area-fill')).toBe(false)
       // 埋める要素はホストを名乗ったカラムの中にある（ホスト外だと flex:1 が効かず高さ 0 になる）
       expect(columns[0].querySelector('.content-area-fill-item')).not.toBeNull()
+      // 本文領域側に付けると :has() 規則が2カラムのグリッドを flex 列へ上書きして崩れる
+      expect(container.querySelector('.content-area')!.classList.contains('content-area-fill')).toBe(false)
     })
 
     it('埋めないコンポーネント（TerminalAnimation）や通常のカラム内容では fill ホストを名乗らない', () => {
@@ -791,14 +803,6 @@ describe('SlideRenderer', () => {
         right: { items: [{ text: '項目' }] },
       })
       expect(columns.some((column) => column.classList.contains('content-area-fill'))).toBe(false)
-    })
-
-    it('本文領域（.content-area）には fill 変種を付けない（:has() 規則で2カラムのグリッドが崩れるため）', () => {
-      const { container } = renderTwoColumn({
-        left: { component: { name: 'Diagram', props: { nodes: [{ id: 'a', rect: { x: 0, y: 0, w: 0.3, h: 0.3 }, title: 'カード' }] } } },
-        right: { heading: '右カラム' },
-      })
-      expect(container.querySelector('.content-area')!.classList.contains('content-area-fill')).toBe(false)
     })
   })
 

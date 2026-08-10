@@ -146,6 +146,11 @@ export function resolveColorToken(key?: string): string {
 /** THEME_COLOR_TOKENS のうち、文字色として使われるキー（帯・線等の装飾色は対象外）。背景色に対するコントラスト比の算出対象を絞るのに使う */
 export const TEXT_COLOR_KEYS: readonly string[] = ['text', 'textHeading', 'textBody', 'textSubtitle', 'textMuted', 'codeText']
 
+/** ColorPalette のキー → tokens 側の表記（CSS 変数名から先頭の `--` を除いたもの）。tokens を引く箇所で共有する */
+function varNameOf(key: string): string {
+  return THEME_COLOR_TOKENS[key].replace(/^--/, '')
+}
+
 /** CSS 変数へ色を適用する。`-rgb` companion は normalizeHex で解釈できた場合のみ設定する */
 function setColorVar(root: HTMLElement, cssVar: string, value: string): void {
   root.style.setProperty(cssVar, value)
@@ -595,10 +600,18 @@ function contrastWarning(scope: string, textLabel: string, textColor: string, bg
  * keys の各要素について source から値を引き、明示されている（真値の）ものだけ `[key, value]` として残す。
  * lookupKey 省略時はキー自身をそのまま引く（theme.colors ＝ ColorPalette のキーそのもの）。
  * tokens の1スコープ分の生変数（キーが CSS 変数名）から引く場合は lookupKey で変換する。
- * theme.colors・theme.tokens 両方のコントラスト検証（#209）が抽出処理を共有するために使う。
+ * theme.colors・theme.tokens・masters の全面塗り背景の3経路のコントラスト検証（#209）が抽出処理を共有する。
+ *
+ * `text` と `textBody` のように同じ CSS 変数を指すキーは1組に畳む（同じ文字色に対して警告が二重に出ないよう、
+ * keys の並びで後に来る具体的なキーを残す）。
  */
 function extractColorEntries(source: Record<string, string | undefined>, keys: readonly string[], lookupKey: (key: string) => string = (key) => key): Array<[string, string]> {
-  return keys.map((key): [string, string | undefined] => [key, source[lookupKey(key)]]).filter((entry): entry is [string, string] => Boolean(entry[1]))
+  const byVarName = new Map<string, [string, string]>()
+  for (const key of keys) {
+    const color = source[lookupKey(key)]
+    if (color) byVarName.set(varNameOf(key), [key, color])
+  }
+  return [...byVarName.values()]
 }
 
 /** textEntries × bgEntries の全組み合わせを検証し、AA 未達の警告文を集める（theme.colors・tokens 両方が共有） */
@@ -628,7 +641,6 @@ function getColorPaletteContrastWarnings(colors: ColorPalette): string[] {
  * 同一スコープ内で文字色/背景色の両方が上書きされている組だけを検証する。
  */
 function getTokenContrastWarnings(tokens: Record<string, Record<string, string>>): string[] {
-  const varNameOf = (key: string) => THEME_COLOR_TOKENS[key].replace(/^--/, '')
   const warnings: string[] = []
   for (const [scope, vars] of Object.entries(tokens)) {
     const textEntries = extractColorEntries(vars, TEXT_COLOR_KEYS, varNameOf)
@@ -641,19 +653,13 @@ function getTokenContrastWarnings(tokens: Record<string, Record<string, string>>
 /**
  * masterKey のスコープで有効になる文字色を、全文字色キーぶん解決する（#209）。tokens の上書き→theme.colors の順。
  * どちらにも無いキー（グローバルCSSの既定値に委ねる分）は返さない（既定値をここに複製すると二重管理になる）。
- * `text` と `textBody` のように同じ CSS 変数を指すキーは1つに畳む（後方互換キーより具体的なキーを優先する）。
  * 全面塗り背景の上には本文だけでなく出典・補足（textMuted 等）も載るため、本文色だけでなく全キーを対象にする（#197）。
  */
 function resolveEffectiveTextColors(theme: ThemeData, masterKey: string): Array<[string, string]> {
   const scoped = theme.tokens?.[masterKey] ?? {}
   const colors = (theme.colors ?? {}) as Record<string, string | undefined>
-  const byVarName = new Map<string, [string, string]>()
-  for (const key of TEXT_COLOR_KEYS) {
-    const varName = THEME_COLOR_TOKENS[key].replace(/^--/, '')
-    const color = scoped[varName] ?? colors[key]
-    if (color) byVarName.set(varName, [key, color])
-  }
-  return [...byVarName.values()]
+  const resolved = Object.fromEntries(TEXT_COLOR_KEYS.map((key) => [key, scoped[varNameOf(key)] ?? colors[key]]))
+  return extractColorEntries(resolved, TEXT_COLOR_KEYS)
 }
 
 /**
@@ -664,19 +670,15 @@ function getMasterBackgroundContrastWarnings(theme: ThemeData): string[] {
   const warnings: string[] = []
   for (const [masterKey, master] of Object.entries(theme.masters ?? {})) {
     const background = master.background
-    if (!background) continue
+    if (!background || (background.type !== 'fill' && background.type !== 'gradient')) continue
 
     const bgEntries: Array<[string, string]> =
       background.type === 'fill'
         ? [['color', background.color]]
-        : background.type === 'gradient'
-          ? [
-              ['from', background.from],
-              ['to', background.to],
-            ]
-          : []
-    if (bgEntries.length === 0) continue
-
+        : [
+            ['from', background.from],
+            ['to', background.to],
+          ]
     warnings.push(...pairwiseContrastWarnings(`theme.masters.${masterKey}.background`, resolveEffectiveTextColors(theme, masterKey), bgEntries))
   }
   return warnings
