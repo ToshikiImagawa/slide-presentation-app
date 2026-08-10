@@ -1,22 +1,16 @@
 import { BarChart } from './BarChart'
 import { buildAxisScale, defaultValueLabels, formatValue, seriesColor } from './chartScale'
 import { ChartLegend, type LegendEntry } from './ChartLegend'
+import { asArray, getChartSpecIssues } from './validateChart'
 import { HBarChart } from './HBarChart'
 import { KpiTrend } from './KpiTrend'
 import { LineChart } from './LineChart'
 import { PieChart } from './PieChart'
-import type { ChartSpec, ChartType, ResolvedSeries } from './types'
+import type { ChartSpec, ResolvedSeries } from './types'
 import styles from './Chart.module.css'
-
-const CHART_TYPES: ChartType[] = ['bar', 'line', 'pie', 'hbar', 'kpi']
 
 /** チャートのルート要素。高さは ContentLayout の fill 変種（global.css の .content-area-fill-item・#225）から受け取る（#256） */
 const ROOT_CLASS_NAME = `content-area-fill-item ${styles.chart}`
-
-/** JSON 由来の値は配列でない可能性があるため、描画前に配列だけを通す（不正なデッキでデッキ全体を落とさない） */
-function asArray<T>(value: T[] | undefined): T[] {
-  return Array.isArray(value) ? value : []
-}
 
 /** 系列を描画用に正規化する。値は数値化し（非数値は NaN として各種別が描画から除く）、色は系列順のトークンで補う */
 function resolveSeries(spec: ChartSpec): ResolvedSeries[] {
@@ -42,12 +36,13 @@ function resolveCategories(spec: ChartSpec, series: ResolvedSeries[]): string[] 
  * 本編・発表者ビュー・編集プレビュー・PDF の4経路で同じ表示になる。
  */
 export function Chart(spec: ChartSpec) {
-  const type = spec.type ?? 'bar'
-  if (!CHART_TYPES.includes(type)) {
-    console.warn(`[Chart] 未知のチャート種別です: "${type}"（${CHART_TYPES.join(' / ')} のいずれかを指定してください）`)
+  const issues = getChartSpecIssues(spec)
+  if (issues.length > 0) {
+    issues.forEach((issue) => console.warn(`[Chart] ${issue}`))
     return null
   }
 
+  const type = spec.type ?? 'bar'
   const series = resolveSeries(spec)
   const categories = resolveCategories(spec, series)
 
@@ -57,11 +52,6 @@ export function Chart(spec: ChartSpec) {
         <KpiTrend value={spec.value} label={spec.label} delta={spec.delta} unit={spec.unit} trend={asArray(spec.trend).map(Number)} color={seriesColor(0, spec.color)} />
       </div>
     )
-  }
-
-  if (series.length === 0 || categories.length === 0) {
-    console.warn('[Chart] categories と series の少なくとも一方が空のため描画できません')
-    return null
   }
 
   const axis = spec.axis !== false

@@ -848,6 +848,60 @@ describe('getThemeWarnings', () => {
     expect(warnings.some((w) => w.includes('slides[0].content.tiles[0].icon') && w.includes('NoSuchIcon'))).toBe(true)
   })
 
+  // #241: content.chart の指定ミスは白紙描画になり原因が伝わらないため、既存の警告集約機構に載せる
+  describe('content.chart / component:{name:"Chart"} の指定ミス（#241）', () => {
+    it('未知の type を警告する', () => {
+      const warnings = getThemeWarnings(undefined, [{ id: 's1', layout: 'content', content: { chart: { type: 'radar' } } }])
+      expect(warnings.some((w) => w.includes('slides[0].content.chart') && w.includes('radar'))).toBe(true)
+    })
+
+    it('categories と series の両方が空の場合を警告する', () => {
+      const warnings = getThemeWarnings(undefined, [{ id: 's1', layout: 'content', content: { chart: { type: 'bar' } } }])
+      expect(warnings.some((w) => w.includes('slides[0].content.chart') && w.includes('categories') && w.includes('series'))).toBe(true)
+    })
+
+    it('kpi で value も trend も無い場合を警告する', () => {
+      const warnings = getThemeWarnings(undefined, [{ id: 's1', layout: 'content', content: { chart: { type: 'kpi', label: 'MAU' } } }])
+      expect(warnings.some((w) => w.includes('slides[0].content.chart') && w.includes('kpi'))).toBe(true)
+    })
+
+    it('未知の色トークン名を警告する（series[].color・kpi の color）', () => {
+      const warnings = getThemeWarnings(undefined, [{ id: 's1', layout: 'content', content: { chart: { type: 'bar', categories: ['A'], series: [{ values: [1], color: 'seriez1' }] } } }])
+      expect(warnings.some((w) => w.includes('slides[0].content.chart') && w.includes('seriez1'))).toBe(true)
+    })
+
+    it('妥当な chart 指定では警告しない', () => {
+      const warnings = getThemeWarnings(undefined, [{ id: 's1', layout: 'content', content: { chart: { type: 'bar', categories: ['A', 'B'], series: [{ values: [1, 2], color: 'series2' }] } } }])
+      expect(warnings.filter((w) => w.includes('content.chart'))).toEqual([])
+    })
+
+    it('two-column の左右カラムの component: { name: "Chart" } も検出する', () => {
+      const warnings = getThemeWarnings(undefined, [
+        {
+          id: 's1',
+          layout: 'two-column',
+          content: {
+            title: 'T',
+            left: { component: { name: 'Chart', props: { type: 'radar' } } },
+            right: { component: { name: 'Chart', props: { type: 'kpi' } } },
+          },
+        },
+      ])
+      expect(warnings.some((w) => w.includes('slides[0].content.left.component.props') && w.includes('radar'))).toBe(true)
+      expect(warnings.some((w) => w.includes('slides[0].content.right.component.props') && w.includes('kpi'))).toBe(true)
+    })
+
+    it('bleed/custom の content.component: { name: "Chart" } も検出する', () => {
+      const warnings = getThemeWarnings(undefined, [{ id: 's1', layout: 'bleed', content: { title: 'T', component: { name: 'Chart', props: { type: 'radar' } } } }])
+      expect(warnings.some((w) => w.includes('slides[0].content.component.props') && w.includes('radar'))).toBe(true)
+    })
+
+    it('Chart 以外の component は対象外', () => {
+      const warnings = getThemeWarnings(undefined, [{ id: 's1', layout: 'custom', content: { component: { name: 'Diagram', props: { type: 'radar' } } } }])
+      expect(warnings).toEqual([])
+    })
+  })
+
   // #187: heading/body/code がオブジェクト形式の場合の weight 検証
   it('文字列指定（後方互換）では weight 検証をスキップし警告しない', () => {
     expect(getThemeWarnings({ fonts: { heading: 'Poppins' } })).toEqual([])

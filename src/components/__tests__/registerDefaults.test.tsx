@@ -1,7 +1,7 @@
 import { describe, expect, it, beforeEach } from 'vitest'
 import { render } from '@testing-library/react'
 import { registerDefaultComponents } from '../registerDefaults'
-import { resolveComponent, clearRegistry } from '../ComponentRegistry'
+import { resolveComponent, clearRegistry, componentFillsContentArea } from '../ComponentRegistry'
 
 describe('registerDefaultComponents', () => {
   beforeEach(() => {
@@ -27,5 +27,12 @@ describe('registerDefaultComponents', () => {
   it('TerminalAnimationコンポーネントが登録される', () => {
     const Component = resolveComponent('TerminalAnimation')
     expect(Component).toBeDefined()
+  })
+
+  // #241: two-column 等の component 参照から Chart を使えるようにする。fillsContentArea を付け忘れると
+  // カラムの高さが0になり Visual Check（getVisualCheckWarnings）が落ちるため、traits の付与を直接検査する
+  it('Chartコンポーネントが fillsContentArea: true で登録される', () => {
+    expect(resolveComponent('Chart')).toBeDefined()
+    expect(componentFillsContentArea('Chart')).toBe(true)
   })
 })
