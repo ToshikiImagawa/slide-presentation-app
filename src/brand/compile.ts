@@ -100,6 +100,8 @@ interface AssignedLayout {
   key: string
   slot: LayoutAssignmentSlot
   name: string | null
+  /** その slideLayout（PPTX/Google スライド側）が持つ背景色。抽出できなければ null（#235） */
+  backgroundColorHex: string | null
 }
 
 /** `overrides.layoutAssignments` のうち、①`LAYOUT_ASSIGNMENT_SLOTS` に実在する枠を指し、②実在する layout
@@ -111,7 +113,7 @@ function resolveAssignedLayouts(profile: BrandProfile, overrides: BrandOverrides
       if (!LAYOUT_ASSIGNMENT_SLOTS.includes(slot)) return undefined
       const [masterIndex, layoutIndex] = key.split(':').map(Number)
       const layout = profile.masters[masterIndex]?.slideLayouts[layoutIndex]
-      return layout ? { key, slot, name: layout.name } : undefined
+      return layout ? { key, slot, name: layout.name, backgroundColorHex: layout.backgroundColorHex } : undefined
     })
     .filter((entry): entry is AssignedLayout => entry !== undefined)
 }
@@ -120,10 +122,17 @@ function resolveAssignedLayouts(profile: BrandProfile, overrides: BrandOverrides
  * 割り当て済みの slideLayout ごとに `brand-<slug>` という masterKey で `ThemeData.masters` エントリを追加する
  * （#192 の masterKey 命名契約）。独自の装飾は持たせず `extends: 'brand'`（主 master の装飾を継承）に留める:
  * ロゴ・帯のヒューリスティクスは主 slideMaster のみで行う設計（#168）を変えないため、これらのエントリは
- * 「どの layout が割り当てられているか」という構造だけを表す
+ * 「どの layout が割り当てられているか」という構造だけを表す。
+ * 抽出済みの `backgroundColorHex`（#192）があれば `fill` 背景として配線する（#235）。
+ * `theme.tokens` は masterKey が `brand` のスコープにしか積まれず（`buildTokens`）、layout 別の masterKey
+ * には継承されない（CSS セレクタが `data-master` の完全一致のため）。したがって背景色が `colors.bg1` と
+ * 同一でも、この `fill` がその layout の背景色を反映する唯一の経路であり、重複にはならない
+ * （「テーマ背景色と実質同じなら省く」判定は意図的に見送った）
  */
 function buildLayoutMasters(assignedLayouts: AssignedLayout[]): Record<string, MasterDefinition> {
-  return Object.fromEntries(assignedLayouts.map(({ key, name }) => [layoutMasterKey(key, name), { extends: BRAND_MASTER_KEY }]))
+  return Object.fromEntries(
+    assignedLayouts.map(({ key, name, backgroundColorHex }) => [layoutMasterKey(key, name), { extends: BRAND_MASTER_KEY, ...(backgroundColorHex ? { background: { type: 'fill' as const, color: backgroundColorHex } } : {}) }]),
+  )
 }
 
 function buildLayoutMasterMap(assignedLayouts: AssignedLayout[]): Record<string, string> {
