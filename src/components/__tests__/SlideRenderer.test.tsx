@@ -513,6 +513,94 @@ describe('SlideRenderer', () => {
     })
   })
 
+  // #199: チェックリスト（content.checklist → Checklist）
+  describe('contentスライド(checklist)', () => {
+    function renderContent(content: SlideData['content']) {
+      return renderWithTheme(<SlideRenderer slides={[{ id: 'test-checklist', layout: 'content', content: { title: 'タイトル', ...content } }]} />)
+    }
+
+    const sample = [
+      { title: '済の項目', description: '説明1', checked: true },
+      { title: '未の項目', description: '説明2' },
+    ]
+
+    it('checklistの項目と説明が描画される', () => {
+      const { getByTestId } = renderContent({ checklist: sample })
+      const list = getByTestId('checklist')
+      expect(list.textContent).toContain('済の項目')
+      expect(list.textContent).toContain('説明1')
+      expect(list.textContent).toContain('未の項目')
+    })
+
+    it('完了は✓・未完了は空の記号になり、記号の色はテーマトークンを参照する（色値をハードコードしない）', () => {
+      const { getByTestId } = renderContent({ checklist: sample })
+      const badges = [...getByTestId('checklist').querySelectorAll('li > span')]
+      expect(badges.map((badge) => badge.textContent)).toEqual(['✓', ''])
+      expect(badges[0].getAttribute('style')).toContain('var(--theme-success)')
+      expect(badges[1].getAttribute('style')).toContain('var(--theme-neutral)')
+    })
+
+    it('項目数に応じて密度が上がる（行間・文字サイズの縮小段階）', () => {
+      // 同一テスト内で複数回 render するため、document 全体ではなく各 container を見る
+      const densityOf = (count: number) => renderContent({ checklist: Array.from({ length: count }, () => ({ title: '項目' })) }).container.querySelector<HTMLElement>('[data-testid="checklist"]')!.dataset.density
+      expect(densityOf(4)).toBe('normal')
+      expect(densityOf(5)).toBe('dense')
+      expect(densityOf(7)).toBe('compact')
+    })
+
+    it('stepsが指定されている場合はsteps描画が優先される（既存の優先順位の維持）', () => {
+      const { queryByTestId, container } = renderContent({ steps: [{ number: 1, title: 'ステップ', description: '説明' }], checklist: sample })
+      expect(queryByTestId('checklist')).toBeNull()
+      expect(container.textContent).toContain('ステップ')
+    })
+
+    it('checklist指定時はtiles/body/itemsを描画しない', () => {
+      const { getByTestId, container } = renderContent({ checklist: sample, tiles: [{ icon: 'Description', title: 'タイル', description: '説明' }], body: '描画されない本文' })
+      expect(getByTestId('checklist')).not.toBeNull()
+      expect(container.textContent).not.toContain('タイル')
+      expect(container.textContent).not.toContain('描画されない本文')
+    })
+  })
+
+  // #199: 番号付きリストの多列配置（content.stepColumns → Timeline の columns）
+  describe('contentスライド(steps + stepColumns)', () => {
+    const steps = Array.from({ length: 7 }, (_, i) => ({ number: i + 1, title: `手順${i + 1}`, description: `説明${i + 1}` }))
+
+    function renderSteps(content: SlideData['content']) {
+      return renderWithTheme(<SlideRenderer slides={[{ id: 'test-steps', layout: 'content', content: { title: 'タイトル', steps, ...content } }]} />)
+    }
+
+    /** 同一テスト内で複数回 render するため、document 全体ではなく各 container を見る */
+    function multiColumnOf(content: SlideData['content']): HTMLElement | null {
+      return renderSteps(content).container.querySelector<HTMLElement>('[data-testid="timeline-multi-column"]')
+    }
+
+    it('stepColumns省略時は多列にならず、現行どおり全項目を描画する（既存デッキの描画を変えない）', () => {
+      const { queryByTestId, container } = renderSteps({})
+      expect(queryByTestId('timeline-multi-column')).toBeNull()
+      expect(container.querySelectorAll('.MuiAvatar-root').length).toBe(steps.length)
+      expect(container.textContent).toContain('手順7')
+    })
+
+    it('stepColumns指定時は指定列数のグリッドになり、全項目を描画する', () => {
+      const grid = multiColumnOf({ stepColumns: 2 })!
+      expect(grid.style.gridTemplateColumns).toBe('repeat(2, minmax(0, 1fr))')
+      expect(grid.querySelectorAll('.MuiAvatar-root').length).toBe(steps.length)
+    })
+
+    it('列数は1〜3に丸める（範囲外の指定でも1項目あたりの幅を保つ）', () => {
+      expect(multiColumnOf({ stepColumns: 5 })!.style.gridTemplateColumns).toBe('repeat(3, minmax(0, 1fr))')
+      expect(multiColumnOf({ stepColumns: 0 })!.style.gridTemplateColumns).toBe('repeat(1, minmax(0, 1fr))')
+    })
+
+    it('行数（項目数÷列数）に応じて密度が上がる', () => {
+      // 7項目: 3列→3行=dense / 2列→4行=compact、4項目: 2列→2行=normal
+      expect(multiColumnOf({ stepColumns: 3 })!.dataset.density).toBe('dense')
+      expect(multiColumnOf({ stepColumns: 2 })!.dataset.density).toBe('compact')
+      expect(multiColumnOf({ stepColumns: 2, steps: steps.slice(0, 4) })!.dataset.density).toBe('normal')
+    })
+  })
+
   // #200: 比較（content.compare → Compare）
   describe('contentスライド(compare)', () => {
     function renderContent(content: SlideData['content']) {
@@ -579,6 +667,7 @@ describe('SlideRenderer', () => {
     /** 各分岐の代表入力。fill: true の分岐は .content-area-fill-item を持つ要素を必ず描く */
     const fillCases: Array<{ name: string; content: SlideData['content']; fill: boolean }> = [
       { name: 'steps', content: { steps: [{ number: 1, title: 'ステップ', description: '説明' }] }, fill: false },
+      { name: 'checklist', content: { checklist: [{ title: '項目' }] }, fill: false },
       { name: 'tiles', content: { tiles: [{ icon: 'Description', title: 'タイル', description: '説明' }] }, fill: false },
       { name: 'images', content: { images: [{ src: '/a.png' }] }, fill: true },
       { name: 'chart', content: { chart: { type: 'bar', categories: ['A'], series: [{ values: [1] }] } }, fill: true },

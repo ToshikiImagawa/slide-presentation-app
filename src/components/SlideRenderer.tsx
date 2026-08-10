@@ -11,6 +11,7 @@ import { BulletList } from './BulletList'
 import { TwoColumnGrid } from './TwoColumnGrid'
 import { CodeBlockPanel } from './CodeBlockPanel'
 import { TitledBulletList } from './TitledBulletList'
+import { Checklist } from './Checklist'
 import { Timeline } from './Timeline'
 import { TimelineNode } from './TimelineNode'
 import { FeatureTileGrid } from './FeatureTileGrid'
@@ -215,15 +216,17 @@ function renderContentItems(items: ContentItem[]): ReactNode {
   )
 }
 
-/** stepsをTimelineとしてレンダリング */
+/** stepsをTimelineとしてレンダリング（stepColumns 指定で多列の番号付きリストになる・#199） */
 function renderSteps(content: SlideContent): ReactNode {
   const steps = content.steps as Array<{ number: number; title: string; description: string; command: string }>
   return (
     <>
       <Timeline
+        columns={content.stepColumns as number | undefined}
         items={steps.map((step) => (
           <TimelineNode key={step.number} number={step.number} title={step.title}>
-            <Typography variant="body2">
+            {/* 多列時は行数に応じて Timeline.module.css が --timeline-body-size を狭める（未定義なら body2 の既定サイズ） */}
+            <Typography variant="body2" sx={{ fontSize: 'var(--timeline-body-size, var(--theme-font-size-body2))' }}>
               {step.description}
               {step.command && (
                 <>
@@ -242,6 +245,12 @@ function renderSteps(content: SlideContent): ReactNode {
       )}
     </>
   )
+}
+
+/** checklistをChecklistとしてレンダリング（#199） */
+function renderChecklist(content: SlideContent): ReactNode {
+  const checklist = content.checklist as Array<{ title: string; description?: string; checked?: boolean }>
+  return <Checklist items={checklist.map((item) => ({ title: item.title, description: item.description ? renderHtml(item.description) : undefined, checked: item.checked }))} />
 }
 
 /** tilesをFeatureTileGridとしてレンダリング */
@@ -301,6 +310,7 @@ type ContentBranch = {
  */
 const CONTENT_BRANCHES: ContentBranch[] = [
   { match: (content) => Boolean(content.steps), fill: false, render: renderSteps },
+  { match: (content) => Boolean(content.checklist), fill: false, render: renderChecklist },
   { match: (content) => Boolean(content.tiles), fill: false, render: renderTiles },
   { match: (content) => Boolean(content.images), fill: true, render: renderImages },
   // チャート（#204）・表（#194）は本文領域の残り高さを埋める

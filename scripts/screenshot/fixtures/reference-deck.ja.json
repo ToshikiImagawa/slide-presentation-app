@@ -311,6 +311,37 @@
           { "title": "リリース", "description": "見本デッキで回帰を確認" }
         ]
       }
+    },
+    {
+      "id": "layout-content-checklist",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (checklist)",
+        "checklist": [
+          { "title": "受け入れ基準を満たした", "description": "イシューのチェックボックスと1対1で対応させる", "checked": true },
+          { "title": "見本デッキを撮り直した", "description": "追加した種別のぶんだけ差分が出る状態にする", "checked": true },
+          { "title": "見た目の検査が通った", "description": "はみ出し・セーフエリア侵入・装飾との重なりが 0 件", "checked": true },
+          { "title": "CI の全ジョブが緑になった", "description": "ローカルの結果は根拠にしない" },
+          { "title": "やり残した範囲を PR に書いた", "description": "範囲外の作業は後続イシューにして番号を残す" }
+        ]
+      }
+    },
+    {
+      "id": "layout-content-steps-columns",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (steps + stepColumns)",
+        "stepColumns": 2,
+        "steps": [
+          { "number": 1, "title": "課題を選ぶ", "description": "依存の少ないものから着手する" },
+          { "number": 2, "title": "契約を固定する", "description": "並列レーンの分界を先に決める" },
+          { "number": 3, "title": "基盤を移行する", "description": "私的な宣言を共有側の契約へ寄せる" },
+          { "number": 4, "title": "種別を追加する", "description": "移行後の基盤に乗せて実装する" },
+          { "number": 5, "title": "実測で検証する", "description": "はみ出しは DOM 実測で機械的に見る" },
+          { "number": 6, "title": "デッキを撮り直す", "description": "追加分以外に差分が出ないことを確認する" },
+          { "number": 7, "title": "PR にまとめる", "description": "やり残しと後続イシューを明記する" }
+        ]
+      }
     }
   ]
 }
