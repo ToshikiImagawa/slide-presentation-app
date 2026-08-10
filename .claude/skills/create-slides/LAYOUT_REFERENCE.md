@@ -88,7 +88,7 @@
 
 ## content
 
-コンテンツ表示用レイアウト。子要素のフィールドで描画が決まる。優先順位: `steps` → `checklist` → `tiles` → `images` → `chart` → `table` → `compare` → `flow` → `component` → `body`/`items`（いずれかが指定されていたら以降は評価しない）。
+コンテンツ表示用レイアウト。子要素のフィールドで描画が決まる。優先順位: `steps` → `checklist` → `toc` → `tiles` → `images` → `chart` → `table` → `compare` → `flow` → `component` → `body`/`items`（いずれかが指定されていたら以降は評価しない）。`toc`（目次）は末尾の節を参照。
 
 ### body / items（プレーン本文）
 
@@ -622,3 +622,45 @@
 | `theme-card-accent-width` | `0px` | カード左端のアクセントバーの幅（`0` でバーなし。色は `tiles[].accentColor`） |
 | `theme-shadow-strength` | `1` | 影の濃さの倍率（`0` で影なし・`2` で倍） |
 | `theme-zebra-opacity` | `0.04` | 表の偶数行の背景の濃さ |
+
+### content.toc（目次・#195）
+
+`layout: content` の `content.toc` で目次を描画する。`items` を省略すると各スライドの `meta.section`（共通 meta フィールドの節を参照）から導出した章の章番号・章タイトル・開始ページ番号を自動導出し、章の追加・削除・並べ替えに追従する。開始ページは各章の先頭スライドの位置（0始まり）+1（Reveal のページ表示と同じ1始まり）。
+
+```json
+{
+  "id": "slide-id",
+  "layout": "content",
+  "content": {
+    "title": "目次",
+    "toc": {}
+  }
+}
+```
+
+`numberFormat` で章番号の書式を指定できる。マスター装飾の `text` と同じ `{sectionNumber}` / `{sectionNumber:0N}`（N桁ゼロ詰め）記法で、省略時は `"{sectionNumber}"`（ゼロ詰めなし）。
+
+```json
+{
+  "content": {
+    "toc": { "numberFormat": "第{sectionNumber:02}章" }
+  }
+}
+```
+
+章の概念を使わないデッキでは `items` で手書きの目次項目リストを指定する（後方互換）。指定すると章からの自動導出は使わない。`number`（章番号として表示する文字列。省略すると番号なしの行になる）・`title`・`page`（開始ページ番号として表示する値）を持つ。
+
+```json
+{
+  "content": {
+    "toc": {
+      "items": [
+        { "number": "01", "title": "導入", "page": 3 },
+        { "number": "02", "title": "設計", "page": 12 }
+      ]
+    }
+  }
+}
+```
+
+`columns`（1〜3。範囲外は丸める）で列数を指定できる。省略時は1列（縦一列）。章・項目数が多い場合に2〜3列へ折返す。両モード共通で、項目数（多列時は行数）に応じて行間・文字サイズが自動で詰まる。

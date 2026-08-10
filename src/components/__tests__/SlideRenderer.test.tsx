@@ -563,6 +563,119 @@ describe('SlideRenderer', () => {
     })
   })
 
+  // #195: 目次（content.toc → Toc）。章（meta.section）からの自動導出と手書き項目リストの両方に対応する
+  describe('contentスライド(toc)', () => {
+    function renderContent(content: SlideData['content']) {
+      return renderWithTheme(<SlideRenderer slides={[{ id: 'test-toc', layout: 'content', content: { title: 'タイトル', ...content } }]} />)
+    }
+
+    it('items指定時（手書きモード）は章番号・タイトル・ページ番号がそのまま描画される', () => {
+      const { getByTestId } = renderContent({
+        toc: {
+          items: [
+            { number: '01', title: '導入', page: 3 },
+            { title: '設計', page: 12 },
+          ],
+        },
+      })
+      const toc = getByTestId('toc')
+      expect(toc.textContent).toContain('01')
+      expect(toc.textContent).toContain('導入')
+      expect(toc.textContent).toContain('3')
+      expect(toc.textContent).toContain('設計')
+      expect(toc.textContent).toContain('12')
+    })
+
+    it('tocがオブジェクトでない場合は描画せずbody/itemsへ落ちる', () => {
+      const { queryByTestId, container } = renderContent({ toc: 'broken', body: '本文' })
+      expect(queryByTestId('toc')).toBeNull()
+      expect(container.textContent).toContain('本文')
+    })
+
+    it('checklistが指定されている場合はchecklist描画が優先される（既存の優先順位の維持）', () => {
+      const { queryByTestId } = renderContent({ checklist: [{ title: '項目' }], toc: { items: [{ title: '章1', page: 1 }] } })
+      expect(queryByTestId('checklist')).not.toBeNull()
+      expect(queryByTestId('toc')).toBeNull()
+    })
+
+    it('toc指定時はtiles/body/itemsを描画しない', () => {
+      const { getByTestId, container } = renderContent({ toc: { items: [{ title: '章1', page: 1 }] }, tiles: [{ icon: 'Description', title: 'タイル', description: '説明' }], body: '描画されない本文' })
+      expect(getByTestId('toc')).not.toBeNull()
+      expect(container.textContent).not.toContain('タイル')
+      expect(container.textContent).not.toContain('描画されない本文')
+    })
+
+    // #191: 章（buildSections）からの自動導出。開始ページはstartIndex(0始まり)+1(Revealの1始まり表示と一致)
+    describe('itemsを省略した自動導出モード（sections から章番号・開始ページを導出）', () => {
+      function tocDeck(tocContent: SlideData['content']): SlideData[] {
+        return [
+          { id: 's0', layout: 'center', content: { title: '表紙' } },
+          { id: 's-toc', layout: 'content', content: { title: '目次', ...tocContent } },
+          { id: 's1', layout: 'content', content: { title: 'slide' }, meta: { section: '導入' } },
+          { id: 's2', layout: 'content', content: { title: 'slide' }, meta: { section: '導入' } },
+          { id: 's3', layout: 'content', content: { title: 'slide' }, meta: { section: '設計' } },
+        ]
+      }
+
+      it('章番号・章タイトル・開始ページ番号（1始まり）を自動導出する', () => {
+        const { getByTestId } = renderWithTheme(<SlideRenderer slides={tocDeck({ toc: {} })} />)
+        const toc = getByTestId('toc')
+        expect(toc.textContent).toContain('導入')
+        expect(toc.textContent).toContain('設計')
+        // 導入の開始ページ = startIndex(2) + 1 = 3、設計の開始ページ = startIndex(4) + 1 = 5
+        const pages = [...toc.querySelectorAll('li')].map((li) => li.textContent)
+        expect(pages[0]).toContain('3')
+        expect(pages[1]).toContain('5')
+      })
+
+      it('numberFormat省略時は章番号がゼロ詰めなしで展開される', () => {
+        const { getByTestId } = renderWithTheme(<SlideRenderer slides={tocDeck({ toc: {} })} />)
+        expect(getByTestId('toc').textContent).toContain('1')
+      })
+
+      it('numberFormatの{sectionNumber:0N}記法でゼロ詰めできる（renderMasterTextの再利用）', () => {
+        const { getByTestId } = renderWithTheme(<SlideRenderer slides={tocDeck({ toc: { numberFormat: '第{sectionNumber:02}章' } })} />)
+        expect(getByTestId('toc').textContent).toContain('第01章')
+        expect(getByTestId('toc').textContent).toContain('第02章')
+      })
+
+      it('章を追加・削除・並べ替えしても目次が自動追従する（受け入れ基準）', () => {
+        // 同一テスト内で複数回 render するため、document 全体ではなく各 container を見る
+        const deck = tocDeck({ toc: {} })
+        const before = renderWithTheme(<SlideRenderer slides={deck} />).container.querySelector('[data-testid="toc"]')!
+        expect(before.querySelectorAll('li')).toHaveLength(2)
+
+        const withExtraSection: SlideData[] = [...deck, { id: 's4', layout: 'content', content: { title: 'slide' }, meta: { section: '運用' } }]
+        const after = renderWithTheme(<SlideRenderer slides={withExtraSection} />).container.querySelector('[data-testid="toc"]')!
+        const rows = after.querySelectorAll('li')
+        expect(rows).toHaveLength(3)
+        expect(rows[2].textContent).toContain('運用')
+      })
+
+      it('章の概念を使わないデッキ（meta.section無指定）では自動導出の目次は空になる（手書きitemsで対応する後方互換）', () => {
+        const { getByTestId } = renderWithTheme(
+          <SlideRenderer
+            slides={[
+              { id: 's-toc', layout: 'content', content: { title: '目次', toc: {} } },
+              { id: 's1', layout: 'content', content: { title: 'slide' } },
+            ]}
+          />,
+        )
+        expect(getByTestId('toc').querySelectorAll('li')).toHaveLength(0)
+      })
+    })
+
+    it('columns指定時は指定列数のグリッドになる', () => {
+      const { getByTestId } = renderContent({ toc: { items: [{ title: '章1', page: 1 }], columns: 2 } })
+      expect((getByTestId('toc') as HTMLElement).style.gridTemplateColumns).toBe('repeat(2, minmax(0, 1fr))')
+    })
+
+    it('columns省略時は1列になる', () => {
+      const { getByTestId } = renderContent({ toc: { items: [{ title: '章1', page: 1 }] } })
+      expect((getByTestId('toc') as HTMLElement).style.gridTemplateColumns).toBe('repeat(1, minmax(0, 1fr))')
+    })
+  })
+
   // #199: 番号付きリストの多列配置（content.stepColumns → Timeline の columns）
   describe('contentスライド(steps + stepColumns)', () => {
     const steps = Array.from({ length: 7 }, (_, i) => ({ number: i + 1, title: `手順${i + 1}`, description: `説明${i + 1}` }))
@@ -669,6 +782,7 @@ describe('SlideRenderer', () => {
     const fillCases: Array<{ name: string; content: SlideData['content']; fill: boolean }> = [
       { name: 'steps', content: { steps: [{ number: 1, title: 'ステップ', description: '説明' }] }, fill: false },
       { name: 'checklist', content: { checklist: [{ title: '項目' }] }, fill: false },
+      { name: 'toc', content: { toc: { items: [{ title: '章1', page: 1 }] } }, fill: false },
       { name: 'tiles', content: { tiles: [{ icon: 'Description', title: 'タイル', description: '説明' }] }, fill: false },
       { name: 'images', content: { images: [{ src: '/a.png' }] }, fill: true },
       { name: 'chart', content: { chart: { type: 'bar', categories: ['A'], series: [{ values: [1] }] } }, fill: true },

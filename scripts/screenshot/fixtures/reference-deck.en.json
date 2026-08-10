@@ -429,6 +429,21 @@
         "body": "Closing on a full-bleed fill with the logo behind it",
         "githubRepo": "ToshikiImagawa/slide-presentation-app"
       }
+    },
+    {
+      "id": "layout-content-toc",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (toc)",
+        "toc": {
+          "items": [
+            { "number": "01", "title": "Background", "page": 2 },
+            { "number": "02", "title": "Design", "page": 8 },
+            { "number": "03", "title": "Implementation", "page": 15 },
+            { "number": "04", "title": "Verification", "page": 22 }
+          ]
+        }
+      }
     }
   ]
 }

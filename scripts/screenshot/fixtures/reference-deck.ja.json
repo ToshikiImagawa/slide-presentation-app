@@ -430,6 +430,21 @@
         "body": "ロゴの全面配置と全面塗りで終わる",
         "githubRepo": "ToshikiImagawa/slide-presentation-app"
       }
+    },
+    {
+      "id": "layout-content-toc",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (toc)",
+        "toc": {
+          "items": [
+            { "number": "01", "title": "背景", "page": 2 },
+            { "number": "02", "title": "設計", "page": 8 },
+            { "number": "03", "title": "実装", "page": 15 },
+            { "number": "04", "title": "検証", "page": 22 }
+          ]
+        }
+      }
     }
   ]
 }

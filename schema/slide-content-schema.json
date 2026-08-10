@@ -20,7 +20,7 @@
       }
     },
     "content": {
-      "description": "コンテンツ表示用レイアウト。子要素のフィールドで描画が決まる。優先順位: steps→Timeline / checklist→チェックリスト / tiles→FeatureTileGrid / images→画像スライド / chart→チャート / table→表 / compare→比較 / flow→横フロー / component→カスタム。いずれも無指定の場合に限り body/items（プレーン本文）を描画する（#193・#200・#199）",
+      "description": "コンテンツ表示用レイアウト。子要素のフィールドで描画が決まる。優先順位: steps→Timeline / checklist→チェックリスト / toc→目次 / tiles→FeatureTileGrid / images→画像スライド / chart→チャート / table→表 / compare→比較 / flow→横フロー / component→カスタム。いずれも無指定の場合に限り body/items（プレーン本文）を描画する（#193・#200・#199・#195）",
       "contentFields": {
         "title": { "type": "string" },
         "steps": {
@@ -43,6 +43,30 @@
             "title": { "type": "string" },
             "description": { "type": "string", "description": "項目の補足説明（<br/>等HTMLタグ利用可）" },
             "checked": { "type": "boolean", "description": "完了ならtrue。省略時は未完了" }
+          }
+        },
+        "toc": {
+          "type": "object",
+          "description": "目次（#195）。items省略時はslides[].meta.sectionの章（buildSectionsで導出済み）から章番号・章タイトル・開始ページ番号を自動導出する。開始ページはstartIndex+1（Revealの1始まりのページ表示と一致）。章の概念を使わないデッキではitemsで手書きの項目リストを指定する（後方互換）",
+          "fields": {
+            "items": {
+              "type": "array",
+              "maxItems": 12,
+              "description": "手書きの目次項目。指定すると章からの自動導出を使わずこちらを描画する（章の概念を使わないデッキ向け）",
+              "itemFields": {
+                "number": { "type": "string", "description": "章番号として表示する文字列（例: \"01\"）。省略すると番号なしの行になる" },
+                "title": { "type": "string" },
+                "page": { "type": ["string", "number"], "description": "開始ページ番号として表示する値" }
+              }
+            },
+            "numberFormat": {
+              "type": "string",
+              "description": "章番号の表示書式。renderMasterTextと同じ{sectionNumber}/{sectionNumber:0N}記法（N桁ゼロ詰め）を再利用する（例: \"{sectionNumber:02}\"）。items指定時（手書きモード）では使わない。省略時は\"{sectionNumber}\"（ゼロ詰めなし）"
+            },
+            "columns": {
+              "type": "number",
+              "description": "目次の列数（1〜3。範囲外は丸める）。省略時は1列（縦一列）。章・項目数が多い場合に2〜3列へ折返す"
+            }
           }
         },
         "tiles": {
@@ -86,13 +110,13 @@
         "footer": { "type": "string" },
         "body": {
           "type": "string",
-          "description": "プレーン本文の段落（改行は\\n）。steps/checklist/tiles/images/chart/table/compare/flow/componentのいずれも無指定の場合のみ描画される。itemsと併用可。段落配列が必要な場合はtwo-columnのparagraphsを使う（1カラム全幅の自由記述文はbody、カラム構成用の複数ブロックはparagraphsという役割分担）"
+          "description": "プレーン本文の段落（改行は\\n）。steps/checklist/toc/tiles/images/chart/table/compare/flow/componentのいずれも無指定の場合のみ描画される。itemsと併用可。段落配列が必要な場合はtwo-columnのparagraphsを使う（1カラム全幅の自由記述文はbody、カラム構成用の複数ブロックはparagraphsという役割分担）"
         },
         "items": {
           "type": "array",
           "ref": "contentItem",
           "maxItems": 7,
-          "description": "箇条書き（ネスト可）。steps/checklist/tiles/images/chart/table/compare/flow/componentのいずれも無指定の場合のみ描画される。bodyと併用可。推奨上限7件（超えると密度過多として自動修正対象になる）"
+          "description": "箇条書き（ネスト可）。steps/checklist/toc/tiles/images/chart/table/compare/flow/componentのいずれも無指定の場合のみ描画される。bodyと併用可。推奨上限7件（超えると密度過多として自動修正対象になる）"
         }
       }
     },
