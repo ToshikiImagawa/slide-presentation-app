@@ -43,16 +43,18 @@ function describeElement(el: Element): string {
   return text ? `<${tag}>"${text}"` : `<${tag}>`
 }
 
+type ElementRect = readonly [HTMLElement, DOMRect]
+
 /**
- * root 配下で「見た目の最小単位」とみなす要素（レンダリングサイズを持ち、かつ描画済みの子要素を持たない）を集める。
- * 親→子の入れ子で同じはみ出しを重複報告しないよう、最も深い要素だけを対象にする。
+ * root 配下で「見た目の最小単位」とみなす要素（レンダリングサイズを持ち、かつ描画済みの子要素を持たない）と、
+ * その矩形を集める。親→子の入れ子で同じはみ出しを重複報告しないよう、最も深い要素だけを対象にする。
+ * 矩形は1要素につき1回だけ getBoundingClientRect を呼んで測り、子要素の可視判定にも同じ値を再利用する
+ * （呼び出し元も含めた実測1回分を、はみ出し・セーフエリア侵入・装飾重なりの3種の判定で共有する）。
  */
-function getContentLeaves(root: HTMLElement): HTMLElement[] {
-  return Array.from(root.querySelectorAll<HTMLElement>('*')).filter((el) => {
-    const rect = el.getBoundingClientRect()
-    if (!hasVisibleSize(rect)) return false
-    return !Array.from(el.children).some((child) => hasVisibleSize(child.getBoundingClientRect()))
-  })
+function getContentLeaves(root: HTMLElement): ElementRect[] {
+  const all = Array.from(root.querySelectorAll<HTMLElement>('*'))
+  const rects = new Map<Element, DOMRect>(all.map((el) => [el, el.getBoundingClientRect()]))
+  return all.filter((el) => hasVisibleSize(rects.get(el)!) && !Array.from(el.children).some((child) => hasVisibleSize(rects.get(child)!))).map((el): ElementRect => [el, rects.get(el)!])
 }
 
 /** マスター装飾の要素（.master-layer-back/.master-layer-front の直下。全面塗りの背景要素は対象外） */
@@ -95,27 +97,26 @@ export function getVisualCheckWarnings(section: HTMLElement): string[] {
   const leaves = getContentLeaves(masterBody)
 
   const overflowing = new Set<HTMLElement>()
-  for (const leaf of leaves) {
-    const rect = leaf.getBoundingClientRect()
+  for (const [leaf, rect] of leaves) {
     if (exceedsBounds(rect, sectionBounds)) {
       overflowing.add(leaf)
       warnings.push(`はみ出し: ${describeElement(leaf)} がスライド領域の外に出ています`)
     }
   }
 
-  for (const leaf of leaves) {
+  for (const [leaf, rect] of leaves) {
     if (overflowing.has(leaf)) continue
-    const rect = leaf.getBoundingClientRect()
     if (exceedsBounds(rect, safeBounds)) {
       warnings.push(`セーフエリア侵入: ${describeElement(leaf)} が余白（セーフエリア）に侵入しています`)
     }
   }
 
-  const decorations = getDecorationElements(section).filter((el) => hasVisibleSize(el.getBoundingClientRect()))
-  for (const decoration of decorations) {
-    const decorationRect = decoration.getBoundingClientRect()
-    for (const leaf of leaves) {
-      if (rectsOverlap(decorationRect, leaf.getBoundingClientRect())) {
+  const decorations: ElementRect[] = getDecorationElements(section)
+    .map((el): ElementRect => [el, el.getBoundingClientRect()])
+    .filter(([, rect]) => hasVisibleSize(rect))
+  for (const [decoration, decorationRect] of decorations) {
+    for (const [leaf, rect] of leaves) {
+      if (rectsOverlap(decorationRect, rect)) {
         warnings.push(`装飾との重なり: ${describeElement(leaf)} がマスター装飾（${describeElement(decoration)}）と重なっています`)
       }
     }

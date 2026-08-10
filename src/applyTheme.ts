@@ -592,47 +592,48 @@ function contrastWarning(scope: string, textLabel: string, textColor: string, bg
 }
 
 /**
- * `theme.colors` 直書きのコントラスト検証（#209）。文字色キー×背景色キーの組のうち、
- * 両方が明示されている組だけを検証する（片方が未指定＝グローバルCSSの既定値に委ねる場合、
- * その既定値をここで複製すると二重管理になるため対象外とする）。
+ * keys の各要素について source から値を引き、明示されている（真値の）ものだけ `[key, value]` として残す。
+ * lookupKey 省略時はキー自身をそのまま引く（theme.colors ＝ ColorPalette のキーそのもの）。
+ * tokens の1スコープ分の生変数（キーが CSS 変数名）から引く場合は lookupKey で変換する。
+ * theme.colors・theme.tokens 両方のコントラスト検証（#209）が抽出処理を共有するために使う。
  */
-function getColorPaletteContrastWarnings(colors: ColorPalette): string[] {
+function extractColorEntries(source: Record<string, string | undefined>, keys: readonly string[], lookupKey: (key: string) => string = (key) => key): Array<[string, string]> {
+  return keys.map((key): [string, string | undefined] => [key, source[lookupKey(key)]]).filter((entry): entry is [string, string] => Boolean(entry[1]))
+}
+
+/** textEntries × bgEntries の全組み合わせを検証し、AA 未達の警告文を集める（theme.colors・tokens 両方が共有） */
+function pairwiseContrastWarnings(scope: string, textEntries: Array<[string, string]>, bgEntries: Array<[string, string]>): string[] {
   const warnings: string[] = []
-  for (const textKey of TEXT_COLOR_KEYS) {
-    const textColor = (colors as Record<string, string | undefined>)[textKey]
-    if (!textColor) continue
-    for (const bgKey of BACKGROUND_COLOR_KEYS) {
-      const bgColor = (colors as Record<string, string | undefined>)[bgKey]
-      if (!bgColor) continue
-      const warning = contrastWarning('theme.colors', textKey, textColor, bgKey, bgColor)
+  for (const [textLabel, textColor] of textEntries) {
+    for (const [bgLabel, bgColor] of bgEntries) {
+      const warning = contrastWarning(scope, textLabel, textColor, bgLabel, bgColor)
       if (warning) warnings.push(warning)
     }
   }
   return warnings
 }
 
-/** tokens の1スコープ（masterKey または "*"）分の生変数から、文字色/背景色キーの値だけを抜き出す */
-function extractColorTokens(vars: Record<string, string>, keys: readonly string[]): Array<[string, string]> {
-  return keys.map((key): [string, string | undefined] => [key, vars[THEME_COLOR_TOKENS[key].replace(/^--/, '')]]).filter((entry): entry is [string, string] => Boolean(entry[1]))
+/**
+ * `theme.colors` 直書きのコントラスト検証（#209）。文字色キー×背景色キーの組のうち、
+ * 両方が明示されている組だけを検証する（片方が未指定＝グローバルCSSの既定値に委ねる場合、
+ * その既定値をここで複製すると二重管理になるため対象外とする）。
+ */
+function getColorPaletteContrastWarnings(colors: ColorPalette): string[] {
+  const record = colors as Record<string, string | undefined>
+  return pairwiseContrastWarnings('theme.colors', extractColorEntries(record, TEXT_COLOR_KEYS), extractColorEntries(record, BACKGROUND_COLOR_KEYS))
 }
 
 /**
  * `theme.tokens`（masterKey スコープの CSS 変数トークン。#190）のコントラスト検証（#209）。
- * 同一スコープ内で文字色/背景色の両方が上書きされている組だけを検証する
- * （CSS_VAR_NAME_TO_COLOR_KEY は逆引き用のマップとして定義済みだが、キー一覧の走査は
- * extractColorTokens に委ね、ここでは検証ロジックのみを持つ）。
+ * 同一スコープ内で文字色/背景色の両方が上書きされている組だけを検証する。
  */
 function getTokenContrastWarnings(tokens: Record<string, Record<string, string>>): string[] {
+  const varNameOf = (key: string) => THEME_COLOR_TOKENS[key].replace(/^--/, '')
   const warnings: string[] = []
   for (const [scope, vars] of Object.entries(tokens)) {
-    const textEntries = extractColorTokens(vars, TEXT_COLOR_KEYS)
-    const bgEntries = extractColorTokens(vars, BACKGROUND_COLOR_KEYS)
-    for (const [textLabel, textColor] of textEntries) {
-      for (const [bgLabel, bgColor] of bgEntries) {
-        const warning = contrastWarning(`theme.tokens.${scope}`, textLabel, textColor, bgLabel, bgColor)
-        if (warning) warnings.push(warning)
-      }
-    }
+    const textEntries = extractColorEntries(vars, TEXT_COLOR_KEYS, varNameOf)
+    const bgEntries = extractColorEntries(vars, BACKGROUND_COLOR_KEYS, varNameOf)
+    warnings.push(...pairwiseContrastWarnings(`theme.tokens.${scope}`, textEntries, bgEntries))
   }
   return warnings
 }
