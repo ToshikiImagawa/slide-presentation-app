@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getVisualCheckWarnings, waitForImagesToSettle } from '../visualChecks'
+import { getVisualCheckWarnings, waitForAnimationsToSettle, waitForImagesToSettle } from '../visualChecks'
 
 /** テスト用の DOMRect を要素へ固定する（jsdom はレイアウトを計算しないため実測値を明示的に与える） */
 function setRect(el: HTMLElement, r: { left: number; top: number; width: number; height: number }): void {
@@ -157,5 +157,57 @@ describe('waitForImagesToSettle（#209）', () => {
     img.dispatchEvent(new Event('load'))
     await new Promise((r) => setTimeout(r, 0))
     expect(resolved).toBe(true)
+  })
+})
+
+describe('waitForAnimationsToSettle（#225）', () => {
+  /** getAnimations が返す Animation の代役（jsdom は Web Animations API を実装しないため）。
+   * finished は参照された時点で作る（本物と同じく、待ち手が現れてから初めて reject が観測される） */
+  function fakeAnimation(iterations: number, finished: () => Promise<unknown>) {
+    return {
+      effect: { getComputedTiming: () => ({ iterations }) },
+      get finished() {
+        return finished()
+      },
+    } as unknown as Animation
+  }
+
+  function sectionWithAnimations(animations: Animation[]): HTMLElement {
+    const section = document.createElement('section')
+    section.getAnimations = () => animations
+    return section
+  }
+
+  it('Web Animations API が無い環境では即座に解決する（実測を止めない）', async () => {
+    const section = document.createElement('section')
+    expect(typeof section.getAnimations).toBe('undefined')
+    await expect(waitForAnimationsToSettle(section)).resolves.toBeUndefined()
+  })
+
+  it('進行中のアニメーションが完了するまで解決を待つ', async () => {
+    let finish: () => void = () => {}
+    const pending = new Promise<void>((resolve) => (finish = resolve))
+    const section = sectionWithAnimations([fakeAnimation(1, () => pending)])
+
+    let resolved = false
+    waitForAnimationsToSettle(section).then(() => {
+      resolved = true
+    })
+    await new Promise((r) => setTimeout(r, 0))
+    expect(resolved).toBe(false)
+
+    finish()
+    await new Promise((r) => setTimeout(r, 0))
+    expect(resolved).toBe(true)
+  })
+
+  it('無限に繰り返すアニメーション（TerminalAnimation の点滅）は待たない', async () => {
+    const section = sectionWithAnimations([fakeAnimation(Infinity, () => new Promise(() => {}))])
+    await expect(waitForAnimationsToSettle(section)).resolves.toBeUndefined()
+  })
+
+  it('キャンセルされたアニメーション（finished が reject）でも例外にせず解決する', async () => {
+    const section = sectionWithAnimations([fakeAnimation(1, () => Promise.reject(new Error('cancelled')))])
+    await expect(waitForAnimationsToSettle(section)).resolves.toBeUndefined()
   })
 })

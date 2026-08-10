@@ -26,10 +26,6 @@ import { contentViewport } from './viewports.mjs'
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const URL = 'http://localhost:1420'
 const VIEWPORT_KEY = 'reference-deck'
-// useVisualCheckWarnings.ts と同じ値（#209）。global.css の .content-area の fadeInUp は
-// animation-delay 0.15s + duration 0.6s = 完了まで計750ms かかるため、700ms 待ちだと CI 実測で
-// アニメーション途中の位置を拾って誤検知した（実測: PR #252 の CI で約28.8px の誤検知）
-const MEASURE_DELAY_MS = 1000
 
 /** ロケール別 fixture からスライド一覧を読む（capture-reference-deck.mjs と同じ単一真実源） */
 function fixtureSlides(lang) {
@@ -54,17 +50,20 @@ async function inspectLocale(browser, locale, vp) {
     for (const [index, slide] of slides.entries()) {
       await page.evaluate((h) => (window.location.hash = h), `#/${index}`)
       await page.evaluate(() => document.fonts.ready)
-      // useVisualCheckWarnings（アプリ本体）と同じ遅延（fadeInUp 等の遷移アニメーション完了を待つ）
-      await sleep(MEASURE_DELAY_MS)
 
       const warnings = await page.evaluate(async () => {
         const section = document.querySelector('section.present')
         const check = window.__VISUAL_CHECK__
         const waitImages = window.__VISUAL_CHECK_WAIT_IMAGES__
+        const waitAnimations = window.__VISUAL_CHECK_WAIT_ANIMATIONS__
         if (!section) return ['section.present が見つかりません']
-        if (!check) return ['window.__VISUAL_CHECK__ が公開されていません（screenshot モードのビルドを確認してください）']
+        if (!check || !waitImages || !waitAnimations) return ['window.__VISUAL_CHECK__ が公開されていません（screenshot モードのビルドを確認してください）']
         // 画像の読み込み確定前は FallbackImage が <img> を display:none にするため、確定を待ってから実測する
-        if (waitImages) await waitImages(section)
+        await waitImages(section)
+        // fadeInUp 等の完了前に実測すると途中の座標を誤検知する（translateY 分がセーフエリア侵入として出る）。
+        // 固定の待ち時間だと実行環境が遅くなるたびに破綻するため、アニメーションの完了そのものを待つ
+        // （待ちロジックはアプリ本体の useVisualCheckWarnings と共有する・src/visualChecks.ts）
+        await waitAnimations(section)
         return check(section)
       })
       results.push({ locale: locale.dir, index, id: slide.id, warnings })

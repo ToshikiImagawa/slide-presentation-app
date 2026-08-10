@@ -18,9 +18,6 @@ import { gotoSlide, lang, openSample } from './fixtures'
 /** 実測の許容誤差（px）。サブピクセルの丸めを吸収する。src/visualChecks.ts の BOUNDS_TOLERANCE_PX と同じ思想 */
 const TOLERANCE_PX = 1
 
-/** fadeInUp（animation-delay 0.15s + duration 0.6s）の完了を待つ。inspect-reference-deck.mjs と同じ 1000ms */
-const MEASURE_DELAY_MS = 1000
-
 const FILL_SLIDE_ID = 'layout-content-images'
 
 /** 基準見本デッキ fixture 内での対象スライドの位置（枚数が増えても id で解決するので追随不要） */
@@ -61,8 +58,11 @@ async function measureFill(page: Page): Promise<FillMetrics> {
     const bridge = window as unknown as {
       __VISUAL_CHECK__?: (section: HTMLElement) => string[]
       __VISUAL_CHECK_WAIT_IMAGES__?: (section: HTMLElement) => Promise<void>
+      __VISUAL_CHECK_WAIT_ANIMATIONS__?: (section: HTMLElement) => Promise<void>
     }
+    // 画像の読み込み確定と fadeInUp の完了を待ってから実測する（固定の待ち時間だと環境の速さに依存する）
     if (bridge.__VISUAL_CHECK_WAIT_IMAGES__) await bridge.__VISUAL_CHECK_WAIT_IMAGES__(section)
+    if (bridge.__VISUAL_CHECK_WAIT_ANIMATIONS__) await bridge.__VISUAL_CHECK_WAIT_ANIMATIONS__(section)
 
     const areaRect = area.getBoundingClientRect()
     return {
@@ -91,7 +91,6 @@ test.describe('本文領域の fill 変種（.content-area-fill）', () => {
     await useReferenceDeck(page, baseURL!)
     await openSample(page)
     await gotoSlide(page, fillSlideIndex(testInfo.project.name))
-    await page.waitForTimeout(MEASURE_DELAY_MS)
 
     expectFilled(await measureFill(page))
   })
@@ -100,7 +99,8 @@ test.describe('本文領域の fill 変種（.content-area-fill）', () => {
     await useReferenceDeck(page, baseURL!)
     await openSample(page)
     await gotoSlide(page, fillSlideIndex(testInfo.project.name))
-    await page.waitForTimeout(MEASURE_DELAY_MS)
+    // 実測前にレイアウトを最終形にする（アニメーション完了待ちは measureFill 側と同じ共有ロジック）
+    await measureFill(page)
 
     // #189（背景意匠）・#191（章）が本文領域の内側にラッパーを挟む状況を DOM 操作で再現する
     await page.evaluate(() => {
