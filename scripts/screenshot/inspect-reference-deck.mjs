@@ -26,6 +26,10 @@ import { contentViewport } from './viewports.mjs'
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const URL = 'http://localhost:1420'
 const VIEWPORT_KEY = 'reference-deck'
+// useVisualCheckWarnings.ts と同じ値（#209）。global.css の .content-area の fadeInUp は
+// animation-delay 0.15s + duration 0.6s = 完了まで計750ms かかるため、700ms 待ちだと CI 実測で
+// アニメーション途中の位置を拾って誤検知した（実測: PR #252 の CI で約28.8px の誤検知）
+const MEASURE_DELAY_MS = 1000
 
 /** ロケール別 fixture からスライド一覧を読む（capture-reference-deck.mjs と同じ単一真実源） */
 function fixtureSlides(lang) {
@@ -51,7 +55,7 @@ async function inspectLocale(browser, locale, vp) {
       await page.evaluate((h) => (window.location.hash = h), `#/${index}`)
       await page.evaluate(() => document.fonts.ready)
       // useVisualCheckWarnings（アプリ本体）と同じ遅延（fadeInUp 等の遷移アニメーション完了を待つ）
-      await sleep(700)
+      await sleep(MEASURE_DELAY_MS)
 
       const warnings = await page.evaluate(async () => {
         const section = document.querySelector('section.present')
@@ -63,28 +67,6 @@ async function inspectLocale(browser, locale, vp) {
         if (waitImages) await waitImages(section)
         return check(section)
       })
-
-      // TEMP DEBUG（#209 原因調査用。原因特定後に削除する）
-      if (slide.id === 'layout-content-images') {
-        const debugInfo = await page.evaluate(() => {
-          const section = document.querySelector('section.present')
-          const describe = (el) => {
-            if (!el) return null
-            const r = el.getBoundingClientRect()
-            const cs = getComputedStyle(el)
-            return { rect: { left: r.left, top: r.top, width: r.width, height: r.height }, offsetWidth: el.offsetWidth, offsetHeight: el.offsetHeight, lineHeight: cs.lineHeight, fontSize: cs.fontSize, fontFamily: cs.fontFamily, padding: [cs.paddingTop, cs.paddingRight, cs.paddingBottom, cs.paddingLeft] }
-          }
-          return {
-            masterBody: describe(section.querySelector('.master-body')),
-            contentArea: describe(section.querySelector('.content-area')),
-            grid: describe(section.querySelector('figure') ? section.querySelector('figure').parentElement : null),
-            figure: describe(section.querySelector('figure')),
-            imageArea: describe(section.querySelector('figure > div')),
-            figcaption: describe(section.querySelector('figcaption')),
-          }
-        })
-        console.log(`[debug] ${locale.dir}/${slide.id}:`, JSON.stringify(debugInfo, null, 2))
-      }
       results.push({ locale: locale.dir, index, id: slide.id, warnings })
     }
   } finally {
