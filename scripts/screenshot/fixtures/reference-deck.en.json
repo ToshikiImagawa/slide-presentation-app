@@ -341,6 +341,34 @@
           { "number": 7, "title": "Open the PR", "description": "State leftovers and follow-up issues" }
         ]
       }
+    },
+    {
+      "id": "layout-two-column-diagram",
+      "layout": "two-column",
+      "content": {
+        "title": "layout: two-column (filling component)",
+        "left": {
+          "heading": "A diagram inside a column",
+          "paragraphs": ["The column itself hands the remaining body height to the canvas"],
+          "items": [{ "text": "The column is the fill host" }, { "text": "Marking the body area instead breaks the 2-column grid" }]
+        },
+        "right": {
+          "component": {
+            "name": "Diagram",
+            "props": {
+              "nodes": [
+                { "id": "host", "rect": { "x": 0.06, "y": 0.04, "w": 0.88, "h": 0.24 }, "title": "Column", "body": "fill host", "color": "primary" },
+                { "id": "item", "rect": { "x": 0.06, "y": 0.38, "w": 0.88, "h": 0.24 }, "title": "Diagram canvas", "body": "fill item", "color": "success", "variant": "filled" },
+                { "id": "primitive", "rect": { "x": 0.06, "y": 0.72, "w": 0.88, "h": 0.24 }, "title": "Primitives", "body": "placed in normalized coords", "color": "neutral", "variant": "plain" }
+              ],
+              "connectors": [
+                { "from": "host", "to": "item", "routing": "vertical", "head": "triangle" },
+                { "from": "item", "to": "primitive", "routing": "vertical", "head": "triangle" }
+              ]
+            }
+          }
+        }
+      }
     }
   ]
 }

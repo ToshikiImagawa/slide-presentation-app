@@ -109,9 +109,22 @@ function renderTwoColumnSlide(slide: SlideData, logo: LogoConfig | undefined, th
 
   return (
     <ContentLayout id={slide.id} layout={slide.layout} variant={variant} title={content.title ?? ''} meta={slide.meta} logo={logo} theme={theme} ctx={ctx}>
-      <TwoColumnGrid left={renderColumnContent(leftData)} right={renderColumnContent(rightData)} />
+      <TwoColumnGrid left={renderColumnContent(leftData)} right={renderColumnContent(rightData)} leftFill={columnFillsHeight(leftData)} rightFill={columnFillsHeight(rightData)} />
     </ContentLayout>
   )
+}
+
+/**
+ * カラムの内容が残り高さを埋めるか（fill ホストをカラム側に付けるかの判定・#259）。
+ *
+ * 本文領域の fill 変種（fillsContentArea）と同じく、登録側の traits（componentFillsContentArea）を
+ * 唯一の真実源にする。カラムで「埋める要素」を描くのは component 経路だけなので、判定も component だけを見る
+ * （heading / paragraphs / items 等はいずれも内容サイズの要素で、残り高さを必要としない）。
+ * ContentLayout に fill を渡す方法では直らない理由は global.css の fill 変種の契約に記載。
+ */
+function columnFillsHeight(data: Record<string, unknown> | undefined): boolean {
+  const ref = data?.component as { name?: string } | undefined
+  return typeof ref?.name === 'string' && componentFillsContentArea(ref.name)
 }
 
 /** カラムコンテンツをレンダリング */
@@ -316,8 +329,8 @@ const CONTENT_BRANCHES: ContentBranch[] = [
   // チャート（#204）・表（#194）は本文領域の残り高さを埋める
   { match: (content) => Boolean(content.chart) && typeof content.chart === 'object', fill: true, render: (content) => <Chart {...(content.chart as ChartSpec)} /> },
   { match: (content) => Boolean(content.table) && typeof content.table === 'object', fill: true, render: (content) => <Table {...(content.table as TableSpec)} /> },
-  // 比較（#200）は2ペインがグリッドの stretch で高さを揃えるため fill 変種は使わない
-  { match: (content) => Boolean(content.compare) && typeof content.compare === 'object', fill: false, render: (content) => <Compare {...(content.compare as CompareSpec)} /> },
+  // 比較（#200）は2ペインの高さを揃えるためにグリッド自身が本文領域の残り高さを受け取る（#259）
+  { match: (content) => Boolean(content.compare) && typeof content.compare === 'object', fill: true, render: (content) => <Compare {...(content.compare as CompareSpec)} /> },
   // 横フロー（#200）は DiagramCanvas に載るので埋める
   { match: (content) => Boolean(content.flow), fill: true, render: (content) => <Flow steps={content.flow as FlowStep[]} /> },
   { match: (content) => Boolean(content.component), fill: (content) => componentFillsContentArea(content.component!.name), render: (content) => renderComponent(content.component!) },

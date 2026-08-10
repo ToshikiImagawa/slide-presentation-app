@@ -672,7 +672,7 @@ describe('SlideRenderer', () => {
       { name: 'images', content: { images: [{ src: '/a.png' }] }, fill: true },
       { name: 'chart', content: { chart: { type: 'bar', categories: ['A'], series: [{ values: [1] }] } }, fill: true },
       { name: 'table', content: { table: { columns: [{ label: '項目' }], rows: [['値']] } }, fill: true },
-      { name: 'compare', content: { compare: { left: { heading: '見出し' } } }, fill: false },
+      { name: 'compare', content: { compare: { left: { heading: '見出し' } } }, fill: true },
       { name: 'flow', content: { flow: [{ title: '工程1' }, { title: '工程2' }] }, fill: true },
       { name: 'component:Diagram（登録側が fillsContentArea を宣言）', content: { component: { name: 'Diagram', props: { nodes: [{ id: 'a', rect: { x: 0, y: 0, w: 0.3, h: 0.3 }, title: 'カード' }] } } }, fill: true },
       { name: 'component:TerminalAnimation（既定は埋めない）', content: { component: { name: 'TerminalAnimation' } }, fill: false },
@@ -683,6 +683,47 @@ describe('SlideRenderer', () => {
       const { container } = renderWithTheme(<SlideRenderer slides={[{ id: 'test-fill', layout: 'content', content: { title: 'タイトル', ...content } }]} />)
       expect(container.querySelector('.content-area')!.classList.contains('content-area-fill')).toBe(fill)
       expect(container.querySelector('.content-area-fill-item') !== null).toBe(fill)
+    })
+  })
+
+  // #259: two-column のカラムに置いた「埋めるコンポーネント」の高さ解決。
+  // 埋める要素（.content-area-fill-item）は fill ホスト（.content-area-fill）の中に置かれて初めて
+  // 残り高さを受け取るため、カラム自身がホストを名乗る必要がある（ホストを .content-area 側に付けると
+  // :has() 規則が2カラムのグリッドを flex 列へ上書きして崩れる。理由は global.css に記載）。
+  // 高さ 0 は見た目上静かに消えるだけなので、対応をこのテストで固定する
+  describe('two-column のカラムの fill ホスト（.content-area-fill）', () => {
+    function renderTwoColumn(content: SlideData['content']) {
+      const { container } = renderWithTheme(<SlideRenderer slides={[{ id: 'test-two-column-fill', layout: 'two-column', content: { title: 'タイトル', ...content } }]} />)
+      // .content-area 直下がグリッドのルート、その子2つが左右のカラム
+      const columns = Array.from(container.querySelector('.content-area')!.firstElementChild!.children)
+      return { container, columns }
+    }
+
+    it('埋めるコンポーネント（Diagram）を置いたカラムだけが fill ホストを名乗る', () => {
+      const { columns } = renderTwoColumn({
+        left: { component: { name: 'Diagram', props: { nodes: [{ id: 'a', rect: { x: 0, y: 0, w: 0.3, h: 0.3 }, title: 'カード' }] } } },
+        right: { heading: '右カラム', paragraphs: ['右の本文'] },
+      })
+      expect(columns[0].classList.contains('content-area-fill')).toBe(true)
+      expect(columns[1].classList.contains('content-area-fill')).toBe(false)
+      // 埋める要素はホストを名乗ったカラムの中にある（ホスト外だと flex:1 が効かず高さ 0 になる）
+      expect(columns[0].querySelector('.content-area-fill-item')).not.toBeNull()
+    })
+
+    it('埋めないコンポーネント（TerminalAnimation）や通常のカラム内容では fill ホストを名乗らない', () => {
+      const { columns } = renderTwoColumn({
+        left: { component: { name: 'TerminalAnimation' } },
+        right: { items: [{ text: '項目' }] },
+      })
+      expect(columns.some((column) => column.classList.contains('content-area-fill'))).toBe(false)
+    })
+
+    it('本文領域（.content-area）には fill 変種を付けない（:has() 規則で2カラムのグリッドが崩れるため）', () => {
+      const { container } = renderTwoColumn({
+        left: { component: { name: 'Diagram', props: { nodes: [{ id: 'a', rect: { x: 0, y: 0, w: 0.3, h: 0.3 }, title: 'カード' }] } } },
+        right: { heading: '右カラム' },
+      })
+      expect(container.querySelector('.content-area')!.classList.contains('content-area-fill')).toBe(false)
     })
   })
 

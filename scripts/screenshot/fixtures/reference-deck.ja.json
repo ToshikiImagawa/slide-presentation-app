@@ -342,6 +342,34 @@
           { "number": 7, "title": "PR にまとめる", "description": "やり残しと後続イシューを明記する" }
         ]
       }
+    },
+    {
+      "id": "layout-two-column-diagram",
+      "layout": "two-column",
+      "content": {
+        "title": "layout: two-column (埋めるコンポーネント)",
+        "left": {
+          "heading": "カラムに図解を置く",
+          "paragraphs": ["カラム自身が本文領域の残り高さをキャンバスへ渡す"],
+          "items": [{ "text": "高さの受け取り口はカラム側" }, { "text": "本文領域側に付けると 2 カラムが崩れる" }]
+        },
+        "right": {
+          "component": {
+            "name": "Diagram",
+            "props": {
+              "nodes": [
+                { "id": "host", "rect": { "x": 0.06, "y": 0.04, "w": 0.88, "h": 0.24 }, "title": "カラム", "body": "fill ホスト", "color": "primary" },
+                { "id": "item", "rect": { "x": 0.06, "y": 0.38, "w": 0.88, "h": 0.24 }, "title": "図解キャンバス", "body": "埋める要素", "color": "success", "variant": "filled" },
+                { "id": "primitive", "rect": { "x": 0.06, "y": 0.72, "w": 0.88, "h": 0.24 }, "title": "プリミティブ", "body": "正規化座標で配置", "color": "neutral", "variant": "plain" }
+              ],
+              "connectors": [
+                { "from": "host", "to": "item", "routing": "vertical", "head": "triangle" },
+                { "from": "item", "to": "primitive", "routing": "vertical", "head": "triangle" }
+              ]
+            }
+          }
+        }
+      }
     }
   ]
 }

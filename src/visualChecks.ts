@@ -57,6 +57,21 @@ function getContentLeaves(root: HTMLElement): ElementRect[] {
   return all.filter((el) => hasVisibleSize(rects.get(el)!) && !Array.from(el.children).some((child) => hasVisibleSize(rects.get(child)!))).map((el): ElementRect => [el, rects.get(el)!])
 }
 
+/**
+ * 高さを受け取れていない「埋める要素」（.content-area-fill-item）を集める（#259）。
+ *
+ * fill 変種の契約（global.css）では、埋める要素は fill ホスト（.content-area-fill）の中に置かれて初めて
+ * flex:1 で残り高さを受け取る。ホストの外に置かれると高さ 0 のまま静かに消えるが、getContentLeaves は
+ * 0 サイズの要素を「見た目の最小単位」から除外するため、はみ出し検査では気づけない。
+ * 幅は持つのに高さだけ 0 の要素を対象にする（幅も 0 の場合は Reveal.js の unload 等で描画されていない
+ * 状態であり、高さ解決の失敗とは区別する）。
+ */
+function getCollapsedFillItems(masterBody: HTMLElement): ElementRect[] {
+  return Array.from(masterBody.querySelectorAll<HTMLElement>('.content-area-fill-item'))
+    .map((el): ElementRect => [el, el.getBoundingClientRect()])
+    .filter(([, rect]) => rect.width > 0 && rect.height <= BOUNDS_TOLERANCE_PX)
+}
+
 /** マスター装飾の要素（.master-layer-back/.master-layer-front の直下。全面塗りの背景要素は対象外） */
 function getDecorationElements(section: HTMLElement): HTMLElement[] {
   const elements: HTMLElement[] = []
@@ -94,7 +109,8 @@ function getSafeBounds(masterBody: HTMLElement): Bounds {
 
 /**
  * レンダリング済みのスライド1枚（`<section class="slide-container">`）を実測し、
- * ①はみ出し（スライド領域の外）②セーフエリア侵入（余白への侵入）③マスター装飾との重なり、を警告として返す。
+ * ①はみ出し（スライド領域の外）②セーフエリア侵入（余白への侵入）③マスター装飾との重なり
+ * ④高さを受け取れていない「埋める要素」（#259）、を警告として返す。
  * `.master-body` が無い（現行と完全同一のフォールバック等）場合は検査対象がないため空配列を返す。
  */
 export function getVisualCheckWarnings(section: HTMLElement): string[] {
@@ -121,6 +137,10 @@ export function getVisualCheckWarnings(section: HTMLElement): string[] {
     if (overshoot > BOUNDS_TOLERANCE_PX) {
       warnings.push(`セーフエリア侵入: ${describeElement(leaf)} が余白（セーフエリア）に侵入しています（${overshoot.toFixed(1)}px 超過）`)
     }
+  }
+
+  for (const [item] of getCollapsedFillItems(masterBody)) {
+    warnings.push(`高さ 0: ${describeElement(item)} が本文領域の残り高さを受け取れていません（.content-area-fill を名乗る区画の外に置かれている可能性）`)
   }
 
   const decorations: ElementRect[] = getDecorationElements(section)

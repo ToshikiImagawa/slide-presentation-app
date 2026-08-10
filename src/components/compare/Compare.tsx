@@ -47,10 +47,12 @@ function ComparePane({ pane }: { pane: ComparePaneSpec | undefined }) {
  * スライド JSON の `content.compare` を描画する2ペイン比較（#200）。
  * 可否・採用/非採用・Before/After 等の比較に使う。左右ペインはグリッドの stretch で
  * 高さが自動で揃い、項目の状態記号・状態色（success/warning/danger/neutral）はテーマトークンに追従する。
+ *
+ * 高さは ContentLayout の fill 変種（global.css の .content-area-fill-item・#225）から受け取る（#259）。
  */
 export function Compare({ left, right }: CompareSpec) {
   return (
-    <div className={styles.grid} data-testid="compare">
+    <div className={`content-area-fill-item ${styles.grid}`} data-testid="compare">
       <ComparePane pane={left} />
       <ComparePane pane={right} />
     </div>
