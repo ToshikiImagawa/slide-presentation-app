@@ -68,11 +68,16 @@ export function slideTitle(s: SlideFixture): string {
   return title
 }
 
-/** ホーム画面からサンプルデッキを開き、Reveal のスライドが描画されるまで待つ */
+/** ホーム画面からサンプルデッキを開き、Reveal の初期化完了（.reveal に ready クラス）まで待つ。
+ *
+ * section の存在だけを待つと、React が section を描いてから useReveal の初期化エフェクトが走るまでの
+ * 隙間で先へ進んでしまう。この隙間で hash を書き換えると、初期化が
+ * `history.replaceState`（src/hooks/useReveal.ts）でハッシュを消すため移動が失われ、
+ * gotoSlide が到達しないスライドを待ち続ける（実行環境が混んでいるほど起きやすい）。 */
 export async function openSample(page: Page): Promise<void> {
   await page.goto('/')
   await page.getByTestId('home-sample').click()
-  await page.waitForSelector('.reveal .slides section')
+  await page.waitForSelector('.reveal.ready .slides section.present')
 }
 
 /** サンプルデッキを開き、続けて編集ボタンから編集画面（SlideEditor）へ入る */
