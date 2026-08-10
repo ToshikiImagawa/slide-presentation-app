@@ -61,13 +61,11 @@
   row-gap: 18px;
 }
 
-.multiColumn[data-density='compact'] {
-  row-gap: 12px;
-}
-
-/* 行数が増えたら説明文も詰める。説明文は TimelineNode の children（描画は SlideRenderer）なので、
-   ここから直接は触れない。文字サイズをこの変数で公開し、描画側が
+/* 行数が最も多い段階は説明文も詰める。説明文は TimelineNode の children（描画は SlideRenderer）なので
+   ここから直接は触れず、文字サイズを変数で公開して描画側が
    var(--timeline-body-size, var(--theme-font-size-body2)) で読む（未定義なら既定のまま＝現行の見た目） */
 .multiColumn[data-density='compact'] {
   --timeline-body-size: calc(var(--theme-font-size-body2) * 0.85);
+
+  row-gap: 12px;
 }
