@@ -63,6 +63,28 @@ async function inspectLocale(browser, locale, vp) {
         if (waitImages) await waitImages(section)
         return check(section)
       })
+
+      // TEMP DEBUG（#209 原因調査用。原因特定後に削除する）
+      if (slide.id === 'layout-content-images') {
+        const debugInfo = await page.evaluate(() => {
+          const section = document.querySelector('section.present')
+          const describe = (el) => {
+            if (!el) return null
+            const r = el.getBoundingClientRect()
+            const cs = getComputedStyle(el)
+            return { rect: { left: r.left, top: r.top, width: r.width, height: r.height }, offsetWidth: el.offsetWidth, offsetHeight: el.offsetHeight, lineHeight: cs.lineHeight, fontSize: cs.fontSize, fontFamily: cs.fontFamily, padding: [cs.paddingTop, cs.paddingRight, cs.paddingBottom, cs.paddingLeft] }
+          }
+          return {
+            masterBody: describe(section.querySelector('.master-body')),
+            contentArea: describe(section.querySelector('.content-area')),
+            grid: describe(section.querySelector('figure') ? section.querySelector('figure').parentElement : null),
+            figure: describe(section.querySelector('figure')),
+            imageArea: describe(section.querySelector('figure > div')),
+            figcaption: describe(section.querySelector('figcaption')),
+          }
+        })
+        console.log(`[debug] ${locale.dir}/${slide.id}:`, JSON.stringify(debugInfo, null, 2))
+      }
       results.push({ locale: locale.dir, index, id: slide.id, warnings })
     }
   } finally {
