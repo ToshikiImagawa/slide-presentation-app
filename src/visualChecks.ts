@@ -20,9 +20,9 @@ function toBounds(rect: DOMRect): Bounds {
   return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom }
 }
 
-/** rect が bounds の外に出ているか（許容誤差込み） */
-function exceedsBounds(rect: DOMRect, bounds: Bounds): boolean {
-  return rect.left < bounds.left - BOUNDS_TOLERANCE_PX || rect.right > bounds.right + BOUNDS_TOLERANCE_PX || rect.top < bounds.top - BOUNDS_TOLERANCE_PX || rect.bottom > bounds.bottom + BOUNDS_TOLERANCE_PX
+/** rect が bounds をどれだけ超えて出ているか（px）。内側（許容誤差込み）なら 0 */
+function overshootPx(rect: DOMRect, bounds: Bounds): number {
+  return Math.max(0, bounds.left - rect.left, rect.right - bounds.right, bounds.top - rect.top, rect.bottom - bounds.bottom)
 }
 
 /** 2つの矩形が許容誤差を超えて重なっているか */
@@ -98,16 +98,18 @@ export function getVisualCheckWarnings(section: HTMLElement): string[] {
 
   const overflowing = new Set<HTMLElement>()
   for (const [leaf, rect] of leaves) {
-    if (exceedsBounds(rect, sectionBounds)) {
+    const overshoot = overshootPx(rect, sectionBounds)
+    if (overshoot > BOUNDS_TOLERANCE_PX) {
       overflowing.add(leaf)
-      warnings.push(`はみ出し: ${describeElement(leaf)} がスライド領域の外に出ています`)
+      warnings.push(`はみ出し: ${describeElement(leaf)} がスライド領域の外に出ています（${overshoot.toFixed(1)}px 超過）`)
     }
   }
 
   for (const [leaf, rect] of leaves) {
     if (overflowing.has(leaf)) continue
-    if (exceedsBounds(rect, safeBounds)) {
-      warnings.push(`セーフエリア侵入: ${describeElement(leaf)} が余白（セーフエリア）に侵入しています`)
+    const overshoot = overshootPx(rect, safeBounds)
+    if (overshoot > BOUNDS_TOLERANCE_PX) {
+      warnings.push(`セーフエリア侵入: ${describeElement(leaf)} が余白（セーフエリア）に侵入しています（${overshoot.toFixed(1)}px 超過）`)
     }
   }
 
