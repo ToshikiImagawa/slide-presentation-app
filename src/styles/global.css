@@ -272,6 +272,8 @@ code {
 }
 
 /* 3. LAYOUTS */
+/* 本文領域。既定は「内容サイズの子」を中央に置くコンテナ（justify-content: center）。
+   残り高さいっぱいに広がる子を置く場合は下記の fill 変種を使う */
 .content-area {
   width: 100%;
   flex-grow: 1;
@@ -281,6 +283,31 @@ code {
   flex-direction: column;
   justify-content: center;
   padding: 0 var(--content-area-padding-x);
+}
+
+/* .content-area の fill 変種（#225）。画像・表・チャート・図解のように「本文領域（セーフエリア内）の
+   残り高さいっぱいに広がり、その確定高さの中で収まる」子を受け取る。ContentLayout の fill prop が付ける。
+   埋める側の要素には .content-area-fill-item を付ける（各 CSS Module が flex:1 を私的に宣言すると
+   この依存が共有側から見えなくなるため、契約をここに集約する） */
+.content-area-fill {
+  justify-content: stretch;
+}
+
+/* 埋める要素は深さを問わず残り高さを受け取る */
+.content-area-fill .content-area-fill-item {
+  flex: 1;
+  min-height: 0;
+}
+
+/* ContentLayout の内側にラッパー div が挟まっても高さ解決が途切れないよう、埋める要素を内側に持つ要素も
+   確定高さを子へ渡す flex 列にする（ラッパーが auto 高さになると、画像の max-height:100% が自然サイズで
+   解決されて overflow: hidden に静かに切られる）。:has() 未対応の WebView では直下配置のみが成立して
+   現行と同じ振る舞いに留まるよう、この規則だけを独立した宣言ブロックに置く（規則ごと無効化されるため） */
+.content-area-fill :has(.content-area-fill-item) {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
 }
 
 /* Title Slide */

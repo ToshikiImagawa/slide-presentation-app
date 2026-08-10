@@ -17,12 +17,13 @@ type Props = {
 /** 1枚あたりが読めない大きさになるのを防ぐ列数の上限。tiles の tileColumns と違い外部指定は持たない */
 const MAX_COLUMNS = 3
 
-/** 画像スライド本体（#198）。各画像を縦横比を保って本文領域に自動フィットさせ、キャプションを添える */
+/** 画像スライド本体（#198）。各画像を縦横比を保って本文領域に自動フィットさせ、キャプションを添える。
+ * フィットの前提となる確定高さは ContentLayout の fill 変種（global.css の .content-area-fill-item・#225）から受け取る */
 export function ImageFigureGrid({ images }: Props) {
   const columns = Math.min(images.length, MAX_COLUMNS)
 
   return (
-    <div className={styles.grid} style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
+    <div className={`content-area-fill-item ${styles.grid}`} style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
       {images.map((image, i) => (
         <figure key={i} className={styles.figure}>
           <div className={styles.imageArea}>

@@ -82,10 +82,14 @@ export async function openEditor(page: Page): Promise<void> {
   await page.getByTestId('slide-editor').waitFor({ state: 'visible' })
 }
 
-/** Reveal のハッシュナビで指定インデックスのスライドへ移動する */
+/** Reveal のハッシュナビで指定インデックスのスライドへ移動し、そのスライドが present になるまで待つ
+ * （固定の待ち時間だと実行環境が遅いときに移動前のスライドを検証してしまう） */
 export async function gotoSlide(page: Page, index: number): Promise<void> {
   await page.evaluate((i) => {
     window.location.hash = `#/${i}`
   }, index)
-  await page.waitForTimeout(500)
+  await page.waitForFunction((i) => {
+    const sections = Array.from(document.querySelectorAll('.reveal .slides > section'))
+    return sections.findIndex((s) => s.classList.contains('present')) === i
+  }, index)
 }

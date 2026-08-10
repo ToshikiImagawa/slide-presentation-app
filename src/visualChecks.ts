@@ -164,6 +164,37 @@ export function waitForImagesToSettle(section: HTMLElement): Promise<void> {
   return Promise.race([settled, new Promise<void>((resolve) => setTimeout(resolve, IMAGE_SETTLE_TIMEOUT_MS))])
 }
 
+/** アニメーション完了待ちの保険タイムアウト（ms）。想定外に長いアニメーションで検査自体が止まらないようにする */
+const ANIMATION_SETTLE_TIMEOUT_MS = 2000
+
+/** 次のフレームを待つ（requestAnimationFrame が無い環境では即座に解決する） */
+function nextFrame(): Promise<void> {
+  if (typeof requestAnimationFrame !== 'function') return Promise.resolve()
+  return new Promise((resolve) => requestAnimationFrame(() => resolve()))
+}
+
+/**
+ * section 内で進行中のアニメーション（`.content-area` の fadeInUp 等）が完了するまで待つ。
+ *
+ * 固定の待ち時間で代用すると、実行環境が遅いときにアニメーション途中の座標を実測して誤検知になる
+ * （translateY(30px) の途中 = 約28px のセーフエリア侵入として報告される。CI 実測）。待ち時間の延長は
+ * 環境が遅くなるたびに破綻するため、完了そのものを待つ。
+ * カーソルの点滅（TerminalAnimation の blink）のように無限に繰り返すアニメーションは完了しないので除外する。
+ */
+export async function waitForAnimationsToSettle(section: HTMLElement): Promise<void> {
+  // アニメーションは .present 付与後のスタイル再計算で初めて生成されるため、1フレーム待ってから収集する
+  await nextFrame()
+  if (typeof section.getAnimations !== 'function') return
+
+  const pending = section.getAnimations({ subtree: true }).filter((animation) => animation.effect?.getComputedTiming().iterations !== Infinity)
+  if (pending.length === 0) return
+
+  // finished は途中でキャンセルされると reject するため、待ちを打ち切る合図として扱う（例外にしない）
+  const settled = Promise.all(pending.map((animation) => animation.finished.catch(() => undefined))).then(() => undefined)
+
+  await Promise.race([settled, new Promise<void>((resolve) => setTimeout(resolve, ANIMATION_SETTLE_TIMEOUT_MS))])
+}
+
 /**
  * scripts/screenshot/inspect-reference-deck.mjs（CI の見本デッキ全枚数検査）が Playwright の
  * page.evaluate 経由で同じ検出ロジックを呼び出すための公開口（#209）。screenshot モード
@@ -171,7 +202,12 @@ export function waitForImagesToSettle(section: HTMLElement): Promise<void> {
  * （src/__screenshot__/ の Tauri IPC モックと同じ「screenshot モード限定で window に生やす」規約）。
  */
 if (import.meta.env.MODE === 'screenshot') {
-  const bridge = window as unknown as { __VISUAL_CHECK__?: typeof getVisualCheckWarnings; __VISUAL_CHECK_WAIT_IMAGES__?: typeof waitForImagesToSettle }
+  const bridge = window as unknown as {
+    __VISUAL_CHECK__?: typeof getVisualCheckWarnings
+    __VISUAL_CHECK_WAIT_IMAGES__?: typeof waitForImagesToSettle
+    __VISUAL_CHECK_WAIT_ANIMATIONS__?: typeof waitForAnimationsToSettle
+  }
   bridge.__VISUAL_CHECK__ = getVisualCheckWarnings
   bridge.__VISUAL_CHECK_WAIT_IMAGES__ = waitForImagesToSettle
+  bridge.__VISUAL_CHECK_WAIT_ANIMATIONS__ = waitForAnimationsToSettle
 }
