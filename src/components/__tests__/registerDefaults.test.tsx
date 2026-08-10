@@ -19,7 +19,8 @@ describe('registerDefaultComponents', () => {
     const { container } = render(<ImageComponent src="/test.png" width={200} height={100} alt="テスト画像" />)
     const img = container.querySelector('img')
     expect(img).not.toBeNull()
-    expect(img?.getAttribute('src')).toBe('/test.png')
+    // 既定は Reveal.js の遅延読み込みに委ねる data-src（#224）
+    expect(img?.getAttribute('data-src')).toBe('/test.png')
     expect(img?.getAttribute('alt')).toBe('テスト画像')
   })
 

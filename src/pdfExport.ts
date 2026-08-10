@@ -60,6 +60,10 @@ export async function exportSlidesToPdf(deckEl: HTMLElement, title: string, canv
   // fadeInUp アニメーションも無効化する（祖先である body/.backgrounds の見た目は
   // html2canvas が section 単体しかキャプチャしないため引き継がれない）
   deckEl.classList.add('pdf-capturing')
+  // Reveal.js の data-src → src 昇格（slideContent プラグイン）は viewDistance 圏内のスライドに
+  // しか走らず、かつ .present クラスを直接トグルするだけの撮影ループでは Reveal 自身の
+  // slidechanged/sync も発火しない。撮影対象は全スライドなので、ここで一括昇格させる（#224）
+  const restoreLazyImages = promoteLazyImages(deckEl)
 
   let pdf: JsPDF
   try {
@@ -112,6 +116,7 @@ export async function exportSlidesToPdf(deckEl: HTMLElement, title: string, canv
     slidesEl.style.zoom = originalSlidesStyle.zoom
     slidesEl.style.transform = originalSlidesStyle.transform
     deckEl.classList.remove('pdf-capturing')
+    restoreLazyImages()
   }
 
   const destination = await save({
@@ -180,6 +185,20 @@ export function inlineSvgCssVariables(root: HTMLElement): () => void {
   }
 
   return () => restores.forEach((restore) => restore())
+}
+
+/**
+ * `data-src` のまま未読み込みの img を一括で `src` へ昇格させる（#224 の遅延読み込み対応）。
+ * 戻り値を呼ぶと `src` を外して元の遅延読み込み状態（`data-src` のみ）に戻す。
+ */
+function promoteLazyImages(deckEl: HTMLElement): () => void {
+  const images = Array.from(deckEl.querySelectorAll<HTMLImageElement>('img[data-src]:not([src])'))
+  images.forEach((img) => {
+    img.src = img.dataset.src as string
+  })
+  return () => {
+    images.forEach((img) => img.removeAttribute('src'))
+  }
 }
 
 /** present化直後の画像読み込み・タイピングアニメーション開始を待つ */

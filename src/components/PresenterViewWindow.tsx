@@ -5,6 +5,7 @@ import { buildSections } from '../sections'
 import { useTranslation } from '../i18n'
 import { FillProgress } from './FillProgress'
 import { SlideRenderer } from './SlideRenderer'
+import { LazyImageContext } from './FallbackImage'
 import { resolveCanvasSize } from '../hooks/useReveal'
 import styles from './PresenterViewWindow.module.css'
 
@@ -227,7 +228,8 @@ export function PresenterViewWindow({ slides, currentIndex, logo, theme, control
   )
 }
 
-/** スライドの縮小プレビュー */
+/** スライドの縮小プレビュー。Reveal インスタンスを持たないため viewDistance による
+ * data-src → src 昇格が走らず、LazyImageContext で即時読み込みに切り替える（#224） */
 function PreviewSlide({ slide, logo, theme, index, total, sections }: { slide: SlideData; logo?: LogoConfig; theme?: ThemeData; index: number; total: number; sections: SectionInfo[] }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [scale, setScale] = useState(0.3)
@@ -258,7 +260,9 @@ function PreviewSlide({ slide, logo, theme, index, total, sections }: { slide: S
     <div ref={containerRef} className={styles.previewScaler} style={{ ...canvasVars, transform: `scale(${scale})` }}>
       <div className={`reveal ${styles.previewReveal}`}>
         <div className="slides">
-          <SlideRenderer.Slide slide={slide} logo={logo} theme={theme} index={index} total={total} sections={sections} />
+          <LazyImageContext.Provider value={false}>
+            <SlideRenderer.Slide slide={slide} logo={logo} theme={theme} index={index} total={total} sections={sections} />
+          </LazyImageContext.Provider>
         </div>
       </div>
     </div>
