@@ -331,6 +331,9 @@ export interface MasterRenderContext {
   total: number
   /** このスライドが属する章。meta.section 未指定のスライド、および章を持たないデッキでは undefined（#191） */
   section?: SectionInfo
+  /** デッキ全体の章一覧（buildSections で導出済み）。目次（content.toc）の章からの自動導出に使う（#195）。
+   * SlideRenderer 経由の描画でのみ設定される */
+  sections?: SectionInfo[]
 }
 
 /** カラーパレット（キーは THEME_COLOR_TOKENS と一致。外部 theme-colors.json と同じ項目を指定できる） */

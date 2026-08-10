@@ -58,10 +58,7 @@
 }
 
 .list[data-density='dense'] .number,
-.list[data-density='dense'] .title {
-  font-size: var(--theme-font-size-body1);
-}
-
+.list[data-density='dense'] .title,
 .list[data-density='compact'] .number,
 .list[data-density='compact'] .title {
   font-size: var(--theme-font-size-body1);

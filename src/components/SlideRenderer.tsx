@@ -330,13 +330,13 @@ function renderChecklist(content: SlideContent): ReactNode {
  * （Revealの1始まりのページ表示と一致）。章番号の書式はrenderMasterTextの{sectionNumber:0N}記法を再利用し、
  * 書式解析を複製しない（#191）
  */
-function renderToc(content: SlideContent, sections: SectionInfo[], totalSlides: number): ReactNode {
+function renderToc(content: SlideContent, ctx: MasterRenderContext): ReactNode {
   const toc = content.toc as { items?: Array<{ number?: string; title: string; page: string | number }>; numberFormat?: string; columns?: number }
   const numberFormat = toc.numberFormat ?? '{sectionNumber}'
   const items: TocItemData[] = toc.items
     ? toc.items.map((item) => ({ number: item.number, title: item.title, page: String(item.page) }))
-    : sections.map((section) => ({
-        number: renderMasterText(numberFormat, { index: section.startIndex, total: totalSlides, section }),
+    : (ctx.sections ?? []).map((section) => ({
+        number: renderMasterText(numberFormat, { index: section.startIndex, total: ctx.total, section }),
         title: section.title,
         page: String(section.startIndex + 1),
       }))
@@ -387,9 +387,9 @@ type ContentBranch = {
   /** 本文領域を .content-area の fill 変種にするか（#225）。
    * component は「広がるかどうか」を描画側が name から知り得ないので、登録側の宣言（traits）を引く関数で受ける */
   fill: boolean | ((content: SlideContent) => boolean)
-  /** sections/totalSlides は toc（章からの自動導出・#195）だけが使う。他の分岐は content のみを使うので
+  /** ctx は toc（章からの自動導出・#195）だけが使う。他の分岐は content のみを使うので
    * 引数を減らした関数を渡せる（TSの関数型は引数を減らす方向に代入可能） */
-  render: (content: SlideContent, sections: SectionInfo[], totalSlides: number) => ReactNode
+  render: (content: SlideContent, ctx: MasterRenderContext) => ReactNode
 }
 
 /**
@@ -423,8 +423,8 @@ function resolveContentBranch(content: SlideContent): ContentBranch | undefined 
 }
 
 /** contentスライドの子要素をレンダリング */
-function renderContentChildren(content: SlideContent, sections: SectionInfo[], totalSlides: number): ReactNode {
-  return resolveContentBranch(content)?.render(content, sections, totalSlides) ?? null
+function renderContentChildren(content: SlideContent, ctx: MasterRenderContext): ReactNode {
+  return resolveContentBranch(content)?.render(content, ctx) ?? null
 }
 
 /** 本文領域の残り高さいっぱいに広がる子を描くか（.content-area の fill 変種・#225） */
@@ -434,12 +434,12 @@ function fillsContentArea(content: SlideContent): boolean {
 }
 
 /** contentスライドをレンダリング */
-function renderContentSlide(slide: SlideData, logo: LogoConfig | undefined, theme: ThemeData | undefined, ctx: MasterRenderContext, sections: SectionInfo[]): ReactNode {
+function renderContentSlide(slide: SlideData, logo: LogoConfig | undefined, theme: ThemeData | undefined, ctx: MasterRenderContext): ReactNode {
   const { content } = slide
   const variant = getVariant(content)
   return (
     <ContentLayout id={slide.id} layout={slide.layout} variant={variant} title={content.title ?? ''} meta={slide.meta} logo={logo} theme={theme} ctx={ctx} fill={fillsContentArea(content)}>
-      {renderContentChildren(content, sections, ctx.total)}
+      {renderContentChildren(content, ctx)}
     </ContentLayout>
   )
 }
@@ -464,14 +464,14 @@ function renderBleedSlide(slide: SlideData, logo: LogoConfig | undefined, theme:
 }
 
 /** 単一スライドをレイアウト種別に応じてレンダリング */
-function renderSlide(slide: SlideData, logo: LogoConfig | undefined, theme: ThemeData | undefined, ctx: MasterRenderContext, sections: SectionInfo[]): ReactNode {
+function renderSlide(slide: SlideData, logo: LogoConfig | undefined, theme: ThemeData | undefined, ctx: MasterRenderContext): ReactNode {
   switch (slide.layout) {
     case 'center':
       return renderCenterSlide(slide, logo, theme, ctx)
     case 'two-column':
       return renderTwoColumnSlide(slide, logo, theme, ctx)
     case 'content':
-      return renderContentSlide(slide, logo, theme, ctx, sections)
+      return renderContentSlide(slide, logo, theme, ctx)
     case 'bleed':
       return renderBleedSlide(slide, logo, theme, ctx)
     case 'custom': {
@@ -505,6 +505,6 @@ export function SlideRenderer({ slides, logo, theme }: SlideRendererProps) {
  * （3経路: 本編・発表者ビュー・編集プレビューで必須）。sections はデッキ全体から buildSections で導出した章で、
  * 章を持たないデッキでは空配列を渡す（省略可にすると配線もれが「章が無い」として静かに埋もれる・#191） */
 SlideRenderer.Slide = function SlideRendererSlide({ slide, index, total, sections, logo, theme }: { slide: SlideData; index: number; total: number; sections: SectionInfo[]; logo?: LogoConfig; theme?: ThemeData }) {
-  const ctx: MasterRenderContext = { index, total, section: findSectionAt(sections, index) }
-  return <>{renderSlide(slide, logo, theme, ctx, sections)}</>
+  const ctx: MasterRenderContext = { index, total, section: findSectionAt(sections, index), sections }
+  return <>{renderSlide(slide, logo, theme, ctx)}</>
 }
