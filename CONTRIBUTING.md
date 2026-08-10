@@ -103,24 +103,27 @@ opacities, or table zebra shading. Reference the CSS variables below instead —
 `src/styles/global.css` and can be overridden per deck from `theme.tokens`. A component that hardcodes these
 values will not follow a brand theme, which is exactly what makes a themed deck still look "not ours".
 
-| Token                          | Default | What it controls                                                                            |
-|--------------------------------|---------|---------------------------------------------------------------------------------------------|
-| `--theme-radius-sm`            | `8px`   | Panels and small chrome (`CodeBlockPanel`, inline `code`, Reveal's slide number)             |
-| `--theme-radius-md`            | `12px`  | Mid-size surfaces and elements nested inside a card (`QrCodeCard`, the tile icon chip)       |
-| `--theme-radius-lg`            | `16px`  | Cards (`MuiCard`, i.e. `FeatureTileGrid` tiles)                                              |
-| `--theme-border-width`         | `1px`   | Hairline borders on cards and panels (decorative thick strokes have their own tokens below)  |
-| `--theme-heading-accent-width` | `6px`   | Accent bar on the left edge of a slide heading (`.slide-title`)                               |
-| `--theme-frame-rule-width`     | `4px`   | Brand band running along the top edge of a slide (`.slide-container::before`)                 |
-| `--theme-rule-width`           | `4px`   | Decorative rules inside the body (the horizontal line crossing `Timeline`)                    |
-| `--theme-node-ring-width`      | `3px`   | Ring around a numbered node badge (`TimelineNode`)                                            |
-| `--theme-card-accent-width`    | `0px`   | Accent bar on a card's inner (left) edge. `0` means no bar, which is the default appearance  |
-| `--theme-shadow-strength`      | `1`     | Multiplier applied to shadow opacities. `0` disables shadows, `2` doubles them               |
-| `--theme-zebra-opacity`        | `0.04`  | Alpha of the background shaded on a table's even rows                                        |
+| Token                             | Default | What it controls                                                                            |
+|-----------------------------------|---------|---------------------------------------------------------------------------------------------|
+| `--theme-radius-sm`               | `8px`   | Panels and small chrome (`CodeBlockPanel`, inline `code`, Reveal's slide number)             |
+| `--theme-radius-md`               | `12px`  | Mid-size surfaces and elements nested inside a card (`QrCodeCard`, the tile icon chip)       |
+| `--theme-radius-lg`               | `16px`  | Cards (`MuiCard`, i.e. `FeatureTileGrid` tiles)                                              |
+| `--theme-border-width`            | `1px`   | Hairline borders on cards and panels (decorative thick strokes have their own tokens below)  |
+| `--theme-heading-accent-width`    | `6px`   | Accent bar on the left edge of a slide heading (`.slide-title`)                               |
+| `--theme-heading-underline-width` | `1.5px` | Underline below a heading (`UnderlinedHeading`)                                               |
+| `--theme-frame-rule-width`        | `4px`   | Brand band running along the top edge of a slide (`.slide-container::before`)                 |
+| `--theme-rule-width`              | `4px`   | Decorative rules inside the body (the horizontal line crossing `Timeline`)                    |
+| `--theme-node-ring-width`         | `3px`   | Ring around a numbered node badge (`TimelineNode`)                                            |
+| `--theme-card-accent-width`       | `0px`   | Accent bar on a card's inner (left) edge. `0` means no bar, which is the default appearance  |
+| `--theme-shadow-strength`         | `1`     | Multiplier applied to shadow opacities. `0` disables shadows, `2` doubles them               |
+| `--theme-zebra-opacity`           | `0.04`  | Alpha of the background shaded on a table's even rows                                        |
 
-The four decorative stroke tokens are separate axes because corporate templates vary them independently: a
+The five decorative stroke tokens are separate axes because corporate templates vary them independently: a
 heading's vertical accent belongs to typography, the top band belongs to the slide frame, body rules are a
 content-level separator, and a ring wrapping a badge cannot follow a crossing rule's width without shrinking
-the area its number needs. Do not fold them into `--theme-border-width` — that one is the 1px hairline axis.
+the area its number needs. A heading's underline is close in role to its vertical accent, but the bar spans the
+heading's height while the underline crosses its width, so their default widths differ by an order of magnitude
+(`6px` vs `1.5px`). Do not fold them into `--theme-border-width` — that one is the 1px hairline axis.
 
 Usage rules:
 

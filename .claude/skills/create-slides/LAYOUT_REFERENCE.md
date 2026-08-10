@@ -560,8 +560,9 @@
 | `theme-radius-sm` | `8px` | パネル・インラインコード・スライド番号の角丸 |
 | `theme-radius-md` | `12px` | QRコードカード・タイルのアイコンチップの角丸 |
 | `theme-radius-lg` | `16px` | カード（`tiles`）の角丸 |
-| `theme-border-width` | `1px` | カード・パネルのヘアライン境界線の太さ（装飾的な太線は下の 4 つで制御する） |
+| `theme-border-width` | `1px` | カード・パネルのヘアライン境界線の太さ（装飾的な太線は下の 5 つで制御する） |
 | `theme-heading-accent-width` | `6px` | スライド見出し左端のアクセントバーの太さ |
+| `theme-heading-underline-width` | `1.5px` | 見出し直下の下線の太さ（`bleed` レイアウトの見出し） |
 | `theme-frame-rule-width` | `4px` | スライド上端に走るブランド帯の太さ |
 | `theme-rule-width` | `4px` | 本文中の装飾的な区切り線の太さ（`steps` を貫く水平線） |
 | `theme-node-ring-width` | `3px` | 番号バッジを囲むリングの太さ（`steps` のノード） |

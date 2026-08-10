@@ -16,7 +16,7 @@ export function UnderlinedHeading({ children, sx }: Props) {
       </Typography>
       <Divider
         sx={{
-          borderWidth: '1.5px',
+          borderWidth: 'var(--theme-heading-underline-width)',
           borderColor: 'var(--theme-primary)',
           mt: '30px',
         }}
