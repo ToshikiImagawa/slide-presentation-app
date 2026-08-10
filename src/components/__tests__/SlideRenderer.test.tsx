@@ -572,6 +572,31 @@ describe('SlideRenderer', () => {
     })
   })
 
+  // #256: 本文領域の fill 変種（.content-area-fill）と「埋める要素」（.content-area-fill-item）の対応。
+  // 分岐順と fill の判定は CONTENT_BRANCHES の1か所に集約したので、その表が DOM に現れるかを全分岐で検査する
+  // （fill を付けて -item を付け忘れると .content-area の主軸配置が stretch に変わり、静かに崩れる）
+  describe('本文領域の fill 変種（.content-area-fill）', () => {
+    /** 各分岐の代表入力。fill: true の分岐は .content-area-fill-item を持つ要素を必ず描く */
+    const fillCases: Array<{ name: string; content: SlideData['content']; fill: boolean }> = [
+      { name: 'steps', content: { steps: [{ number: 1, title: 'ステップ', description: '説明' }] }, fill: false },
+      { name: 'tiles', content: { tiles: [{ icon: 'Description', title: 'タイル', description: '説明' }] }, fill: false },
+      { name: 'images', content: { images: [{ src: '/a.png' }] }, fill: true },
+      { name: 'chart', content: { chart: { type: 'bar', categories: ['A'], series: [{ values: [1] }] } }, fill: true },
+      { name: 'table', content: { table: { columns: [{ label: '項目' }], rows: [['値']] } }, fill: true },
+      { name: 'compare', content: { compare: { left: { heading: '見出し' } } }, fill: false },
+      { name: 'flow', content: { flow: [{ title: '工程1' }, { title: '工程2' }] }, fill: true },
+      { name: 'component:Diagram（登録側が fillsContentArea を宣言）', content: { component: { name: 'Diagram', props: { nodes: [{ id: 'a', rect: { x: 0, y: 0, w: 0.3, h: 0.3 }, title: 'カード' }] } } }, fill: true },
+      { name: 'component:TerminalAnimation（既定は埋めない）', content: { component: { name: 'TerminalAnimation' } }, fill: false },
+      { name: 'body/items', content: { body: '本文' }, fill: false },
+    ]
+
+    it.each(fillCases)('$name の分岐で、fill 変種と「埋める要素」の有無が一致する', ({ content, fill }) => {
+      const { container } = renderWithTheme(<SlideRenderer slides={[{ id: 'test-fill', layout: 'content', content: { title: 'タイトル', ...content } }]} />)
+      expect(container.querySelector('.content-area')!.classList.contains('content-area-fill')).toBe(fill)
+      expect(container.querySelector('.content-area-fill-item') !== null).toBe(fill)
+    })
+  })
+
   // #164: masters/masterMap/tokens と SlideMasterLayer。theme 未指定時は既存と完全同一のDOMになることも併せて確認する
   describe('masters（SlideMasterLayer 装飾描画）', () => {
     const masterTheme: ThemeData = {

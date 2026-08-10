@@ -3,8 +3,17 @@ import type { ComponentType, ReactNode } from 'react'
 /** レジストリに登録可能なコンポーネントの型 */
 export type RegisteredComponent = ComponentType<Record<string, unknown>>
 
-const defaultComponents = new Map<string, RegisteredComponent>()
-const customComponents = new Map<string, RegisteredComponent>()
+/** 登録時に宣言するコンポーネントの性質。描画側が name だけからは知り得ないことを登録側が宣言する（#256） */
+export type ComponentTraits = {
+  /** ルート要素に .content-area-fill-item を付け、本文領域の残り高さいっぱいに広がるか（#225 の fill 変種）。
+   * content.component 経由で置かれたとき ContentLayout に fill 変種が必要かの判定に使う（SlideRenderer） */
+  fillsContentArea?: boolean
+}
+
+type RegistryEntry = { component: RegisteredComponent; traits: ComponentTraits }
+
+const defaultComponents = new Map<string, RegistryEntry>()
+const customComponents = new Map<string, RegistryEntry>()
 /** カスタム登録の所有者（owner）を記録する。owner 単位でのアンロードに使用する（name → owner） */
 const customOwners = new Map<string, string>()
 
@@ -25,8 +34,8 @@ const FallbackComponent = ({ name }: { name?: string; [_: string]: unknown }) =>
 )
 
 /** デフォルトコンポーネントを登録する */
-export function registerDefaultComponent(name: string, component: RegisteredComponent): void {
-  defaultComponents.set(name, component)
+export function registerDefaultComponent(name: string, component: RegisteredComponent, traits: ComponentTraits = {}): void {
+  defaultComponents.set(name, { component, traits })
 }
 
 /**
@@ -34,7 +43,7 @@ export function registerDefaultComponent(name: string, component: RegisteredComp
  * owner を指定すると、その所有者スコープで登録され、unregisterOwner でまとめて破棄できる。
  * 同名で異なる owner による上書きが発生した場合は警告する（パッケージ切替時の名前衝突検知）。
  */
-export function registerComponent(name: string, component: RegisteredComponent, owner?: string): void {
+export function registerComponent(name: string, component: RegisteredComponent, owner?: string, traits: ComponentTraits = {}): void {
   if (owner !== undefined) {
     const existingOwner = customOwners.get(name)
     if (existingOwner !== undefined && existingOwner !== owner) {
@@ -42,7 +51,7 @@ export function registerComponent(name: string, component: RegisteredComponent, 
     }
     customOwners.set(name, owner)
   }
-  customComponents.set(name, component)
+  customComponents.set(name, { component, traits })
 }
 
 /** 指定した owner に属するカスタム登録のみを削除する（デフォルト登録は温存する） */
@@ -55,14 +64,25 @@ export function unregisterOwner(owner: string): void {
   }
 }
 
+/** 登録を解決する（カスタム → デフォルトの優先順）。コンポーネント本体と traits で解決順を共有する */
+function resolveEntry(name: string): RegistryEntry | undefined {
+  return customComponents.get(name) ?? defaultComponents.get(name)
+}
+
 /** コンポーネントを解決する（カスタム → デフォルト → フォールバックの優先順） */
 export function resolveComponent(name: string): RegisteredComponent {
-  return customComponents.get(name) ?? defaultComponents.get(name) ?? FallbackComponent
+  return resolveEntry(name)?.component ?? FallbackComponent
 }
 
 /** name がカスタム・デフォルトのいずれかに登録済みかを判定する（Fallback落ち防止のための事前確認用） */
 export function hasComponent(name: string): boolean {
-  return customComponents.has(name) || defaultComponents.has(name)
+  return resolveEntry(name) !== undefined
+}
+
+/** 本文領域の残り高さいっぱいに広がるコンポーネントか（登録時の traits.fillsContentArea・#256）。
+ * 未登録名（Fallback 落ち）は広がらないものとして扱う */
+export function componentFillsContentArea(name: string): boolean {
+  return resolveEntry(name)?.traits.fillsContentArea === true
 }
 
 /** 登録済みコンポーネントを name で解決し props を展開してレンダリングする（SlideRenderer/SlideMasterLayer 共通） */

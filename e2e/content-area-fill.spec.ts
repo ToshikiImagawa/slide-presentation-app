@@ -11,21 +11,30 @@ import { gotoSlide, lang, openSample } from './fixtures'
  * auto 高さの要素になり、画像が自然サイズで描画されて overflow: hidden に静かに切られる（#189 / #191 で
  * 起こりうる）。この spec はレイアウト後の getBoundingClientRect を読むため、その破綻を検出できる。
  *
- * fill 変種を使うスライド（画像スライド）は README 撮影用 fixture（slides.*.json）には無く基準見本デッキ
- * （reference-deck.*.json）にあるため、`/slides.json` の取得を `/reference-deck.json` へ差し替えて開く。
+ * fill 変種を使うスライド（画像・チャート・表・図解・横フロー）は README 撮影用 fixture（slides.*.json）には
+ * 無く基準見本デッキ（reference-deck.*.json）にあるため、`/slides.json` の取得を `/reference-deck.json` へ
+ * 差し替えて開く。
  */
 
 /** 実測の許容誤差（px）。サブピクセルの丸めを吸収する。src/visualChecks.ts の BOUNDS_TOLERANCE_PX と同じ思想 */
 const TOLERANCE_PX = 1
 
-const FILL_SLIDE_ID = 'layout-content-images'
+/** fill 変種を使う基準見本デッキのスライド（SlideRenderer の CONTENT_BRANCHES で fill: true の分岐に対応する）。
+ * 表・チャート・図解は #256 で私的な flex:1 から fill 変種へ移行したため、画像と同じ実測で担保する */
+const FILL_SLIDES = [
+  { id: 'layout-content-images', hasImages: true },
+  { id: 'layout-content-chart-bar', hasImages: false },
+  { id: 'layout-content-table', hasImages: false },
+  { id: 'layout-content-diagram', hasImages: false },
+  { id: 'layout-content-flow', hasImages: false },
+]
 
 /** 基準見本デッキ fixture 内での対象スライドの位置（枚数が増えても id で解決するので追随不要） */
-function fillSlideIndex(projectName: string): number {
+function fillSlideIndex(projectName: string, slideId: string): number {
   const path = resolve(process.cwd(), `scripts/screenshot/fixtures/reference-deck.${lang(projectName)}.json`)
   const slides = (JSON.parse(readFileSync(path, 'utf-8')) as { slides: Array<{ id: string }> }).slides
-  const index = slides.findIndex((s) => s.id === FILL_SLIDE_ID)
-  if (index < 0) throw new Error(`reference-deck fixture に ${FILL_SLIDE_ID} がありません`)
+  const index = slides.findIndex((s) => s.id === slideId)
+  if (index < 0) throw new Error(`reference-deck fixture に ${slideId} がありません`)
   return index
 }
 
@@ -41,6 +50,7 @@ type FillMetrics = {
   areaHeight: number
   areaBottom: number
   itemHeight: number
+  itemBottom: number
   imageBottoms: number[]
   warnings: string[]
 }
@@ -65,21 +75,25 @@ async function measureFill(page: Page): Promise<FillMetrics> {
     if (bridge.__VISUAL_CHECK_WAIT_ANIMATIONS__) await bridge.__VISUAL_CHECK_WAIT_ANIMATIONS__(section)
 
     const areaRect = area.getBoundingClientRect()
+    const itemRect = item.getBoundingClientRect()
     return {
       areaHeight: areaRect.height,
       areaBottom: areaRect.bottom,
-      itemHeight: item.getBoundingClientRect().height,
+      itemHeight: itemRect.height,
+      itemBottom: itemRect.bottom,
       imageBottoms: Array.from(section.querySelectorAll('img')).map((img) => img.getBoundingClientRect().bottom),
       warnings: bridge.__VISUAL_CHECK__?.(section) ?? [],
     }
   })
 }
 
-/** 埋める要素の高さが本文領域と一致し、画像が本文領域の外へ出ていないこと */
-function expectFilled(metrics: FillMetrics): void {
+/** 埋める要素の高さが本文領域と一致し、要素・画像が本文領域の外へ出ていないこと */
+function expectFilled(metrics: FillMetrics, hasImages: boolean): void {
   expect(metrics.areaHeight).toBeGreaterThan(0)
   expect(Math.abs(metrics.itemHeight - metrics.areaHeight)).toBeLessThanOrEqual(TOLERANCE_PX)
-  expect(metrics.imageBottoms.length).toBeGreaterThan(0)
+  expect(metrics.itemBottom).toBeLessThanOrEqual(metrics.areaBottom + TOLERANCE_PX)
+  // 画像スライドは max-height:100% の解決先が auto 高さになる破綻を拾うため、画像自体の下端も見る
+  expect(metrics.imageBottoms.length > 0).toBe(hasImages)
   for (const bottom of metrics.imageBottoms) {
     expect(bottom).toBeLessThanOrEqual(metrics.areaBottom + TOLERANCE_PX)
   }
@@ -87,30 +101,32 @@ function expectFilled(metrics: FillMetrics): void {
 }
 
 test.describe('本文領域の fill 変種（.content-area-fill）', () => {
-  test('埋める要素が本文領域の残り高さいっぱいに広がる', async ({ page, baseURL }, testInfo) => {
-    await useReferenceDeck(page, baseURL!)
-    await openSample(page)
-    await gotoSlide(page, fillSlideIndex(testInfo.project.name))
+  for (const { id, hasImages } of FILL_SLIDES) {
+    test(`${id}: 埋める要素が本文領域の残り高さいっぱいに広がる`, async ({ page, baseURL }, testInfo) => {
+      await useReferenceDeck(page, baseURL!)
+      await openSample(page)
+      await gotoSlide(page, fillSlideIndex(testInfo.project.name, id))
 
-    expectFilled(await measureFill(page))
-  })
-
-  test('ContentLayout の内側にラッパーが1枚増えても高さ解決が壊れない', async ({ page, baseURL }, testInfo) => {
-    await useReferenceDeck(page, baseURL!)
-    await openSample(page)
-    await gotoSlide(page, fillSlideIndex(testInfo.project.name))
-    // 実測前にレイアウトを最終形にする（アニメーション完了待ちは measureFill 側と同じ共有ロジック）
-    await measureFill(page)
-
-    // #189（背景意匠）・#191（章）が本文領域の内側にラッパーを挟む状況を DOM 操作で再現する
-    await page.evaluate(() => {
-      const area = document.querySelector<HTMLElement>('section.present .content-area-fill')
-      if (!area) throw new Error('.content-area-fill が見つかりません')
-      const wrapper = document.createElement('div')
-      while (area.firstChild) wrapper.appendChild(area.firstChild)
-      area.appendChild(wrapper)
+      expectFilled(await measureFill(page), hasImages)
     })
 
-    expectFilled(await measureFill(page))
-  })
+    test(`${id}: ContentLayout の内側にラッパーが1枚増えても高さ解決が壊れない`, async ({ page, baseURL }, testInfo) => {
+      await useReferenceDeck(page, baseURL!)
+      await openSample(page)
+      await gotoSlide(page, fillSlideIndex(testInfo.project.name, id))
+      // 実測前にレイアウトを最終形にする（アニメーション完了待ちは measureFill 側と同じ共有ロジック）
+      await measureFill(page)
+
+      // #189（背景意匠）・#191（章）が本文領域の内側にラッパーを挟む状況を DOM 操作で再現する
+      await page.evaluate(() => {
+        const area = document.querySelector<HTMLElement>('section.present .content-area-fill')
+        if (!area) throw new Error('.content-area-fill が見つかりません')
+        const wrapper = document.createElement('div')
+        while (area.firstChild) wrapper.appendChild(area.firstChild)
+        area.appendChild(wrapper)
+      })
+
+      expectFilled(await measureFill(page), hasImages)
+    })
+  }
 })

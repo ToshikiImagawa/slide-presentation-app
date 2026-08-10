@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach, vi, afterEach } from 'vitest'
-import { registerComponent, registerDefaultComponent, resolveComponent, getRegisteredComponents, clearRegistry, unregisterOwner, hasComponent } from '../ComponentRegistry'
+import { registerComponent, registerDefaultComponent, resolveComponent, getRegisteredComponents, clearRegistry, unregisterOwner, hasComponent, componentFillsContentArea } from '../ComponentRegistry'
 
 function MockComponentA() {
   return <div>ComponentA</div>
@@ -122,6 +122,31 @@ describe('ComponentRegistry', () => {
       registerComponent('Same', MockComponentA, 'ownerA')
       registerComponent('Same', MockComponentB, 'ownerA')
       expect(warn).not.toHaveBeenCalled()
+    })
+  })
+
+  // #256: 本文領域を埋めるかどうかは描画側（SlideRenderer）が name から知り得ないため、登録側が traits で宣言する
+  describe('traits（componentFillsContentArea）', () => {
+    it('fillsContentArea を宣言した登録に対して true を返す', () => {
+      registerDefaultComponent('Filling', MockComponentA, { fillsContentArea: true })
+      expect(componentFillsContentArea('Filling')).toBe(true)
+    })
+
+    it('宣言のない登録・未登録名に対して false を返す', () => {
+      registerDefaultComponent('Plain', MockComponentA)
+      expect(componentFillsContentArea('Plain')).toBe(false)
+      expect(componentFillsContentArea('NonExistent')).toBe(false)
+    })
+
+    it('カスタム登録で上書きすると traits も上書き側が使われる（コンポーネント本体と解決順が揃う）', () => {
+      registerDefaultComponent('Shadowed', MockComponentA, { fillsContentArea: true })
+      registerComponent('Shadowed', CustomOverride)
+      expect(componentFillsContentArea('Shadowed')).toBe(false)
+    })
+
+    it('アドオン（owner 付きのカスタム登録）も traits を宣言できる', () => {
+      registerComponent('FromAddon', MockComponentB, 'ownerA', { fillsContentArea: true })
+      expect(componentFillsContentArea('FromAddon')).toBe(true)
     })
   })
 })

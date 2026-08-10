@@ -10,6 +10,9 @@ import styles from './Chart.module.css'
 
 const CHART_TYPES: ChartType[] = ['bar', 'line', 'pie', 'hbar', 'kpi']
 
+/** チャートのルート要素。高さは ContentLayout の fill 変種（global.css の .content-area-fill-item・#225）から受け取る（#256） */
+const ROOT_CLASS_NAME = `content-area-fill-item ${styles.chart}`
+
 /** JSON 由来の値は配列でない可能性があるため、描画前に配列だけを通す（不正なデッキでデッキ全体を落とさない） */
 function asArray<T>(value: T[] | undefined): T[] {
   return Array.isArray(value) ? value : []
@@ -50,7 +53,7 @@ export function Chart(spec: ChartSpec) {
 
   if (type === 'kpi') {
     return (
-      <div className={styles.chart} data-testid="chart" data-chart-type={type}>
+      <div className={ROOT_CLASS_NAME} data-testid="chart" data-chart-type={type}>
         <KpiTrend value={spec.value} label={spec.label} delta={spec.delta} unit={spec.unit} trend={asArray(spec.trend).map(Number)} color={seriesColor(0, spec.color)} />
       </div>
     )
@@ -77,7 +80,7 @@ export function Chart(spec: ChartSpec) {
   const showLegend = spec.legend ?? legendEntries.length > 1
 
   return (
-    <div className={styles.chart} data-testid="chart" data-chart-type={type}>
+    <div className={ROOT_CLASS_NAME} data-testid="chart" data-chart-type={type}>
       {type === 'bar' && <BarChart categories={categories} series={series} scale={scale} unit={spec.unit} axis={axis} valueLabels={valueLabels} />}
       {type === 'line' && <LineChart categories={categories} series={series} scale={scale} unit={spec.unit} axis={axis} valueLabels={valueLabels} />}
       {type === 'hbar' && <HBarChart categories={categories} series={series} scale={scale} unit={spec.unit} axis={axis} valueLabels={valueLabels} />}

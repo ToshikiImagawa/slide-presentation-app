@@ -1,10 +1,10 @@
 /* 表（#194）。罫線・角丸・ヘッダ行の塗り・ゼブラはすべて意匠トークン（--theme-*）から引くのでテーマに追従する。
    角丸は border-collapse: collapse の <table> 自体には安定してかからないため、外側の .wrapper に
-   border-radius + overflow: hidden を持たせて切り出す（DiagramCard等のカード面と同じ考え方）。 */
+   border-radius + overflow: hidden を持たせて切り出す（DiagramCard等のカード面と同じ考え方）。
+   本文領域の残り高さは global.css の fill 変種（.content-area-fill-item を付けた要素が受け取る・#225）
+   から得るため、高さの宣言はここには置かない（#256）。 */
 .wrapper {
   display: flex;
-  flex: 1;
-  min-height: 0;
   overflow: hidden;
   border: var(--theme-border-width) solid var(--theme-border-light);
   border-radius: var(--theme-radius-md);
