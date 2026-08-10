@@ -1,0 +1,28 @@
+/* 大メッセージ・締めスライド（#197）。全画面に短い主張を1つだけ置く。
+   色は --theme-* の文字色トークン（TEXT_COLOR_KEYS）だけを使い、背景は塗らない。
+   全面塗りはマスター側（theme.masters[].background）の責務で、その塗り色と文字色トークンの組が
+   getThemeWarnings のコントラスト検証にかかる（#209）。ここで背景を塗ると検証から外れる */
+.message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+.text {
+  margin: 0;
+  font-family: var(--theme-font-heading);
+  font-size: var(--theme-font-size-h1);
+  font-weight: var(--theme-font-weight-heading);
+  line-height: 1.25;
+  color: var(--theme-text-body);
+  overflow-wrap: break-word;
+}
+
+.note {
+  margin: 0;
+  font-family: var(--theme-font-body);
+  font-size: var(--theme-font-size-subtitle1);
+  line-height: 1.5;
+  color: var(--theme-text-muted);
+}

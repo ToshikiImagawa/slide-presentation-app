@@ -115,6 +115,39 @@ describe('getVisualCheckWarnings（#209）', () => {
     expect(warnings.some((w) => w.includes('セーフエリア侵入'))).toBe(false)
   })
 
+  // #259: fill 変種の契約（.content-area-fill-item は fill ホストの中で残り高さを受け取る）が
+  // 成立していない要素の検出。高さ 0 の要素は「見た目の最小単位」から除外されるため専用に検査する
+  it('高さを受け取れていない「埋める要素」（.content-area-fill-item）を警告する', () => {
+    const { section, body } = buildSection()
+    const item = document.createElement('div')
+    item.className = 'content-area-fill-item'
+    body.appendChild(item)
+    setRect(item, { left: 100, top: 300, width: 1080, height: 0 })
+
+    const warnings = getVisualCheckWarnings(section)
+    expect(warnings.some((w) => w.includes('高さ 0'))).toBe(true)
+  })
+
+  it('高さを受け取れている「埋める要素」には警告しない', () => {
+    const { section, body } = buildSection()
+    const item = document.createElement('div')
+    item.className = 'content-area-fill-item'
+    body.appendChild(item)
+    setRect(item, { left: 100, top: 100, width: 1080, height: 500 })
+
+    expect(getVisualCheckWarnings(section)).toEqual([])
+  })
+
+  it('幅も 0 の「埋める要素」（Reveal.js の unload 等で描画されていない状態）は警告しない', () => {
+    const { section, body } = buildSection()
+    const item = document.createElement('div')
+    item.className = 'content-area-fill-item'
+    body.appendChild(item)
+    setRect(item, { left: 0, top: 0, width: 0, height: 0 })
+
+    expect(getVisualCheckWarnings(section)).toEqual([])
+  })
+
   it('装飾同士がわずかに触れる程度（許容誤差以下）では重なりと見なさない', () => {
     const { section, body, front } = buildSection()
     const decoration = document.createElement('div')

@@ -11,6 +11,9 @@ const BOUNDS_TOLERANCE_PX = 1
 /** 装飾との重なり判定の許容誤差（px）。端が数px触れる程度の意図的な近接配置は重なりと見なさない */
 const OVERLAP_TOLERANCE_PX = 2
 
+/** 「高さを受け取れていない」と見なす高さ（px）。0 を期待する検査だが、枠線や端数で数px残ることがある（#259） */
+const COLLAPSED_HEIGHT_PX = 1
+
 /** テキストが確認できる程度の抜粋（警告文で対象要素を識別するため） */
 const EXCERPT_MAX_LENGTH = 24
 
@@ -46,15 +49,34 @@ function describeElement(el: Element): string {
 type ElementRect = readonly [HTMLElement, DOMRect]
 
 /**
- * root 配下で「見た目の最小単位」とみなす要素（レンダリングサイズを持ち、かつ描画済みの子要素を持たない）と、
- * その矩形を集める。親→子の入れ子で同じはみ出しを重複報告しないよう、最も深い要素だけを対象にする。
- * 矩形は1要素につき1回だけ getBoundingClientRect を呼んで測り、子要素の可視判定にも同じ値を再利用する
- * （呼び出し元も含めた実測1回分を、はみ出し・セーフエリア侵入・装飾重なりの3種の判定で共有する）。
+ * root 配下の全要素を1要素につき1回だけ実測する。**この Map が実測の唯一の出処**で、
+ * はみ出し・セーフエリア侵入・装飾重なり・高さ 0（#259）の各判定がすべてこれを共有する
+ * （判定を足すたびに測り直すと、要素数 × 判定数の実測になる）。
  */
-function getContentLeaves(root: HTMLElement): ElementRect[] {
-  const all = Array.from(root.querySelectorAll<HTMLElement>('*'))
-  const rects = new Map<Element, DOMRect>(all.map((el) => [el, el.getBoundingClientRect()]))
-  return all.filter((el) => hasVisibleSize(rects.get(el)!) && !Array.from(el.children).some((child) => hasVisibleSize(rects.get(child)!))).map((el): ElementRect => [el, rects.get(el)!])
+function measureDescendants(root: HTMLElement): Map<Element, DOMRect> {
+  return new Map(Array.from(root.querySelectorAll('*')).map((el) => [el, el.getBoundingClientRect()]))
+}
+
+/**
+ * 「見た目の最小単位」とみなす要素（レンダリングサイズを持ち、かつ描画済みの子要素を持たない）を集める。
+ * 親→子の入れ子で同じはみ出しを重複報告しないよう、最も深い要素だけを対象にする。
+ */
+function getContentLeaves(rects: Map<Element, DOMRect>): ElementRect[] {
+  return [...rects].filter(([el, rect]) => hasVisibleSize(rect) && !Array.from(el.children).some((child) => hasVisibleSize(rects.get(child)!))).map(([el, rect]): ElementRect => [el as HTMLElement, rect])
+}
+
+/**
+ * 高さを受け取れていない「埋める要素」（.content-area-fill-item）を集める（#259）。
+ * 幾何の破綻ではなく **fill 変種の契約（global.css）が成立しているかの検査** なので、矩形は返さない。
+ *
+ * 契約では、埋める要素は fill ホスト（.content-area-fill）の中に置かれて初めて flex:1 で残り高さを受け取る。
+ * ホストの外に置かれると高さ 0 のまま静かに消えるが、getContentLeaves は 0 サイズの要素を
+ * 「見た目の最小単位」から除外するため、はみ出し検査では気づけない。
+ * 幅は持つのに高さだけ 0 の要素を対象にする（幅も 0 の場合は Reveal.js の unload 等で描画されていない
+ * 状態であり、高さ解決の失敗とは区別する）。
+ */
+function getCollapsedFillItems(rects: Map<Element, DOMRect>): HTMLElement[] {
+  return [...rects].filter(([el, rect]) => el.classList.contains('content-area-fill-item') && rect.width > 0 && rect.height <= COLLAPSED_HEIGHT_PX).map(([el]) => el as HTMLElement)
 }
 
 /** マスター装飾の要素（.master-layer-back/.master-layer-front の直下。全面塗りの背景要素は対象外） */
@@ -94,7 +116,8 @@ function getSafeBounds(masterBody: HTMLElement): Bounds {
 
 /**
  * レンダリング済みのスライド1枚（`<section class="slide-container">`）を実測し、
- * ①はみ出し（スライド領域の外）②セーフエリア侵入（余白への侵入）③マスター装飾との重なり、を警告として返す。
+ * ①はみ出し（スライド領域の外）②セーフエリア侵入（余白への侵入）③マスター装飾との重なり
+ * ④高さを受け取れていない「埋める要素」（#259）、を警告として返す。
  * `.master-body` が無い（現行と完全同一のフォールバック等）場合は検査対象がないため空配列を返す。
  */
 export function getVisualCheckWarnings(section: HTMLElement): string[] {
@@ -104,7 +127,8 @@ export function getVisualCheckWarnings(section: HTMLElement): string[] {
   const warnings: string[] = []
   const sectionBounds = toBounds(section.getBoundingClientRect())
   const safeBounds = getSafeBounds(masterBody)
-  const leaves = getContentLeaves(masterBody)
+  const rects = measureDescendants(masterBody)
+  const leaves = getContentLeaves(rects)
 
   const overflowing = new Set<HTMLElement>()
   for (const [leaf, rect] of leaves) {
@@ -121,6 +145,10 @@ export function getVisualCheckWarnings(section: HTMLElement): string[] {
     if (overshoot > BOUNDS_TOLERANCE_PX) {
       warnings.push(`セーフエリア侵入: ${describeElement(leaf)} が余白（セーフエリア）に侵入しています（${overshoot.toFixed(1)}px 超過）`)
     }
+  }
+
+  for (const item of getCollapsedFillItems(rects)) {
+    warnings.push(`高さ 0: ${describeElement(item)} が本文領域の残り高さを受け取れていません（.content-area-fill を名乗る区画の外に置かれている可能性）`)
   }
 
   const decorations: ElementRect[] = getDecorationElements(section)

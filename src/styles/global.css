@@ -263,6 +263,7 @@ body {
 .reveal .slides section.present .content-area,
 .reveal .slides section.present .title-layout,
 .reveal .slides section.present .section-title-layout,
+.reveal .slides section.present .message-layout,
 .reveal .slides section.present .bleed-content {
   animation: fadeInUp 0.6s ease-out both;
 }
@@ -304,8 +305,25 @@ code {
 /* .content-area の fill 変種（#225）。画像・表・チャート・図解のように「本文領域（セーフエリア内）の
    残り高さいっぱいに広がり、その確定高さの中で収まる」子を受け取る。ContentLayout の fill prop が付ける。
    埋める側の要素には .content-area-fill-item を付ける（各 CSS Module が flex:1 を私的に宣言すると
-   この依存が共有側から見えなくなるため、契約をここに集約する） */
+   この依存が共有側から見えなくなるため、契約をここに集約する）。
+
+   高さ解決の契約（#259。将来追加される種別もこれに従う）:
+   1. .content-area-fill は「確定高さを持つ flex 列」であることの宣言（= fill ホスト）。
+      本文領域だけでなく、同じ性質を持つ区画も名乗れる（two-column のカラム。TwoColumnGrid）。
+   2. **ホストの印は残り高さを渡す区画そのものに付ける。** grid など別のレイアウト機構を使うコンテナの
+      「祖先」に付けてはならない。下の :has() 規則が子孫の display を flex 列へ上書きするため
+      （詳細度 0,2,0 で MUI sx の 0,1,0 に勝つ）、2カラムのグリッドが崩れる。
+      そのため two-column は .content-area ではなくカラム側をホストにする（ContentLayout に fill を
+      渡しても直らない）。
+   3. ホストの外に置かれた .content-area-fill-item は flex:1 が効かず高さ 0 になる。これは見た目上
+      静かに消えるだけなので、getVisualCheckWarnings（src/visualChecks.ts）が高さ 0 の
+      .content-area-fill-item を警告として検出する（見本デッキ全枚数の CI 検査で担保する）。 */
 .content-area-fill {
+  /* ホストの要件（flex 列・子の縮みを許す）はここで満たす。名乗るだけで成立させ、
+     ホストごとに同じ宣言を私的に再導出させない（確定高さの与え方だけは区画側の責務） */
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   justify-content: stretch;
 }
 
@@ -357,14 +375,23 @@ code {
   object-position: center;
 }
 
-/* Section Title */
-.section-title-layout {
+/* Section Title / 1枚1メッセージ（引用・大メッセージ・締め・#197）。
+   いずれもタイトルバーを持たず、中身を本文領域の中央に主役として置く */
+.section-title-layout,
+.message-layout {
   text-align: center;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
   height: 100%;
+}
+
+/* 1枚1メッセージは中身の間隔と行長を主役向けに広げる。背景は塗らない
+   （全面塗りはマスター側の責務。MessageLayout のコメント参照） */
+.message-layout {
+  gap: 32px;
+  max-width: 1000px;
 }
 
 /* Slide Title */
@@ -446,6 +473,7 @@ code {
 .pdf-capturing .content-area,
 .pdf-capturing .title-layout,
 .pdf-capturing .section-title-layout,
+.pdf-capturing .message-layout,
 .pdf-capturing .bleed-content {
   animation: none !important;
   opacity: 1 !important;

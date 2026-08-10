@@ -1,14 +1,15 @@
-import type { ReactNode } from 'react'
+import type { ComponentType, ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import type { ContentItem, LogoConfig, MasterRenderContext, SectionInfo, SlideContent, SlideData, ThemeData } from '../data'
 import { buildSections, findSectionAt } from '../sections'
 import { componentFillsContentArea, renderRegisteredComponent, resolveComponent } from './ComponentRegistry'
-import { BleedLayout, ContentLayout, SectionLayout, SlideFrame, TitleLayout } from '../layouts'
+import { BleedLayout, ContentLayout, MessageLayout, SectionLayout, SlideFrame, TitleLayout } from '../layouts'
+import type { SlideFrameCommonProps } from '../layouts/SlideFrame'
 import { SlideHeading } from './SlideHeading'
 import { SubtitleText } from './SubtitleText'
 import { BulletList } from './BulletList'
-import { TwoColumnGrid } from './TwoColumnGrid'
+import { TwoColumnGrid, type ColumnSpec } from './TwoColumnGrid'
 import { CodeBlockPanel } from './CodeBlockPanel'
 import { TitledBulletList } from './TitledBulletList'
 import { Checklist } from './Checklist'
@@ -21,6 +22,8 @@ import { Table, type TableSpec } from './table'
 import { Compare, type CompareSpec } from './compare'
 import { Flow, type FlowStep } from './flow'
 import { AccentText } from './AccentText'
+import { Quote } from './Quote'
+import { BigMessage } from './BigMessage'
 import { CommandList } from './CommandList'
 import { UnderlinedHeading } from './UnderlinedHeading'
 import { QrCodeCard } from './QrCodeCard'
@@ -72,31 +75,89 @@ function getVariant(content: SlideData['content']): string | undefined {
   return content.variant as string | undefined
 }
 
-/** centerスライドをレンダリング（variant: "section" でSectionLayout） */
+/** 章扉（variant: "section"）の中身 */
+function renderSectionBody(content: SlideContent): ReactNode {
+  return (
+    <>
+      <UnderlinedHeading sx={{ mb: '30px' }}>{content.title}</UnderlinedHeading>
+      {content.body && (
+        <Typography variant="body1" sx={{ fontSize: '24px', maxWidth: '800px', mb: '40px' }}>
+          {renderWithLineBreaks(content.body)}
+        </Typography>
+      )}
+      {typeof content.qrCode === 'string' && <QrCodeCard url={content.qrCode} sx={{ mb: '30px' }} />}
+      {typeof content.githubRepo === 'string' && <GitHubLink repo={content.githubRepo} sx={{ mt: '10px' }} />}
+    </>
+  )
+}
+
+/** 表紙・まとめ（variant 無指定）の中身 */
+function renderTitleBody(content: SlideContent): ReactNode {
+  return (
+    <>
+      <SlideHeading title={content.title ?? ''} variant="h1" sx={{ color: 'var(--theme-text-heading)' }} />
+      {content.subtitle && <SubtitleText>{renderWithLineBreaks(content.subtitle)}</SubtitleText>}
+    </>
+  )
+}
+
+/** 引用（variant: "quote"）の中身。改行の扱いは他の種別と同じ renderWithLineBreaks に合わせる（#197） */
+function renderQuoteBody(content: SlideContent): ReactNode {
+  const quote = content.quote as string | undefined
+  const citation = content.citation as string | undefined
+  return <Quote citation={citation ? renderWithLineBreaks(citation) : undefined}>{renderWithLineBreaks(quote ?? '')}</Quote>
+}
+
+/** 大メッセージ（variant: "message" / "message-inverse"）の中身。全面塗りかどうかはマスターが決めるので描画は共通（#197） */
+function renderMessageBody(content: SlideContent): ReactNode {
+  const message = content.message as string | undefined
+  return <BigMessage note={content.body ? renderWithLineBreaks(content.body) : undefined}>{renderWithLineBreaks(message ?? '')}</BigMessage>
+}
+
+/** 締め（variant: "closing"）の中身。結びの一言に連絡先（QR・リポジトリ）を添えられる（#197） */
+function renderClosingBody(content: SlideContent): ReactNode {
+  return (
+    <>
+      {renderMessageBody(content)}
+      {typeof content.qrCode === 'string' && <QrCodeCard url={content.qrCode} />}
+      {typeof content.githubRepo === 'string' && <GitHubLink repo={content.githubRepo} />}
+    </>
+  )
+}
+
+/** center レイアウトのラッパー（いずれもタイトルバーを持たない）。契約は SlideFrameCommonProps（SlideFrame.tsx）が
+ * 持つので、特定のラッパーの実装から型を借りない（借りると片方に固有 prop が付いた瞬間に他が代入不可になる） */
+type CenterWrapper = ComponentType<SlideFrameCommonProps & { children: ReactNode }>
+
+/**
+ * center スライドの variant ごとの描画。**この表が variant の唯一の真実源** で、
+ * `schema/slide-content-schema.json` の `layouts.center.contentFields.variant.enum` と対応させる（#197）。
+ * variant 無指定は表紙・まとめ（TitleLayout）にフォールバックする。
+ */
+const CENTER_VARIANTS: Record<string, { wrapper: CenterWrapper; render: (content: SlideContent) => ReactNode }> = {
+  section: { wrapper: SectionLayout, render: renderSectionBody },
+  quote: { wrapper: MessageLayout, render: renderQuoteBody },
+  message: { wrapper: MessageLayout, render: renderMessageBody },
+  // 全面塗りバリアント。背景と文字色はマスター（theme.masters[].background と theme.tokens）が持ち、
+  // その組が getThemeWarnings のコントラスト検証にかかる（#209）。描画は淡色地の message と共通
+  'message-inverse': { wrapper: MessageLayout, render: renderMessageBody },
+  closing: { wrapper: MessageLayout, render: renderClosingBody },
+}
+
+/** 描画できる center の variant 一覧。schema の enum との一致は SlideRenderer.test.tsx が固定する
+ * （片方だけに足すと「描けるのに AI 生成が弾かれる」食い違いが静かに起きる） */
+export const CENTER_VARIANT_NAMES: readonly string[] = Object.keys(CENTER_VARIANTS)
+
+/** centerスライドをレンダリング（variant で章扉・引用・大メッセージ・締めに切り替わる） */
 function renderCenterSlide(slide: SlideData, logo: LogoConfig | undefined, theme: ThemeData | undefined, ctx: MasterRenderContext): ReactNode {
   const { content } = slide
   const variant = getVariant(content)
-
-  if (variant === 'section') {
-    return (
-      <SectionLayout id={slide.id} layout={slide.layout} variant={variant} meta={slide.meta} logo={logo} theme={theme} ctx={ctx}>
-        <UnderlinedHeading sx={{ mb: '30px' }}>{content.title}</UnderlinedHeading>
-        {content.body && (
-          <Typography variant="body1" sx={{ fontSize: '24px', maxWidth: '800px', mb: '40px' }}>
-            {renderWithLineBreaks(content.body)}
-          </Typography>
-        )}
-        {typeof content.qrCode === 'string' && <QrCodeCard url={content.qrCode} sx={{ mb: '30px' }} />}
-        {typeof content.githubRepo === 'string' && <GitHubLink repo={content.githubRepo} sx={{ mt: '10px' }} />}
-      </SectionLayout>
-    )
-  }
+  const { wrapper: Wrapper, render } = (variant && CENTER_VARIANTS[variant]) || { wrapper: TitleLayout, render: renderTitleBody }
 
   return (
-    <TitleLayout id={slide.id} layout={slide.layout} variant={variant} meta={slide.meta} logo={logo} theme={theme} ctx={ctx}>
-      <SlideHeading title={content.title ?? ''} variant="h1" sx={{ color: 'var(--theme-text-heading)' }} />
-      {content.subtitle && <SubtitleText>{renderWithLineBreaks(content.subtitle)}</SubtitleText>}
-    </TitleLayout>
+    <Wrapper id={slide.id} layout={slide.layout} variant={variant} meta={slide.meta} logo={logo} theme={theme} ctx={ctx}>
+      {render(content)}
+    </Wrapper>
   )
 }
 
@@ -114,14 +175,22 @@ function renderTwoColumnSlide(slide: SlideData, logo: LogoConfig | undefined, th
   )
 }
 
-/** カラムコンテンツをレンダリング */
-function renderColumnContent(data: Record<string, unknown> | undefined): ReactNode {
-  if (!data) return null
+/**
+ * カラムコンテンツをレンダリングし、そのカラムを fill ホストにするか（#259）を併せて返す。
+ *
+ * **描く分岐と fill の判定を同じ 1 か所に置く**（`CONTENT_BRANCHES` と同じ理由。判定を別関数で分岐順ごと
+ * 複製すると、分岐を足したときに判定が黙ってズレる）。残り高さを必要とするのは登録側が
+ * `fillsContentArea` を宣言したコンポーネントだけで、他のフィールド（heading / paragraphs / items 等）は
+ * いずれも内容サイズの要素なので fill にしない。
+ * ContentLayout に fill を渡す方法では直らない理由は global.css の fill 変種の契約に記載。
+ */
+function renderColumnContent(data: Record<string, unknown> | undefined): ColumnSpec {
+  if (!data) return { content: null }
 
   // コンポーネント参照
   if (data.component) {
     const ref = data.component as { name: string; props?: Record<string, unknown>; style?: Record<string, string | number> }
-    return renderComponent(ref)
+    return { content: renderComponent(ref), fill: componentFillsContentArea(ref.name) }
   }
 
   const elements: ReactNode[] = []
@@ -199,7 +268,7 @@ function renderColumnContent(data: Record<string, unknown> | undefined): ReactNo
     elements.push(<QrCodeCard key="qrCode" url={data.qrCode} />)
   }
 
-  return elements.length === 1 ? elements[0] : <Box sx={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>{elements}</Box>
+  return { content: elements.length === 1 ? elements[0] : <Box sx={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>{elements}</Box> }
 }
 
 /** ContentItem配列を再帰的に箇条書きとしてレンダリング（ネスト可・#193） */
@@ -316,8 +385,8 @@ const CONTENT_BRANCHES: ContentBranch[] = [
   // チャート（#204）・表（#194）は本文領域の残り高さを埋める
   { match: (content) => Boolean(content.chart) && typeof content.chart === 'object', fill: true, render: (content) => <Chart {...(content.chart as ChartSpec)} /> },
   { match: (content) => Boolean(content.table) && typeof content.table === 'object', fill: true, render: (content) => <Table {...(content.table as TableSpec)} /> },
-  // 比較（#200）は2ペインがグリッドの stretch で高さを揃えるため fill 変種は使わない
-  { match: (content) => Boolean(content.compare) && typeof content.compare === 'object', fill: false, render: (content) => <Compare {...(content.compare as CompareSpec)} /> },
+  // 比較（#200）は2ペインの高さを揃えるためにグリッド自身が本文領域の残り高さを受け取る（#259）
+  { match: (content) => Boolean(content.compare) && typeof content.compare === 'object', fill: true, render: (content) => <Compare {...(content.compare as CompareSpec)} /> },
   // 横フロー（#200）は DiagramCanvas に載るので埋める
   { match: (content) => Boolean(content.flow), fill: true, render: (content) => <Flow steps={content.flow as FlowStep[]} /> },
   { match: (content) => Boolean(content.component), fill: (content) => componentFillsContentArea(content.component!.name), render: (content) => renderComponent(content.component!) },

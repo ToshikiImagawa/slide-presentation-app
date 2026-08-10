@@ -1,7 +1,8 @@
 import { describe, expect, it, beforeEach } from 'vitest'
 import { render } from '@testing-library/react'
 import { ThemeProvider } from '@mui/material/styles'
-import { SlideRenderer } from '../SlideRenderer'
+import { CENTER_VARIANT_NAMES, SlideRenderer } from '../SlideRenderer'
+import schemaJson from '../../../schema/slide-content-schema.json'
 import { registerDefaultComponents } from '../registerDefaults'
 import type { SlideData, ThemeData } from '../../data'
 import { theme } from '../../theme'
@@ -672,7 +673,7 @@ describe('SlideRenderer', () => {
       { name: 'images', content: { images: [{ src: '/a.png' }] }, fill: true },
       { name: 'chart', content: { chart: { type: 'bar', categories: ['A'], series: [{ values: [1] }] } }, fill: true },
       { name: 'table', content: { table: { columns: [{ label: '項目' }], rows: [['値']] } }, fill: true },
-      { name: 'compare', content: { compare: { left: { heading: '見出し' } } }, fill: false },
+      { name: 'compare', content: { compare: { left: { heading: '見出し' } } }, fill: true },
       { name: 'flow', content: { flow: [{ title: '工程1' }, { title: '工程2' }] }, fill: true },
       { name: 'component:Diagram（登録側が fillsContentArea を宣言）', content: { component: { name: 'Diagram', props: { nodes: [{ id: 'a', rect: { x: 0, y: 0, w: 0.3, h: 0.3 }, title: 'カード' }] } } }, fill: true },
       { name: 'component:TerminalAnimation（既定は埋めない）', content: { component: { name: 'TerminalAnimation' } }, fill: false },
@@ -683,6 +684,125 @@ describe('SlideRenderer', () => {
       const { container } = renderWithTheme(<SlideRenderer slides={[{ id: 'test-fill', layout: 'content', content: { title: 'タイトル', ...content } }]} />)
       expect(container.querySelector('.content-area')!.classList.contains('content-area-fill')).toBe(fill)
       expect(container.querySelector('.content-area-fill-item') !== null).toBe(fill)
+    })
+  })
+
+  // #197: 引用・大メッセージ・締め（1枚1メッセージ）。center の variant として MessageLayout を共有し、
+  // タイトルバー（.slide-title）を持たない。余白は SlideFrame の .master-body が持つため、
+  // 本編・発表者ビュー・編集プレビュー・PDF書き出しの4経路で同じ見た目になる
+  describe('centerスライドの1枚1メッセージ variant（引用・大メッセージ・締め）', () => {
+    function renderCenter(content: SlideData['content'], theme?: ThemeData) {
+      return renderWithTheme(<SlideRenderer slides={[{ id: 'test-message', layout: 'center', content }]} theme={theme} />)
+    }
+
+    const messageVariants = ['quote', 'message', 'message-inverse', 'closing'] as const
+
+    it.each(messageVariants)('variant: %s はタイトルバーを持たず、.master-body 直下の .message-layout に中身を置く', (variant) => {
+      const { container } = renderCenter({ variant, title: '使われないタイトル', quote: '引用文', message: '主張' })
+      expect(container.querySelector('.slide-title')).toBeNull()
+      const messageLayout = container.querySelector('.message-layout')
+      expect(messageLayout).not.toBeNull()
+      expect(messageLayout!.parentElement!.classList.contains('master-body')).toBe(true)
+    })
+
+    it('引用（quote）は引用文と出典を描画する', () => {
+      const { container, getByTestId } = renderCenter({ variant: 'quote', quote: '設計は削ることで決まる', citation: '架空の設計者' })
+      expect(getByTestId('quote')).not.toBeNull()
+      expect(container.querySelector('blockquote')!.textContent).toBe('設計は削ることで決まる')
+      expect(container.querySelector('cite')!.textContent).toBe('架空の設計者')
+    })
+
+    it('引用（quote）は出典を省略できる', () => {
+      const { container } = renderCenter({ variant: 'quote', quote: '出典のない引用' })
+      expect(container.querySelector('blockquote')!.textContent).toBe('出典のない引用')
+      expect(container.querySelector('cite')).toBeNull()
+    })
+
+    it('大メッセージ（message）は主張と補足を描画する', () => {
+      const { container, getByTestId } = renderCenter({ variant: 'message', message: '1枚に1メッセージ', body: '詰め込まない' })
+      expect(getByTestId('big-message')).not.toBeNull()
+      expect(container.textContent).toContain('1枚に1メッセージ')
+      expect(container.textContent).toContain('詰め込まない')
+    })
+
+    it('全面塗り（message-inverse）は淡色地（message）と同じ中身を描き、塗りはマスターに委ねる', () => {
+      const content: SlideData['content'] = { message: '全面塗りの主張' }
+      const pale = renderCenter({ ...content, variant: 'message' }).container.querySelector('.message-layout')!.innerHTML
+      const inverse = renderCenter({ ...content, variant: 'message-inverse' }).container.querySelector('.message-layout')!.innerHTML
+      expect(inverse).toBe(pale)
+    })
+
+    // 全面塗り（message-inverse）・締め（closing）は塗りをマスターに委ねるので、variant が
+    // masterMap["center/<variant>"] の解決に届いていることが成立条件になる
+    it.each(messageVariants)('variant: %s は masterMap["center/<variant>"] からマスターを解決する', (variant) => {
+      const theme: ThemeData = {
+        masters: { inverse: { background: { type: 'fill', color: '#1f2430' }, decorations: [] } },
+        masterMap: Object.fromEntries(messageVariants.map((v) => [`center/${v}`, 'inverse'])),
+        tokens: { inverse: { 'theme-text-body': '#ffffff' } },
+      }
+      const { container } = renderCenter({ variant, message: '全面塗りの主張', quote: '引用文' }, theme)
+      expect(container.querySelector('section.slide-container')!.getAttribute('data-master')).toBe('inverse')
+    })
+
+    it('締め（closing）は結びの一言に QR コードとリポジトリを添える', () => {
+      const { container, getByTestId } = renderCenter({ variant: 'closing', message: 'ありがとうございました', qrCode: 'https://example.com/', githubRepo: 'owner/repo' })
+      expect(getByTestId('big-message')).not.toBeNull()
+      expect(container.textContent).toContain('ありがとうございました')
+      expect(container.textContent).toContain('owner/repo')
+      expect(container.querySelector('img[alt="QR code"], canvas, svg')).not.toBeNull()
+    })
+
+    it('改行（\\n）は既存の種別と同じく br に展開する', () => {
+      const { container } = renderCenter({ variant: 'message', message: '1行目\n2行目' })
+      expect(container.querySelector('br')).not.toBeNull()
+    })
+
+    it('未知の variant は表紙（title/subtitle）にフォールバックする', () => {
+      const { container } = renderCenter({ variant: 'unknown-variant', title: '表紙タイトル' })
+      expect(container.querySelector('h1')!.textContent).toContain('表紙タイトル')
+      expect(container.querySelector('.message-layout')).toBeNull()
+    })
+
+    // 描画できる variant（CENTER_VARIANTS）と、AI生成プロンプト・厳格チェックが参照するスキーマの enum は
+    // 別ファイルにあるため、片方だけに足すと「描けるのに生成が弾かれる（またはその逆）」が静かに起きる
+    it('描画できる variant の一覧がスキーマの enum と一致する', () => {
+      const schemaEnum = (schemaJson as { layouts: { center: { contentFields: { variant: { enum: string[] } } } } }).layouts.center.contentFields.variant.enum
+      expect([...CENTER_VARIANT_NAMES].sort()).toEqual([...schemaEnum].sort())
+    })
+  })
+
+  // #259: two-column のカラムに置いた「埋めるコンポーネント」の高さ解決。
+  // 埋める要素（.content-area-fill-item）は fill ホスト（.content-area-fill）の中に置かれて初めて
+  // 残り高さを受け取るため、カラム自身がホストを名乗る必要がある（ホストを .content-area 側に付けると
+  // :has() 規則が2カラムのグリッドを flex 列へ上書きして崩れる。理由は global.css に記載）。
+  // 高さ 0 は見た目上静かに消えるだけなので、対応をこのテストで固定する
+  describe('two-column のカラムの fill ホスト（.content-area-fill）', () => {
+    function renderTwoColumn(content: SlideData['content']) {
+      const { container } = renderWithTheme(<SlideRenderer slides={[{ id: 'test-two-column-fill', layout: 'two-column', content: { title: 'タイトル', ...content } }]} />)
+      // .content-area 直下がグリッドのルート、その子2つが左右のカラム
+      const columns = Array.from(container.querySelector('.content-area')!.firstElementChild!.children)
+      return { container, columns }
+    }
+
+    it('埋めるコンポーネント（Diagram）を置いたカラムだけが fill ホストを名乗り、本文領域には付かない', () => {
+      const { container, columns } = renderTwoColumn({
+        left: { component: { name: 'Diagram', props: { nodes: [{ id: 'a', rect: { x: 0, y: 0, w: 0.3, h: 0.3 }, title: 'カード' }] } } },
+        right: { heading: '右カラム', paragraphs: ['右の本文'] },
+      })
+      expect(columns[0].classList.contains('content-area-fill')).toBe(true)
+      expect(columns[1].classList.contains('content-area-fill')).toBe(false)
+      // 埋める要素はホストを名乗ったカラムの中にある（ホスト外だと flex:1 が効かず高さ 0 になる）
+      expect(columns[0].querySelector('.content-area-fill-item')).not.toBeNull()
+      // 本文領域側に付けると :has() 規則が2カラムのグリッドを flex 列へ上書きして崩れる
+      expect(container.querySelector('.content-area')!.classList.contains('content-area-fill')).toBe(false)
+    })
+
+    it('埋めないコンポーネント（TerminalAnimation）や通常のカラム内容では fill ホストを名乗らない', () => {
+      const { columns } = renderTwoColumn({
+        left: { component: { name: 'TerminalAnimation' } },
+        right: { items: [{ text: '項目' }] },
+      })
+      expect(columns.some((column) => column.classList.contains('content-area-fill'))).toBe(false)
     })
   })
 

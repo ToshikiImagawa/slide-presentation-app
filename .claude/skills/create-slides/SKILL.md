@@ -46,7 +46,10 @@ allowed-tools: Read, Write, Glob, Grep, Bash(npm run typecheck), Bash(npm run te
 | 用途 | レイアウト | 備考 |
 |---|---|---|
 | 表紙 | `center` | 最初のスライドに使用 |
-| まとめ・締め | `center` + `variant: "section"` | 最後のスライドに使用 |
+| まとめ・章扉 | `center` + `variant: "section"` | 見出し＋本文。章の区切りに使用 |
+| 引用 | `center` + `variant: "quote"` | 引用文＋出典。引用符は自動で付く |
+| 章の切り替え・強い主張 | `center` + `variant: "message"` / `"message-inverse"` | 全画面に短い主張を1つ。`message-inverse` は全面塗り（塗り色はテーマのマスターが持つ） |
+| 締め | `center` + `variant: "closing"` | 最後のスライドに使用。結びの一言＋連絡先 |
 | 手順・フロー | `content` (steps) | ステップ形式で表示 |
 | 機能・特徴紹介 | `content` (tiles) | アイコン付きタイルグリッド |
 | 画像・スクリーンショット | `content` (images) | 画像＋キャプション（自動フィット） |
@@ -61,7 +64,8 @@ allowed-tools: Read, Write, Glob, Grep, Bash(npm run typecheck), Bash(npm run te
 
 - スライドIDは内容を表す英語のケバブケースで命名する（例: `intro`, `about`, `vibe-coding-problem`, `demo`, `closing`）
 - 最初のスライドは `center` レイアウト（表紙）にする
-- 最後のスライドは `center` + `variant: "section"`（まとめ）を検討する
+- 最後のスライドは `center` + `variant: "closing"`（締め）または `variant: "section"`（まとめ）を検討する
+- 1枚1メッセージの種別（`quote` / `message` / `closing`）には本文を詰め込まない（タイトルバーを持たず、中身が主役になる）
 - スライド枚数は内容に応じて適切に調整する（通常5〜15枚程度）
 - 各スライドの情報量は適度に抑え、視認性を優先する
 - `theme.colors` でプレゼンの雰囲気に合った配色を設定する

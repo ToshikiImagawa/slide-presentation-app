@@ -3,6 +3,29 @@
     "title": "Reference Deck",
     "description": "A development/verification deck listing one slide per layout type (separate from distribution samples; used to detect regressions when swapping themes)"
   },
+  "theme": {
+    "masters": {
+      "messageInverse": { "background": { "type": "fill", "color": "#f8fafc" }, "decorations": [] },
+      "closing": {
+        "background": { "type": "fill", "color": "#f8fafc" },
+        "decorations": [
+          {
+            "type": "logo",
+            "anchor": "bottom-center",
+            "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0ODAgMjAwIiB3aWR0aD0iNDgwIiBoZWlnaHQ9IjIwMCI+PGcgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMGYxNzJhIiBzdHJva2Utd2lkdGg9IjEwIj48cmVjdCB4PSIyMCIgeT0iMjAiIHdpZHRoPSI0NDAiIGhlaWdodD0iMTYwIiByeD0iMjQiLz48Y2lyY2xlIGN4PSIxMzAiIGN5PSIxMDAiIHI9IjQ2Ii8+PHBhdGggZD0iTTIxMCAxNDAgTDI2MCA2MCBMMzEwIDE0MCIvPjxwYXRoIGQ9Ik0zNDAgNjAgTDM0MCAxNDAgTDQxMCAxNDAiLz48L2c+PC9zdmc+",
+            "width": 300,
+            "height": 125,
+            "opacity": 0.9
+          }
+        ]
+      }
+    },
+    "masterMap": { "center/message-inverse": "messageInverse", "center/closing": "closing" },
+    "tokens": {
+      "messageInverse": { "theme-text-body": "#0f172a", "theme-text-muted": "#475569" },
+      "closing": { "theme-text-body": "#0f172a", "theme-text-muted": "#475569", "theme-primary": "#0f766e" }
+    }
+  },
   "slides": [
     {
       "id": "layout-center",
@@ -340,6 +363,71 @@
           { "number": 6, "title": "Recapture the deck", "description": "Confirm nothing else changed" },
           { "number": 7, "title": "Open the PR", "description": "State leftovers and follow-up issues" }
         ]
+      }
+    },
+    {
+      "id": "layout-two-column-diagram",
+      "layout": "two-column",
+      "content": {
+        "title": "layout: two-column (filling component)",
+        "left": {
+          "heading": "A diagram inside a column",
+          "paragraphs": ["The column itself hands the remaining body height to the canvas"],
+          "items": [{ "text": "The column is the fill host" }, { "text": "Marking the body area instead breaks the 2-column grid" }]
+        },
+        "right": {
+          "component": {
+            "name": "Diagram",
+            "props": {
+              "nodes": [
+                { "id": "host", "rect": { "x": 0.06, "y": 0.04, "w": 0.88, "h": 0.24 }, "title": "Column", "body": "fill host", "color": "primary" },
+                { "id": "item", "rect": { "x": 0.06, "y": 0.38, "w": 0.88, "h": 0.24 }, "title": "Diagram canvas", "body": "fill item", "color": "success", "variant": "filled" },
+                { "id": "primitive", "rect": { "x": 0.06, "y": 0.72, "w": 0.88, "h": 0.24 }, "title": "Primitives", "body": "placed in normalized coords", "color": "neutral", "variant": "plain" }
+              ],
+              "connectors": [
+                { "from": "host", "to": "item", "routing": "vertical", "head": "triangle" },
+                { "from": "item", "to": "primitive", "routing": "vertical", "head": "triangle" }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "layout-center-quote",
+      "layout": "center",
+      "content": {
+        "variant": "quote",
+        "quote": "Never bend the design\nto save implementation effort",
+        "citation": "Design decision rules"
+      }
+    },
+    {
+      "id": "layout-center-message",
+      "layout": "center",
+      "content": {
+        "variant": "message",
+        "message": "One message per slide",
+        "body": "The pale variant, used to switch chapters"
+      }
+    },
+    {
+      "id": "layout-center-message-inverse",
+      "layout": "center",
+      "content": {
+        "variant": "message-inverse",
+        "message": "Fill the slide\nto land the point",
+        "body": "The fill and text colors live in the master and its tokens"
+      }
+    },
+    {
+      "id": "layout-center-closing",
+      "layout": "center",
+      "content": {
+        "variant": "closing",
+        "message": "Thank you",
+        "body": "Closing on a full-bleed fill with the logo behind it",
+        "githubRepo": "ToshikiImagawa/slide-presentation-app"
       }
     }
   ]

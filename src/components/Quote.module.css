@@ -1,0 +1,41 @@
+/* 引用スライド（#197）。大きな引用符・引用文・出典を縦に積む。
+   色は --theme-* の文字色トークン（TEXT_COLOR_KEYS）だけを使い、背景は塗らない。
+   全面塗りはマスター側（theme.masters[].background）の責務で、その塗り色と文字色トークンの組が
+   getThemeWarnings のコントラスト検証にかかる（#209）。ここで背景を塗ると検証から外れる */
+.quote {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+/* 装飾としての引用符。文字色ではなくアクセントなので primary から引く。
+   大きさは h1 に比例させ、テーマの baseFontSize / fontSizeRatios（#187）に追従させる */
+.mark {
+  font-family: var(--theme-font-heading);
+  font-size: calc(var(--theme-font-size-h1) * 4 / 3);
+  font-weight: var(--theme-font-weight-heading);
+  line-height: 0.7;
+  color: var(--theme-primary);
+}
+
+.text {
+  margin: 0;
+  font-family: var(--theme-font-heading);
+  font-size: var(--theme-font-size-h2);
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--theme-text-body);
+}
+
+.citation {
+  font-family: var(--theme-font-body);
+  font-size: var(--theme-font-size-subtitle1);
+  color: var(--theme-text-muted);
+}
+
+/* 出典の前に付ける区切り（"— 出典" の体裁）。テキストとして書かず装飾で持つ */
+.citation::before {
+  content: '— ';
+}

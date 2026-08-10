@@ -35,6 +35,57 @@
 }
 ```
 
+### 1枚1メッセージの variant（引用・大メッセージ・締め）
+
+いずれもタイトルバーを持たず、中身を本文領域の中央に主役として置く。章の切り替えや結びに使い、本文を詰め込まない。
+
+`variant: "quote"` — 引用。大きな引用符と出典の区切り（`—`）は装飾として自動で付くので本文には書かない。
+
+```json
+{
+  "id": "slide-id",
+  "layout": "center",
+  "content": {
+    "variant": "quote",
+    "quote": "引用文（改行は \\n）",
+    "citation": "出典（人名・書名等）"
+  }
+}
+```
+
+`variant: "message"` — 大メッセージ（淡色地。デッキ既定の背景に短い主張を1つ）。`body` は任意の補足。
+
+```json
+{
+  "id": "slide-id",
+  "layout": "center",
+  "content": {
+    "variant": "message",
+    "message": "短い主張（改行は \\n）",
+    "body": "補足（1行程度）"
+  }
+}
+```
+
+`variant: "message-inverse"` — 大メッセージの全面塗り。**塗り色と文字色はスライド側では指定せず、テーマの `masters[].background`（`type: "fill"`）と `tokens` の masterKey スコープで持つ**（`masterMap` の `"center/message-inverse"` から解決する）。両者のコントラストは WCAG AA で自動検証されるため、この組み合わせで指定する（スライド側やコンポーネント CSS で塗ると検証から外れる）。
+
+そのため **マスターを割り当てていないデッキでは `message` と同じ見た目になる**（塗りはテーマの担当で、スライド側は「反転面である」ことだけを宣言する）。反転面を使うなら `theme.masters` / `theme.masterMap` / `theme.tokens` を併せて書く。ブランドテーマ取り込み（PPT/Google スライド由来）は現状この枠にマスターを割り当てないので、同じく手書きする必要がある。
+
+`variant: "closing"` — 締め。結びの一言に連絡先（`qrCode` / `githubRepo`）を添えられる。マスターの全面塗りやロゴの全面配置（`decorations` の `logo`）と組み合わせて終わる。
+
+```json
+{
+  "id": "slide-id",
+  "layout": "center",
+  "content": {
+    "variant": "closing",
+    "message": "ありがとうございました",
+    "body": "質問はこちらへ",
+    "qrCode": "https://github.com/..."
+  }
+}
+```
+
 ## content
 
 コンテンツ表示用レイアウト。子要素のフィールドで描画が決まる。優先順位: `steps` → `checklist` → `tiles` → `images` → `chart` → `table` → `compare` → `flow` → `component` → `body`/`items`（いずれかが指定されていたら以降は評価しない）。
@@ -367,6 +418,8 @@
 ```
 
 `component` を指定した場合、他のフィールドは無視される。
+
+`component` に「本文領域を埋めるコンポーネント」（`Diagram` など、登録時に残り高さを埋めると宣言したもの）を置くと、そのカラムが本文領域の残り高さをコンポーネントへ渡す。左右のカラムで独立に解決するため、片方だけ図解にして反対側にテキストを置ける。
 
 ## bleed
 

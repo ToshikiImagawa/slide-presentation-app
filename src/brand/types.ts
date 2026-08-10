@@ -58,7 +58,9 @@ export interface MasterProfile {
 }
 
 /** #185/#192 契約で固定された masterMap の割り当て可能な5枠。`<layout>` または `<layout>/<variant>` の
- * 2形式のみで、`variant` はフロントの `content.variant` に実在する値（現状 'section' のみ）に限る */
+ * 2形式のみで、`variant` はフロントの `content.variant` に実在する値に限る。
+ * #197 で center に quote/message/message-inverse/closing の4 variant が加わったが、**枠は5つに据え置く**
+ * （枠の増減は #185/#192 の契約変更にあたる。ブランド取り込みで反転面・締めのマスターを割り当てる話は別途） */
 export const LAYOUT_ASSIGNMENT_SLOTS = ['center', 'center/section', 'content', 'two-column', 'bleed'] as const
 
 export type LayoutAssignmentSlot = (typeof LAYOUT_ASSIGNMENT_SLOTS)[number]
