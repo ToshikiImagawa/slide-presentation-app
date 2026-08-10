@@ -194,7 +194,7 @@ export function inlineSvgCssVariables(root: HTMLElement): () => void {
 function promoteLazyImages(deckEl: HTMLElement): () => void {
   const images = Array.from(deckEl.querySelectorAll<HTMLImageElement>('img[data-src]:not([src])'))
   images.forEach((img) => {
-    img.src = img.dataset.src ?? ''
+    img.src = img.dataset.src as string
   })
   return () => {
     images.forEach((img) => img.removeAttribute('src'))

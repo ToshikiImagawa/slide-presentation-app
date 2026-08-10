@@ -70,9 +70,9 @@ export function FallbackImage({ src, width, height, alt = '', className }: Props
       }}
       onLoad={() => setStatus('loaded')}
       onError={(e) => {
-        // Reveal.js は viewDistance 圏外へ出たスライドの img から `src` を外し `data-src` に戻す
-        // （unload）。この属性除去自体がブラウザによっては error イベントを誘発するため、
-        // `src` が既に無い（= unload によるものと判別できる）場合は無視する
+        // `src` 属性が無い = そもそも読み込みを試みていないので、発生した error は無視する。
+        // Reveal.js が viewDistance 圏外へ出たスライドの img から `src` を外す（unload）際、
+        // その属性除去自体がブラウザによっては error イベントを誘発するのがこの一例
         if (!e.currentTarget.getAttribute('src')) return
         setStatus('error')
       }}
