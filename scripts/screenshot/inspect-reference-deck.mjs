@@ -53,11 +53,14 @@ async function inspectLocale(browser, locale, vp) {
       // useVisualCheckWarnings（アプリ本体）と同じ遅延（fadeInUp 等の遷移アニメーション完了を待つ）
       await sleep(700)
 
-      const warnings = await page.evaluate(() => {
+      const warnings = await page.evaluate(async () => {
         const section = document.querySelector('section.present')
         const check = window.__VISUAL_CHECK__
+        const waitImages = window.__VISUAL_CHECK_WAIT_IMAGES__
         if (!section) return ['section.present が見つかりません']
         if (!check) return ['window.__VISUAL_CHECK__ が公開されていません（screenshot モードのビルドを確認してください）']
+        // 画像の読み込み確定前は FallbackImage が <img> を display:none にするため、確定を待ってから実測する
+        if (waitImages) await waitImages(section)
         return check(section)
       })
       results.push({ locale: locale.dir, index, id: slide.id, warnings })

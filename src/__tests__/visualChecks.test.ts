@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getVisualCheckWarnings } from '../visualChecks'
+import { getVisualCheckWarnings, waitForImagesToSettle } from '../visualChecks'
 
 /** テスト用の DOMRect を要素へ固定する（jsdom はレイアウトを計算しないため実測値を明示的に与える） */
 function setRect(el: HTMLElement, r: { left: number; top: number; width: number; height: number }): void {
@@ -124,5 +124,38 @@ describe('getVisualCheckWarnings（#209）', () => {
 
     const warnings = getVisualCheckWarnings(section)
     expect(warnings.some((w) => w.includes('装飾との重なり'))).toBe(false)
+  })
+})
+
+describe('waitForImagesToSettle（#209）', () => {
+  it('img が無ければ即座に解決する', async () => {
+    const section = document.createElement('section')
+    await expect(waitForImagesToSettle(section)).resolves.toBeUndefined()
+  })
+
+  it('読み込み確定済み（complete）の img は待たずに解決する', async () => {
+    const section = document.createElement('section')
+    const img = document.createElement('img')
+    Object.defineProperty(img, 'complete', { value: true, configurable: true })
+    section.appendChild(img)
+    await expect(waitForImagesToSettle(section)).resolves.toBeUndefined()
+  })
+
+  it('読み込み未確定の img は load/error イベント発火まで解決を待つ', async () => {
+    const section = document.createElement('section')
+    const img = document.createElement('img')
+    Object.defineProperty(img, 'complete', { value: false, configurable: true })
+    section.appendChild(img)
+
+    let resolved = false
+    waitForImagesToSettle(section).then(() => {
+      resolved = true
+    })
+    await Promise.resolve()
+    expect(resolved).toBe(false)
+
+    img.dispatchEvent(new Event('load'))
+    await new Promise((r) => setTimeout(r, 0))
+    expect(resolved).toBe(true)
   })
 })

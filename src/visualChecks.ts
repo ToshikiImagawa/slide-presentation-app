@@ -137,6 +137,33 @@ export function getVisualCheckWarnings(section: HTMLElement): string[] {
   return warnings
 }
 
+/** img の読み込み確定（成功/失敗問わず complete）を待つタイムアウト（ms）。読み込みが遅い/止まっている
+ * 場合に検査自体が止まらないようにする保険で、実測はほぼ即座に解決する想定 */
+const IMAGE_SETTLE_TIMEOUT_MS = 2000
+
+/**
+ * section 内の `<img>` がすべて読み込み確定（成功/失敗問わず）するまで待つ。
+ * `FallbackImage`（`src/components/FallbackImage.tsx`）は読み込み確定まで `<img>` を `display:none` にし、
+ * 確定後に実寸の `<img>` またはエラー用プレースホルダへ切り替える。読み込み確定前に実測すると、画像を
+ * 含む figure/grid 等のレイアウトが最終形と異なり得るため、getVisualCheckWarnings を呼ぶ前に必ず待つ。
+ */
+export function waitForImagesToSettle(section: HTMLElement): Promise<void> {
+  const pending = Array.from(section.querySelectorAll('img')).filter((img) => !img.complete)
+  if (pending.length === 0) return Promise.resolve()
+
+  const settled = Promise.all(
+    pending.map(
+      (img) =>
+        new Promise<void>((resolve) => {
+          img.addEventListener('load', () => resolve(), { once: true })
+          img.addEventListener('error', () => resolve(), { once: true })
+        }),
+    ),
+  ).then(() => undefined)
+
+  return Promise.race([settled, new Promise<void>((resolve) => setTimeout(resolve, IMAGE_SETTLE_TIMEOUT_MS))])
+}
+
 /**
  * scripts/screenshot/inspect-reference-deck.mjs（CI の見本デッキ全枚数検査）が Playwright の
  * page.evaluate 経由で同じ検出ロジックを呼び出すための公開口（#209）。screenshot モード
@@ -144,5 +171,7 @@ export function getVisualCheckWarnings(section: HTMLElement): string[] {
  * （src/__screenshot__/ の Tauri IPC モックと同じ「screenshot モード限定で window に生やす」規約）。
  */
 if (import.meta.env.MODE === 'screenshot') {
-  ;(window as unknown as { __VISUAL_CHECK__?: typeof getVisualCheckWarnings }).__VISUAL_CHECK__ = getVisualCheckWarnings
+  const bridge = window as unknown as { __VISUAL_CHECK__?: typeof getVisualCheckWarnings; __VISUAL_CHECK_WAIT_IMAGES__?: typeof waitForImagesToSettle }
+  bridge.__VISUAL_CHECK__ = getVisualCheckWarnings
+  bridge.__VISUAL_CHECK_WAIT_IMAGES__ = waitForImagesToSettle
 }
