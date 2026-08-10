@@ -93,23 +93,30 @@ npm run build:addons
 
 ## 意匠トークン
 
-スライドのコンポーネントは、角丸・境界線幅・アクセント幅・影の不透明度・表のゼブラ濃度をハードコードしてはいけません。代わりに下記の CSS 変数を参照してください。これらは `src/styles/global.css` で宣言され、デッキごとに `theme.tokens` から上書きできます。ハードコードするとブランドテーマに追従できず、色だけ合わせても「自社のものに見えない」原因になります。
+スライドのコンポーネントは、角丸・境界線幅・装飾線の太さ・アクセント幅・影の不透明度・表のゼブラ濃度をハードコードしてはいけません。代わりに下記の CSS 変数を参照してください。これらは `src/styles/global.css` で宣言され、デッキごとに `theme.tokens` から上書きできます。ハードコードするとブランドテーマに追従できず、色だけ合わせても「自社のものに見えない」原因になります。
 
-| トークン                     | 既定値  | 制御する対象                                                                     |
-|------------------------------|---------|----------------------------------------------------------------------------------|
-| `--theme-radius-sm`          | `8px`   | パネルと小さな chrome（`CodeBlockPanel`・インライン `code`・Reveal のスライド番号） |
-| `--theme-radius-md`          | `12px`  | 中間サイズの面とカード内側のネスト要素（`QrCodeCard`・タイルのアイコンチップ）      |
-| `--theme-radius-lg`          | `16px`  | カード（`MuiCard` = `FeatureTileGrid` のタイル）                                  |
-| `--theme-border-width`       | `1px`   | カード・パネルのヘアライン境界線。太いアクセント線はコンポーネント固有値のまま      |
-| `--theme-card-accent-width`  | `0px`   | カード内側（左端）のアクセントバー幅。`0` は「バーなし」＝現行の見た目             |
-| `--theme-shadow-strength`    | `1`     | 影の不透明度に掛ける倍率。`0` で影なし、`2` で倍の濃さ                            |
-| `--theme-zebra-opacity`      | `0.04`  | 表の偶数行に敷く背景の alpha 値                                                   |
+| トークン                       | 既定値  | 制御する対象                                                                     |
+|--------------------------------|---------|----------------------------------------------------------------------------------|
+| `--theme-radius-sm`            | `8px`   | パネルと小さな chrome（`CodeBlockPanel`・インライン `code`・Reveal のスライド番号） |
+| `--theme-radius-md`            | `12px`  | 中間サイズの面とカード内側のネスト要素（`QrCodeCard`・タイルのアイコンチップ）      |
+| `--theme-radius-lg`            | `16px`  | カード（`MuiCard` = `FeatureTileGrid` のタイル）                                  |
+| `--theme-border-width`         | `1px`   | カード・パネルのヘアライン境界線（装飾的な太線は下記の専用トークンで制御します）    |
+| `--theme-heading-accent-width` | `6px`   | スライド見出し（`.slide-title`）左端のアクセントバーの太さ                        |
+| `--theme-frame-rule-width`     | `4px`   | スライド上端に走るブランド帯の太さ（`.slide-container::before`）                  |
+| `--theme-rule-width`           | `4px`   | 本文中の装飾的な区切り線の太さ（`Timeline` を貫く水平線）                         |
+| `--theme-node-ring-width`      | `3px`   | 番号バッジ（`TimelineNode`）を囲むリングの太さ                                    |
+| `--theme-card-accent-width`    | `0px`   | カード内側（左端）のアクセントバー幅。`0` は「バーなし」＝現行の見た目             |
+| `--theme-shadow-strength`      | `1`     | 影の不透明度に掛ける倍率。`0` で影なし、`2` で倍の濃さ                            |
+| `--theme-zebra-opacity`        | `0.04`  | 表の偶数行に敷く背景の alpha 値                                                   |
+
+装飾線の 4 トークンを別軸に分けているのは、企業テンプレートがそれぞれ独立に太さを変えるためです。見出しの縦アクセントはタイポグラフィの一部、上端の帯はスライドフレームの意匠、本文の区切り線はコンテンツ階層の仕切りであり、バッジを囲むリングは横断線と同じ太さにすると内側の面積が減って数字が読めなくなります。**ヘアライン用の `--theme-border-width` にこれらを押し込まないでください**（そちらは 1px の細線の軸です）。
 
 参照の規則:
 
-- 角丸と境界線幅はプロパティへ直接指定します: `border-radius: var(--theme-radius-md)` / `border: var(--theme-border-width) solid var(--theme-border)`
+- 角丸・境界線幅・装飾線の太さはプロパティへ直接指定します: `border-radius: var(--theme-radius-md)` / `border: var(--theme-border-width) solid var(--theme-border)` / `height: var(--theme-rule-width)`
 - 影の強さは倍率なので、コンポーネント固有の alpha を残したまま掛けます: `box-shadow: 0 2px 8px rgba(0, 0, 0, calc(0.04 * var(--theme-shadow-strength)))`。各影の相対的な深さを保ったまま、テーマ側の1つのつまみで全体を強弱できます
 - `--theme-card-accent-width` の既定値は `0` なので、バーは `border-left` ではなく擬似要素で描きます（`0px` の border はその辺のヘアライン境界線を食い潰してしまいます）
+- スライド上端の帯は `global.css` に 2 箇所あります（`.slides .slide-container::before` と、Reveal.js 自身のスタイルに勝つための詳細度の高い `.reveal .slides section.slide-container::before`）。**両方が `--theme-frame-rule-width` を参照していないと詳細度の高いほうが勝ってトークンが効きません**
 - 意図的にテーマ非依存の見た目を持つコンポーネント（ターミナル色をハードコードしている `TerminalAnimation`）と、フォールバック・エラー表示 UI（`FallbackImage`・未解決コンポーネントのプレースホルダ）は、意図的にこの仕組みの対象外です
 
 デッキの `theme.tokens` からの上書き: キーは `--` を除いた CSS 変数名、スコープキーは `masterKey`（`section[data-master="<key>"]` として出力）または `"*"`（デッキ全体。`:root` として出力）です。両方に同じ変数があれば `masterKey` スコープが勝ちます。
@@ -118,7 +125,7 @@ npm run build:addons
 {
   "theme": {
     "tokens": {
-      "*": { "theme-radius-lg": "4px", "theme-border-width": "2px", "theme-card-accent-width": "6px" },
+      "*": { "theme-radius-lg": "4px", "theme-border-width": "2px", "theme-heading-accent-width": "10px", "theme-card-accent-width": "6px" },
       "standard": { "theme-shadow-strength": "0" }
     }
   }
