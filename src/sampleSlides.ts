@@ -79,16 +79,30 @@ export async function getSampleSources(locale: string): Promise<SampleSource[]> 
 }
 
 /**
+ * 取得先にアプリの表示言語を明示するクエリを付ける（純粋関数）。
+ *
+ * 同梱 slides.json は単一ファイルなのでクエリは無視されるが、ロケール別に出し分ける配信元
+ * （dev サーバーの devSampleSlidesPlugin・screenshot モードの screenshotFixturePlugin。vite.config.ts）は
+ * これが無いと Accept-Language（= OS/ブラウザの言語）しか手掛かりが無く、アプリ内で選んだ言語を無視してしまう。
+ */
+export function withLocaleQuery(path: string, locale: string): string {
+  return `${path}${path.includes('?') ? '&' : '?'}locale=${encodeURIComponent(locale)}`
+}
+
+/**
  * ビルド時に同梱された slides.json を読む（VITE_SLIDE_PACKAGE による同梱・スクリーンショット用 fixture・dev の samples 配信）。
  *
  * Vite の dev サーバーは存在しないパスにも SPA フォールバックで 200 + index.html を返すため、
  * res.ok だけでは判定できない。content-type とスキーマの両方を検証してから採用する。
  * VITE_SAMPLE_SOURCE=remote を指定すると同梱を無視し、リモート取得の経路を実機で確認できる。
+ *
+ * locale は (2) のリモート取得（getSampleSources）と同じく**アプリ内で選択中の言語**を渡す。
+ * 取得先がロケール別に出し分ける配信元の場合に効く（withLocaleQuery）。
  */
-export async function loadBundledSampleSlides(): Promise<PresentationData | null> {
+export async function loadBundledSampleSlides(locale: string): Promise<PresentationData | null> {
   if (import.meta.env.VITE_SAMPLE_SOURCE === 'remote') return null
   try {
-    const res = await fetch(import.meta.env.VITE_SLIDES_PATH || '/slides.json')
+    const res = await fetch(withLocaleQuery(import.meta.env.VITE_SLIDES_PATH || '/slides.json', locale))
     if (!res.ok) return null
     if (!(res.headers.get('content-type') ?? '').includes('json')) return null
     const parsed: unknown = await res.json()

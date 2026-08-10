@@ -201,6 +201,19 @@ function slideContentPlugin(): Plugin {
 }
 
 /**
+ * リクエストが求めるロケールを小文字で返す（ロケール別に出し分ける2つの配信元が共有する）。
+ *
+ * アプリが URL に明示するロケール（`?locale=fr-FR`。`src/sampleSlides.ts` の `withLocaleQuery`）を優先する。
+ * Accept-Language は OS/ブラウザの言語であり、アプリ内の言語設定（設定ダイアログ・localStorage）とは
+ * 一致しないため、それだけを見るとフランス語設定なのに日本語サンプルを返してしまう。
+ * クエリが無いリクエスト（直接 URL を叩いた場合など）は従来どおり Accept-Language にフォールバックする。
+ */
+function requestedLocale(query: string | undefined, acceptLanguage: string | undefined): string {
+  const fromQuery = new URLSearchParams(query ?? '').get('locale')
+  return (fromQuery ?? acceptLanguage ?? '').toLowerCase().split(',')[0]
+}
+
+/**
  * screenshot モード専用: ロケール別 fixture を配信する（Accept-Language で出し分け）。
  * URL の `/<name>.json` から `scripts/screenshot/fixtures/<name>.<lang>.json` を機械的に解決する。
  * `/slides.json` は README 撮影用の代表デッキ、`/reference-deck.json` は全レイアウト種別を
@@ -215,11 +228,13 @@ function screenshotFixturePlugin(): Plugin {
     name: 'screenshot-fixture',
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
-        const url = (req.url ?? '/').split('?')[0]
-        const match = /^\/([\w-]+)\.json$/.exec(url)
+        const [path, query] = (req.url ?? '/').split('?')
+        const match = /^\/([\w-]+)\.json$/.exec(path)
         if (!match) return next()
-        // Accept-Language（Playwright の context locale が設定する）が ja で始まれば日本語、それ以外は英語 fixture
-        const lang = (req.headers['accept-language'] ?? '').toLowerCase().startsWith('ja') ? 'ja' : 'en'
+        // アプリが明示するロケール（?locale=…。src/sampleSlides.ts の withLocaleQuery）を優先し、
+        // 無い場合だけ Accept-Language（Playwright の context locale が設定する）に頼る。
+        // ja で始まれば日本語、それ以外は英語 fixture
+        const lang = requestedLocale(query, req.headers['accept-language']).startsWith('ja') ? 'ja' : 'en'
         const fixture = fixtureFor(match[1], lang)
         if (!existsSync(fixture)) return next()
         res.setHeader('Content-Type', 'application/json')
@@ -262,7 +277,7 @@ function devSampleSlidesPlugin(): Plugin {
       }
 
       server.middlewares.use((req, res, next) => {
-        const url = (req.url ?? '/').split('?')[0]
+        const [url, query] = (req.url ?? '/').split('?')
 
         // サンプルが参照する音声（voice/xxx.wav）。実行時は baseDir 基準で解決されるパス
         if (url.startsWith('/voice/')) {
@@ -278,7 +293,9 @@ function devSampleSlidesPlugin(): Plugin {
         // public/slides.json（Vite の静的配信）や VITE_SLIDE_PACKAGE（slideContentPlugin）を上書きしない
         if (existsSync(resolve(__dirname, 'public/slides.json'))) return next()
 
-        const lang = (req.headers['accept-language'] ?? '').toLowerCase().split(',')[0].split('-')[0]
+        // アプリ内で選択中の言語（?locale=…）を優先する。src/sampleSlides.ts の resolveSamplePackageName と
+        // 同じ規則（言語コードで照合し、サンプルが無いロケールは fallbackLocale）でパッケージを選ぶ
+        const lang = requestedLocale(query, req.headers['accept-language']).split('-')[0]
         const pkg = manifest.packages.find((p) => p.locale === lang) ?? manifest.packages.find((p) => p.locale === manifest.fallbackLocale)
         const filePath = pkg && resolve(sourceDir, pkg.slides)
         if (!filePath || !existsSync(filePath)) return next()

@@ -445,17 +445,15 @@
         "right": {
           "heading": "テーマ設定の2つの方法",
           "items": [
-            {"text": "方法1:", "emphasis": true, "description": " slides.json の theme フィールド（色・フォント・customCSS）"},
+            {"text": "方法1:", "emphasis": true, "description": " slides.json の theme フィールド"},
             {"text": "方法2:", "emphasis": true, "description": " public/theme-colors.json（色のみ）"},
-            {"text": "meta.themeColors:", "emphasis": true, "description": " slides.json の meta 内で色を指定（方法1と同等）"}
+            {"text": "meta.themeColors:", "emphasis": true, "description": " meta 内で色指定（方法1と同等）"}
           ],
           "codeBlock": {
             "header": "> theme-colors.json（方法2）",
             "items": [
               "{",
-              "\u00a0\u00a0\"primary\": \"#6c63ff\",",
-              "\u00a0\u00a0\"background\": \"#0f0e17\",",
-              "\u00a0\u00a0\"surface\": \"#1a1a2e\"",
+              "\u00a0\u00a0\"primary\": \"#6c63ff\", ...",
               "}"
             ]
           },

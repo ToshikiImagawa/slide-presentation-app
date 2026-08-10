@@ -38,10 +38,19 @@ function fillSlideIndex(projectName: string, slideId: string): number {
   return index
 }
 
-/** サンプルの取得先を基準見本デッキへ差し替える（Accept-Language はそのまま転送されるのでロケール別 fixture が選ばれる） */
+/**
+ * サンプルの取得先を基準見本デッキへ差し替える。
+ *
+ * アプリは取得先に `?locale=…` を付ける（`src/sampleSlides.ts` の `withLocaleQuery`）ため、
+ * パターンは**クエリを含む URL に一致する `*` 付き**にしなければならない（付け忘れると差し替えが
+ * 効かず、対象スライドが存在しないデッキが開いて hash ナビが timeout する）。
+ * ロケール別 fixture の選択もそのクエリで決まるので、差し替え先の URL へ引き継ぐ。
+ */
 async function useReferenceDeck(page: Page, baseURL: string): Promise<void> {
-  await page.route('**/slides.json', async (route) => {
-    const response = await route.fetch({ url: new URL('/reference-deck.json', baseURL).toString() })
+  await page.route('**/slides.json*', async (route) => {
+    const target = new URL('/reference-deck.json', baseURL)
+    target.search = new URL(route.request().url()).search
+    const response = await route.fetch({ url: target.toString() })
     await route.fulfill({ response })
   })
 }

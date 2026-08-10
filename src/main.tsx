@@ -212,7 +212,7 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
     clearPackageAddons()
 
     // (1) VITE_SLIDE_PACKAGE による同梱・スクリーンショット fixture・dev の samples 配信
-    const bundled = await loadBundledSampleSlides()
+    const bundled = await loadBundledSampleSlides(locale)
     if (bundled) {
       // 同梱データは相対パスのまま。baseDir は無い（アセットは app 配下で解決される）
       setEditSource({ rawText: serializeSlides(bundled), baseDir: '', sourcePath: undefined })

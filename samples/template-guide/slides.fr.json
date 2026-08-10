@@ -445,17 +445,15 @@
         "right": {
           "heading": "Deux façons de définir le thème",
           "items": [
-            {"text": "Méthode 1 :", "emphasis": true, "description": " champ theme de slides.json (colors, fonts, customCSS)"},
+            {"text": "Méthode 1 :", "emphasis": true, "description": " champ theme de slides.json"},
             {"text": "Méthode 2 :", "emphasis": true, "description": " public/theme-colors.json (couleurs)"},
-            {"text": "meta.themeColors:", "emphasis": true, "description": " indiquer les couleurs dans meta de slides.json (équivalent à la méthode 1)"}
+            {"text": "meta.themeColors:", "emphasis": true, "description": " couleurs dans meta (comme la méthode 1)"}
           ],
           "codeBlock": {
             "header": "> theme-colors.json (méthode 2)",
             "items": [
               "{",
-              "\u00a0\u00a0\"primary\": \"#6c63ff\",",
-              "\u00a0\u00a0\"background\": \"#0f0e17\",",
-              "\u00a0\u00a0\"surface\": \"#1a1a2e\"",
+              "\u00a0\u00a0\"primary\": \"#6c63ff\", ...",
               "}"
             ]
           },

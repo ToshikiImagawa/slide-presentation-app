@@ -45,7 +45,7 @@ npm run generate-docs              # README.md / CHANGELOG.md を PDF 化（docs
 スクリーンショット撮影の仕組み:
 
 - `vite --mode screenshot` を起動し、Tauri IPC を `src/__screenshot__/`（`tauri-store` / `tauri-event` / `tauri-webview`）へ **Vite alias で差し替え**て素のブラウザで boot させる（本番ビルドには非混入。`@tauri-apps/api/core` は実物の plugin-fs/dialog が依存するため alias しない）。
-- スライド内容はロケール別 fixture `scripts/screenshot/fixtures/slides.{ja,en}.json` を `/slides.json` として配信する（`Accept-Language` で出し分け）。基準見本デッキ用の `reference-deck.{ja,en}.json` は同じ仕組みで `/reference-deck.json` として配信され、`VITE_SLIDES_PATH`（`src/sampleSlides.ts` の `loadBundledSampleSlides` が読む既存の env var）でホーム画面「サンプルを開く」の取得先をそちらに切り替える。
+- スライド内容はロケール別 fixture `scripts/screenshot/fixtures/slides.{ja,en}.json` を `/slides.json` として配信する（**アプリが付ける `?locale=…` を優先し、無い場合だけ `Accept-Language`** で出し分け。`requestedLocale`）。基準見本デッキ用の `reference-deck.{ja,en}.json` は同じ仕組みで `/reference-deck.json` として配信され、`VITE_SLIDES_PATH`（`src/sampleSlides.ts` の `loadBundledSampleSlides` が読む既存の env var）でホーム画面「サンプルを開く」の取得先をそちらに切り替える。
 - Playwright **WebKit** で撮影し、`scripts/screenshot/chrome.mjs` が macOS ウィンドウ枠を合成。**en / ja の 2 ロケール**で撮影し、`resources/screenshots/en/`・`resources/screenshots/ja/` に出力する（Playwright の context `locale` で UI 言語と fixture を切り替え）。
 - シナリオは `scripts/screenshot/scenarios.mjs`（`home` / `presentation` / `toolbar` / `settings` / `shortcuts` / `edit` / `presenter-view` / `layout-*` / `logo`）。撮影キーは `VIEWPORTS`（`viewports.mjs`）にも同名で登録が必要。待受は `data-testid` で行うため、新シナリオが UI に到達できないときはコンポーネント側に testid を足す。README 用スクリーンショット（`generate-screenshots`）の回帰検知は **git 差分ベース**（閾値自動判定はしない）。基準見本デッキ（`reference-deck:screenshots`）は上記の `reference-deck:diff` を使う。
 - **日本語フォント・WebKit 描画差のため macOS で実行する**（CI は `.github/workflows/screenshots.yml` の macOS ランナー・手動 dispatch）。
@@ -98,6 +98,7 @@ main.tsx
 - `samples/manifest.json` がロケール → パッケージ名の**単一真実源**。アプリ（`src/sampleSlides.ts`）とビルド（`scripts/export-samples.mjs`）の双方が読む。アセット名にバージョンを含めない（`latest/download/` では URL を確定できないため）
 - アプリに残るのは最小フォールバック 2 つ（`src/data/loader.ts`）。用途を分けている: `getFallbackPresentationData`（データ不正時）と `getSampleUnavailablePresentationData`（取得失敗時）
 - `vite.config.ts` の `devSampleSlidesPlugin` が dev サーバー限定（`apply: 'serve'`）で `samples/` を `/slides.json`・`/voice/*` として配信する（本番出力には混入しない）
+- **ロケールはアプリが URL に明示する（`?locale=…`。`src/sampleSlides.ts` の `withLocaleQuery`）**。`Accept-Language` は OS/ブラウザの言語であり、アプリ内の言語設定（設定ダイアログ・localStorage）とは一致しないため、それだけを見ると「フランス語設定なのに日本語サンプルが出る」ことになる。ロケール別に出し分ける2つの配信元（`devSampleSlidesPlugin` / `screenshotFixturePlugin`）は共通の `requestedLocale` でクエリを優先し、無い場合だけ `Accept-Language` にフォールバックする。リモート取得（`getSampleSources`）も同じアプリ内 locale を使う
 
 ### コンポーネントシステム
 

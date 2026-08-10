@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 const h = vi.hoisted(() => ({ getVersion: vi.fn() }))
 vi.mock('@tauri-apps/api/app', () => ({ getVersion: h.getVersion }))
 
-import { getSampleSources, loadBundledSampleSlides, resolveSamplePackageName } from '../sampleSlides'
+import { getSampleSources, loadBundledSampleSlides, resolveSamplePackageName, withLocaleQuery } from '../sampleSlides'
 
 const VALID_DATA = { meta: { title: 'Bundled Deck' }, slides: [{ id: 's1', layout: 'center', content: { title: 'Hello' } }] }
 
@@ -83,6 +83,13 @@ describe('getSampleSources', () => {
   })
 })
 
+describe('withLocaleQuery', () => {
+  it('クエリの有無に応じて locale を付ける', () => {
+    expect(withLocaleQuery('/slides.json', 'fr-FR')).toBe('/slides.json?locale=fr-FR')
+    expect(withLocaleQuery('/reference-deck.json?x=1', 'ja-JP')).toBe('/reference-deck.json?x=1&locale=ja-JP')
+  })
+})
+
 describe('loadBundledSampleSlides', () => {
   afterEach(() => {
     vi.unstubAllEnvs()
@@ -92,27 +99,36 @@ describe('loadBundledSampleSlides', () => {
   it('同梱 slides.json が妥当なら採用する', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(VALID_DATA)))
 
-    expect((await loadBundledSampleSlides())?.meta.title).toBe('Bundled Deck')
+    expect((await loadBundledSampleSlides('ja-JP'))?.meta.title).toBe('Bundled Deck')
+  })
+
+  it('取得先にアプリ内で選択中の言語を明示する（ロケール別に出し分ける配信元のため）', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(VALID_DATA))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await loadBundledSampleSlides('fr-FR')
+
+    expect(fetchMock).toHaveBeenCalledWith('/slides.json?locale=fr-FR')
   })
 
   it('dev サーバーの SPA フォールバック（200 + HTML）を同梱扱いしない', async () => {
     // Vite は存在しないパスにも accept: */* で index.html を 200 で返すため、content-type で弾く必要がある
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse('<!doctype html>', { contentType: 'text/html' })))
 
-    expect(await loadBundledSampleSlides()).toBeNull()
+    expect(await loadBundledSampleSlides('ja-JP')).toBeNull()
   })
 
   it('404 の場合は null を返す', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(null, { ok: false })))
 
-    expect(await loadBundledSampleSlides()).toBeNull()
+    expect(await loadBundledSampleSlides('ja-JP')).toBeNull()
   })
 
   it('JSON でもスキーマが不正なら採用しない（リモート取得へ進ませる）', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({ meta: {}, slides: [] })))
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
-    expect(await loadBundledSampleSlides()).toBeNull()
+    expect(await loadBundledSampleSlides('ja-JP')).toBeNull()
     expect(errorSpy).toHaveBeenCalled()
     errorSpy.mockRestore()
   })
@@ -120,7 +136,7 @@ describe('loadBundledSampleSlides', () => {
   it('fetch が例外を投げた場合も null を返す', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network down')))
 
-    expect(await loadBundledSampleSlides()).toBeNull()
+    expect(await loadBundledSampleSlides('ja-JP')).toBeNull()
   })
 
   it('VITE_SAMPLE_SOURCE=remote のときは同梱を無視してリモート取得へ進む', async () => {
@@ -128,7 +144,7 @@ describe('loadBundledSampleSlides', () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse(VALID_DATA))
     vi.stubGlobal('fetch', fetchMock)
 
-    expect(await loadBundledSampleSlides()).toBeNull()
+    expect(await loadBundledSampleSlides('ja-JP')).toBeNull()
     expect(fetchMock).not.toHaveBeenCalled()
   })
 })
