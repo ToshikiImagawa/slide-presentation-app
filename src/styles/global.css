@@ -263,6 +263,7 @@ body {
 .reveal .slides section.present .content-area,
 .reveal .slides section.present .title-layout,
 .reveal .slides section.present .section-title-layout,
+.reveal .slides section.present .message-layout,
 .reveal .slides section.present .bleed-content {
   animation: fadeInUp 0.6s ease-out both;
 }
@@ -377,6 +378,19 @@ code {
   justify-content: center;
   align-items: center;
   height: 100%;
+}
+
+/* 1枚1メッセージ（引用・大メッセージ・締め・#197）。タイトルバーを持たず、中身を中央の主役として置く。
+   背景は塗らない（全面塗りはマスター側の責務。MessageLayout のコメント参照） */
+.message-layout {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 32px;
+  height: 100%;
+  max-width: 1000px;
 }
 
 /* Slide Title */

@@ -3,6 +3,29 @@
     "title": "Reference Deck",
     "description": "A development/verification deck listing one slide per layout type (separate from distribution samples; used to detect regressions when swapping themes)"
   },
+  "theme": {
+    "masters": {
+      "messageInverse": { "background": { "type": "fill", "color": "#f8fafc" }, "decorations": [] },
+      "closing": {
+        "background": { "type": "fill", "color": "#f8fafc" },
+        "decorations": [
+          {
+            "type": "logo",
+            "anchor": "bottom-center",
+            "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0ODAgMjAwIiB3aWR0aD0iNDgwIiBoZWlnaHQ9IjIwMCI+PGcgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMGYxNzJhIiBzdHJva2Utd2lkdGg9IjEwIj48cmVjdCB4PSIyMCIgeT0iMjAiIHdpZHRoPSI0NDAiIGhlaWdodD0iMTYwIiByeD0iMjQiLz48Y2lyY2xlIGN4PSIxMzAiIGN5PSIxMDAiIHI9IjQ2Ii8+PHBhdGggZD0iTTIxMCAxNDAgTDI2MCA2MCBMMzEwIDE0MCIvPjxwYXRoIGQ9Ik0zNDAgNjAgTDM0MCAxNDAgTDQxMCAxNDAiLz48L2c+PC9zdmc+",
+            "width": 300,
+            "height": 125,
+            "opacity": 0.9
+          }
+        ]
+      }
+    },
+    "masterMap": { "center/message-inverse": "messageInverse", "center/closing": "closing" },
+    "tokens": {
+      "messageInverse": { "theme-text-body": "#0f172a", "theme-text-muted": "#475569" },
+      "closing": { "theme-text-body": "#0f172a", "theme-text-muted": "#475569", "theme-primary": "#0f766e" }
+    }
+  },
   "slides": [
     {
       "id": "layout-center",
@@ -368,6 +391,43 @@
             }
           }
         }
+      }
+    },
+    {
+      "id": "layout-center-quote",
+      "layout": "center",
+      "content": {
+        "variant": "quote",
+        "quote": "Never bend the design\nto save implementation effort",
+        "citation": "Design decision rules"
+      }
+    },
+    {
+      "id": "layout-center-message",
+      "layout": "center",
+      "content": {
+        "variant": "message",
+        "message": "One message per slide",
+        "body": "The pale variant, used to switch chapters"
+      }
+    },
+    {
+      "id": "layout-center-message-inverse",
+      "layout": "center",
+      "content": {
+        "variant": "message-inverse",
+        "message": "Fill the slide\nto land the point",
+        "body": "The fill and text colors live in the master and its tokens"
+      }
+    },
+    {
+      "id": "layout-center-closing",
+      "layout": "center",
+      "content": {
+        "variant": "closing",
+        "message": "Thank you",
+        "body": "Closing on a full-bleed fill with the logo behind it",
+        "githubRepo": "ToshikiImagawa/slide-presentation-app"
       }
     }
   ]

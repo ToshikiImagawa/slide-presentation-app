@@ -1,0 +1,39 @@
+/* 引用スライド（#197）。大きな引用符・引用文・出典を縦に積む。
+   文字色は theme.colors / theme.tokens で明示される変数だけを使う（マスターの全面塗り背景と
+   組み合わせたときも getThemeWarnings のコントラスト検証が効く組にする・#209） */
+.quote {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+/* 装飾としての引用符。文字色ではなくアクセントなので primary から引く */
+.mark {
+  font-family: var(--theme-font-heading);
+  font-size: 96px;
+  font-weight: 700;
+  line-height: 0.7;
+  color: var(--theme-primary);
+}
+
+.text {
+  margin: 0;
+  font-family: var(--theme-font-heading);
+  font-size: var(--theme-font-size-h2);
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--theme-text-body);
+}
+
+.citation {
+  font-family: var(--theme-font-body);
+  font-size: var(--theme-font-size-subtitle1);
+  color: var(--theme-text-muted);
+}
+
+/* 出典の前に付ける区切り（"— 出典" の体裁）。テキストとして書かず装飾で持つ */
+.citation::before {
+  content: '— ';
+}

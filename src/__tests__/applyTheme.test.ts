@@ -932,6 +932,18 @@ describe('getThemeWarnings', () => {
       expect(getThemeWarnings(theme)).toEqual([])
     })
 
+    // #197: 全面塗り背景の上には本文（大メッセージ）だけでなく出典・補足（textMuted）も載る
+    it('masters の全面塗り背景は本文色以外の文字色（textMuted 等）も検証する', () => {
+      const theme = {
+        tokens: { inverse: { 'theme-text-body': '#ffffff', 'theme-text-muted': '#4a4a4a' } },
+        masters: { inverse: { decorations: [], background: { type: 'fill' as const, color: '#1f2430' } } },
+      }
+      const warnings = getThemeWarnings(theme)
+      // 本文色（白）は AA 達成、補足色（暗いグレー）は暗い塗りの上で AA 未達
+      expect(warnings.some((w) => w.includes('theme.masters.inverse.background') && w.includes('textMuted'))).toBe(true)
+      expect(warnings.some((w) => w.includes('theme.masters.inverse.background') && w.includes('textBody'))).toBe(false)
+    })
+
     it('masters 背景の検証は tokens の上書きを theme.colors より優先する', () => {
       const theme = {
         colors: { textBody: '#ffffff' },

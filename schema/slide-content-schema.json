@@ -2,14 +2,21 @@
   "_comment": "slides.json のレイアウト別 content 構造の単一ソース。AI生成プロンプト（src-tauri/src/generation/mod.rs の system_prompt）と生成専用の厳格チェック（src/data/slideContentSchema.ts）の両方がこのファイルを参照する。人間向けの詳細例は .claude/skills/create-slides/LAYOUT_REFERENCE.md を参照（このファイルと同期させること）。",
   "layouts": {
     "center": {
-      "description": "タイトル・まとめ用の中央寄せレイアウト。variant: \"section\" を指定すると SectionLayout に切り替わる",
+      "description": "タイトルバーを持たない中央寄せレイアウト。variant 無指定は表紙・まとめ（title＋subtitle）で、variant で章扉（section）・引用（quote）・大メッセージ（message / message-inverse）・締め（closing）に切り替わる。1枚1メッセージの種別は章の切り替えや結びに使い、本文を詰め込まない（#197）",
       "contentFields": {
         "title": { "type": "string" },
         "subtitle": { "type": "string", "description": "サブタイトル（改行は \\n）" },
-        "variant": { "type": "string", "enum": ["section"] },
-        "body": { "type": "string", "description": "variant=section 時の本文（改行は \\n）" },
-        "qrCode": { "type": "string", "description": "variant=section 時のQRコード対象URL" },
-        "githubRepo": { "type": "string", "description": "variant=section 時の owner/repo 表記" }
+        "variant": {
+          "type": "string",
+          "enum": ["section", "quote", "message", "message-inverse", "closing"],
+          "description": "section=章扉 / quote=引用（大きな引用符＋引用文＋出典）/ message=大メッセージ（淡色地。デッキ既定の背景に短い主張）/ message-inverse=大メッセージの全面塗り（背景と文字色はテーマの masters[].background と tokens が持つ。両者のコントラストは自動検証される）/ closing=締め（結びの一言に連絡先を添える。マスターの全面塗り・ロゴの全面配置と組み合わせる）"
+        },
+        "quote": { "type": "string", "description": "variant=quote 時の引用文（改行は \\n）。引用符は装飾として自動で付くので本文に書かない" },
+        "citation": { "type": "string", "description": "variant=quote 時の出典（人名・書名等）。区切りの \"—\" は装飾として自動で付く" },
+        "message": { "type": "string", "description": "variant=message / message-inverse / closing 時の主張・結びの文（改行は \\n）。全画面に1つだけ置くので短くする" },
+        "body": { "type": "string", "description": "variant=section 時の本文、variant=message / message-inverse / closing 時の補足（いずれも改行は \\n）" },
+        "qrCode": { "type": "string", "description": "variant=section / closing 時のQRコード対象URL" },
+        "githubRepo": { "type": "string", "description": "variant=section / closing 時の owner/repo 表記" }
       }
     },
     "content": {

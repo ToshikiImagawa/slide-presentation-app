@@ -686,6 +686,81 @@ describe('SlideRenderer', () => {
     })
   })
 
+  // #197: 引用・大メッセージ・締め（1枚1メッセージ）。center の variant として MessageLayout を共有し、
+  // タイトルバー（.slide-title）を持たない。余白は SlideFrame の .master-body が持つため、
+  // 本編・発表者ビュー・編集プレビュー・PDF書き出しの4経路で同じ見た目になる
+  describe('centerスライドの1枚1メッセージ variant（引用・大メッセージ・締め）', () => {
+    function renderCenter(content: SlideData['content'], theme?: ThemeData) {
+      return renderWithTheme(<SlideRenderer slides={[{ id: 'test-message', layout: 'center', content }]} theme={theme} />)
+    }
+
+    const messageVariants = ['quote', 'message', 'message-inverse', 'closing'] as const
+
+    it.each(messageVariants)('variant: %s はタイトルバーを持たず、.master-body 直下の .message-layout に中身を置く', (variant) => {
+      const { container } = renderCenter({ variant, title: '使われないタイトル', quote: '引用文', message: '主張' })
+      expect(container.querySelector('.slide-title')).toBeNull()
+      const messageLayout = container.querySelector('.message-layout')
+      expect(messageLayout).not.toBeNull()
+      expect(messageLayout!.parentElement!.classList.contains('master-body')).toBe(true)
+    })
+
+    it('引用（quote）は引用文と出典を描画する', () => {
+      const { container, getByTestId } = renderCenter({ variant: 'quote', quote: '設計は削ることで決まる', citation: '架空の設計者' })
+      expect(getByTestId('quote')).not.toBeNull()
+      expect(container.querySelector('blockquote')!.textContent).toBe('設計は削ることで決まる')
+      expect(container.querySelector('cite')!.textContent).toBe('架空の設計者')
+    })
+
+    it('引用（quote）は出典を省略できる', () => {
+      const { container } = renderCenter({ variant: 'quote', quote: '出典のない引用' })
+      expect(container.querySelector('blockquote')!.textContent).toBe('出典のない引用')
+      expect(container.querySelector('cite')).toBeNull()
+    })
+
+    it('大メッセージ（message）は主張と補足を描画する', () => {
+      const { container, getByTestId } = renderCenter({ variant: 'message', message: '1枚に1メッセージ', body: '詰め込まない' })
+      expect(getByTestId('big-message')).not.toBeNull()
+      expect(container.textContent).toContain('1枚に1メッセージ')
+      expect(container.textContent).toContain('詰め込まない')
+    })
+
+    it('全面塗り（message-inverse）は淡色地（message）と同じ中身を描き、塗りはマスターに委ねる', () => {
+      const content: SlideData['content'] = { message: '全面塗りの主張' }
+      const pale = renderCenter({ ...content, variant: 'message' }).container.querySelector('.message-layout')!.innerHTML
+      const inverse = renderCenter({ ...content, variant: 'message-inverse' }).container.querySelector('.message-layout')!.innerHTML
+      expect(inverse).toBe(pale)
+    })
+
+    it('全面塗り（message-inverse）は masterMap["center/message-inverse"] からマスターを解決する', () => {
+      const theme: ThemeData = {
+        masters: { inverse: { background: { type: 'fill', color: '#1f2430' }, decorations: [] } },
+        masterMap: { 'center/message-inverse': 'inverse' },
+        tokens: { inverse: { 'theme-text-body': '#ffffff' } },
+      }
+      const { container } = renderCenter({ variant: 'message-inverse', message: '全面塗りの主張' }, theme)
+      expect(container.querySelector('section.slide-container')!.getAttribute('data-master')).toBe('inverse')
+    })
+
+    it('締め（closing）は結びの一言に QR コードとリポジトリを添える', () => {
+      const { container, getByTestId } = renderCenter({ variant: 'closing', message: 'ありがとうございました', qrCode: 'https://example.com/', githubRepo: 'owner/repo' })
+      expect(getByTestId('big-message')).not.toBeNull()
+      expect(container.textContent).toContain('ありがとうございました')
+      expect(container.textContent).toContain('owner/repo')
+      expect(container.querySelector('img[alt="QR code"], canvas, svg')).not.toBeNull()
+    })
+
+    it('改行（\\n）は既存の種別と同じく br に展開する', () => {
+      const { container } = renderCenter({ variant: 'message', message: '1行目\n2行目' })
+      expect(container.querySelector('br')).not.toBeNull()
+    })
+
+    it('未知の variant は表紙（title/subtitle）にフォールバックする', () => {
+      const { container } = renderCenter({ variant: 'unknown-variant', title: '表紙タイトル' })
+      expect(container.querySelector('h1')!.textContent).toContain('表紙タイトル')
+      expect(container.querySelector('.message-layout')).toBeNull()
+    })
+  })
+
   // #259: two-column のカラムに置いた「埋めるコンポーネント」の高さ解決。
   // 埋める要素（.content-area-fill-item）は fill ホスト（.content-area-fill）の中に置かれて初めて
   // 残り高さを受け取るため、カラム自身がホストを名乗る必要がある（ホストを .content-area 側に付けると

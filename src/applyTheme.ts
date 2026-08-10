@@ -638,38 +638,46 @@ function getTokenContrastWarnings(tokens: Record<string, Record<string, string>>
   return warnings
 }
 
-/** masterKey の本文文字色（textBody）を解決する。tokens の上書き→theme.colors の順（#209）。
- * どちらにも無ければ（グローバルCSS既定値に委ねる場合）呼び出し元で検証をスキップする */
-function resolveEffectiveTextBody(theme: ThemeData, masterKey: string): string | undefined {
-  const varName = THEME_COLOR_TOKENS.textBody.replace(/^--/, '')
-  return theme.tokens?.[masterKey]?.[varName] ?? theme.colors?.textBody ?? theme.colors?.text
+/**
+ * masterKey のスコープで有効になる文字色を、全文字色キーぶん解決する（#209）。tokens の上書き→theme.colors の順。
+ * どちらにも無いキー（グローバルCSSの既定値に委ねる分）は返さない（既定値をここに複製すると二重管理になる）。
+ * `text` と `textBody` のように同じ CSS 変数を指すキーは1つに畳む（後方互換キーより具体的なキーを優先する）。
+ * 全面塗り背景の上には本文だけでなく出典・補足（textMuted 等）も載るため、本文色だけでなく全キーを対象にする（#197）。
+ */
+function resolveEffectiveTextColors(theme: ThemeData, masterKey: string): Array<[string, string]> {
+  const scoped = theme.tokens?.[masterKey] ?? {}
+  const colors = (theme.colors ?? {}) as Record<string, string | undefined>
+  const byVarName = new Map<string, [string, string]>()
+  for (const key of TEXT_COLOR_KEYS) {
+    const varName = THEME_COLOR_TOKENS[key].replace(/^--/, '')
+    const color = scoped[varName] ?? colors[key]
+    if (color) byVarName.set(varName, [key, color])
+  }
+  return [...byVarName.values()]
 }
 
 /**
- * マスターの全面塗り背景（`background.type` が `fill`/`gradient`）と本文文字色のコントラスト検証（#209）。
+ * マスターの全面塗り背景（`background.type` が `fill`/`gradient`）と文字色のコントラスト検証（#209）。
  * `grid`/`image`/`plain` は下地色が不定または画像なので対象外（fill/gradient のみ塗り色が確定する）。
  */
 function getMasterBackgroundContrastWarnings(theme: ThemeData): string[] {
   const warnings: string[] = []
   for (const [masterKey, master] of Object.entries(theme.masters ?? {})) {
     const background = master.background
-    if (!background || (background.type !== 'fill' && background.type !== 'gradient')) continue
-    const textColor = resolveEffectiveTextBody(theme, masterKey)
-    if (!textColor) continue
+    if (!background) continue
 
-    const scope = `theme.masters.${masterKey}.background`
-    if (background.type === 'fill') {
-      const warning = contrastWarning(scope, 'textBody', textColor, 'color', background.color)
-      if (warning) warnings.push(warning)
-    } else {
-      for (const [stopLabel, stopColor] of [
-        ['from', background.from],
-        ['to', background.to],
-      ] as const) {
-        const warning = contrastWarning(scope, 'textBody', textColor, stopLabel, stopColor)
-        if (warning) warnings.push(warning)
-      }
-    }
+    const bgEntries: Array<[string, string]> =
+      background.type === 'fill'
+        ? [['color', background.color]]
+        : background.type === 'gradient'
+          ? [
+              ['from', background.from],
+              ['to', background.to],
+            ]
+          : []
+    if (bgEntries.length === 0) continue
+
+    warnings.push(...pairwiseContrastWarnings(`theme.masters.${masterKey}.background`, resolveEffectiveTextColors(theme, masterKey), bgEntries))
   }
   return warnings
 }

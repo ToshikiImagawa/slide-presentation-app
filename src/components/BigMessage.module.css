@@ -1,0 +1,27 @@
+/* 大メッセージ・締めスライド（#197）。全画面に短い主張を1つだけ置く。
+   文字色は theme.colors / theme.tokens で明示される変数だけを使う（マスターの全面塗り背景と
+   組み合わせたときも getThemeWarnings のコントラスト検証が効く組にする・#209） */
+.message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+.text {
+  margin: 0;
+  font-family: var(--theme-font-heading);
+  font-size: var(--theme-font-size-h1);
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--theme-text-body);
+  overflow-wrap: break-word;
+}
+
+.note {
+  margin: 0;
+  font-family: var(--theme-font-body);
+  font-size: var(--theme-font-size-subtitle1);
+  line-height: 1.5;
+  color: var(--theme-text-muted);
+}

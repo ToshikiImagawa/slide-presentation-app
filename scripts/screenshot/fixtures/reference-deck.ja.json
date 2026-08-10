@@ -3,6 +3,29 @@
     "title": "Reference Deck",
     "description": "全スライド種別を1枚ずつ並べた開発・検証用の基準見本デッキ（配布サンプルとは別。テーマ差し替えの回帰検知に使う）"
   },
+  "theme": {
+    "masters": {
+      "messageInverse": { "background": { "type": "fill", "color": "#f8fafc" }, "decorations": [] },
+      "closing": {
+        "background": { "type": "fill", "color": "#f8fafc" },
+        "decorations": [
+          {
+            "type": "logo",
+            "anchor": "bottom-center",
+            "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0ODAgMjAwIiB3aWR0aD0iNDgwIiBoZWlnaHQ9IjIwMCI+PGcgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMGYxNzJhIiBzdHJva2Utd2lkdGg9IjEwIj48cmVjdCB4PSIyMCIgeT0iMjAiIHdpZHRoPSI0NDAiIGhlaWdodD0iMTYwIiByeD0iMjQiLz48Y2lyY2xlIGN4PSIxMzAiIGN5PSIxMDAiIHI9IjQ2Ii8+PHBhdGggZD0iTTIxMCAxNDAgTDI2MCA2MCBMMzEwIDE0MCIvPjxwYXRoIGQ9Ik0zNDAgNjAgTDM0MCAxNDAgTDQxMCAxNDAiLz48L2c+PC9zdmc+",
+            "width": 300,
+            "height": 125,
+            "opacity": 0.9
+          }
+        ]
+      }
+    },
+    "masterMap": { "center/message-inverse": "messageInverse", "center/closing": "closing" },
+    "tokens": {
+      "messageInverse": { "theme-text-body": "#0f172a", "theme-text-muted": "#475569" },
+      "closing": { "theme-text-body": "#0f172a", "theme-text-muted": "#475569", "theme-primary": "#0f766e" }
+    }
+  },
   "slides": [
     {
       "id": "layout-center",
@@ -369,6 +392,43 @@
             }
           }
         }
+      }
+    },
+    {
+      "id": "layout-center-quote",
+      "layout": "center",
+      "content": {
+        "variant": "quote",
+        "quote": "実装量の推定で\n設計を曲げない",
+        "citation": "設計判断ルール"
+      }
+    },
+    {
+      "id": "layout-center-message",
+      "layout": "center",
+      "content": {
+        "variant": "message",
+        "message": "1 枚に 1 メッセージ",
+        "body": "淡色地の大メッセージ。章の切り替えに使う"
+      }
+    },
+    {
+      "id": "layout-center-message-inverse",
+      "layout": "center",
+      "content": {
+        "variant": "message-inverse",
+        "message": "全面塗りで\n主張を際立たせる",
+        "body": "塗り色と文字色はマスターとトークンが持つ"
+      }
+    },
+    {
+      "id": "layout-center-closing",
+      "layout": "center",
+      "content": {
+        "variant": "closing",
+        "message": "ありがとうございました",
+        "body": "ロゴの全面配置と全面塗りで終わる",
+        "githubRepo": "ToshikiImagawa/slide-presentation-app"
       }
     }
   ]
