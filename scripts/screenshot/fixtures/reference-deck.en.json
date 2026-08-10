@@ -310,6 +310,37 @@
           { "title": "Release", "description": "Verify with the reference deck" }
         ]
       }
+    },
+    {
+      "id": "layout-content-checklist",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (checklist)",
+        "checklist": [
+          { "title": "Acceptance criteria met", "description": "Map one-to-one with the issue checkboxes", "checked": true },
+          { "title": "Reference deck recaptured", "description": "Only the added slide types should differ", "checked": true },
+          { "title": "Visual inspection passed", "description": "Zero overflow, safe-area or decoration overlaps", "checked": true },
+          { "title": "All CI jobs green", "description": "Local results are not evidence" },
+          { "title": "Out-of-scope work written up", "description": "File follow-up issues and cite the numbers" }
+        ]
+      }
+    },
+    {
+      "id": "layout-content-steps-columns",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (steps + stepColumns)",
+        "stepColumns": 2,
+        "steps": [
+          { "number": 1, "title": "Pick the issue", "description": "Start with the fewest dependencies" },
+          { "number": 2, "title": "Fix the contract", "description": "Split ownership across lanes first" },
+          { "number": 3, "title": "Migrate the base", "description": "Move private rules to the shared contract" },
+          { "number": 4, "title": "Add the types", "description": "Build on the migrated base" },
+          { "number": 5, "title": "Verify by measuring", "description": "Detect overflow from the real DOM" },
+          { "number": 6, "title": "Recapture the deck", "description": "Confirm nothing else changed" },
+          { "number": 7, "title": "Open the PR", "description": "State leftovers and follow-up issues" }
+        ]
+      }
     }
   ]
 }

@@ -25,3 +25,47 @@
   flex: 1;
   padding: 0 15px;
 }
+
+/* 多列配置（#199）。横1列の既定（.layout）を grid で上書きするため、必ずこの位置（.layout より後）に置く。
+   連結線を持たない番号付きリストとして見せるので .line は描かない。
+   縦積みのまま多行にすると 2列×4行で本文領域の高さを超えるため、各項目は
+   「番号バッジ｜見出し＋説明」の横並びにする（TimelineNode が返すのは Avatar → 見出し → 説明の
+   フラットな3要素なので、grid の自動配置で1要素目だけを2行ぶんに跨がせて左列に置く）。 */
+.multiColumn {
+  display: grid;
+  align-content: center;
+  column-gap: 40px;
+  row-gap: 28px;
+}
+
+.multiColumn .line {
+  display: none;
+}
+
+.multiColumn .item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-content: start;
+  column-gap: 16px;
+  text-align: left;
+}
+
+/* 1要素目（番号バッジ）を左列に据える。バッジ下の余白は横並びでは不要なので詰める
+   （TimelineNode は編集せずに済ませる・#228 と担当が分かれるため） */
+.multiColumn .item > *:first-child {
+  grid-row: span 2;
+  margin-bottom: 0;
+}
+
+.multiColumn[data-density='dense'] {
+  row-gap: 18px;
+}
+
+/* 行数が最も多い段階は説明文も詰める。説明文は TimelineNode の children（描画は SlideRenderer）なので
+   ここから直接は触れず、文字サイズを変数で公開して描画側が
+   var(--timeline-body-size, var(--theme-font-size-body2)) で読む（未定義なら既定のまま＝現行の見た目） */
+.multiColumn[data-density='compact'] {
+  --timeline-body-size: calc(var(--theme-font-size-body2) * 0.85);
+
+  row-gap: 12px;
+}

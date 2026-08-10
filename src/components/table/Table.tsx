@@ -27,6 +27,7 @@ function resolveDensity(rowCount: number, columnCount: number): 'normal' | 'dens
  * 罫線・ゼブラ・ヘッダ行の塗り・角丸は意匠トークンから引く。行数・列数が多いときは
  * data-density で padding・文字サイズを段階的に縮め、それでも収まらない分は
  * `.content-area` の overflow: hidden にゆだねる（スライドの外へはみ出させない）。
+ * 高さは ContentLayout の fill 変種（global.css の .content-area-fill-item・#225）から受け取る（#256）。
  */
 export function Table(spec: TableSpec) {
   const columns = asArray(spec.columns)
@@ -41,7 +42,7 @@ export function Table(spec: TableSpec) {
   const density = resolveDensity(rows.length, columns.length)
 
   return (
-    <div className={styles.wrapper} data-testid="table" data-density={density}>
+    <div className={`content-area-fill-item ${styles.wrapper}`} data-testid="table" data-density={density}>
       <table className={styles.table}>
         <colgroup>
           {widths.map((width, index) => (

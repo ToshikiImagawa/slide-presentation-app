@@ -21,6 +21,8 @@ export function useDiagramSize(): CanvasSize {
  * サイズ計測は CSS zoom の影響を受けない offsetWidth/offsetHeight を読む（Reveal.js は
  * ウィンドウが設計解像度より大きいとき .slides に zoom を掛けるため、getBoundingClientRect
  * では zoom 込みの値になり px 経路が二重に拡大される）。
+ *
+ * 高さは ContentLayout の fill 変種（global.css の .content-area-fill-item・#225）から受け取る（#256）。
  */
 export function DiagramCanvas({ children }: { children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null)
@@ -46,7 +48,7 @@ export function DiagramCanvas({ children }: { children: ReactNode }) {
   }, [])
 
   return (
-    <div ref={ref} className={styles.canvas} data-testid="diagram-canvas">
+    <div ref={ref} className={`content-area-fill-item ${styles.canvas}`} data-testid="diagram-canvas">
       <DiagramSizeContext.Provider value={size}>{children}</DiagramSizeContext.Provider>
     </div>
   )

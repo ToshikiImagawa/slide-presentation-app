@@ -25,8 +25,9 @@ export function registerDefaultComponents(): void {
   // ビジュアルコンポーネント
   registerDefaultComponent('TerminalAnimation', DefaultTerminalAnimation)
   registerDefaultComponent('Image', DefaultImage)
-  // 図解プリミティブ（#202）。矢印・コネクタ・カード・バッジ・引出線を正規化座標で組み立てる
-  registerDefaultComponent('Diagram', Diagram)
+  // 図解プリミティブ（#202）。矢印・コネクタ・カード・バッジ・引出線を正規化座標で組み立てる。
+  // キャンバス（DiagramCanvas）は本文領域の残り高さいっぱいに広がるので fill 変種を要求する（#256）
+  registerDefaultComponent('Diagram', Diagram, { fillsContentArea: true })
 
   // MUIアイコン
   registerDefaultComponent('Icon:Description', () => <DescriptionIcon sx={{ fontSize: 32 }} />)

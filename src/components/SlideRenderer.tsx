@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
-import type { ContentItem, LogoConfig, MasterRenderContext, SectionInfo, SlideData, ThemeData } from '../data'
+import type { ContentItem, LogoConfig, MasterRenderContext, SectionInfo, SlideContent, SlideData, ThemeData } from '../data'
 import { buildSections, findSectionAt } from '../sections'
-import { renderRegisteredComponent, resolveComponent } from './ComponentRegistry'
+import { componentFillsContentArea, renderRegisteredComponent, resolveComponent } from './ComponentRegistry'
 import { BleedLayout, ContentLayout, SectionLayout, SlideFrame, TitleLayout } from '../layouts'
 import { SlideHeading } from './SlideHeading'
 import { SubtitleText } from './SubtitleText'
@@ -11,6 +11,7 @@ import { BulletList } from './BulletList'
 import { TwoColumnGrid } from './TwoColumnGrid'
 import { CodeBlockPanel } from './CodeBlockPanel'
 import { TitledBulletList } from './TitledBulletList'
+import { Checklist } from './Checklist'
 import { Timeline } from './Timeline'
 import { TimelineNode } from './TimelineNode'
 import { FeatureTileGrid } from './FeatureTileGrid'
@@ -215,108 +216,128 @@ function renderContentItems(items: ContentItem[]): ReactNode {
   )
 }
 
-/** contentスライドの子要素をレンダリング */
-function renderContentChildren(content: SlideData['content']): ReactNode {
-  // steps があれば Timeline
-  if (content.steps) {
-    const steps = content.steps as Array<{ number: number; title: string; description: string; command: string }>
-    return (
-      <>
-        <Timeline
-          items={steps.map((step) => (
-            <TimelineNode key={step.number} number={step.number} title={step.title}>
-              <Typography variant="body2">
-                {step.description}
-                {step.command && (
-                  <>
-                    <br />
-                    <code>{step.command}</code>
-                  </>
-                )}
-              </Typography>
-            </TimelineNode>
-          ))}
-        />
-        {typeof content.footer === 'string' && (
-          <Typography variant="body1" sx={{ textAlign: 'center', mt: '40px', fontStyle: 'italic' }}>
-            {content.footer}
-          </Typography>
-        )}
-      </>
-    )
-  }
-
-  // tiles があれば FeatureTileGrid
-  if (content.tiles) {
-    const tiles = content.tiles as Array<{ icon: string; title: string; description: string; accentColor?: string }>
-    return (
-      <FeatureTileGrid
-        columns={content.tileColumns as number | undefined}
-        tiles={tiles.map((tile) => ({
-          icon: renderIcon(tile.icon),
-          title: tile.title,
-          description: renderHtml(tile.description),
-          accentColor: tile.accentColor,
-        }))}
+/** stepsをTimelineとしてレンダリング（stepColumns 指定で多列の番号付きリストになる・#199） */
+function renderSteps(content: SlideContent): ReactNode {
+  const steps = content.steps as Array<{ number: number; title: string; description: string; command: string }>
+  return (
+    <>
+      <Timeline
+        columns={content.stepColumns as number | undefined}
+        items={steps.map((step) => (
+          <TimelineNode key={step.number} number={step.number} title={step.title}>
+            {/* 多列時は行数に応じて Timeline.module.css が --timeline-body-size を狭める（未定義なら body2 の既定サイズ） */}
+            <Typography variant="body2" sx={{ fontSize: 'var(--timeline-body-size, var(--theme-font-size-body2))' }}>
+              {step.description}
+              {step.command && (
+                <>
+                  <br />
+                  <code>{step.command}</code>
+                </>
+              )}
+            </Typography>
+          </TimelineNode>
+        ))}
       />
-    )
-  }
-
-  // images があれば ImageFigureGrid（画像スライド・#198）
-  if (content.images) {
-    const images = content.images as Array<{ src: string; alt?: string; caption?: string }>
-    return <ImageFigureGrid images={images.map((image) => ({ src: image.src, alt: image.alt, caption: image.caption ? renderHtml(image.caption) : undefined }))} />
-  }
-
-  // chart があればチャート（#204）
-  if (content.chart && typeof content.chart === 'object') {
-    return <Chart {...(content.chart as ChartSpec)} />
-  }
-
-  // table があれば表（#194）
-  if (content.table && typeof content.table === 'object') {
-    return <Table {...(content.table as TableSpec)} />
-  }
-
-  // compare があれば比較（#200）
-  if (content.compare && typeof content.compare === 'object') {
-    return <Compare {...(content.compare as CompareSpec)} />
-  }
-
-  // flow があれば横フロー（#200）
-  if (content.flow) {
-    return <Flow steps={content.flow as FlowStep[]} />
-  }
-
-  // component があればそれを描画
-  if (content.component) {
-    return renderComponent(content.component)
-  }
-
-  // steps/tiles/images/chart/table/componentがいずれも無指定の場合のみ、プレーン本文（body/items）を描画する（#193）
-  const { body } = content
-  const items = content.items && content.items.length > 0 ? content.items : undefined
-  if (body || items) {
-    return (
-      <>
-        {body && (
-          <Typography variant="body1" sx={{ fontSize: '20px', lineHeight: 1.6, color: 'var(--theme-text-body)', mb: items ? '20px' : undefined }}>
-            {renderWithLineBreaks(body)}
-          </Typography>
-        )}
-        {items && renderContentItems(items)}
-      </>
-    )
-  }
-
-  return null
+      {typeof content.footer === 'string' && (
+        <Typography variant="body1" sx={{ textAlign: 'center', mt: '40px', fontStyle: 'italic' }}>
+          {content.footer}
+        </Typography>
+      )}
+    </>
+  )
 }
 
-/** 本文領域の残り高さいっぱいに広がる子を描くか（.content-area の fill 変種・#225）。
- * 現時点では画像スライド（#198）のみ。判定は renderContentChildren の分岐順（steps / tiles が先）に揃える */
-function fillsContentArea(content: SlideData['content']): boolean {
-  if (content.steps || content.tiles) return false
-  return Boolean(content.images)
+/** checklistをChecklistとしてレンダリング（#199） */
+function renderChecklist(content: SlideContent): ReactNode {
+  const checklist = content.checklist as Array<{ title: string; description?: string; checked?: boolean }>
+  return <Checklist items={checklist.map((item) => ({ title: item.title, description: item.description ? renderHtml(item.description) : undefined, checked: item.checked }))} />
+}
+
+/** tilesをFeatureTileGridとしてレンダリング */
+function renderTiles(content: SlideContent): ReactNode {
+  const tiles = content.tiles as Array<{ icon: string; title: string; description: string; accentColor?: string }>
+  return (
+    <FeatureTileGrid
+      columns={content.tileColumns as number | undefined}
+      tiles={tiles.map((tile) => ({
+        icon: renderIcon(tile.icon),
+        title: tile.title,
+        description: renderHtml(tile.description),
+        accentColor: tile.accentColor,
+      }))}
+    />
+  )
+}
+
+/** imagesをImageFigureGridとしてレンダリング（画像スライド・#198） */
+function renderImages(content: SlideContent): ReactNode {
+  const images = content.images as Array<{ src: string; alt?: string; caption?: string }>
+  return <ImageFigureGrid images={images.map((image) => ({ src: image.src, alt: image.alt, caption: image.caption ? renderHtml(image.caption) : undefined }))} />
+}
+
+/** プレーン本文（body/items）をレンダリング（#193） */
+function renderBody(content: SlideContent): ReactNode {
+  const { body } = content
+  const items = content.items && content.items.length > 0 ? content.items : undefined
+  return (
+    <>
+      {body && (
+        <Typography variant="body1" sx={{ fontSize: '20px', lineHeight: 1.6, color: 'var(--theme-text-body)', mb: items ? '20px' : undefined }}>
+          {renderWithLineBreaks(body)}
+        </Typography>
+      )}
+      {items && renderContentItems(items)}
+    </>
+  )
+}
+
+type ContentBranch = {
+  /** この分岐を選ぶ条件 */
+  match: (content: SlideContent) => boolean
+  /** 本文領域を .content-area の fill 変種にするか（#225）。
+   * component は「広がるかどうか」を描画側が name から知り得ないので、登録側の宣言（traits）を引く関数で受ける */
+  fill: boolean | ((content: SlideContent) => boolean)
+  render: (content: SlideContent) => ReactNode
+}
+
+/**
+ * contentスライドの子要素の描画分岐。**この配列の順序が優先順位の唯一の真実源** で、
+ * 本文領域を埋めるか（fill）も同じ行に併記する（#256）。
+ *
+ * 以前は fillsContentArea がこの分岐順を人力で複製していたため、分岐を足すと判定が黙ってズレた。
+ * fill: true の分岐が描く要素のルートには .content-area-fill-item が必要（global.css・#225）で、
+ * その対応は SlideRenderer.test.tsx が全分岐について検査する（付け忘れると主軸配置が stretch に変わる）。
+ */
+const CONTENT_BRANCHES: ContentBranch[] = [
+  { match: (content) => Boolean(content.steps), fill: false, render: renderSteps },
+  { match: (content) => Boolean(content.checklist), fill: false, render: renderChecklist },
+  { match: (content) => Boolean(content.tiles), fill: false, render: renderTiles },
+  { match: (content) => Boolean(content.images), fill: true, render: renderImages },
+  // チャート（#204）・表（#194）は本文領域の残り高さを埋める
+  { match: (content) => Boolean(content.chart) && typeof content.chart === 'object', fill: true, render: (content) => <Chart {...(content.chart as ChartSpec)} /> },
+  { match: (content) => Boolean(content.table) && typeof content.table === 'object', fill: true, render: (content) => <Table {...(content.table as TableSpec)} /> },
+  // 比較（#200）は2ペインがグリッドの stretch で高さを揃えるため fill 変種は使わない
+  { match: (content) => Boolean(content.compare) && typeof content.compare === 'object', fill: false, render: (content) => <Compare {...(content.compare as CompareSpec)} /> },
+  // 横フロー（#200）は DiagramCanvas に載るので埋める
+  { match: (content) => Boolean(content.flow), fill: true, render: (content) => <Flow steps={content.flow as FlowStep[]} /> },
+  { match: (content) => Boolean(content.component), fill: (content) => componentFillsContentArea(content.component!.name), render: (content) => renderComponent(content.component!) },
+  // 上のいずれも無指定の場合のみ、プレーン本文（body/items）を描画する（#193）
+  { match: (content) => Boolean(content.body) || Boolean(content.items?.length), fill: false, render: renderBody },
+]
+
+function resolveContentBranch(content: SlideContent): ContentBranch | undefined {
+  return CONTENT_BRANCHES.find((branch) => branch.match(content))
+}
+
+/** contentスライドの子要素をレンダリング */
+function renderContentChildren(content: SlideContent): ReactNode {
+  return resolveContentBranch(content)?.render(content) ?? null
+}
+
+/** 本文領域の残り高さいっぱいに広がる子を描くか（.content-area の fill 変種・#225） */
+function fillsContentArea(content: SlideContent): boolean {
+  const { fill } = resolveContentBranch(content) ?? {}
+  return typeof fill === 'function' ? fill(content) : fill === true
 }
 
 /** contentスライドをレンダリング */

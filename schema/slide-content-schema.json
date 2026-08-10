@@ -13,18 +13,29 @@
       }
     },
     "content": {
-      "description": "コンテンツ表示用レイアウト。子要素のフィールドで描画が決まる。優先順位: steps→Timeline / tiles→FeatureTileGrid / images→画像スライド / chart→チャート / table→表 / compare→比較 / flow→横フロー / component→カスタム。いずれも無指定の場合に限り body/items（プレーン本文）を描画する（#193・#200）",
+      "description": "コンテンツ表示用レイアウト。子要素のフィールドで描画が決まる。優先順位: steps→Timeline / checklist→チェックリスト / tiles→FeatureTileGrid / images→画像スライド / chart→チャート / table→表 / compare→比較 / flow→横フロー / component→カスタム。いずれも無指定の場合に限り body/items（プレーン本文）を描画する（#193・#200・#199）",
       "contentFields": {
         "title": { "type": "string" },
         "steps": {
           "type": "array",
-          "maxItems": 6,
-          "description": "Timelineの各ステップ。推奨上限6件（超えると密度過多として自動修正対象になる）",
+          "maxItems": 8,
+          "description": "Timelineの各ステップ。既定は連結線つきの横1列。推奨上限8件（超えると密度過多として自動修正対象になる）だが、横1列で読めるのは6件までなので、7件以上はstepColumnsで2〜3列に折返すか複数スライドに分ける",
           "itemFields": {
             "number": { "type": "number" },
             "title": { "type": "string" },
             "description": { "type": "string" },
             "command": { "type": "string" }
+          }
+        },
+        "stepColumns": { "type": "number", "description": "stepsを多列の番号付きリストとして並べる列数（1〜3。範囲外は丸める）。省略時は現行と同じ連結線つきの横1列。指定すると連結線は描かず、番号バッジの右に見出しと説明を置いた項目を1〜3列×複数行に配置し、行数に応じて行間・説明文の文字サイズを自動で詰める（#199）" },
+        "checklist": {
+          "type": "array",
+          "maxItems": 7,
+          "description": "チェックリスト（#199）。完了記号＋項目＋説明を縦に並べる。リリース前確認・要件確認に使う。記号は済＝丸に✓・未＝角丸の空枠で、色（success/neutral）と形の両方で状態を示すので意匠トークンに追従する。項目数に応じて行間・文字サイズを自動で詰める。推奨上限7件（超えると密度過多として自動修正対象になる）",
+          "itemFields": {
+            "title": { "type": "string" },
+            "description": { "type": "string", "description": "項目の補足説明（<br/>等HTMLタグ利用可）" },
+            "checked": { "type": "boolean", "description": "完了ならtrue。省略時は未完了" }
           }
         },
         "tiles": {
@@ -68,13 +79,13 @@
         "footer": { "type": "string" },
         "body": {
           "type": "string",
-          "description": "プレーン本文の段落（改行は\\n）。steps/tiles/images/chart/table/componentのいずれも無指定の場合のみ描画される。itemsと併用可。段落配列が必要な場合はtwo-columnのparagraphsを使う（1カラム全幅の自由記述文はbody、カラム構成用の複数ブロックはparagraphsという役割分担）"
+          "description": "プレーン本文の段落（改行は\\n）。steps/checklist/tiles/images/chart/table/compare/flow/componentのいずれも無指定の場合のみ描画される。itemsと併用可。段落配列が必要な場合はtwo-columnのparagraphsを使う（1カラム全幅の自由記述文はbody、カラム構成用の複数ブロックはparagraphsという役割分担）"
         },
         "items": {
           "type": "array",
           "ref": "contentItem",
           "maxItems": 7,
-          "description": "箇条書き（ネスト可）。steps/tiles/images/chart/table/componentのいずれも無指定の場合のみ描画される。bodyと併用可。推奨上限7件（超えると密度過多として自動修正対象になる）"
+          "description": "箇条書き（ネスト可）。steps/checklist/tiles/images/chart/table/compare/flow/componentのいずれも無指定の場合のみ描画される。bodyと併用可。推奨上限7件（超えると密度過多として自動修正対象になる）"
         }
       }
     },

@@ -1,15 +1,13 @@
 /* チャート描画の基盤（#204）。色・線幅・角丸はすべて意匠トークン（--theme-*）から引くのでテーマに追従する。
-   本文領域（.content-area）の残り高さを flex:1 で受け取り、内部は比率（%）だけで組むため、
-   キャンバスサイズやセーフエリアが変わっても寸法指定なしで収まる。
+   本文領域の残り高さは global.css の fill 変種（.content-area-fill-item を付けた要素が受け取る・#225）から得て
+   （#256）、内部は比率（%）だけで組むため、キャンバスサイズやセーフエリアが変わっても寸法指定なしで収まる。
    目盛りラベル・値ラベル・凡例はすべて HTML 要素で描く（SVG の <text> は PDF 書き出しの
    html2canvas が SVG を単体シリアライズする際に @font-face を失い、フォントが置き換わるため）。 */
 /* 上端の padding は、目盛りの最上ラベルが半行分プロットの外へ出る分の逃げ場（無いと本文領域の外＝見出しに重なる） */
 .chart {
   display: flex;
-  flex: 1;
   flex-direction: column;
   gap: 16px;
-  min-height: 0;
   width: 100%;
   padding-top: 14px;
   font-family: var(--theme-font-body);

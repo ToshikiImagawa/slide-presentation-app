@@ -37,11 +37,11 @@
 
 ## content
 
-コンテンツ表示用レイアウト。子要素のフィールドで描画が決まる。優先順位: `steps` → `tiles` → `images` → `chart` → `table` → `compare` → `flow` → `component` → `body`/`items`（いずれかが指定されていたら以降は評価しない）。
+コンテンツ表示用レイアウト。子要素のフィールドで描画が決まる。優先順位: `steps` → `checklist` → `tiles` → `images` → `chart` → `table` → `compare` → `flow` → `component` → `body`/`items`（いずれかが指定されていたら以降は評価しない）。
 
 ### body / items（プレーン本文）
 
-`steps`/`tiles`/`images`/`chart`/`table`/`component` のいずれも指定しない場合に描画される、タイトル＋左寄せ本文の基本形。`body`（段落）と `items`（箇条書き、ネスト可）は併用できる。
+`steps`/`checklist`/`tiles`/`images`/`chart`/`table`/`compare`/`flow`/`component` のいずれも指定しない場合に描画される、タイトル＋左寄せ本文の基本形。`body`（段落）と `items`（箇条書き、ネスト可）は併用できる。
 
 ```json
 {
@@ -77,6 +77,41 @@
       { "number": 2, "title": "Step 2", "description": "説明" }
     ],
     "footer": "補足テキスト（オプション）"
+  }
+}
+```
+
+`stepColumns` を指定すると、連結線を持たない**多列の番号付きリスト**になる（1〜3列 × 複数行。範囲外の値は丸める）。横1列で読めるのは6件までなので、7件以上はこちらを使う（項目は「番号バッジ＋見出し＋説明」の横並びになり、行数に応じて行間・説明文の文字サイズが自動で詰まる）。
+
+```json
+{
+  "id": "slide-id",
+  "layout": "content",
+  "content": {
+    "title": "作業手順",
+    "stepColumns": 2,
+    "steps": [
+      { "number": 1, "title": "Step 1", "description": "説明" },
+      { "number": 2, "title": "Step 2", "description": "説明" }
+    ]
+  }
+}
+```
+
+### checklist（チェックリスト）
+
+完了記号＋項目＋説明を縦に並べる。リリース前確認・要件確認のように「済／未」を見せる用途に使う。記号は済が丸に `✓`（success 色）・未が角丸の空枠（neutral 色）で、色と形の両方で状態を示す（記号の意匠はテーマトークンに追従する）。項目数に応じて行間・文字サイズが自動で詰まる（推奨上限7件）。
+
+```json
+{
+  "id": "slide-id",
+  "layout": "content",
+  "content": {
+    "title": "リリース前チェック",
+    "checklist": [
+      { "title": "テストが通った", "description": "説明（<br/>等HTMLタグ利用可）", "checked": true },
+      { "title": "CI が緑になった" }
+    ]
   }
 }
 ```

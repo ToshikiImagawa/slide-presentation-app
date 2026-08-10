@@ -1,0 +1,57 @@
+/* チェックリスト（#199）。記号は DiagramBadge に任せ、ここは行の組みだけを持つ。
+   文字色・フォント・文字サイズはすべて意匠トークン（--theme-*）から引くのでテーマに追従する。
+   項目が増えたときの行間・文字サイズは data-density で段階的に詰める（Table の data-density と同じ方式）。 */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.list[data-density='dense'] {
+  gap: 14px;
+}
+
+.list[data-density='compact'] {
+  gap: 10px;
+}
+
+/* 記号は1行目の高さに合わせて上端で揃える（説明が複数行になっても記号が中央へ動かない） */
+.item {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.title {
+  font-family: var(--theme-font-heading);
+  font-size: var(--theme-font-size-h4);
+  font-weight: var(--theme-font-weight-heading);
+  color: var(--theme-text-heading);
+}
+
+.description {
+  font-family: var(--theme-font-body);
+  font-size: var(--theme-font-size-body2);
+  line-height: 1.5;
+  color: var(--theme-text-body);
+}
+
+.list[data-density='dense'] .title,
+.list[data-density='compact'] .title {
+  font-size: var(--theme-font-size-body1);
+}
+
+.list[data-density='compact'] .description {
+  font-size: calc(var(--theme-font-size-body2) * 0.85);
+}
