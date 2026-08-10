@@ -21,9 +21,11 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { webkit } from 'playwright'
 import { LOCALES, sleep, startScreenshotVite, stopScreenshotVite, waitForServer } from './vite-runtime.mjs'
+import { contentViewport } from './viewports.mjs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const URL = 'http://localhost:1420'
+const VIEWPORT_KEY = 'reference-deck'
 
 /** ロケール別 fixture からスライド一覧を読む（capture-reference-deck.mjs と同じ単一真実源） */
 function fixtureSlides(lang) {
@@ -32,9 +34,9 @@ function fixtureSlides(lang) {
 }
 
 /** 1ロケール分、デッキを開いてから hash ナビで全スライドを順に検査する */
-async function inspectLocale(browser, locale) {
+async function inspectLocale(browser, locale, vp) {
   const slides = fixtureSlides(locale.lang)
-  const context = await browser.newContext({ locale: locale.code })
+  const context = await browser.newContext({ viewport: { width: vp.width, height: vp.height }, locale: locale.code })
   const page = await context.newPage()
   const results = []
 
@@ -82,7 +84,11 @@ async function main() {
     console.log('[inspect] vite 起動完了。WebKit を起動します。')
     browser = await webkit.launch()
 
-    const allResults = (await Promise.all(LOCALES.map((locale) => inspectLocale(browser, locale)))).flat()
+    // capture-reference-deck.mjs と同じ viewport（1280x692。基準見本デッキの撮影条件と揃える）で開く。
+    // Reveal.js はデッキの設計解像度（1280x720）とこの viewport の比でスケールするため一致はしないが、
+    // getVisualCheckWarnings（src/visualChecks.ts）はそのスケール差を補正して判定するため実害はない
+    const vp = contentViewport(VIEWPORT_KEY)
+    const allResults = (await Promise.all(LOCALES.map((locale) => inspectLocale(browser, locale, vp)))).flat()
 
     for (const result of allResults) {
       console.log(formatResult(result))

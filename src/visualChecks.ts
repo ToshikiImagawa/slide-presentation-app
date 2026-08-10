@@ -70,15 +70,25 @@ function getDecorationElements(section: HTMLElement): HTMLElement[] {
   return elements
 }
 
-/** .master-body の padding（セーフエリア）を除いた内側の矩形 */
+/**
+ * .master-body の padding（セーフエリア）を除いた内側の矩形。
+ * `getComputedStyle` の padding は Reveal.js の `transform: scale()`（デッキ全体をビューポートに収めるための
+ * 縮小/拡大。`useReveal.ts`）の影響を受けない素の値だが、`getBoundingClientRect` はスケール後（ビジュアル座標）
+ * の値を返す。素の padding をそのままビジュアル座標の rect に加減すると、スケール比が1でない環境
+ * （ビューポートがデッキの設計解像度と一致しない場合。CI 実測: 約51%スケールで約30px の誤検知）で境界がずれる。
+ * offsetWidth/Height（transform 前のローカル border-box）と rect（transform 後）の比から実効スケールを求め、
+ * padding をビジュアル座標系に変換してから rect に適用する。
+ */
 function getSafeBounds(masterBody: HTMLElement): Bounds {
   const rect = masterBody.getBoundingClientRect()
   const style = getComputedStyle(masterBody)
+  const scaleX = masterBody.offsetWidth > 0 ? rect.width / masterBody.offsetWidth : 1
+  const scaleY = masterBody.offsetHeight > 0 ? rect.height / masterBody.offsetHeight : 1
   return {
-    left: rect.left + parseFloat(style.paddingLeft || '0'),
-    right: rect.right - parseFloat(style.paddingRight || '0'),
-    top: rect.top + parseFloat(style.paddingTop || '0'),
-    bottom: rect.bottom - parseFloat(style.paddingBottom || '0'),
+    left: rect.left + parseFloat(style.paddingLeft || '0') * scaleX,
+    right: rect.right - parseFloat(style.paddingRight || '0') * scaleX,
+    top: rect.top + parseFloat(style.paddingTop || '0') * scaleY,
+    bottom: rect.bottom - parseFloat(style.paddingBottom || '0') * scaleY,
   }
 }
 

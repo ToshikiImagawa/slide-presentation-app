@@ -100,6 +100,21 @@ describe('getVisualCheckWarnings（#209）', () => {
     expect(warnings.some((w) => w.includes('装飾との重なり'))).toBe(false)
   })
 
+  it('Reveal.js の transform: scale（デッキ設計解像度とビューポートの比が1でない場合）を補正してセーフエリア判定する', () => {
+    // デッキが 50% スケールで描画されている状況を模す（ビジュアル座標は半分、CSS の padding・offsetWidth/Height は
+    // transform の影響を受けないローカル値のまま）。実効セーフエリアは 60px * 0.5 = 30px になるはず
+    const { section, body } = buildSection()
+    setRect(section, { left: 0, top: 0, width: 640, height: 360 })
+    setRect(body, { left: 0, top: 0, width: 640, height: 360 })
+    Object.defineProperty(body, 'offsetWidth', { value: 1280, configurable: true })
+    Object.defineProperty(body, 'offsetHeight', { value: 720, configurable: true })
+    // 実効境界（30px）のすぐ内側。素の padding（60px）で判定すると誤って侵入警告になってしまう境界値
+    addLeaf(body, { left: 35, top: 35, width: 100, height: 30 })
+
+    const warnings = getVisualCheckWarnings(section)
+    expect(warnings.some((w) => w.includes('セーフエリア侵入'))).toBe(false)
+  })
+
   it('装飾同士がわずかに触れる程度（許容誤差以下）では重なりと見なさない', () => {
     const { section, body, front } = buildSection()
     const decoration = document.createElement('div')
