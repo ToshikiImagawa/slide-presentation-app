@@ -1,11 +1,10 @@
-/* 画像スライド（#198）。本文領域（.content-area = セーフエリア内）の残り高さを flex:1 で受け取り、
-   grid-auto-rows:1fr で各 figure に確定した高さを与える。この確定高さがあることで FallbackImage が
-   付ける max-height:100% が解決でき、縦長・横長・正方形のいずれもセーフエリア内に収まる */
+/* 画像スライド（#198）。本文領域（.content-area = セーフエリア内）の残り高さは global.css の fill 変種
+   （.content-area-fill-item を付けた要素が受け取る・#225）から得て、grid-auto-rows:1fr で各 figure に
+   確定した高さを与える。この確定高さがあることで FallbackImage が付ける max-height:100% が解決でき、
+   縦長・横長・正方形のいずれもセーフエリア内に収まる */
 .grid {
   display: grid;
   grid-auto-rows: 1fr;
-  flex: 1;
-  min-height: 0;
   width: 100%;
   gap: 24px;
 }

@@ -433,6 +433,19 @@ describe('SlideRenderer', () => {
       expect(container.querySelector('figure')).not.toBeNull()
       expect(container.textContent).not.toContain('描画されない本文')
     })
+
+    // #225: 高さの確定は「グリッド側の私的な flex:1」ではなく .content-area の fill 変種（global.css）が担う。
+    // 実際の高さ解決（ラッパーが挟まった場合も含む）は e2e/content-area-fill.spec.ts が実測で担保する
+    it('本文領域を埋める宣言（fill 変種）が外側の.content-areaと画像グリッドの両方に付く', () => {
+      const { container } = renderContent({ images: [{ src: '/a.png' }] })
+      expect(container.querySelector('.content-area')!.classList.contains('content-area-fill')).toBe(true)
+      expect(container.querySelector('figure')!.parentElement!.classList.contains('content-area-fill-item')).toBe(true)
+    })
+
+    it('images以外の子（tiles）では fill 変種にならない', () => {
+      const { container } = renderContent({ tiles: [{ icon: 'Description', title: 'タイル', description: '説明' }] })
+      expect(container.querySelector('.content-area')!.classList.contains('content-area-fill')).toBe(false)
+    })
   })
 
   // #204: チャート（content.chart → Chart）

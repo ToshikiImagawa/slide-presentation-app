@@ -312,12 +312,19 @@ function renderContentChildren(content: SlideData['content']): ReactNode {
   return null
 }
 
+/** 本文領域の残り高さいっぱいに広がる子を描くか（.content-area の fill 変種・#225）。
+ * 現時点では画像スライド（#198）のみ。判定は renderContentChildren の分岐順（steps / tiles が先）に揃える */
+function fillsContentArea(content: SlideData['content']): boolean {
+  if (content.steps || content.tiles) return false
+  return Boolean(content.images)
+}
+
 /** contentスライドをレンダリング */
 function renderContentSlide(slide: SlideData, logo: LogoConfig | undefined, theme: ThemeData | undefined, ctx: MasterRenderContext): ReactNode {
   const { content } = slide
   const variant = getVariant(content)
   return (
-    <ContentLayout id={slide.id} layout={slide.layout} variant={variant} title={content.title ?? ''} meta={slide.meta} logo={logo} theme={theme} ctx={ctx}>
+    <ContentLayout id={slide.id} layout={slide.layout} variant={variant} title={content.title ?? ''} meta={slide.meta} logo={logo} theme={theme} ctx={ctx} fill={fillsContentArea(content)}>
       {renderContentChildren(content)}
     </ContentLayout>
   )
