@@ -1,6 +1,7 @@
 import { Diagram } from '../diagram'
 import { defaultSeriesColor } from './colors'
 import { packAxis } from './packAxis'
+import { asArray } from './types'
 
 const INSET = 0.03
 const GAP = 0.04
@@ -13,10 +14,6 @@ export type HierarchyLayer = {
 
 export type HierarchyDiagramSpec = {
   layers?: HierarchyLayer[]
-}
-
-function asArray<T>(value: T[] | undefined): T[] {
-  return Array.isArray(value) ? value : []
 }
 
 /**

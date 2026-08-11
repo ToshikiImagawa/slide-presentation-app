@@ -17,7 +17,7 @@ export type ResolvedTree = { roots: string[]; childrenOf: Map<string, string[]> 
  * ノードには親への接続線を引かない」という判定がずれない。
  */
 export function resolveTree(nodes: TreeLayoutInput[]): ResolvedTree {
-  const ids = new Set(nodes.map((n) => n.id))
+  const byId = new Map(nodes.map((n) => [n.id, n]))
   const childrenOf = new Map<string, string[]>()
   for (const node of nodes) childrenOf.set(node.id, [])
 
@@ -28,14 +28,14 @@ export function resolveTree(nodes: TreeLayoutInput[]): ResolvedTree {
     while (cursor !== undefined) {
       if (visited.has(cursor)) return true
       visited.add(cursor)
-      cursor = nodes.find((n) => n.id === cursor)?.parent
+      cursor = byId.get(cursor)?.parent
     }
     return false
   }
 
   const roots: string[] = []
   for (const node of nodes) {
-    const hasParent = node.parent !== undefined && ids.has(node.parent) && !isCyclic(node.id, node.parent)
+    const hasParent = node.parent !== undefined && byId.has(node.parent) && !isCyclic(node.id, node.parent)
     if (hasParent) {
       childrenOf.get(node.parent as string)!.push(node.id)
     } else {
@@ -57,13 +57,15 @@ export function computeTreeLayout(nodes: TreeLayoutInput[]): Map<string, NormRec
   if (nodes.length === 0) return result
 
   const { roots, childrenOf } = resolveTree(nodes)
+  const rootSet = new Set(roots)
+  const byId = new Map(nodes.map((n) => [n.id, n]))
 
   const depthCache = new Map<string, number>()
   function depthOf(id: string): number {
-    if (roots.includes(id)) return 0
+    if (rootSet.has(id)) return 0
     const cached = depthCache.get(id)
     if (cached !== undefined) return cached
-    const parent = nodes.find((n) => n.id === id)!.parent as string
+    const parent = byId.get(id)!.parent as string
     const depth = depthOf(parent) + 1
     depthCache.set(id, depth)
     return depth

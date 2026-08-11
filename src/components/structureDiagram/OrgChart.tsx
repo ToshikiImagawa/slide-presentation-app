@@ -1,14 +1,10 @@
 import { Diagram } from '../diagram'
 import { defaultSeriesColor } from './colors'
 import { computeTreeLayout, resolveTree } from './treeLayout'
-import type { StructureNode } from './types'
+import { asArray, type StructureNode } from './types'
 
 export type OrgChartSpec = {
   nodes?: StructureNode[]
-}
-
-function asArray<T>(value: T[] | undefined): T[] {
-  return Array.isArray(value) ? value : []
 }
 
 /**

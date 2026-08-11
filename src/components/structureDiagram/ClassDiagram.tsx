@@ -1,7 +1,7 @@
 import { Diagram } from '../diagram'
 import { defaultSeriesColor } from './colors'
 import { computeGridLayout } from './gridLayout'
-import type { StructureEdge, StructureEdgeType, StructureNode } from './types'
+import { asArray, type StructureEdge, type StructureEdgeType, type StructureNode } from './types'
 
 export type ClassDiagramSpec = {
   classes?: StructureNode[]
@@ -14,10 +14,6 @@ const RELATION_DEFAULTS: Record<StructureEdgeType, { head: 'arrow' | 'triangle';
   inheritance: { head: 'triangle', dashed: false },
   implements: { head: 'triangle', dashed: true },
   dependency: { head: 'arrow', dashed: true },
-}
-
-function asArray<T>(value: T[] | undefined): T[] {
-  return Array.isArray(value) ? value : []
 }
 
 /** 属性・メソッドを改行区切りで1つの body にまとめる（DiagramCard は単一の本文スロットのみ持つため、

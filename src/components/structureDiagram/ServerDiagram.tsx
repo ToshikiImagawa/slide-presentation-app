@@ -1,7 +1,7 @@
 import { Diagram } from '../diagram'
 import { defaultSeriesColor } from './colors'
 import { packAxis } from './packAxis'
-import type { StructureEdge, StructureNode } from './types'
+import { asArray, type StructureEdge, type StructureNode } from './types'
 
 const ZONE_GAP = 0.06
 const ZONE_MARGIN = 0.02
@@ -22,10 +22,6 @@ export type ServerDiagramSpec = {
   connections?: StructureEdge[]
 }
 
-function asArray<T>(value: T[] | undefined): T[] {
-  return Array.isArray(value) ? value : []
-}
-
 /**
  * スライド JSON の `content.serverDiagram` を描画するサーバ/クラウド構成図（ゾーン+ノード・#205）。
  *
@@ -39,7 +35,6 @@ export function ServerDiagram({ zones, connections }: ServerDiagramSpec) {
   if (zoneList.length === 0) return null
 
   const zoneSlots = packAxis(zoneList.length, 0, 1, ZONE_GAP)
-  let nodeIndex = 0
 
   const zoneBoxes = zoneList.map((_zone, i) => ({
     id: `zone-${i}`,
@@ -47,23 +42,24 @@ export function ServerDiagram({ zones, connections }: ServerDiagramSpec) {
     variant: 'plain' as const,
   }))
 
-  const itemNodes = zoneList.flatMap((zone, i) => {
+  // ゾーンをまたぐ全ノードを先に平坦化してから連番を振る（ミュータブルなカウンタを持たない）
+  const placedItems = zoneList.flatMap((zone, i) => {
     const zoneRect = zoneBoxes[i].rect
     const nodeList = asArray(zone.nodes).filter((node) => node.id)
     const itemSlots = packAxis(nodeList.length, zoneRect.x + NODE_INSET, zoneRect.w - NODE_INSET * 2, NODE_GAP)
-    return nodeList.map((node, j) => {
-      const color = node.color ?? defaultSeriesColor(nodeIndex)
-      nodeIndex += 1
-      return {
-        id: node.id,
-        rect: { x: itemSlots[j].offset, y: zoneRect.y + zoneRect.h * LABEL_STRIP, w: itemSlots[j].size, h: zoneRect.h * ITEM_AREA },
-        title: node.label,
-        body: node.description,
-        color,
-        variant: node.variant,
-      }
-    })
+    return nodeList.map((node, j) => ({
+      node,
+      rect: { x: itemSlots[j].offset, y: zoneRect.y + zoneRect.h * LABEL_STRIP, w: itemSlots[j].size, h: zoneRect.h * ITEM_AREA },
+    }))
   })
+  const itemNodes = placedItems.map(({ node, rect }, index) => ({
+    id: node.id,
+    rect,
+    title: node.label,
+    body: node.description,
+    color: node.color ?? defaultSeriesColor(index),
+    variant: node.variant,
+  }))
 
   const badges = zoneList.map((zone, i) => ({
     at: { x: zoneBoxes[i].rect.x + 0.08, y: zoneBoxes[i].rect.y + zoneBoxes[i].rect.h * 0.16 },

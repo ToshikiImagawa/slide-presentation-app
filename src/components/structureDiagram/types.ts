@@ -1,4 +1,4 @@
-import type { DiagramProps, LineEndShape } from '../diagram'
+import type { LineEndShape } from '../diagram'
 
 /**
  * 構成図（#205）が共通で使うノード/エッジのデータ構造。
@@ -50,7 +50,8 @@ export type StructureEdge = {
   type?: StructureEdgeType
 }
 
-/** Diagram.tsx の内部型（NodeSpec/ConnectorSpec）は非公開のため、公開済みの DiagramProps から要素型を借りる */
-export type DiagramNodeSpec = NonNullable<DiagramProps['nodes']>[number]
-export type DiagramConnectorSpec = NonNullable<DiagramProps['connectors']>[number]
-export type DiagramBadgeSpec = NonNullable<DiagramProps['badges']>[number]
+/** JSON 由来の値は配列でない可能性があるため、描画前に配列だけを通す（不正なデッキでデッキ全体を落とさない）。
+ * 4つの構成図コンポーネントすべてが使う共通ヘルパー（Diagram.tsx/Flow.tsx と同じ考え方） */
+export function asArray<T>(value: T[] | undefined): T[] {
+  return Array.isArray(value) ? value : []
+}
