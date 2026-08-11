@@ -4,8 +4,9 @@ import type { ChartType } from './types'
 /** Y軸（横棒はX軸）の目盛りの目標本数。1/2/5刻みに丸めるので実際の本数はこの前後になる */
 const DEFAULT_TICK_COUNT = 5
 
-/** 系列色の既定。明示指定が無い系列にはこの順で割り当てる（#186 で確定した系列色トークン） */
-const SERIES_KEYS = ['series1', 'series2', 'series3', 'series4', 'series5', 'series6']
+/** 系列色の既定。明示指定が無い系列にはこの順で割り当てる（#186 で確定した系列色トークン）。
+ * 構成図（structureDiagram・#205）のノード色の既定にも流用するため export する（複製しない） */
+export const SERIES_KEYS = ['series1', 'series2', 'series3', 'series4', 'series5', 'series6']
 
 export type AxisScale = {
   min: number

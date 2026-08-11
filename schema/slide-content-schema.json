@@ -20,7 +20,7 @@
       }
     },
     "content": {
-      "description": "コンテンツ表示用レイアウト。子要素のフィールドで描画が決まる。優先順位: steps→Timeline / checklist→チェックリスト / toc→目次 / tiles→FeatureTileGrid / images→画像スライド / chart→チャート / table→表 / compare→比較 / flow→横フロー / component→カスタム。いずれも無指定の場合に限り body/items（プレーン本文）を描画する（#193・#200・#199・#195）",
+      "description": "コンテンツ表示用レイアウト。子要素のフィールドで描画が決まる。優先順位: steps→Timeline / checklist→チェックリスト / toc→目次 / tiles→FeatureTileGrid / images→画像スライド / chart→チャート / table→表 / compare→比較 / flow→横フロー / hierarchyDiagram→階層構成図 / serverDiagram→サーバ/クラウド構成図 / orgChart→組織図 / classDiagram→UMLクラス図 / component→カスタム。いずれも無指定の場合に限り body/items（プレーン本文）を描画する（#193・#200・#199・#195・#205）",
       "contentFields": {
         "title": { "type": "string" },
         "steps": {
@@ -106,17 +106,21 @@
             "description": { "type": "string" }
           }
         },
+        "hierarchyDiagram": { "type": "object", "ref": "hierarchyDiagram" },
+        "serverDiagram": { "type": "object", "ref": "serverDiagram" },
+        "orgChart": { "type": "object", "ref": "orgChart" },
+        "classDiagram": { "type": "object", "ref": "classDiagram" },
         "component": { "type": "object", "ref": "componentReference" },
         "footer": { "type": "string" },
         "body": {
           "type": "string",
-          "description": "プレーン本文の段落（改行は\\n）。steps/checklist/toc/tiles/images/chart/table/compare/flow/componentのいずれも無指定の場合のみ描画される。itemsと併用可。段落配列が必要な場合はtwo-columnのparagraphsを使う（1カラム全幅の自由記述文はbody、カラム構成用の複数ブロックはparagraphsという役割分担）"
+          "description": "プレーン本文の段落（改行は\\n）。steps/checklist/toc/tiles/images/chart/table/compare/flow/hierarchyDiagram/serverDiagram/orgChart/classDiagram/componentのいずれも無指定の場合のみ描画される。itemsと併用可。段落配列が必要な場合はtwo-columnのparagraphsを使う（1カラム全幅の自由記述文はbody、カラム構成用の複数ブロックはparagraphsという役割分担）"
         },
         "items": {
           "type": "array",
           "ref": "contentItem",
           "maxItems": 7,
-          "description": "箇条書き（ネスト可）。steps/checklist/toc/tiles/images/chart/table/compare/flow/componentのいずれも無指定の場合のみ描画される。bodyと併用可。推奨上限7件（超えると密度過多として自動修正対象になる）"
+          "description": "箇条書き（ネスト可）。steps/checklist/toc/tiles/images/chart/table/compare/flow/hierarchyDiagram/serverDiagram/orgChart/classDiagram/componentのいずれも無指定の場合のみ描画される。bodyと併用可。推奨上限7件（超えると密度過多として自動修正対象になる）"
         }
       }
     },
@@ -218,6 +222,77 @@
         }
       }
     }
+  },
+  "structureNode": {
+    "description": "構成図（#205）が共通で使うノード定義。階層構成図・サーバ/クラウド構成図・組織図・UMLクラス図のいずれも同じ形を使う（種別ごとに独自DSLを作らない。#206/#207も同じ形に乗る想定）。フィールドの一部は特定の種別専用（注記のとおり）",
+    "id": { "type": "string", "description": "connections/relations/parentから参照するための識別子" },
+    "label": { "type": "string" },
+    "description": { "type": "string" },
+    "color": { "type": "string", "stringConstraint": "colorToken", "description": "省略時はノードの並び順にseries1〜series6を巡回して割り当てる" },
+    "variant": { "type": "string", "enum": ["outline", "filled", "plain"], "description": "省略時はoutline" },
+    "row": { "type": "number", "description": "明示的な行位置（0始まり）。UMLクラス図でのみ使用。省略時は自動グリッド配置（決定的）" },
+    "col": { "type": "number", "description": "明示的な列位置（0始まり）。UMLクラス図でのみ使用。省略時は自動グリッド配置（決定的）" },
+    "parent": { "type": "string", "description": "親ノードのid。組織図でのみ使用。ツリーの階層・配置（行=深さ・列=決定的な自動配置）はここから導出する。省略した場合はルート（複数可）" },
+    "attributes": { "type": "array", "description": "UMLクラス図でのみ使用。属性の文字列配列（例: \"id: string\"）" },
+    "methods": { "type": "array", "description": "UMLクラス図でのみ使用。メソッドの文字列配列（例: \"login(): void\"）" }
+  },
+  "structureEdge": {
+    "description": "構成図（#205）が共通で使うエッジ定義。#202のConnector（矢印・コネクタプリミティブ）と同じ形なので、id参照のまま渡せる（再実装しない）",
+    "from": { "type": "string", "description": "始点ノードのid" },
+    "to": { "type": "string", "description": "終点ノードのid" },
+    "label": { "type": "string" },
+    "color": { "type": "string", "stringConstraint": "colorToken" },
+    "dashed": { "type": "boolean" },
+    "head": { "type": "string", "enum": ["arrow", "triangle", "dot", "none"], "description": "終点側の端点形状。省略時はarrow（typeを指定した場合はtypeの既定値）" },
+    "tail": { "type": "string", "enum": ["arrow", "triangle", "dot", "none"], "description": "始点側の端点形状。省略時はnone" },
+    "thickness": { "type": "number", "description": "線幅の倍率。省略時は1" },
+    "routing": { "type": "string", "enum": ["auto", "horizontal", "vertical"], "description": "経路方向。省略時はauto（矩形の隙間と中心距離から決める）" },
+    "type": {
+      "type": "string",
+      "enum": ["association", "inheritance", "implements", "dependency"],
+      "description": "UMLクラス図のrelationsでのみ使用。head/dashedを明示指定しない場合の既定値を決める（association=実線+矢印 / inheritance=実線+三角 / implements=破線+三角 / dependency=破線+矢印）"
+    }
+  },
+  "hierarchyDiagram": {
+    "description": "content.hierarchyDiagramの階層構成図指定（層を積む構造図・#205）。層を上から下へ積み、隣接する層同士を線で結ぶ。層の積み順が配置の明示指定になる（自動配置は使わない）",
+    "layers": {
+      "type": "array",
+      "maxItems": 6,
+      "description": "上から下へ積む層。推奨上限6層（超えると密度過多として自動修正対象になる）",
+      "itemFields": {
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "color": { "type": "string", "stringConstraint": "colorToken", "description": "省略時は層の順にseries1〜series6を巡回して割り当てる" }
+      }
+    }
+  },
+  "serverDiagram": {
+    "description": "content.serverDiagramのサーバ/クラウド構成図指定（ゾーン+ノード・#205）。ゾーン（サブネット等の枠）を上から下へ積み、ゾーン内のノードは横一列に並ぶ。ゾーン・ノードの並び順が配置の明示指定になる（自動配置は使わない）。ゾーンをまたぐノード間の接続はconnectionsで指定する",
+    "zones": {
+      "type": "array",
+      "maxItems": 4,
+      "description": "推奨上限4ゾーン",
+      "itemFields": {
+        "title": { "type": "string" },
+        "color": { "type": "string", "stringConstraint": "colorToken", "description": "省略時はゾーンの順にseries1〜series6を巡回して割り当てる" },
+        "nodes": { "type": "array", "ref": "structureNode", "maxItems": 4, "description": "推奨上限4ノード/ゾーン" }
+      }
+    },
+    "connections": { "type": "array", "ref": "structureEdge", "maxItems": 10, "description": "ノードのid同士を結ぶ。ゾーンをまたいで指定できる。推奨上限10本" }
+  },
+  "orgChart": {
+    "description": "content.orgChartの組織図・体制図指定（階層+親子関係・#205）。nodes[].parentで親子関係を明示指定し、階層（行=親からの深さ）と列位置はそこから決定的に自動導出する（乱数・力学モデルは使わない）",
+    "nodes": {
+      "type": "array",
+      "ref": "structureNode",
+      "maxItems": 12,
+      "description": "parentを指定すると親ノードへの接続線が自動で引かれる。parent省略はルート（複数可）。推奨上限12件"
+    }
+  },
+  "classDiagram": {
+    "description": "content.classDiagramのUMLクラス図指定（#205）。属性・メソッドを持つクラスボックスと関係線。classes[].row/colを指定すると明示配置、省略時は決定的な自動グリッド配置になる",
+    "classes": { "type": "array", "ref": "structureNode", "maxItems": 8, "description": "推奨上限8クラス" },
+    "relations": { "type": "array", "ref": "structureEdge", "maxItems": 10, "description": "推奨上限10本" }
   },
   "columnContentFields": {
     "description": "two-columnの left/right に指定可能なフィールド（すべてオプション、組み合わせ可）。componentを指定した場合は他のフィールドは無視される",

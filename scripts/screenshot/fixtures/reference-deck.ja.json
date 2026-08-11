@@ -445,6 +445,70 @@
           ]
         }
       }
+    },
+    {
+      "id": "layout-content-hierarchy-diagram",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (hierarchyDiagram)",
+        "hierarchyDiagram": {
+          "layers": [
+            { "title": "プレゼンテーション層", "description": "Web UI・モバイルアプリ" },
+            { "title": "ビジネス層", "description": "API・ドメインロジック" },
+            { "title": "データ層", "description": "RDB・キャッシュ" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "layout-content-server-diagram",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (serverDiagram)",
+        "serverDiagram": {
+          "zones": [
+            { "title": "パブリックサブネット", "nodes": [{ "id": "lb", "label": "ロードバランサ" }] },
+            { "title": "プライベートサブネット", "nodes": [{ "id": "app1", "label": "APIサーバ" }, { "id": "app2", "label": "APIサーバ" }] },
+            { "title": "データ層", "nodes": [{ "id": "db", "label": "RDS" }] }
+          ],
+          "connections": [
+            { "from": "lb", "to": "app1" },
+            { "from": "lb", "to": "app2" },
+            { "from": "app1", "to": "db" },
+            { "from": "app2", "to": "db" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "layout-content-org-chart",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (orgChart)",
+        "orgChart": {
+          "nodes": [
+            { "id": "ceo", "label": "CEO" },
+            { "id": "cto", "label": "CTO", "parent": "ceo" },
+            { "id": "coo", "label": "COO", "parent": "ceo" },
+            { "id": "eng", "label": "エンジニアリング部長", "parent": "cto" },
+            { "id": "biz", "label": "事業部長", "parent": "coo" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "layout-content-class-diagram",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (classDiagram)",
+        "classDiagram": {
+          "classes": [
+            { "id": "user", "label": "User", "attributes": ["id: string", "name: string"], "methods": ["login(): void"] },
+            { "id": "admin", "label": "Admin", "attributes": ["role: string"], "methods": ["ban(user): void"] }
+          ],
+          "relations": [{ "from": "admin", "to": "user", "type": "inheritance" }]
+        }
+      }
     }
   ]
 }
