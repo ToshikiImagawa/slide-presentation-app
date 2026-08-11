@@ -101,8 +101,13 @@ function backgroundStyle(background: MasterBackground): CSSProperties {
       return { ...base, backgroundImage: linearGradient(background) }
 
     case 'image':
-      return { ...base, backgroundImage: `url(${background.src})`, backgroundSize: background.fit ?? 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }
+      return { ...base, ...imageBackgroundStyle(background.src, background.fit) }
   }
+}
+
+/** 画像背景のCSS（master background の image 種別・meta.backgroundImage の両方で共有する） */
+function imageBackgroundStyle(src: string, fit: 'cover' | 'contain' = 'cover'): CSSProperties {
+  return { backgroundImage: `url(${src})`, backgroundSize: fit, backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }
 }
 
 /**
@@ -116,7 +121,7 @@ function metaBackgroundElementStyle(meta: SlideMeta | undefined): CSSProperties 
   if (!meta?.backgroundColor && !meta?.backgroundImage) return undefined
   return {
     ...(meta.backgroundColor ? { backgroundColor: meta.backgroundColor } : {}),
-    ...(meta.backgroundImage ? { backgroundImage: `url(${meta.backgroundImage})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' } : {}),
+    ...(meta.backgroundImage ? imageBackgroundStyle(meta.backgroundImage) : {}),
   }
 }
 
