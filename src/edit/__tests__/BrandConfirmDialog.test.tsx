@@ -158,7 +158,8 @@ describe('BrandConfirmDialog（#168 並置比較・取り込み確認）', () =>
     const arg = onApply.mock.calls[0][0] as { overrides: BrandOverrides; compiled: CompiledBrandTheme }
     expect(arg.overrides.layoutAssignments).toEqual({ '0:0': 'center/section' })
     expect(arg.compiled.masterMap['center/section']).toBe('brand-section-divider-0-0')
-    expect(arg.compiled.masters['brand-section-divider-0-0']).toEqual({ extends: 'brand' })
+    // backgroundColorHex（#000000）が fill 背景として配線される（#235）
+    expect(arg.compiled.masters['brand-section-divider-0-0']).toEqual({ extends: 'brand', background: { type: 'fill', color: '#000000' } })
   })
 
   it('前回保存済みの上書きを初期値として反映する（再取り込みで人手修正が保持される）', () => {

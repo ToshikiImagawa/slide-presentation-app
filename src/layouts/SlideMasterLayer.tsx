@@ -1,28 +1,34 @@
 import type { CSSProperties } from 'react'
 import { FallbackImage } from '../components/FallbackImage'
 import { hasComponent, renderRegisteredComponent } from '../components/ComponentRegistry'
-import type { MasterBackground, MasterDecoration, MasterDecorationLayer, MasterGradient, MasterRenderContext } from '../data'
+import type { MasterBackground, MasterDecoration, MasterDecorationLayer, MasterGradient, MasterRenderContext, SlideMeta } from '../data'
 import type { ResolvedMaster } from '../masters'
 import { matchesDecorationOnly, renderMasterText } from '../masters'
 
 type Props = {
-  /** resolveMaster が解決したマスター。未解決（undefined）なら何も描かない（現行と完全同一のDOM） */
+  /** resolveMaster が解決したマスター。未解決（undefined）でも meta 個別背景があれば描く */
   master: ResolvedMaster | undefined
   layer: MasterDecorationLayer
   ctx: MasterRenderContext
+  /** slides[].meta。backgroundColor/backgroundImage は back レイヤーで theme.masters[key].background より
+   * 優先する（#236: スライド個別指定が勝つ。theme.tokens の masterKey スコープが全体スコープに勝つのと同型） */
+  meta?: SlideMeta
 }
 
 /**
- * 指定レイヤー（back/front）の中身を組み立てる。back レイヤーは最背面にマスター背景（#189）を敷き、
+ * 指定レイヤー（back/front）の中身を組み立てる。back レイヤーは最背面に背景（#189・#236）を敷き、
  * その上に該当レイヤーの装飾（only 条件を満たすもの）を宣言順で描く。
  * レイヤー内の重なり順を知るのはこのコンポーネントだけで、SlideFrame は2つのレイヤー div を並べるだけ。
  */
-export function SlideMasterLayer({ master, layer, ctx }: Props) {
-  if (!master) return null
-  const visible = master.decorations.filter((d) => (d.layer ?? 'back') === layer && matchesDecorationOnly(d.only, ctx))
+export function SlideMasterLayer({ master, layer, ctx, meta }: Props) {
+  const metaBackgroundStyle = layer === 'back' ? metaBackgroundElementStyle(meta) : undefined
+  if (!master && !metaBackgroundStyle) return null
+  const visible = master?.decorations.filter((d) => (d.layer ?? 'back') === layer && matchesDecorationOnly(d.only, ctx)) ?? []
+  // meta 個別背景（#236: 優先）→ master.background → 何も描かない、の順に一つだけ選ぶ
+  const backgroundElement = metaBackgroundStyle ? <div className="master-background" style={metaBackgroundStyle} /> : master?.background ? <MasterBackgroundElement background={master.background} /> : null
   return (
     <>
-      {layer === 'back' && master.background && <MasterBackgroundElement background={master.background} />}
+      {layer === 'back' && backgroundElement}
       {visible.map((decoration, i) => (
         <MasterDecorationElement key={i} decoration={decoration} ctx={ctx} />
       ))}
@@ -65,7 +71,14 @@ function linearGradient(gradient: MasterGradient): string {
   return `linear-gradient(${gradient.angle ?? 180}deg, ${gradient.from}, ${gradient.to})`
 }
 
-/** master の background（無地/格子/全面塗り/グラデーション/画像）を全面に敷く要素（#189） */
+/**
+ * master の background（無地/格子/全面塗り/グラデーション/画像）を全面に敷く要素（#189）。
+ * 既定の下地色（テーマ背景色）は .master-background（global.css）に持たせる（#239）。JSON側は
+ * 明示指定（fill の color・grid の color 上書き）のときだけインラインで上書きし、plain・グラデーション・
+ * 画像（cover 全面表示時は見えないが、image の fit: contain の余白と gradient の半透明部分では下地として
+ * 透ける）は CSS の既定に委ねる。デッキ既定の格子を透かす旧来のグレーゾーン挙動より、常にテーマ背景色を
+ * 下地にする方が「背景意匠の下は必ずテーマ背景色」という一貫した仕様になり、意図が説明しやすい
+ */
 function MasterBackgroundElement({ background }: { background: MasterBackground }) {
   const className = background.type === 'grid' ? 'master-background master-background-grid' : 'master-background'
   return <div className={className} style={backgroundStyle(background)} />
@@ -75,12 +88,12 @@ function backgroundStyle(background: MasterBackground): CSSProperties {
   const base: CSSProperties = { opacity: background.opacity }
   switch (background.type) {
     case 'plain':
-      return { ...base, backgroundColor: 'var(--theme-background)' }
+      return base
 
     case 'grid': {
       // 格子の意匠自体は .master-background-grid（global.css）に持たせ、密度だけCSS変数で上書きする
       const density = background.size !== undefined ? ({ '--theme-background-grid-size': `${background.size}px` } as CSSProperties) : undefined
-      return { ...base, backgroundColor: background.color ?? 'var(--theme-background)', ...density }
+      return { ...base, ...(background.color ? { backgroundColor: background.color } : {}), ...density }
     }
 
     case 'fill':
@@ -90,7 +103,27 @@ function backgroundStyle(background: MasterBackground): CSSProperties {
       return { ...base, backgroundImage: linearGradient(background) }
 
     case 'image':
-      return { ...base, backgroundImage: `url(${background.src})`, backgroundSize: background.fit ?? 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }
+      return { ...base, ...imageBackgroundStyle(background.src, background.fit) }
+  }
+}
+
+/** 画像背景のCSS（master background の image 種別・meta.backgroundImage の両方で共有する） */
+function imageBackgroundStyle(src: string, fit: 'cover' | 'contain' = 'cover'): CSSProperties {
+  return { backgroundImage: `url(${src})`, backgroundSize: fit, backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }
+}
+
+/**
+ * meta.backgroundColor / backgroundImage（スライド個別背景）の style を組み立てる。どちらも無ければ undefined
+ * を返す（#236）。両方指定時は Reveal.js の従来挙動（色を下地に画像を重ねる）に合わせて両方を反映する。
+ * fit は選択肢を持たないため既定の cover 固定（Reveal.js の data-background-image 既定と同じ）。
+ * .master-background と同じ要素・レイヤーで描くことで、本編・発表者ビュー・編集プレビュー・PDF書き出しの
+ * 4経路すべてで効くようにする（従来の data-background-* は Reveal.js の背景レイヤー経由のため4経路中1つしか効かなかった）
+ */
+function metaBackgroundElementStyle(meta: SlideMeta | undefined): CSSProperties | undefined {
+  if (!meta?.backgroundColor && !meta?.backgroundImage) return undefined
+  return {
+    ...(meta.backgroundColor ? { backgroundColor: meta.backgroundColor } : {}),
+    ...(meta.backgroundImage ? imageBackgroundStyle(meta.backgroundImage) : {}),
   }
 }
 
@@ -120,20 +153,28 @@ function MasterDecorationElement({ decoration, ctx }: { decoration: MasterDecora
       )
 
     case 'band': {
+      // 既定色（var(--theme-primary)）は .master-decoration-band（global.css）に持たせる（#239）。
+      // JSON側は color/gradient を明示指定したときだけインラインで上書きする
       const style = decorationStyle(decoration, decoration.orientation ?? 'horizontal')
       const sizeStyle = stripeSize(decoration.orientation, decoration.thickness ?? 8)
-      const paint = decoration.gradient ? { backgroundImage: linearGradient(decoration.gradient) } : { backgroundColor: decoration.color ?? 'var(--theme-primary)' }
-      return <div style={{ ...style, ...sizeStyle, ...paint }} />
+      const paint = decoration.gradient ? { backgroundImage: linearGradient(decoration.gradient) } : decoration.color ? { backgroundColor: decoration.color } : {}
+      return <div className="master-decoration-band" style={{ ...style, ...sizeStyle, ...paint }} />
     }
 
     case 'rule': {
+      // 既定色は .master-decoration-rule（global.css）に持たせる（#239）
       const style = decorationStyle(decoration)
       const sizeStyle = stripeSize(decoration.orientation, decoration.thickness ?? 2, decoration.length ?? 200)
-      return <div style={{ ...style, ...sizeStyle, backgroundColor: decoration.color ?? 'var(--theme-primary)' }} />
+      return <div className="master-decoration-rule" style={{ ...style, ...sizeStyle, ...(decoration.color ? { backgroundColor: decoration.color } : {}) }} />
     }
 
     case 'text':
-      return <div style={{ ...decorationStyle(decoration), color: decoration.color ?? 'var(--theme-text-body)', fontSize: decoration.fontSize, whiteSpace: 'nowrap' }}>{renderMasterText(decoration.content, ctx)}</div>
+      // 既定色は .master-decoration-text（global.css）に持たせる（#239）
+      return (
+        <div className="master-decoration-text" style={{ ...decorationStyle(decoration), ...(decoration.color ? { color: decoration.color } : {}), fontSize: decoration.fontSize, whiteSpace: 'nowrap' }}>
+          {renderMasterText(decoration.content, ctx)}
+        </div>
+      )
 
     case 'component':
       // 未登録コンポーネントは FallbackComponent の破線枠が全スライドに並ぶのを避けるため、装飾自体を描画しない

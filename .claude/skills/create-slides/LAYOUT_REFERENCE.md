@@ -482,6 +482,8 @@
 
 `section` はそのスライドが属する章のタイトル。同じ値が**隣接して続く**スライドを1つの章として扱い、章番号（宣言順の1始まり）・開始ページ・章内枚数は自動で導出される（章の定義を別に書く必要はない）。表紙・締めのように章に属さないスライドは省略する。導出した章はマスター装飾の `text` に差し込める（後述の `{sectionNumber}` 等）。
 
+`backgroundColor`/`backgroundImage` を指定したスライドは、そのスライドの `theme.masters[key].background`（後述）を描かず、個別指定が勝つ（#236）。本編・発表者ビュー・編集プレビュー・PDF書き出しの4経路すべてで同じ見た目になる（マスター背景と同じ層で描くため）。
+
 `notes` はオブジェクト形式でも指定可能:
 
 ```json
@@ -572,7 +574,7 @@
 
 透かし（機密表記等）は `text`/`image` 装飾に `opacity` と `rotate` を付けて表現する。グラデーション帯は `band` に `gradient`（`{ from, to, angle }`）を指定する（`color` の代わりに使う）。斜めのストライプは `rule` に `length`（対角を覆う長さ）・`thickness`・`rotate` を指定する（辺いっぱいに伸びる `band` を回すと両端に隙間が出る）。
 
-`background` はマスター単位の背景意匠。省略するとデッキ既定の背景（テーマ背景色＋格子）がそのまま見える。`opacity`（0〜1）を下げるとデッキ既定の背景が透ける。
+`background` はマスター単位の背景意匠。省略するとデッキ既定の背景（テーマ背景色＋格子）がそのまま見える。`opacity`（0〜1）を下げるとデッキ既定の背景が透ける。**そのスライドに `meta.backgroundColor`/`backgroundImage`（前述の共通 meta フィールド）があるときは、この `background` を描かず個別指定が勝つ**（#236）。
 
 | `type` | 追加プロパティ | 用途 |
 |---|---|---|
@@ -581,6 +583,8 @@
 | `fill` | `color`（必須） | 全面塗り（章扉の反転面等） |
 | `gradient` | `from` / `to`（必須）/ `angle`（deg・省略時 180 = 上→下） | グラデーション |
 | `image` | `src`（必須）/ `fit`（`cover`/`contain`・省略時 `cover`） | 画像を全面に敷く |
+
+`plain`/`grid`（`color` 省略時）に加え、`gradient` の半透明部分・`image` の `fit: contain` の余白の下地も既定でテーマ背景色になる（#239。真実源は `global.css` の `.master-background`）。
 
 格子線の色は `tokens` の masterKey スコープで `theme-background-grid` を上書きすればマスターごとに変えられる。
 

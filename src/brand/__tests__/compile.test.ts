@@ -300,11 +300,22 @@ describe('compile（#168 の並置比較・取り込み確認）', () => {
     })
 
     it('割り当てた layout ごとに brand-<slug> master（extends: brand）と masterMap を追加する', () => {
-      const { theme } = compile(withLayouts(), { layoutAssignments: { '0:0': 'center/section' } })
-      expect(theme.masterMap['center/section']).toBe('brand-section-divider-0-0')
-      expect(theme.masters['brand-section-divider-0-0']).toEqual({ extends: 'brand' })
+      const { theme } = compile(withLayouts(), { layoutAssignments: { '0:1': 'content' } })
+      expect(theme.masterMap.content).toBe('brand-content-0-1')
+      expect(theme.masters['brand-content-0-1']).toEqual({ extends: 'brand' })
       // 既定の4種は変わらない
       expect(theme.masterMap.center).toBe('brand')
+    })
+
+    it('抽出済みの背景色（backgroundColorHex）を fill 背景として MasterDefinition.background へ配線する（#235）', () => {
+      const { theme } = compile(withLayouts(), { layoutAssignments: { '0:0': 'center/section' } })
+      expect(theme.masterMap['center/section']).toBe('brand-section-divider-0-0')
+      expect(theme.masters['brand-section-divider-0-0']).toEqual({ extends: 'brand', background: { type: 'fill', color: '#000000' } })
+    })
+
+    it('背景色を持たないレイアウトのマスターは現行と同一（extends のみ）のまま変わらない（#235）', () => {
+      const { theme } = compile(withLayouts(), { layoutAssignments: { '0:1': 'content' } })
+      expect(theme.masters['brand-content-0-1']).toEqual({ extends: 'brand' })
     })
 
     it('複数の layout をそれぞれ別枠へ割り当てられる', () => {
