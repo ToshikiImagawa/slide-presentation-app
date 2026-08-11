@@ -24,9 +24,11 @@ export function SlideMasterLayer({ master, layer, ctx, meta }: Props) {
   const metaBackgroundStyle = layer === 'back' ? metaBackgroundElementStyle(meta) : undefined
   if (!master && !metaBackgroundStyle) return null
   const visible = master?.decorations.filter((d) => (d.layer ?? 'back') === layer && matchesDecorationOnly(d.only, ctx)) ?? []
+  // meta 個別背景（#236: 優先）→ master.background → 何も描かない、の順に一つだけ選ぶ
+  const backgroundElement = metaBackgroundStyle ? <div className="master-background" style={metaBackgroundStyle} /> : master?.background ? <MasterBackgroundElement background={master.background} /> : null
   return (
     <>
-      {layer === 'back' && (metaBackgroundStyle ? <div className="master-background" style={metaBackgroundStyle} /> : master?.background && <MasterBackgroundElement background={master.background} />)}
+      {layer === 'back' && backgroundElement}
       {visible.map((decoration, i) => (
         <MasterDecorationElement key={i} decoration={decoration} ctx={ctx} />
       ))}
