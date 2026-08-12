@@ -1,6 +1,6 @@
 import { Diagram } from '../diagram'
 import { defaultSeriesColor } from '../structureDiagram/colors'
-import { packAxis } from '../structureDiagram/packAxis'
+import { getAxisSlot, packAxis } from '../structureDiagram/packAxis'
 import { asArray, type StructureEdge, type StructureNode } from '../structureDiagram/types'
 import { axisHeaderNodes } from './axisHeaderNodes'
 
@@ -62,10 +62,11 @@ export function Swimlane({ phases, lanes, connections }: SwimlaneSpec) {
     const laneRect = laneBoxes[i].rect
     const nodeList = asArray(lane.nodes).filter((node) => node.id)
     return nodeList.map((node, j) => {
-      const col = Math.min(node.col ?? j, colSlots.length - 1)
+      // getAxisSlotで範囲外・非整数のnode.colをガードする（#276）
+      const colSlot = getAxisSlot(colSlots, node.col ?? j)
       return {
         node,
-        rect: { x: colSlots[col].offset + NODE_INSET, y: laneRect.y + laneRect.h * LABEL_STRIP, w: colSlots[col].size - NODE_INSET * 2, h: laneRect.h * ITEM_AREA },
+        rect: { x: colSlot.offset + NODE_INSET, y: laneRect.y + laneRect.h * LABEL_STRIP, w: colSlot.size - NODE_INSET * 2, h: laneRect.h * ITEM_AREA },
       }
     })
   })

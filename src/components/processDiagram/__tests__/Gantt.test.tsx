@@ -54,4 +54,14 @@ describe('Gantt', () => {
     expect(render(<Gantt />).container.firstChild).toBeNull()
     expect(render(<Gantt tasks={[]} />).container.firstChild).toBeNull()
   })
+
+  it('startColが負値・非整数でも例外にならず描画を続ける（#276）', () => {
+    const tasks = [
+      { label: '負値', startCol: -1 },
+      { label: '非整数', startCol: 0.5 },
+    ]
+    const { getByText } = render(<Gantt axis={AXIS} tasks={tasks} />)
+    expect(getByText('負値')).toBeTruthy()
+    expect(getByText('非整数')).toBeTruthy()
+  })
 })

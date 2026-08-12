@@ -57,4 +57,10 @@ describe('Flowchart', () => {
     expect(render(<Flowchart />).container.firstChild).toBeNull()
     expect(render(<Flowchart nodes={[]} />).container.firstChild).toBeNull()
   })
+
+  it('colが負値でも例外にならず描画を続ける（#276）', () => {
+    const nodes = [{ id: 'bad', label: '負値', col: -1, row: 0 }]
+    const { getByText } = render(<Flowchart nodes={nodes} />)
+    expect(getByText('負値')).toBeTruthy()
+  })
 })

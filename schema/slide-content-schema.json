@@ -243,8 +243,8 @@
     "description": { "type": "string" },
     "color": { "type": "string", "stringConstraint": "colorToken", "description": "省略時はノードの並び順にseries1〜series6を巡回して割り当てる" },
     "variant": { "type": "string", "enum": ["outline", "filled", "plain"], "description": "省略時はoutline" },
-    "row": { "type": "number", "description": "明示的な行位置（0始まり）。UMLクラス図・フローチャートでのみ使用。省略時は自動グリッド配置（決定的）" },
-    "col": { "type": "number", "description": "明示的な列位置（0始まり）。UMLクラス図・フローチャートでは自動グリッド配置の列（省略時は自動グリッド配置）。スイムレーンでは「フェーズ（工程）列」の位置（省略時はレーン内の配列順）" },
+    "row": { "type": "integer", "minimum": 0, "description": "明示的な行位置（0始まり）。UMLクラス図・フローチャートでのみ使用。省略時は自動グリッド配置（決定的）" },
+    "col": { "type": "integer", "minimum": 0, "description": "明示的な列位置（0始まり）。UMLクラス図・フローチャートでは自動グリッド配置の列（省略時は自動グリッド配置）。スイムレーンでは「フェーズ（工程）列」の位置（省略時はレーン内の配列順）" },
     "parent": { "type": "string", "description": "親ノードのid。組織図でのみ使用。ツリーの階層・配置（行=深さ・列=決定的な自動配置）はここから導出する。省略した場合はルート（複数可）" },
     "attributes": { "type": "array", "description": "UMLクラス図でのみ使用。属性の文字列配列（例: \"id: string\"）" },
     "methods": { "type": "array", "description": "UMLクラス図でのみ使用。メソッドの文字列配列（例: \"login(): void\"）" },
@@ -341,8 +341,8 @@
       "description": "推奨上限8工程",
       "itemFields": {
         "label": { "type": "string" },
-        "startCol": { "type": "number", "description": "開始列（0始まり）" },
-        "span": { "type": "number", "description": "期間（列数）。省略時は1" },
+        "startCol": { "type": "integer", "minimum": 0, "description": "開始列（0始まり）" },
+        "span": { "type": "integer", "minimum": 1, "description": "期間（列数）。省略時は1" },
         "color": { "type": "string", "stringConstraint": "colorToken", "description": "省略時はタスクの並び順にseries1〜series6を巡回して割り当てる" }
       }
     }

@@ -27,6 +27,8 @@ interface FieldDef {
   stringConstraint?: StringConstraintKind
   /** 配列の推奨上限件数。超過は情報密度過多としてエラーにする（#211） */
   maxItems?: number
+  /** 数値フィールドの下限（#276）。type: "integer" と組み合わせて範囲外・非整数の指定を検出する */
+  minimum?: number
 }
 
 type FieldMap = Record<string, FieldDef>
@@ -102,6 +104,8 @@ function typeMatches(value: unknown, type: string): boolean {
       return typeof value === 'string'
     case 'number':
       return typeof value === 'number'
+    case 'integer':
+      return typeof value === 'number' && Number.isInteger(value)
     case 'boolean':
       return typeof value === 'boolean'
     case 'array':
@@ -126,6 +130,10 @@ function checkFieldValue(value: unknown, def: FieldDef, path: string, errors: Va
   }
   if (def.enum && typeof value === 'string' && !def.enum.includes(value)) {
     addError(errors, path, `${path}は${def.enum.join('|')}のいずれかである必要があります`, def.enum.join('|'), value)
+    return
+  }
+  if (def.minimum != null && typeof value === 'number' && value < def.minimum) {
+    addError(errors, path, `${path}は${def.minimum}以上である必要があります`, `${def.minimum}以上`, String(value))
     return
   }
   if (typeof value === 'string' && def.stringConstraint) {
