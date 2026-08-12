@@ -341,6 +341,96 @@ describe('getSchemaConformanceErrors', () => {
     expect(errors[0].path).toBe('slides[0].content.flow')
   })
 
+  it('content.dateTimelineの正常な指定はエラーにしない（#206 日付タイムライン）', () => {
+    const data: PresentationData = {
+      meta: { title: 't' },
+      slides: [{ id: 's1', layout: 'content', content: { title: 'x', dateTimeline: [{ date: '2026/01', title: 'マイルストーン1', description: '説明' }] } }],
+    }
+    expect(getSchemaConformanceErrors(data)).toEqual([])
+  })
+
+  it('content.flowchartの正常な指定はエラーにしない（#206 フローチャート）', () => {
+    const data: PresentationData = {
+      meta: { title: 't' },
+      slides: [
+        {
+          id: 's1',
+          layout: 'content',
+          content: {
+            title: 'x',
+            flowchart: {
+              nodes: [
+                { id: 'start', label: '開始', shape: 'start' },
+                { id: 'check', label: '判定', shape: 'decision' },
+                { id: 'end', label: '終了', shape: 'end' },
+              ],
+              edges: [
+                { from: 'start', to: 'check' },
+                { from: 'check', to: 'end' },
+              ],
+            },
+          },
+        },
+      ],
+    }
+    expect(getSchemaConformanceErrors(data)).toEqual([])
+  })
+
+  it('structureNode.shapeがstart/process/decision/end以外だとエラーにする', () => {
+    const data = {
+      meta: { title: 't' },
+      slides: [{ id: 's1', layout: 'content', content: { title: 'x', flowchart: { nodes: [{ id: 'a', shape: 'terminator' }] } } }],
+    } as unknown as PresentationData
+    const errors = getSchemaConformanceErrors(data)
+    expect(errors).toHaveLength(1)
+    expect(errors[0].path).toBe('slides[0].content.flowchart.nodes[0].shape')
+  })
+
+  it('content.swimlaneの正常な指定はエラーにしない（#206 スイムレーン）', () => {
+    const data: PresentationData = {
+      meta: { title: 't' },
+      slides: [
+        {
+          id: 's1',
+          layout: 'content',
+          content: {
+            title: 'x',
+            swimlane: {
+              phases: ['設計', '実装'],
+              lanes: [{ title: 'PM', nodes: [{ id: 'a', label: '要件定義', col: 0 }] }],
+              connections: [{ from: 'a', to: 'a' }],
+            },
+          },
+        },
+      ],
+    }
+    expect(getSchemaConformanceErrors(data)).toEqual([])
+  })
+
+  it('content.ganttの正常な指定はエラーにしない（#206 ガント）', () => {
+    const data: PresentationData = {
+      meta: { title: 't' },
+      slides: [
+        {
+          id: 's1',
+          layout: 'content',
+          content: { title: 'x', gantt: { axis: ['1月', '2月'], tasks: [{ label: '設計', startCol: 0, span: 1, color: 'series1' }] } },
+        },
+      ],
+    }
+    expect(getSchemaConformanceErrors(data)).toEqual([])
+  })
+
+  it('content.gantt.tasks[].colorがTHEME_COLOR_TOKENSにない値の場合はエラーにする（テーマ由来の制約違反・#211）', () => {
+    const data = {
+      meta: { title: 't' },
+      slides: [{ id: 's1', layout: 'content', content: { title: 'x', gantt: { tasks: [{ label: '設計', startCol: 0, color: 'not-a-token' }] } } }],
+    } as unknown as PresentationData
+    const errors = getSchemaConformanceErrors(data)
+    expect(errors).toHaveLength(1)
+    expect(errors[0].path).toBe('slides[0].content.gantt.tasks[0].color')
+  })
+
   it('content.tocの正常な指定はエラーにしない（#195 目次）', () => {
     const data: PresentationData = {
       meta: { title: 't' },

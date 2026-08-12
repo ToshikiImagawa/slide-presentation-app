@@ -767,3 +767,107 @@
 ```
 
 `columns`（1〜3。範囲外は丸める）で列数を指定できる。省略時は1列（縦一列）。章・項目数が多い場合に2〜3列へ折返す。両モード共通で、項目数（多列時は行数）に応じて行間・文字サイズが自動で詰まる。
+
+### プロセス図（フローチャート・スイムレーン・日付タイムライン・ガント・#206）
+
+工程・時間軸を示す図式。フローチャート・スイムレーンはノード/エッジのデータ構造（`structureNode`/`structureEdge`）を構成図（#205）と共有し、日付タイムラインは既存の `steps`（Timeline）と見た目の基盤を共有する（`steps` の描画は変わらず、併存する独立フィールド）。
+
+#### dateTimeline（日付付きマイルストーンタイムライン）
+
+`steps`（連番）と同じ横1列の連結線つきタイムラインで、バッジの中身が番号ではなく日付になる。日付は等間隔配置で、実際の日付差には比例させない（近接した日付が並んでも密集して読めなくならないようにするための設計判断）。日付は短い表記を推奨する。
+
+```json
+{
+  "id": "slide-id",
+  "layout": "content",
+  "content": {
+    "title": "マイルストーン",
+    "dateTimeline": [
+      { "date": "2026/01", "title": "要件確定", "description": "スコープを固定" },
+      { "date": "2026/03", "title": "実装完了" },
+      { "date": "2026/04", "title": "リリース", "description": "本番反映" }
+    ]
+  }
+}
+```
+
+#### flowchart（フローチャート）
+
+開始/処理/判断/終了のノード種別は `nodes[].shape`（`start`/`process`/`decision`/`end`。省略時は `process` 相当の矩形）で指定する。`start`/`end` は端が丸いピル形、`decision` はひし形で表示される。分岐（1つのノードから複数の `edges`）・合流（複数の `edges` が1つのノードへ集まる）はいずれも通常の `edges` を複数指定するだけで表現でき、専用のデータ構造は無い。`nodes[].row`/`col` を指定すると明示配置、省略時は決定的な自動グリッド配置（classDiagram と同じ）になる。分岐・合流を綺麗に見せるには row/col を明示指定するのが基本形。
+
+```json
+{
+  "id": "slide-id",
+  "layout": "content",
+  "content": {
+    "title": "承認フロー",
+    "flowchart": {
+      "nodes": [
+        { "id": "start", "label": "申請", "shape": "start", "row": 0, "col": 1 },
+        { "id": "check", "label": "承認する?", "shape": "decision", "row": 1, "col": 1 },
+        { "id": "approve", "label": "承認処理", "shape": "process", "row": 2, "col": 0 },
+        { "id": "reject", "label": "却下通知", "shape": "process", "row": 2, "col": 2 },
+        { "id": "end", "label": "完了", "shape": "end", "row": 3, "col": 1 }
+      ],
+      "edges": [
+        { "from": "start", "to": "check" },
+        { "from": "check", "to": "approve", "label": "Yes" },
+        { "from": "check", "to": "reject", "label": "No" },
+        { "from": "approve", "to": "end" },
+        { "from": "reject", "to": "end" }
+      ]
+    }
+  }
+}
+```
+
+#### swimlane（スイムレーン）
+
+レーン（担当）を上から下へ積み、フェーズ（工程）は全レーン共通の列として揃える（同じ工程を誰が担当しているかを縦に比較できる）。各レーンの `nodes[].col` で列位置を明示指定でき、省略時はレーン内の配列順が列位置になる。レーンをまたぐ接続は `connections` で id 同士を結ぶ。
+
+```json
+{
+  "id": "slide-id",
+  "layout": "content",
+  "content": {
+    "title": "リリースプロセス",
+    "swimlane": {
+      "phases": ["設計", "実装", "レビュー", "リリース"],
+      "lanes": [
+        { "title": "PM", "nodes": [{ "id": "req", "label": "要件定義", "col": 0 }] },
+        { "title": "エンジニア", "nodes": [{ "id": "impl", "label": "実装", "col": 1 }, { "id": "fix", "label": "修正", "col": 2 }] },
+        { "title": "QA", "nodes": [{ "id": "review", "label": "レビュー", "col": 2 }, { "id": "release", "label": "リリース", "col": 3 }] }
+      ],
+      "connections": [
+        { "from": "req", "to": "impl" },
+        { "from": "impl", "to": "review" },
+        { "from": "review", "to": "fix" },
+        { "from": "fix", "to": "release" }
+      ]
+    }
+  }
+}
+```
+
+#### gantt（ガント）
+
+行=工程、列=時間軸の単位（`axis`）の表形式。時間軸は実カレンダー日付ではなく離散的な列で表す（発表内容ごとに時間粒度が違い、日付演算の複雑さに対して得られる恩恵が小さいための設計判断）。各工程は `startCol`（開始列・0始まり）と `span`（期間の列数。省略時1）で期間バーの位置と長さを指定する。
+
+```json
+{
+  "id": "slide-id",
+  "layout": "content",
+  "content": {
+    "title": "スケジュール",
+    "gantt": {
+      "axis": ["1月", "2月", "3月", "4月"],
+      "tasks": [
+        { "label": "設計", "startCol": 0, "span": 1 },
+        { "label": "実装", "startCol": 1, "span": 2 },
+        { "label": "テスト", "startCol": 2, "span": 1 },
+        { "label": "リリース", "startCol": 3, "span": 1 }
+      ]
+    }
+  }
+}
+```

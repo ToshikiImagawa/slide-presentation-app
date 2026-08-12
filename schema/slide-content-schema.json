@@ -20,7 +20,7 @@
       }
     },
     "content": {
-      "description": "コンテンツ表示用レイアウト。子要素のフィールドで描画が決まる。優先順位: steps→Timeline / checklist→チェックリスト / toc→目次 / tiles→FeatureTileGrid / images→画像スライド / chart→チャート / table→表 / compare→比較 / flow→横フロー / hierarchyDiagram→階層構成図 / serverDiagram→サーバ/クラウド構成図 / orgChart→組織図 / classDiagram→UMLクラス図 / component→カスタム。いずれも無指定の場合に限り body/items（プレーン本文）を描画する（#193・#200・#199・#195・#205）",
+      "description": "コンテンツ表示用レイアウト。子要素のフィールドで描画が決まる。優先順位: steps→Timeline / dateTimeline→日付付きマイルストーンタイムライン / checklist→チェックリスト / toc→目次 / tiles→FeatureTileGrid / images→画像スライド / chart→チャート / table→表 / compare→比較 / flow→横フロー / hierarchyDiagram→階層構成図 / serverDiagram→サーバ/クラウド構成図 / orgChart→組織図 / classDiagram→UMLクラス図 / flowchart→フローチャート / swimlane→スイムレーン / gantt→ガント / component→カスタム。いずれも無指定の場合に限り body/items（プレーン本文）を描画する（#193・#200・#199・#195・#205・#206）",
       "contentFields": {
         "title": { "type": "string" },
         "steps": {
@@ -35,6 +35,16 @@
           }
         },
         "stepColumns": { "type": "number", "description": "stepsを多列の番号付きリストとして並べる列数（1〜3。範囲外は丸める）。省略時は現行と同じ連結線つきの横1列。指定すると連結線は描かず、番号バッジの右に見出しと説明を置いた項目を1〜3列×複数行に配置し、行数に応じて行間・説明文の文字サイズを自動で詰める（#199）" },
+        "dateTimeline": {
+          "type": "array",
+          "maxItems": 8,
+          "description": "日付付きマイルストーンタイムライン（#206）。stepsと見た目の基盤（連結線つきの横1列）を共有するが独立フィールドで、既存のsteps（番号ベース）とは併存できる（同じスライドで両方を指定した場合はstepsが優先される）。日付は等間隔配置の見出しラベルとして扱い、実際の日付差には比例させない（近接した日付が並ぶと間隔比例では密集して読めなくなるため、順序だけを保証する離散配置に決めた設計判断）。dateは短い表記を推奨（例: \"2026/01\"・\"Q1\"）。推奨上限8件",
+          "itemFields": {
+            "date": { "type": "string", "description": "表示用の日付文字列。バッジ（直径50px相当）に収めるため短い表記を推奨" },
+            "title": { "type": "string" },
+            "description": { "type": "string" }
+          }
+        },
         "checklist": {
           "type": "array",
           "maxItems": 7,
@@ -110,17 +120,20 @@
         "serverDiagram": { "type": "object", "ref": "serverDiagram" },
         "orgChart": { "type": "object", "ref": "orgChart" },
         "classDiagram": { "type": "object", "ref": "classDiagram" },
+        "flowchart": { "type": "object", "ref": "flowchart" },
+        "swimlane": { "type": "object", "ref": "swimlane" },
+        "gantt": { "type": "object", "ref": "gantt" },
         "component": { "type": "object", "ref": "componentReference" },
         "footer": { "type": "string" },
         "body": {
           "type": "string",
-          "description": "プレーン本文の段落（改行は\\n）。steps/checklist/toc/tiles/images/chart/table/compare/flow/hierarchyDiagram/serverDiagram/orgChart/classDiagram/componentのいずれも無指定の場合のみ描画される。itemsと併用可。段落配列が必要な場合はtwo-columnのparagraphsを使う（1カラム全幅の自由記述文はbody、カラム構成用の複数ブロックはparagraphsという役割分担）"
+          "description": "プレーン本文の段落（改行は\\n）。steps/dateTimeline/checklist/toc/tiles/images/chart/table/compare/flow/hierarchyDiagram/serverDiagram/orgChart/classDiagram/flowchart/swimlane/gantt/componentのいずれも無指定の場合のみ描画される。itemsと併用可。段落配列が必要な場合はtwo-columnのparagraphsを使う（1カラム全幅の自由記述文はbody、カラム構成用の複数ブロックはparagraphsという役割分担）"
         },
         "items": {
           "type": "array",
           "ref": "contentItem",
           "maxItems": 7,
-          "description": "箇条書き（ネスト可）。steps/checklist/toc/tiles/images/chart/table/compare/flow/hierarchyDiagram/serverDiagram/orgChart/classDiagram/componentのいずれも無指定の場合のみ描画される。bodyと併用可。推奨上限7件（超えると密度過多として自動修正対象になる）"
+          "description": "箇条書き（ネスト可）。steps/dateTimeline/checklist/toc/tiles/images/chart/table/compare/flow/hierarchyDiagram/serverDiagram/orgChart/classDiagram/flowchart/swimlane/gantt/componentのいずれも無指定の場合のみ描画される。bodyと併用可。推奨上限7件（超えると密度過多として自動修正対象になる）"
         }
       }
     },
@@ -224,17 +237,22 @@
     }
   },
   "structureNode": {
-    "description": "構成図（#205）が共通で使うノード定義。階層構成図・サーバ/クラウド構成図・組織図・UMLクラス図のいずれも同じ形を使う（種別ごとに独自DSLを作らない。#206/#207も同じ形に乗る想定）。フィールドの一部は特定の種別専用（注記のとおり）",
-    "id": { "type": "string", "description": "connections/relations/parentから参照するための識別子" },
+    "description": "構成図（#205）・プロセス図（#206）が共通で使うノード定義。階層構成図・サーバ/クラウド構成図・組織図・UMLクラス図・フローチャート・スイムレーンのいずれも同じ形を使う（種別ごとに独自DSLを作らない。#207も同じ形に乗る想定）。フィールドの一部は特定の種別専用（注記のとおり）",
+    "id": { "type": "string", "description": "connections/relations/edges/parentから参照するための識別子" },
     "label": { "type": "string" },
     "description": { "type": "string" },
     "color": { "type": "string", "stringConstraint": "colorToken", "description": "省略時はノードの並び順にseries1〜series6を巡回して割り当てる" },
     "variant": { "type": "string", "enum": ["outline", "filled", "plain"], "description": "省略時はoutline" },
-    "row": { "type": "number", "description": "明示的な行位置（0始まり）。UMLクラス図でのみ使用。省略時は自動グリッド配置（決定的）" },
-    "col": { "type": "number", "description": "明示的な列位置（0始まり）。UMLクラス図でのみ使用。省略時は自動グリッド配置（決定的）" },
+    "row": { "type": "number", "description": "明示的な行位置（0始まり）。UMLクラス図・フローチャートでのみ使用。省略時は自動グリッド配置（決定的）" },
+    "col": { "type": "number", "description": "明示的な列位置（0始まり）。UMLクラス図・フローチャートでは自動グリッド配置の列（省略時は自動グリッド配置）。スイムレーンでは「フェーズ（工程）列」の位置（省略時はレーン内の配列順）" },
     "parent": { "type": "string", "description": "親ノードのid。組織図でのみ使用。ツリーの階層・配置（行=深さ・列=決定的な自動配置）はここから導出する。省略した場合はルート（複数可）" },
     "attributes": { "type": "array", "description": "UMLクラス図でのみ使用。属性の文字列配列（例: \"id: string\"）" },
-    "methods": { "type": "array", "description": "UMLクラス図でのみ使用。メソッドの文字列配列（例: \"login(): void\"）" }
+    "methods": { "type": "array", "description": "UMLクラス図でのみ使用。メソッドの文字列配列（例: \"login(): void\"）" },
+    "shape": {
+      "type": "string",
+      "enum": ["start", "process", "decision", "end"],
+      "description": "フローチャート（#206）のノード種別でのみ使用。省略時はprocess相当（矩形）。start/endは端が丸いピル形、decisionはひし形で表示される"
+    }
   },
   "structureEdge": {
     "description": "構成図（#205）が共通で使うエッジ定義。#202のConnector（矢印・コネクタプリミティブ）と同じ形なので、id参照のまま渡せる（再実装しない）",
@@ -293,6 +311,41 @@
     "description": "content.classDiagramのUMLクラス図指定（#205）。属性・メソッドを持つクラスボックスと関係線。classes[].row/colを指定すると明示配置、省略時は決定的な自動グリッド配置になる",
     "classes": { "type": "array", "ref": "structureNode", "maxItems": 8, "description": "推奨上限8クラス" },
     "relations": { "type": "array", "ref": "structureEdge", "maxItems": 10, "description": "推奨上限10本" }
+  },
+  "flowchart": {
+    "description": "content.flowchartのフローチャート指定（#206）。開始/処理/判断/終了のノード種別（structureNode.shape）と、分岐・合流を表現できる。分岐（1つのノードから複数のedges）・合流（複数のedgesが1つのノードへ集まる）はいずれも通常のedgesを複数指定するだけで表現し、専用のデータ構造は持たない。エッジは直交経路でノード境界に接する（#202のコネクタを再利用）。nodes[].row/colを指定すると明示配置、省略時は決定的な自動グリッド配置（classDiagramと同じcomputeGridLayout）になる",
+    "nodes": { "type": "array", "ref": "structureNode", "maxItems": 10, "description": "推奨上限10ノード" },
+    "edges": { "type": "array", "ref": "structureEdge", "maxItems": 12, "description": "推奨上限12本" }
+  },
+  "swimlane": {
+    "description": "content.swimlaneのスイムレーン指定（担当×工程・#206）。レーン（担当）を上から下へ積み、フェーズ（工程）は全レーン共通の列として揃える（列位置を共有するので、同じ工程を誰が担当しているかを縦に比較できる）。各レーンのnodes[].colで列位置を明示指定できる。省略時はレーン内の配列順が列位置になる",
+    "phases": { "type": "array", "maxItems": 8, "description": "列見出し（工程名）の文字列配列。省略すると見出しなしで、列数はノードの配置から自動導出する" },
+    "lanes": {
+      "type": "array",
+      "maxItems": 6,
+      "description": "推奨上限6レーン",
+      "itemFields": {
+        "title": { "type": "string" },
+        "color": { "type": "string", "stringConstraint": "colorToken", "description": "省略時はレーンの順にseries1〜series6を巡回して割り当てる" },
+        "nodes": { "type": "array", "ref": "structureNode", "maxItems": 8, "description": "推奨上限8ノード/レーン" }
+      }
+    },
+    "connections": { "type": "array", "ref": "structureEdge", "maxItems": 10, "description": "レーンをまたいでノードのid同士を結ぶ。推奨上限10本" }
+  },
+  "gantt": {
+    "description": "content.ganttのガント指定（工程の期間バー・#206）。時間軸は実カレンダー日付ではなく離散的な列（axis）で表す（発表内容ごとに時間粒度が違い、日付演算の複雑さに対して得られる恩恵が小さいため。列=期間の単位という設計判断）",
+    "axis": { "type": "array", "maxItems": 12, "description": "時間軸の列見出し（例: [\"1月\", \"2月\", \"3月\"]）。省略時は見出しなしで、tasksのstartCol/spanの最大値から列数を導出する" },
+    "tasks": {
+      "type": "array",
+      "maxItems": 8,
+      "description": "推奨上限8工程",
+      "itemFields": {
+        "label": { "type": "string" },
+        "startCol": { "type": "number", "description": "開始列（0始まり）" },
+        "span": { "type": "number", "description": "期間（列数）。省略時は1" },
+        "color": { "type": "string", "stringConstraint": "colorToken", "description": "省略時はタスクの並び順にseries1〜series6を巡回して割り当てる" }
+      }
+    }
   },
   "columnContentFields": {
     "description": "two-columnの left/right に指定可能なフィールド（すべてオプション、組み合わせ可）。componentを指定した場合は他のフィールドは無視される",

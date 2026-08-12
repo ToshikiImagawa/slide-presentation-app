@@ -12,7 +12,7 @@ import type { ConnectorRouting, NormPoint } from './geometry'
 type LineSpec = Omit<DiagramLineStyleProps, 'label'> & { label?: string }
 
 /** カードの見た目はプリミティブの props から導出し、union リテラルを二重管理しない */
-type NodeSpec = Pick<ComponentProps<typeof DiagramCard>, 'rect' | 'color' | 'variant'> & {
+type NodeSpec = Pick<ComponentProps<typeof DiagramCard>, 'rect' | 'color' | 'variant' | 'shape'> & {
   /** connectors から参照するための識別子 */
   id?: string
   title?: string
@@ -73,7 +73,15 @@ export function Diagram({ nodes, connectors, arrows, badges, callouts }: Diagram
       ))}
 
       {nodeList.map((node, i) => (
-        <DiagramCard key={node.id ?? `node-${i}`} rect={node.rect} title={node.title} color={node.color} variant={node.variant} badge={node.badge === undefined ? undefined : <DiagramBadge color={node.color}>{node.badge}</DiagramBadge>}>
+        <DiagramCard
+          key={node.id ?? `node-${i}`}
+          rect={node.rect}
+          title={node.title}
+          color={node.color}
+          variant={node.variant}
+          shape={node.shape}
+          badge={node.badge === undefined ? undefined : <DiagramBadge color={node.color}>{node.badge}</DiagramBadge>}
+        >
           {node.body}
         </DiagramCard>
       ))}

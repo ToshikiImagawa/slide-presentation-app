@@ -509,6 +509,78 @@
           "relations": [{ "from": "admin", "to": "user", "type": "inheritance" }]
         }
       }
+    },
+    {
+      "id": "layout-content-date-timeline",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (dateTimeline)",
+        "dateTimeline": [
+          { "date": "2026/01", "title": "要件確定", "description": "スコープを固定" },
+          { "date": "2026/03", "title": "実装完了" },
+          { "date": "2026/04", "title": "リリース", "description": "本番反映" }
+        ]
+      }
+    },
+    {
+      "id": "layout-content-flowchart",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (flowchart)",
+        "flowchart": {
+          "nodes": [
+            { "id": "start", "label": "申請", "shape": "start", "row": 0, "col": 1 },
+            { "id": "check", "label": "承認する?", "shape": "decision", "row": 1, "col": 1 },
+            { "id": "approve", "label": "承認処理", "shape": "process", "row": 2, "col": 0 },
+            { "id": "reject", "label": "却下通知", "shape": "process", "row": 2, "col": 2 },
+            { "id": "end", "label": "完了", "shape": "end", "row": 3, "col": 1 }
+          ],
+          "edges": [
+            { "from": "start", "to": "check" },
+            { "from": "check", "to": "approve", "label": "Yes" },
+            { "from": "check", "to": "reject", "label": "No" },
+            { "from": "approve", "to": "end" },
+            { "from": "reject", "to": "end" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "layout-content-swimlane",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (swimlane)",
+        "swimlane": {
+          "phases": ["設計", "実装", "レビュー", "リリース"],
+          "lanes": [
+            { "title": "PM", "nodes": [{ "id": "req", "label": "要件定義", "col": 0 }] },
+            { "title": "エンジニア", "nodes": [{ "id": "impl", "label": "実装", "col": 1 }, { "id": "fix", "label": "修正", "col": 2 }] },
+            { "title": "QA", "nodes": [{ "id": "review", "label": "レビュー", "col": 2 }, { "id": "release", "label": "リリース", "col": 3 }] }
+          ],
+          "connections": [
+            { "from": "req", "to": "impl" },
+            { "from": "impl", "to": "review" },
+            { "from": "review", "to": "fix" },
+            { "from": "fix", "to": "release" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "layout-content-gantt",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (gantt)",
+        "gantt": {
+          "axis": ["1月", "2月", "3月", "4月"],
+          "tasks": [
+            { "label": "設計", "startCol": 0, "span": 1 },
+            { "label": "実装", "startCol": 1, "span": 2 },
+            { "label": "テスト", "startCol": 2, "span": 1 },
+            { "label": "リリース", "startCol": 3, "span": 1 }
+          ]
+        }
+      }
     }
   ]
 }

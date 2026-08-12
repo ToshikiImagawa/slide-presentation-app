@@ -817,6 +817,57 @@ describe('SlideRenderer', () => {
     })
   })
 
+  // #206: プロセス図（フローチャート・スイムレーン・ガント）。配置・分岐合流等の詳細は各コンポーネントの単体テストで検証済みなので、
+  // ここでは SlideRenderer からの配線（フィールド→コンポーネント）と分岐優先順位のみを確認する
+  describe('contentスライド(プロセス図)', () => {
+    function renderContent(content: SlideData['content']) {
+      return renderWithTheme(<SlideRenderer slides={[{ id: 'test-process-diagram', layout: 'content', content: { title: 'タイトル', ...content } }]} />)
+    }
+
+    it('flowchartのノードラベルを描画する', () => {
+      const { getByText } = renderContent({ flowchart: { nodes: [{ id: 'start', label: '開始', shape: 'start' }] } })
+      expect(getByText('開始')).not.toBeNull()
+    })
+
+    it('swimlaneのレーン内ノードラベルを描画する', () => {
+      const { getByText } = renderContent({ swimlane: { lanes: [{ title: '担当A', nodes: [{ id: 'a', label: '工程1' }] }] } })
+      expect(getByText('工程1')).not.toBeNull()
+    })
+
+    it('ganttの工程ラベルを描画する', () => {
+      const { getByText } = renderContent({ gantt: { tasks: [{ label: '設計', startCol: 0 }] } })
+      expect(getByText('設計')).not.toBeNull()
+    })
+
+    it('classDiagramとflowchartが同時にあってもclassDiagramが優先される（既存の優先順位パターンと同じ先勝ち）', () => {
+      const { getByText, queryByText } = renderContent({ classDiagram: { classes: [{ id: 'a', label: 'クラス' }] }, flowchart: { nodes: [{ id: 'b', label: 'ノード' }] } })
+      expect(getByText('クラス')).not.toBeNull()
+      expect(queryByText('ノード')).toBeNull()
+    })
+  })
+
+  // #206: 日付付きマイルストーンタイムライン。既存steps（連番）の描画は変えない（受け入れ基準）ため、
+  // stepsとの併存時の優先順位も検証する
+  describe('contentスライド(dateTimeline)', () => {
+    function renderContent(content: SlideData['content']) {
+      return renderWithTheme(<SlideRenderer slides={[{ id: 'test-date-timeline', layout: 'content', content: { title: 'タイトル', ...content } }]} />)
+    }
+
+    it('日付をバッジに、タイトル・説明を本文として描画する', () => {
+      const { getByText } = renderContent({ dateTimeline: [{ date: '2026/01', title: 'マイルストーン1', description: '説明1' }] })
+      expect(getByText('2026/01')).not.toBeNull()
+      expect(getByText('マイルストーン1')).not.toBeNull()
+      expect(getByText('説明1')).not.toBeNull()
+    })
+
+    it('stepsが指定されている場合はstepsが優先される（既存stepsの描画を変えない）', () => {
+      const { getByText, queryByText, container } = renderContent({ steps: [{ number: 1, title: 'ステップ1', description: '説明' }], dateTimeline: [{ date: '2026/01', title: 'マイルストーン1' }] })
+      expect(getByText('1')).not.toBeNull()
+      expect(queryByText('マイルストーン1')).toBeNull()
+      expect(container.textContent).toContain('ステップ1')
+    })
+  })
+
   // #256: 本文領域の fill 変種（.content-area-fill）と「埋める要素」（.content-area-fill-item）の対応。
   // 分岐順と fill の判定は CONTENT_BRANCHES の1か所に集約したので、その表が DOM に現れるかを全分岐で検査する
   // （fill を付けて -item を付け忘れると .content-area の主軸配置が stretch に変わり、静かに崩れる）
@@ -824,6 +875,7 @@ describe('SlideRenderer', () => {
     /** 各分岐の代表入力。fill: true の分岐は .content-area-fill-item を持つ要素を必ず描く */
     const fillCases: Array<{ name: string; content: SlideData['content']; fill: boolean }> = [
       { name: 'steps', content: { steps: [{ number: 1, title: 'ステップ', description: '説明' }] }, fill: false },
+      { name: 'dateTimeline', content: { dateTimeline: [{ date: '2026/01', title: 'マイルストーン' }] }, fill: false },
       { name: 'checklist', content: { checklist: [{ title: '項目' }] }, fill: false },
       { name: 'toc', content: { toc: { items: [{ title: '章1', page: 1 }] } }, fill: false },
       { name: 'tiles', content: { tiles: [{ icon: 'Description', title: 'タイル', description: '説明' }] }, fill: false },
@@ -836,6 +888,9 @@ describe('SlideRenderer', () => {
       { name: 'serverDiagram', content: { serverDiagram: { zones: [{ title: 'ゾーン', nodes: [{ id: 'n', label: 'ノード' }] }] } }, fill: true },
       { name: 'orgChart', content: { orgChart: { nodes: [{ id: 'a', label: 'ノード' }] } }, fill: true },
       { name: 'classDiagram', content: { classDiagram: { classes: [{ id: 'a', label: 'クラス' }] } }, fill: true },
+      { name: 'flowchart', content: { flowchart: { nodes: [{ id: 'a', label: 'ノード' }] } }, fill: true },
+      { name: 'swimlane', content: { swimlane: { lanes: [{ title: 'レーン', nodes: [{ id: 'a', label: 'ノード' }] }] } }, fill: true },
+      { name: 'gantt', content: { gantt: { tasks: [{ label: '工程', startCol: 0 }] } }, fill: true },
       { name: 'component:Diagram（登録側が fillsContentArea を宣言）', content: { component: { name: 'Diagram', props: { nodes: [{ id: 'a', rect: { x: 0, y: 0, w: 0.3, h: 0.3 }, title: 'カード' }] } } }, fill: true },
       { name: 'component:TerminalAnimation（既定は埋めない）', content: { component: { name: 'TerminalAnimation' } }, fill: false },
       { name: 'body/items', content: { body: '本文' }, fill: false },
