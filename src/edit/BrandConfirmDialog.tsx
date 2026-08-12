@@ -29,10 +29,12 @@ import { SlidePreview } from './SlidePreview'
 const TEXT_KEY_TO_BACKGROUND_KEY: Partial<Record<MappedColorKey, MappedColorKey>> = { tx1: 'bg1', tx2: 'bg2' }
 const HEX_PATTERN = /^#[0-9a-f]{6}$/i
 
-/** 割り当て可能な5枠の表示ラベル（#185/#192 契約で固定された `LAYOUT_ASSIGNMENT_SLOTS` の並び順） */
+/** 割り当て可能な7枠の表示ラベル（`LAYOUT_ASSIGNMENT_SLOTS` の並び順。#185/#192 で5枠固定、#262 で反転面/締めの2枠を追加） */
 const LAYOUT_SLOT_LABELS: Record<LayoutAssignmentSlot, string> = {
   center: 'タイトル',
   'center/section': 'タイトル（セクション）',
+  'center/message-inverse': '大メッセージ（全面塗り）',
+  'center/closing': '締め',
   content: '本文',
   'two-column': '2カラム',
   bleed: '全面',

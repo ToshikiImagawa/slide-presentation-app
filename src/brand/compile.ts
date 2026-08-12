@@ -89,7 +89,7 @@ export function compile(profile: BrandProfile, overrides: BrandOverrides): { the
   const assignedLayouts = resolveAssignedLayouts(profile, overrides)
   const masters = { [BRAND_MASTER_KEY]: { decorations }, ...buildLayoutMasters(assignedLayouts) }
   const masterMap = { ...Object.fromEntries(LAYOUT_KINDS.map((layout) => [layout, BRAND_MASTER_KEY])), ...buildLayoutMasterMap(assignedLayouts) }
-  const tokens = { [BRAND_MASTER_KEY]: buildTokens(colors) }
+  const tokens = { [BRAND_MASTER_KEY]: buildTokens(colors), ...buildLayoutTokens(assignedLayouts, colors) }
 
   return { theme: { colors, fonts, masters, masterMap, tokens, logo, canvas }, report }
 }
@@ -137,6 +137,32 @@ function buildLayoutMasters(assignedLayouts: AssignedLayout[]): Record<string, M
 
 function buildLayoutMasterMap(assignedLayouts: AssignedLayout[]): Record<string, string> {
   return Object.fromEntries(assignedLayouts.map(({ key, slot, name }) => [slot, layoutMasterKey(key, name)]))
+}
+
+/**
+ * `fill` 背景を持つ layout 別 masterKey（`buildLayoutMasters`）に、その背景色に対して WCAG AA を
+ * 満たす文字色（tx1/tx2 相当）を積む（#262）。`getMasterBackgroundContrastWarnings`（`applyTheme.ts`）は
+ * masterKey ごとの `theme.tokens` しか見ず extends 元（`brand`）へフォールバックしない設計のため、
+ * ここで明示的に上書きトークンを持たせないと「文字色が見つからず検証されない」まま素通りしてしまう
+ * （検証エラーではなく検証漏れ）。`colors.tx1`/`colors.tx2` は主背景（bg1/bg2）向けに収束済みだが、
+ * layout 個別の背景色は bg1/bg2 と異なりうるため、layout ごとに再収束する。
+ * `center/message-inverse`/`center/closing`（#262 で追加した2枠）だけでなく、`fill` 背景を持つ
+ * すべての割り当て（既存5枠を含む）に同じ規則を適用する: 同じ根本原因（layout 固有の背景色に対する
+ * 文字色の未検証）を1箇所で塞ぐ方が、枠ごとに特別扱いするより設計として単純で取りこぼしがない */
+function buildLayoutTokens(assignedLayouts: AssignedLayout[], colors: Record<MappedColorKey, string>): Record<string, Record<string, string>> {
+  const bodyVar = KEY_TO_CSS_VAR.tx1!.replace(/^--/, '')
+  const mutedVar = KEY_TO_CSS_VAR.tx2!.replace(/^--/, '')
+  return Object.fromEntries(
+    assignedLayouts
+      .filter(({ backgroundColorHex }) => backgroundColorHex !== null)
+      .map(({ key, name, backgroundColorHex }) => [layoutMasterKey(key, name), { [bodyVar]: adjustForContrastIfNeeded(colors.tx1, backgroundColorHex!), [mutedVar]: adjustForContrastIfNeeded(colors.tx2, backgroundColorHex!) }]),
+  )
+}
+
+/** 既に閾値を満たす組はそのまま返す（`adjustForContrast` は常に mix 計算を行うため、満たしている場合の不要な色ブレを避ける） */
+function adjustForContrastIfNeeded(textHex: string, bgHex: string, threshold = WCAG_AA_THRESHOLD): string {
+  const ratio = getContrastRatio(textHex, bgHex)
+  return ratio !== null && ratio >= threshold ? textHex : adjustForContrast(textHex, bgHex, threshold)
 }
 
 /** `brand-<slug>-<masterIndex>-<layoutIndex>` 形式（`/` を含まない）。index を含めるのは、

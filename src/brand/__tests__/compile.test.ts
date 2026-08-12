@@ -331,9 +331,63 @@ describe('compile（#168 の並置比較・取り込み確認）', () => {
       expect(theme.masterMap.content).toBe('brand')
     })
 
-    it('5枠に無い不正な値の割り当ては無視する', () => {
+    it('7枠に無い不正な値の割り当ては無視する', () => {
       const { theme } = compile(withLayouts(), { layoutAssignments: { '0:0': 'not-a-real-slot' as never } })
       expect(Object.keys(theme.masters)).toEqual(['brand'])
+    })
+  })
+
+  describe('反転面・締めの枠割り当てとコントラスト収束（#262）', () => {
+    const withLayouts = () =>
+      profile({
+        masters: [
+          {
+            part: 'ppt/slideMasters/slideMaster1.xml',
+            slideLayouts: [
+              { part: 'ppt/slideLayouts/slideLayout1.xml', name: 'Dark Section', layoutType: 'secHead', placeholders: [], backgroundColorHex: '#000000' },
+              { part: 'ppt/slideLayouts/slideLayout2.xml', name: 'Closing', layoutType: 'blank', placeholders: [], backgroundColorHex: '#ffffff' },
+              { part: 'ppt/slideLayouts/slideLayout3.xml', name: 'Plain', layoutType: 'obj', placeholders: [], backgroundColorHex: null },
+            ],
+          },
+        ],
+      })
+
+    it('center/message-inverse・center/closing にマスターを割り当てられる', () => {
+      const { theme } = compile(withLayouts(), { layoutAssignments: { '0:0': 'center/message-inverse', '0:1': 'center/closing' } })
+      expect(theme.masterMap['center/message-inverse']).toBe('brand-dark-section-0-0')
+      expect(theme.masterMap['center/closing']).toBe('brand-closing-0-1')
+      expect(theme.masters['brand-dark-section-0-0']).toMatchObject({ background: { type: 'fill', color: '#000000' } })
+    })
+
+    it('デフォルトの文字色（tx1=#000000）が全面塗りの背景（#000000）とコントラストしない場合、layout ごとの masterKey に AA を満たす文字色トークンを積む', () => {
+      const { theme } = compile(withLayouts(), { layoutAssignments: { '0:0': 'center/message-inverse' } })
+      const masterKey = theme.masterMap['center/message-inverse']
+      const bodyColor = theme.tokens[masterKey]?.['theme-text-body']
+      expect(bodyColor).toBeTruthy()
+      expect(getContrastRatio(bodyColor!, '#000000')).toBeGreaterThanOrEqual(4.5)
+      // brand master 自体（tx1 と bg1=#ffffff の組）は変更しない
+      expect(theme.colors.tx1).toBe('#000000')
+    })
+
+    it('既に AA を満たす組（黒地に白背景）は文字色を変更しない（決定的・不要な色ブレを避ける）', () => {
+      const { theme } = compile(withLayouts(), { layoutAssignments: { '0:1': 'center/closing' } })
+      const masterKey = theme.masterMap['center/closing']
+      expect(theme.tokens[masterKey]?.['theme-text-body']).toBe(theme.colors.tx1)
+      expect(theme.tokens[masterKey]?.['theme-text-muted']).toBe(theme.colors.tx2)
+    })
+
+    it('背景色を持たないレイアウトの masterKey には文字色トークンを積まない（fill 背景が無く検証対象にならないため）', () => {
+      const { theme } = compile(withLayouts(), { layoutAssignments: { '0:2': 'content' } })
+      const masterKey = theme.masterMap.content
+      expect(theme.tokens[masterKey]).toBeUndefined()
+    })
+
+    it('同じ入力から必ず同じ調整結果になる（決定的）', () => {
+      const overrides: BrandOverrides = { layoutAssignments: { '0:0': 'center/message-inverse' } }
+      const first = compile(withLayouts(), overrides).theme.tokens['brand-dark-section-0-0']['theme-text-body']
+      for (let i = 0; i < 5; i++) {
+        expect(compile(withLayouts(), overrides).theme.tokens['brand-dark-section-0-0']['theme-text-body']).toBe(first)
+      }
     })
   })
 })

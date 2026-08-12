@@ -57,11 +57,14 @@ export interface MasterProfile {
   slideLayouts: SlideLayoutProfile[]
 }
 
-/** #185/#192 契約で固定された masterMap の割り当て可能な5枠。`<layout>` または `<layout>/<variant>` の
- * 2形式のみで、`variant` はフロントの `content.variant` に実在する値に限る。
- * #197 で center に quote/message/message-inverse/closing の4 variant が加わったが、**枠は5つに据え置く**
- * （枠の増減は #185/#192 の契約変更にあたる。ブランド取り込みで反転面・締めのマスターを割り当てる話は別途） */
-export const LAYOUT_ASSIGNMENT_SLOTS = ['center', 'center/section', 'content', 'two-column', 'bleed'] as const
+/** masterMap の割り当て可能な7枠（#185/#192 で5枠固定・#262 で反転面/締めの2枠を追加）。`<layout>` または
+ * `<layout>/<variant>` の2形式のみで、`variant` はフロントの `content.variant` に実在する値に限る。
+ * `resolveMaster`（`src/masters.ts`）は `masterMap["<layout>/<variant>"]` を汎用的に解決できるため、
+ * 枠を追加するのに解決ロジック側の変更は不要（配列に追記するだけで済む）。
+ * #197 で center に quote/message/message-inverse/closing の4 variant が加わったが、quote/message は
+ * デッキ既定の背景で表示するため専用枠を持たず、既定の `center` 枠にフォールバックする。
+ * message-inverse/closing は全面塗り（`theme.masters[].background`）を要するため専用枠が必要（#262） */
+export const LAYOUT_ASSIGNMENT_SLOTS = ['center', 'center/section', 'center/message-inverse', 'center/closing', 'content', 'two-column', 'bleed'] as const
 
 export type LayoutAssignmentSlot = (typeof LAYOUT_ASSIGNMENT_SLOTS)[number]
 
@@ -108,7 +111,7 @@ export interface BrandOverrides {
   /** `bandCandidates` から装飾として採用する index の一覧（既定は空＝何も自動適用しない） */
   selectedBandIndices?: number[]
   fontOverrides?: { heading?: string; body?: string }
-  /** 抽出した slideLayout を5枠（`LAYOUT_ASSIGNMENT_SLOTS`）へ割り当てた結果（#192）。
+  /** 抽出した slideLayout を `LAYOUT_ASSIGNMENT_SLOTS` の枠へ割り当てた結果（#192）。
    * key は `"<masterIndex>:<layoutIndex>"`（`BrandProfile.masters` の添字）。未割当のレイアウトは省略する */
   layoutAssignments?: Record<string, LayoutAssignmentSlot>
 }
