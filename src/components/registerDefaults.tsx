@@ -9,6 +9,12 @@ import { TerminalAnimation } from './TerminalAnimation'
 import { FallbackImage } from './FallbackImage'
 import { Diagram } from './diagram'
 import { Chart } from './chart'
+import { Table } from './table'
+import { Compare } from './compare'
+import { Flow } from './flow'
+import { Checklist } from './Checklist'
+import { ClassDiagram, HierarchyDiagram, OrgChart, ServerDiagram } from './structureDiagram'
+import { Flowchart, Gantt, Swimlane } from './processDiagram'
 import { registerDefaultComponent } from './ComponentRegistry'
 
 /** TerminalAnimationのラッパー（デフォルトlogTextを注入） */
@@ -33,6 +39,20 @@ export function registerDefaultComponents(): void {
   // two-column の各カラム・bleed・custom 等、component 参照を受け付けるすべての経路から使える（#241）。
   // 本文領域の残り高さいっぱいに広がるので Diagram と同様に fill 変種を要求する
   registerDefaultComponent('Chart', Chart, { fillsContentArea: true })
+  // #274: Chart/Diagram で塞いだ穴を残り11種にも広げる。fillsContentArea は SlideRenderer.tsx の
+  // CONTENT_BRANCHES（短縮記法側）の fill 判定が引く単一真実源で、二重管理しない。値は各短縮記法の
+  // 既存の fill と一致させる（変えない）
+  registerDefaultComponent('Table', Table, { fillsContentArea: true })
+  registerDefaultComponent('Compare', Compare, { fillsContentArea: true })
+  registerDefaultComponent('Flow', Flow, { fillsContentArea: true })
+  registerDefaultComponent('Checklist', Checklist)
+  registerDefaultComponent('HierarchyDiagram', HierarchyDiagram, { fillsContentArea: true })
+  registerDefaultComponent('ServerDiagram', ServerDiagram, { fillsContentArea: true })
+  registerDefaultComponent('OrgChart', OrgChart, { fillsContentArea: true })
+  registerDefaultComponent('ClassDiagram', ClassDiagram, { fillsContentArea: true })
+  registerDefaultComponent('Flowchart', Flowchart, { fillsContentArea: true })
+  registerDefaultComponent('Swimlane', Swimlane, { fillsContentArea: true })
+  registerDefaultComponent('Gantt', Gantt, { fillsContentArea: true })
 
   // MUIアイコン
   registerDefaultComponent('Icon:Description', () => <DescriptionIcon sx={{ fontSize: 32 }} />)

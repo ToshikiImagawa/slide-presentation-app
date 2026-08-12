@@ -407,7 +407,10 @@ type ContentBranch = {
   /** この分岐を選ぶ条件 */
   match: (content: SlideContent) => boolean
   /** 本文領域を .content-area の fill 変種にするか（#225）。
-   * component は「広がるかどうか」を描画側が name から知り得ないので、登録側の宣言（traits）を引く関数で受ける */
+   * component は「広がるかどうか」を描画側が name から知り得ないので、登録側の宣言（traits）を引く関数で受ける。
+   * 短縮記法（chart/table 等）も同じ理由で関数で受ける（#274）: 登録名は静的に決まるが、
+   * CONTENT_BRANCHES はモジュール評価時に構築される一方 registerDefaultComponents() はその後に実行されるため、
+   * 即値化すると常に false に固定されてしまう */
   fill: boolean | ((content: SlideContent) => boolean)
   /** ctx は toc（章からの自動導出・#195）だけが使う。他の分岐は content のみを使うので
    * 引数を減らした関数を渡せる（TSの関数型は引数を減らす方向に代入可能） */
@@ -426,27 +429,40 @@ const CONTENT_BRANCHES: ContentBranch[] = [
   { match: (content) => Boolean(content.steps), fill: false, render: renderSteps },
   // 日付付きマイルストーンタイムライン（#206）はstepsと見た目の基盤を共有するが独立フィールド（既存stepsの描画は変えない）
   { match: (content) => Boolean(content.dateTimeline), fill: false, render: renderDateTimeline },
-  { match: (content) => Boolean(content.checklist), fill: false, render: renderChecklist },
+  { match: (content) => Boolean(content.checklist), fill: () => componentFillsContentArea('Checklist'), render: renderChecklist },
   { match: (content) => Boolean(content.toc) && typeof content.toc === 'object', fill: false, render: renderToc },
   { match: (content) => Boolean(content.tiles), fill: false, render: renderTiles },
   { match: (content) => Boolean(content.images), fill: true, render: renderImages },
-  // チャート（#204）・表（#194）は本文領域の残り高さを埋める
-  { match: (content) => Boolean(content.chart) && typeof content.chart === 'object', fill: true, render: (content) => <Chart {...(content.chart as ChartSpec)} /> },
-  { match: (content) => Boolean(content.table) && typeof content.table === 'object', fill: true, render: (content) => <Table {...(content.table as TableSpec)} /> },
+  // チャート（#204）・表（#194）は本文領域の残り高さを埋める。fill は登録側（registerDefaults.tsx）の
+  // fillsContentArea が単一真実源で、ここでは複製しない（#274）
+  { match: (content) => Boolean(content.chart) && typeof content.chart === 'object', fill: () => componentFillsContentArea('Chart'), render: (content) => <Chart {...(content.chart as ChartSpec)} /> },
+  { match: (content) => Boolean(content.table) && typeof content.table === 'object', fill: () => componentFillsContentArea('Table'), render: (content) => <Table {...(content.table as TableSpec)} /> },
   // 比較（#200）は2ペインの高さを揃えるためにグリッド自身が本文領域の残り高さを受け取る（#259）
-  { match: (content) => Boolean(content.compare) && typeof content.compare === 'object', fill: true, render: (content) => <Compare {...(content.compare as CompareSpec)} /> },
+  { match: (content) => Boolean(content.compare) && typeof content.compare === 'object', fill: () => componentFillsContentArea('Compare'), render: (content) => <Compare {...(content.compare as CompareSpec)} /> },
   // 横フロー（#200）は DiagramCanvas に載るので埋める
-  { match: (content) => Boolean(content.flow), fill: true, render: (content) => <Flow steps={content.flow as FlowStep[]} /> },
+  { match: (content) => Boolean(content.flow), fill: () => componentFillsContentArea('Flow'), render: (content) => <Flow steps={content.flow as FlowStep[]} /> },
   // 構成図（#205）はいずれも Diagram（DiagramCanvas）に載るので埋める。ノード/エッジの共通データ構造は
   // schema/slide-content-schema.json の structureNode/structureEdge が単一ソース（#206/#207も同じ形に乗る想定）
-  { match: (content) => Boolean(content.hierarchyDiagram) && typeof content.hierarchyDiagram === 'object', fill: true, render: (content) => <HierarchyDiagram {...(content.hierarchyDiagram as HierarchyDiagramSpec)} /> },
-  { match: (content) => Boolean(content.serverDiagram) && typeof content.serverDiagram === 'object', fill: true, render: (content) => <ServerDiagram {...(content.serverDiagram as ServerDiagramSpec)} /> },
-  { match: (content) => Boolean(content.orgChart) && typeof content.orgChart === 'object', fill: true, render: (content) => <OrgChart {...(content.orgChart as OrgChartSpec)} /> },
-  { match: (content) => Boolean(content.classDiagram) && typeof content.classDiagram === 'object', fill: true, render: (content) => <ClassDiagram {...(content.classDiagram as ClassDiagramSpec)} /> },
+  {
+    match: (content) => Boolean(content.hierarchyDiagram) && typeof content.hierarchyDiagram === 'object',
+    fill: () => componentFillsContentArea('HierarchyDiagram'),
+    render: (content) => <HierarchyDiagram {...(content.hierarchyDiagram as HierarchyDiagramSpec)} />,
+  },
+  {
+    match: (content) => Boolean(content.serverDiagram) && typeof content.serverDiagram === 'object',
+    fill: () => componentFillsContentArea('ServerDiagram'),
+    render: (content) => <ServerDiagram {...(content.serverDiagram as ServerDiagramSpec)} />,
+  },
+  { match: (content) => Boolean(content.orgChart) && typeof content.orgChart === 'object', fill: () => componentFillsContentArea('OrgChart'), render: (content) => <OrgChart {...(content.orgChart as OrgChartSpec)} /> },
+  {
+    match: (content) => Boolean(content.classDiagram) && typeof content.classDiagram === 'object',
+    fill: () => componentFillsContentArea('ClassDiagram'),
+    render: (content) => <ClassDiagram {...(content.classDiagram as ClassDiagramSpec)} />,
+  },
   // プロセス図（#206）もいずれも Diagram（DiagramCanvas）に載るので埋める。ノード/エッジは構成図と同じ structureNode/structureEdge を再利用する
-  { match: (content) => Boolean(content.flowchart) && typeof content.flowchart === 'object', fill: true, render: (content) => <Flowchart {...(content.flowchart as FlowchartSpec)} /> },
-  { match: (content) => Boolean(content.swimlane) && typeof content.swimlane === 'object', fill: true, render: (content) => <Swimlane {...(content.swimlane as SwimlaneSpec)} /> },
-  { match: (content) => Boolean(content.gantt) && typeof content.gantt === 'object', fill: true, render: (content) => <Gantt {...(content.gantt as GanttSpec)} /> },
+  { match: (content) => Boolean(content.flowchart) && typeof content.flowchart === 'object', fill: () => componentFillsContentArea('Flowchart'), render: (content) => <Flowchart {...(content.flowchart as FlowchartSpec)} /> },
+  { match: (content) => Boolean(content.swimlane) && typeof content.swimlane === 'object', fill: () => componentFillsContentArea('Swimlane'), render: (content) => <Swimlane {...(content.swimlane as SwimlaneSpec)} /> },
+  { match: (content) => Boolean(content.gantt) && typeof content.gantt === 'object', fill: () => componentFillsContentArea('Gantt'), render: (content) => <Gantt {...(content.gantt as GanttSpec)} /> },
   { match: (content) => Boolean(content.component), fill: (content) => componentFillsContentArea(content.component!.name), render: (content) => renderComponent(content.component!) },
   // 上のいずれも無指定の場合のみ、プレーン本文（body/items）を描画する（#193）
   { match: (content) => Boolean(content.body) || Boolean(content.items?.length), fill: false, render: renderBody },

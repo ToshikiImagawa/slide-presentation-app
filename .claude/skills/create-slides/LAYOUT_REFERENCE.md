@@ -318,6 +318,10 @@
 }
 ```
 
+`name` はComponentRegistryに登録済みの名前を指定する。デフォルト登録済み: `TerminalAnimation`, `Image`, `Diagram`, `Chart`, `Table`, `Compare`, `Flow`, `Checklist`, `HierarchyDiagram`, `ServerDiagram`, `OrgChart`, `ClassDiagram`, `Flowchart`, `Swimlane`, `Gantt`（アドオン・ブランドテーマが追加登録する名前も指定できる。アイコンは `Icon:<name>` という別のネームスペースで登録され対象外）。
+
+`Chart`/`Table`/`Compare`/`HierarchyDiagram`/`ServerDiagram`/`OrgChart`/`ClassDiagram`/`Flowchart`/`Swimlane`/`Gantt` は同名の短縮記法（`content.chart`/`content.table` 等）でも描けるが、ComponentRegistry にも登録されているため `component: { name: "Table", props: {...} }`（`props` は各短縮記法のオブジェクトと同じフィールド）でも同じ見た目で置ける。`Flow`/`Checklist` も同様に置けるが、短縮記法（`content.flow`/`content.checklist`）はフィールド値がオブジェクトではなく配列そのものなので、`props` はその配列をそれぞれ `steps`/`items` に包んだ形（`{ "steps": [...] }`/`{ "items": [...] }`）になる。`Checklist` はさらに、短縮記法側が `description` 内のHTMLタグ（`<b>` 等）を解釈するのに対し、`component` 経由ではそのまま文字列として表示される差がある（`description` にHTMLタグを含めない場合は差が出ない）。いずれも two-column の各カラム（`left.component`/`right.component`）・bleed・custom など `component` を受け付けるすべての経路から使え、表と箇条書きを左右に並べるレイアウトも組める（#241/#274）。
+
 ### compare（比較）
 
 可否・採用/非採用・Before/After 等の2ペイン比較。左右ペインの高さは自動で揃う。

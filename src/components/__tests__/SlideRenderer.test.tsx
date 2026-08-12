@@ -1022,6 +1022,67 @@ describe('SlideRenderer', () => {
     })
   })
 
+  // #274: content.* 短縮記法専用だった11種（Table/Compare/Flow/Checklist/HierarchyDiagram/ServerDiagram/
+  // OrgChart/ClassDiagram/Flowchart/Swimlane/Gantt）を ComponentRegistry に登録し、component 参照
+  // （two-column の各カラム・bleed・custom 等）からも同じ props 形で描画できるようにした。
+  // props は短縮記法の入力（content.table 等）と同じ形をそのまま渡し、フォールバック落ちしないことを確認する
+  describe('component 参照からの描画（短縮記法専用コンポーネントの register 化・#274）', () => {
+    const componentCases: Array<{ name: string; props: Record<string, unknown>; expectedText: string }> = [
+      { name: 'Table', props: { columns: [{ label: '項目' }], rows: [['値']] }, expectedText: '値' },
+      { name: 'Compare', props: { left: { heading: '見出し' } }, expectedText: '見出し' },
+      { name: 'Flow', props: { steps: [{ title: '工程1' }, { title: '工程2' }] }, expectedText: '工程1' },
+      { name: 'Checklist', props: { items: [{ title: '項目' }] }, expectedText: '項目' },
+      { name: 'HierarchyDiagram', props: { layers: [{ title: '層1' }] }, expectedText: '層1' },
+      { name: 'ServerDiagram', props: { zones: [{ title: 'ゾーン', nodes: [{ id: 'n', label: 'ノード' }] }] }, expectedText: 'ゾーン' },
+      { name: 'OrgChart', props: { nodes: [{ id: 'a', label: 'ノード' }] }, expectedText: 'ノード' },
+      { name: 'ClassDiagram', props: { classes: [{ id: 'a', label: 'クラス' }] }, expectedText: 'クラス' },
+      { name: 'Flowchart', props: { nodes: [{ id: 'a', label: 'ノード' }] }, expectedText: 'ノード' },
+      { name: 'Swimlane', props: { lanes: [{ title: 'レーン', nodes: [{ id: 'a', label: 'ノード' }] }] }, expectedText: 'レーン' },
+      { name: 'Gantt', props: { tasks: [{ label: '工程', startCol: 0 }] }, expectedText: '工程' },
+    ]
+
+    it.each(componentCases)('$name は component 参照（custom レイアウト）から描画できる', ({ name, props, expectedText }) => {
+      const { container } = renderWithTheme(<SlideRenderer slides={[{ id: 'test-component-custom', layout: 'custom', content: { component: { name, props } } }]} />)
+      expect(container.textContent).toContain(expectedText)
+      expect(container.textContent).not.toContain('Component not found')
+    })
+
+    it('Table は two-column の左カラムに component 参照で置ける（右は通常のカラム内容）', () => {
+      const { container } = renderWithTheme(
+        <SlideRenderer
+          slides={[
+            {
+              id: 'test-component-two-column',
+              layout: 'two-column',
+              content: {
+                title: 'タイトル',
+                left: { component: { name: 'Table', props: { columns: [{ label: '項目' }], rows: [['値']] } } },
+                right: { heading: '右カラム', paragraphs: ['右の本文'] },
+              },
+            },
+          ]}
+        />,
+      )
+      expect(container.textContent).toContain('値')
+      expect(container.textContent).toContain('右カラム')
+    })
+
+    it('Compare は bleed レイアウトの component 参照から置ける', () => {
+      const { container } = renderWithTheme(
+        <SlideRenderer
+          slides={[
+            {
+              id: 'test-component-bleed',
+              layout: 'bleed',
+              content: { title: 'タイトル', commands: [], component: { name: 'Compare', props: { left: { heading: '見出し' } } } },
+            },
+          ]}
+        />,
+      )
+      expect(container.textContent).toContain('見出し')
+    })
+  })
+
   // #164: masters/masterMap/tokens と SlideMasterLayer。theme 未指定時は既存と完全同一のDOMになることも併せて確認する
   describe('masters（SlideMasterLayer 装飾描画）', () => {
     const masterTheme: ThemeData = {
