@@ -16,14 +16,29 @@
             "width": 300,
             "height": 125,
             "opacity": 0.9
-          }
+          },
+          { "type": "text", "anchor": "middle-right", "content": "SAMPLE", "fontSize": 32, "opacity": 0.16, "rotate": -18 }
+        ]
+      },
+      "gridNote": { "background": { "type": "grid", "color": "#11182f", "size": 56 }, "decorations": [] },
+      "sectionDivider": {
+        "background": { "type": "gradient", "from": "#0f172a", "to": "#1e293b", "angle": 135 },
+        "decorations": []
+      },
+      "chapterFooter": {
+        "decorations": [
+          { "type": "band", "anchor": "top-center", "thickness": 10, "offset": { "y": 6 }, "color": "#f59e0b" },
+          { "type": "text", "anchor": "bottom-center", "content": "{index}/{total}", "fontSize": 16, "offset": { "y": -10 } },
+          { "type": "text", "anchor": "bottom-left", "content": "{sectionTitle} {sectionIndex}/{sectionTotal}", "fontSize": 14 }
         ]
       }
     },
-    "masterMap": { "center/message-inverse": "messageInverse", "center/closing": "closing" },
+    "masterMap": { "center/message-inverse": "messageInverse", "center/closing": "closing", "center/section": "sectionDivider" },
     "tokens": {
+      "gridNote": { "theme-background-grid": "#27314f" },
       "messageInverse": { "theme-text-body": "#0f172a", "theme-text-muted": "#475569" },
-      "closing": { "theme-text-body": "#0f172a", "theme-text-muted": "#475569", "theme-primary": "#0f766e" }
+      "closing": { "theme-text-body": "#0f172a", "theme-text-muted": "#475569", "theme-primary": "#0f766e" },
+      "sectionDivider": { "theme-text-body": "#f8fafc", "theme-text-muted": "#cbd5e1" }
     }
   },
   "slides": [
@@ -47,6 +62,7 @@
     {
       "id": "layout-content-steps",
       "layout": "content",
+      "meta": { "master": "gridNote" },
       "content": {
         "title": "layout: content (steps)",
         "steps": [
@@ -448,6 +464,7 @@
     {
       "id": "layout-content-hierarchy-diagram",
       "layout": "content",
+      "meta": { "section": "Diagrams", "master": "chapterFooter" },
       "content": {
         "title": "layout: content (hierarchyDiagram)",
         "hierarchyDiagram": {
@@ -462,12 +479,19 @@
     {
       "id": "layout-content-server-diagram",
       "layout": "content",
+      "meta": { "section": "Diagrams" },
       "content": {
         "title": "layout: content (serverDiagram)",
         "serverDiagram": {
           "zones": [
             { "title": "Public Subnet", "nodes": [{ "id": "lb", "label": "Load Balancer" }] },
-            { "title": "Private Subnet", "nodes": [{ "id": "app1", "label": "API Server" }, { "id": "app2", "label": "API Server" }] },
+            {
+              "title": "Private Subnet",
+              "nodes": [
+                { "id": "app1", "label": "API Server" },
+                { "id": "app2", "label": "API Server" }
+              ]
+            },
             { "title": "Data Tier", "nodes": [{ "id": "db", "label": "RDS" }] }
           ],
           "connections": [
@@ -553,8 +577,20 @@
           "phases": ["Design", "Build", "Review", "Release"],
           "lanes": [
             { "title": "PM", "nodes": [{ "id": "req", "label": "Requirements", "col": 0 }] },
-            { "title": "Engineer", "nodes": [{ "id": "impl", "label": "Build", "col": 1 }, { "id": "fix", "label": "Fix", "col": 2 }] },
-            { "title": "QA", "nodes": [{ "id": "review", "label": "Review", "col": 2 }, { "id": "release", "label": "Release", "col": 3 }] }
+            {
+              "title": "Engineer",
+              "nodes": [
+                { "id": "impl", "label": "Build", "col": 1 },
+                { "id": "fix", "label": "Fix", "col": 2 }
+              ]
+            },
+            {
+              "title": "QA",
+              "nodes": [
+                { "id": "review", "label": "Review", "col": 2 },
+                { "id": "release", "label": "Release", "col": 3 }
+              ]
+            }
           ],
           "connections": [
             { "from": "req", "to": "impl" },
