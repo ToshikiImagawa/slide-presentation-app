@@ -2,6 +2,7 @@ import { Diagram } from '../diagram'
 import { defaultSeriesColor } from '../structureDiagram/colors'
 import { packAxis } from '../structureDiagram/packAxis'
 import { asArray } from '../structureDiagram/types'
+import { axisHeaderNodes } from './axisHeaderNodes'
 
 const LABEL_WIDTH = 0.2
 const LABEL_GAP = 0.02
@@ -56,14 +57,7 @@ export function Gantt({ axis, tasks }: GanttSpec) {
   const rowSlots = packAxis(taskList.length, headerHeight, 1 - headerHeight, ROW_GAP)
   const colSlots = packAxis(colCount, LABEL_WIDTH, 1 - LABEL_WIDTH - MARGIN, COL_GAP)
 
-  const axisNodes = hasHeader
-    ? axisList.map((label, i) => ({
-        id: `axis-${i}`,
-        rect: { x: colSlots[i].offset, y: 0, w: colSlots[i].size, h: headerHeight },
-        title: label,
-        variant: 'plain' as const,
-      }))
-    : []
+  const axisNodes = hasHeader ? axisHeaderNodes(axisList, colSlots, headerHeight, 'axis') : []
 
   const labelNodes = taskList.map((task, i) => ({
     id: `label-${i}`,
@@ -72,11 +66,13 @@ export function Gantt({ axis, tasks }: GanttSpec) {
     variant: 'plain' as const,
   }))
 
+  // colCount は全タスクの startCol + span を含めて導出している（上記）ため、
+  // start/endCol は常に colSlots の範囲内になる（クランプ不要）
   const barNodes = taskList.map((task, i) => {
     const row = rowSlots[i]
-    const start = colSlots[Math.min(task.startCol, colSlots.length - 1)]
-    const endCol = Math.min(task.startCol + Math.max(1, task.span ?? 1) - 1, colSlots.length - 1)
-    const end = colSlots[Math.max(endCol, task.startCol)]
+    const start = colSlots[task.startCol]
+    const endCol = task.startCol + Math.max(1, task.span ?? 1) - 1
+    const end = colSlots[endCol]
     const barHeight = row.size * BAR_HEIGHT_RATIO
     return {
       id: `bar-${i}`,

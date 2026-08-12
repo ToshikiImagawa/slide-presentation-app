@@ -2,6 +2,7 @@ import { Diagram } from '../diagram'
 import { defaultSeriesColor } from '../structureDiagram/colors'
 import { packAxis } from '../structureDiagram/packAxis'
 import { asArray, type StructureEdge, type StructureNode } from '../structureDiagram/types'
+import { axisHeaderNodes } from './axisHeaderNodes'
 
 const LANE_MARGIN = 0.02
 const LANE_GAP = 0.05
@@ -54,14 +55,7 @@ export function Swimlane({ phases, lanes, connections }: SwimlaneSpec) {
     variant: 'plain' as const,
   }))
 
-  const headerBoxes = hasHeader
-    ? phaseList.map((phase, i) => ({
-        id: `phase-${i}`,
-        rect: { x: colSlots[i].offset, y: 0, w: colSlots[i].size, h: headerHeight },
-        title: phase,
-        variant: 'plain' as const,
-      }))
-    : []
+  const headerBoxes = hasHeader ? axisHeaderNodes(phaseList, colSlots, headerHeight, 'phase') : []
 
   // レーンをまたぐ全ノードを先に平坦化してから連番を振る（ミュータブルなカウンタを持たない・ServerDiagramと同じ考え方）
   const placedItems = laneList.flatMap((lane, i) => {
