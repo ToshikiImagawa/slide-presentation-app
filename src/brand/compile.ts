@@ -155,14 +155,8 @@ function buildLayoutTokens(assignedLayouts: AssignedLayout[], colors: Record<Map
   return Object.fromEntries(
     assignedLayouts
       .filter(({ backgroundColorHex }) => backgroundColorHex !== null)
-      .map(({ key, name, backgroundColorHex }) => [layoutMasterKey(key, name), { [bodyVar]: adjustForContrastIfNeeded(colors.tx1, backgroundColorHex!), [mutedVar]: adjustForContrastIfNeeded(colors.tx2, backgroundColorHex!) }]),
+      .map(({ key, name, backgroundColorHex }) => [layoutMasterKey(key, name), { [bodyVar]: convergedTextColor(colors.tx1, backgroundColorHex!), [mutedVar]: convergedTextColor(colors.tx2, backgroundColorHex!) }]),
   )
-}
-
-/** 既に閾値を満たす組はそのまま返す（`adjustForContrast` は常に mix 計算を行うため、満たしている場合の不要な色ブレを避ける） */
-function adjustForContrastIfNeeded(textHex: string, bgHex: string, threshold = WCAG_AA_THRESHOLD): string {
-  const ratio = getContrastRatio(textHex, bgHex)
-  return ratio !== null && ratio >= threshold ? textHex : adjustForContrast(textHex, bgHex, threshold)
 }
 
 /** `brand-<slug>-<masterIndex>-<layoutIndex>` 形式（`/` を含まない）。index を含めるのは、
@@ -194,14 +188,19 @@ function resolveColors(profile: BrandProfile, overrides: BrandOverrides, report:
 /** AA 未達の文字色/背景色の組を、閾値を満たすまで黒 or 白へ mix して上書きする（収束条件として内包する） */
 function convergeContrast(colors: Record<MappedColorKey, string>, report: BrandImportReport): void {
   for (const [textKey, bgKey] of TEXT_ON_BACKGROUND) {
-    const ratio = getContrastRatio(colors[textKey], colors[bgKey])
-    if (ratio !== null && ratio >= WCAG_AA_THRESHOLD) continue
     const before = colors[textKey]
-    colors[textKey] = adjustForContrast(colors[textKey], colors[bgKey])
+    colors[textKey] = convergedTextColor(colors[textKey], colors[bgKey])
     if (colors[textKey] !== before) {
       report.fields[`colors.${textKey}`] = { status: 'derived', detail: `WCAG AA（${WCAG_AA_THRESHOLD}:1）を満たすよう調整` }
     }
   }
+}
+
+/** 既に閾値を満たす組はそのまま返す（`adjustForContrast` は常に mix 計算を行うため、満たしている場合の不要な色ブレを避ける）。
+ * `convergeContrast`（tx1/bg1・tx2/bg2 の主背景向け）と `buildLayoutTokens`（layout 個別の背景色向け）が共有する */
+function convergedTextColor(textHex: string, bgHex: string, threshold = WCAG_AA_THRESHOLD): string {
+  const ratio = getContrastRatio(textHex, bgHex)
+  return ratio !== null && ratio >= threshold ? textHex : adjustForContrast(textHex, bgHex, threshold)
 }
 
 /** `textHex` を黒または白へ mix し、`bgHex` に対して閾値を満たす最小の mix 係数を二分探索で決める（決定的） */
