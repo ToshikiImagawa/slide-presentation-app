@@ -1,3 +1,4 @@
+import { clamp01 } from './chart/chartScale'
 import styles from './CircularProgress.module.css'
 
 export interface CircularProgressProps {
@@ -41,7 +42,7 @@ export function CircularProgress({ progress, visible, animationDuration, resetKe
     )
   }
 
-  const clampedProgress = Math.min(Math.max(progress, 0), 1)
+  const clampedProgress = clamp01(progress)
   const offset = CIRCUMFERENCE * (1 - clampedProgress)
 
   return (

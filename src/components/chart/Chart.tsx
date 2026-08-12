@@ -1,5 +1,5 @@
 import { BarChart } from './BarChart'
-import { buildAxisScale, defaultValueLabels, formatValue, seriesColor } from './chartScale'
+import { buildAxisScale, defaultValueLabels, formatValue, seriesColor, type AxisChartProps } from './chartScale'
 import { ChartLegend, type LegendEntry } from './ChartLegend'
 import { asArray, getChartSpecIssues } from './validateChart'
 import { HBarChart } from './HBarChart'
@@ -61,20 +61,22 @@ export function Chart(spec: ChartSpec) {
     spec.min,
     spec.max,
   )
+  const axisChartProps: AxisChartProps = { categories, series, scale, unit: spec.unit, axis, valueLabels }
 
-  // 円は内訳項目ごとに色が変わるので凡例は項目名＋実数値、それ以外は系列名を並べる
+  // 円は項目ごとに色が変わるため、凡例（項目名＋実数値）と扇形描画の両方で使う色配列を1回だけ作る
+  const pieColors = type === 'pie' ? categories.map((_, index) => seriesColor(index)) : []
   const legendEntries: LegendEntry[] =
     type === 'pie'
-      ? categories.map((category, index) => ({ label: `${category} ${formatValue(series[0].values[index], spec.unit)}`.trim(), color: seriesColor(index) }))
+      ? categories.map((category, index) => ({ label: `${category} ${formatValue(series[0].values[index], spec.unit)}`.trim(), color: pieColors[index] }))
       : series.filter((entry) => entry.name).map((entry) => ({ label: entry.name as string, color: entry.color }))
   const showLegend = spec.legend ?? legendEntries.length > 1
 
   return (
     <div className={ROOT_CLASS_NAME} data-testid="chart" data-chart-type={type}>
-      {type === 'bar' && <BarChart categories={categories} series={series} scale={scale} unit={spec.unit} axis={axis} valueLabels={valueLabels} />}
-      {type === 'line' && <LineChart categories={categories} series={series} scale={scale} unit={spec.unit} axis={axis} valueLabels={valueLabels} />}
-      {type === 'hbar' && <HBarChart categories={categories} series={series} scale={scale} unit={spec.unit} axis={axis} valueLabels={valueLabels} />}
-      {type === 'pie' && <PieChart values={series[0].values} colors={categories.map((_, index) => seriesColor(index))} valueLabels={valueLabels} />}
+      {type === 'bar' && <BarChart {...axisChartProps} />}
+      {type === 'line' && <LineChart {...axisChartProps} />}
+      {type === 'hbar' && <HBarChart {...axisChartProps} />}
+      {type === 'pie' && <PieChart values={series[0].values} colors={pieColors} valueLabels={valueLabels} />}
       {showLegend && <ChartLegend entries={legendEntries} />}
     </div>
   )

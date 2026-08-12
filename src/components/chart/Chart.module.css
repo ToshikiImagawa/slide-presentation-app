@@ -159,14 +159,9 @@
 }
 
 /* ---- 横棒 ---- */
+/* 目盛り列・プロット・項目名行の3領域は縦棒（.plotGrid）と同一のグリッドなので継承する（#240） */
 .hbarGrid {
-  display: grid;
-  flex: 1;
-  grid-template-columns: auto minmax(0, 1fr);
-  grid-template-rows: minmax(0, 1fr) auto;
-  column-gap: 12px;
-  row-gap: 8px;
-  min-height: 0;
+  composes: plotGrid;
 }
 
 .hbarLabels {
@@ -261,6 +256,14 @@
   border-left: var(--theme-border-width) solid var(--theme-border-light);
 }
 
+/* 0 の位置（横棒）。負の値を含むときだけ描き、棒がどちら向きに伸びているかを読めるようにする（#240） */
+.baselineVertical {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-left: calc(var(--theme-border-width) * 2) solid var(--theme-border);
+}
+
 /* 項目が増えると1行が薄くなるので、行の余白と文字を詰めて可読性を保つ（間引きはできないため） */
 .hbarGrid[data-dense='true'] .hbarRow {
   padding-block: 2px;
@@ -292,16 +295,13 @@
   height: 100%;
 }
 
+/* .value との差は padding・背景の透過率・line-height（円弧上の狭い面積に収めるため詰めている）。
+ * 透過率 0.82 は彩度の高い扇形の塗りに重ねても読めるようにするための意図的な差（.value の 0.75 より高い・#240） */
 .pieLabel {
-  position: absolute;
+  composes: value;
   padding: 1px 6px;
-  border-radius: var(--theme-radius-sm);
   background: rgba(var(--theme-background-rgb), 0.82);
-  font-size: var(--theme-font-size-body2);
-  font-weight: 600;
   line-height: 1.2;
-  color: var(--theme-text-body);
-  white-space: nowrap;
   transform: translate(-50%, -50%);
 }
 

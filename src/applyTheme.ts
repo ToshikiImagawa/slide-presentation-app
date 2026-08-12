@@ -83,7 +83,7 @@ function applyDerivedSeriesColors(root: HTMLElement, colors?: ColorPalette): voi
   if (!primaryHex || !accentHex) return
 
   for (const index of [1, 2, 3, 4, 5, 6] as const) {
-    const key = `series${index}` as const
+    const key = SERIES_COLOR_KEYS[index - 1]
     if (colors?.[key]) continue
     setColorVar(root, THEME_COLOR_TOKENS[key], deriveSeriesColor(index, primaryHex, accentHex))
   }
@@ -149,6 +149,10 @@ export function resolveColorToken(key?: string): string {
 
 /** THEME_COLOR_TOKENS のうち、文字色として使われるキー（帯・線等の装飾色は対象外）。背景色に対するコントラスト比の算出対象を絞るのに使う */
 export const TEXT_COLOR_KEYS: readonly string[] = ['text', 'textHeading', 'textBody', 'textSubtitle', 'textMuted', 'codeText']
+
+/** THEME_COLOR_TOKENS のうち、系列色として巡回に使われるキー（series1〜series6）。
+ * applyDerivedSeriesColors の導出ループと chart/chartScale.ts の系列色巡回（SERIES_KEYS）が共有する単一の真実源（#186/#204/#240） */
+export const SERIES_COLOR_KEYS: readonly string[] = ['series1', 'series2', 'series3', 'series4', 'series5', 'series6']
 
 /** ColorPalette のキー → tokens 側の表記（CSS 変数名から先頭の `--` を除いたもの）。tokens を引く箇所で共有する */
 function varNameOf(key: string): string {

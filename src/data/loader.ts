@@ -58,6 +58,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
+/** JSON 由来の値は配列でない可能性があるため、判定・描画前に配列だけを通す（不正なデッキで判定・描画自体を落とさない）。
+ * chart/validateChart.ts と diagram/Diagram.tsx が共有する（#240） */
+export function asArray<T>(value: T[] | undefined): T[] {
+  return Array.isArray(value) ? value : []
+}
+
 function validateSlideNotes(notes: unknown, prefix: string, errors: ValidationError[]): void {
   if (notes === undefined || notes === null) return
   if (typeof notes === 'string') return

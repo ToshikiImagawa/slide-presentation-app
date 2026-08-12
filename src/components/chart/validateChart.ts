@@ -1,12 +1,11 @@
+import { asArray } from '../../data/loader'
 import type { ChartSpec, ChartType } from './types'
 
-const CHART_TYPES: ChartType[] = ['bar', 'line', 'pie', 'hbar', 'kpi']
+// Chart.tsx の描画準備（resolveSeries/resolveCategories）・getChartColorTokenIssues（applyTheme.ts）・
+// diagram/Diagram.tsx が共有する単一の真実源は data/loader.ts（#240）。ここでは re-export だけにとどめる
+export { asArray }
 
-/** JSON 由来の値は配列でない可能性があるため、判定前に配列だけを通す（不正なデッキで判定自体を落とさない）。
- * Chart.tsx の描画準備（resolveSeries/resolveCategories）と getChartColorTokenIssues（applyTheme.ts）が共有する */
-export function asArray<T>(value: T[] | undefined): T[] {
-  return Array.isArray(value) ? value : []
-}
+const CHART_TYPES: ChartType[] = ['bar', 'line', 'pie', 'hbar', 'kpi']
 
 function countCategories(spec: ChartSpec): number {
   const declared = asArray(spec.categories).length

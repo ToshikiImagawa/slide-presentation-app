@@ -141,7 +141,9 @@ export function polylinePoints(points: PxPoint[]): string {
   return points.map((p) => `${round2(p.x)},${round2(p.y)}`).join(' ')
 }
 
-function round2(value: number): number {
+/** 座標値を2桁に丸める（浮動小数の誤差がそのまま属性値に出るのを防ぐ）。chart/chartScale.ts が
+ * SVG 座標の丸めとして共有する（複製しない・#240） */
+export function round2(value: number): number {
   return Math.round(value * 100) / 100
 }
 

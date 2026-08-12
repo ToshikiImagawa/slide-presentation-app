@@ -195,6 +195,12 @@ describe('Chart（横棒）', () => {
 
     expect(getByTestId('chart-hbar').dataset.dense).toBe('true')
   })
+
+  it('負の値を含むと基準線（0）を縦線で描く（#240: 以前は横棒にだけこの基準線が無く、負の値の伸び方向が読めなかった）', () => {
+    const { container } = render(<Chart type="hbar" categories={['A', 'B']} series={[{ values: [-20, 40] }]} />)
+
+    expect(container.querySelector('[class*="baselineVertical"]')).toBeTruthy()
+  })
 })
 
 describe('Chart（大数値＋推移）', () => {
