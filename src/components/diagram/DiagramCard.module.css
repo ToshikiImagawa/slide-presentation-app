@@ -77,3 +77,44 @@
   padding-top: 52px;
   justify-content: flex-start;
 }
+
+/* フローチャートの開始/終了ノード（#206）。角を完全な丸みにするだけで、境界そのものは矩形のまま
+   （コネクタの直交経路は矩形境界の辺の中点に接続するため、丸めた角の外周とは干渉しない） */
+.pill {
+  border-radius: 999px;
+}
+
+/* フローチャートの判断ノード（#206）。ひし形は本文を巻き込むと文字が入り切らないため、
+   背後の擬似要素だけをひし形に切り出して枠・面を描き、title/body は矩形のまま中央に重ねる
+   （エッジが矩形境界の辺の中点に接する設計と、ひし形の頂点が辺の中点に一致するため見た目も揃う）。
+   ::before はカード共通のアクセントバー（.card::before）が既に使っているため、ここでは ::after を使う
+   （同じ擬似要素を2つのルールで奪い合うと `left`/`width` 等が競合し、意図しない見た目になる）。
+   .filled/.plain より後に置くことで base の背景/枠を確実に無効化する（同じ詳細度なのでCSSの出現順で勝つ） */
+.diamond {
+  border: none;
+  background: none;
+}
+
+.diamond::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+  border: var(--theme-border-width) solid var(--diagram-color);
+  background: var(--theme-background-alt);
+}
+
+.diamond.filled::after {
+  background: var(--diagram-color);
+}
+
+.diamond.plain::after {
+  border-color: var(--theme-border);
+}
+
+.diamond .title,
+.diamond .body,
+.diamond .badge {
+  position: relative;
+  z-index: 1;
+}

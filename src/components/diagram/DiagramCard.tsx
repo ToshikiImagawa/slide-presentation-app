@@ -16,6 +16,9 @@ type Props = {
   badge?: ReactNode
   /** title/body のフォントサイズに掛ける倍率。省略時は1（カードが並ぶ数が多く1枚あたりが狭いときに縮める用途・#200） */
   scale?: number
+  /** 外形。'pill' は角を完全な丸みに、'diamond' はひし形の枠を背後に敷く（本文は矩形のまま中央表示）。
+   * variant（面の塗り方）とは独立した軸（フローチャートのノード種別・#206が使う。他の用途では省略時 'rect' 相当） */
+  shape?: 'rect' | 'pill' | 'diamond'
 }
 
 /**
@@ -24,7 +27,7 @@ type Props = {
  * 位置は正規化座標をそのまま % 指定に載せるため、キャンバスサイズが変わっても相対配置が保たれる
  * （px へ落とさないのでサイズ計測の完了を待つ必要もない）。
  */
-export function DiagramCard({ rect, title, children, color, variant = 'outline', badge, scale }: Props) {
+export function DiagramCard({ rect, title, children, color, variant = 'outline', badge, scale, shape = 'rect' }: Props) {
   const cssVar = resolveColorToken(color)
   const style = {
     left: normToPercent(rect.x),
@@ -35,7 +38,7 @@ export function DiagramCard({ rect, title, children, color, variant = 'outline',
     ...(scale != null ? { '--diagram-font-scale': scale } : {}),
   } as CSSProperties
 
-  const className = [styles.card, variant === 'filled' && styles.filled, variant === 'plain' && styles.plain, badge && styles.withBadge].filter(Boolean).join(' ')
+  const className = [styles.card, variant === 'filled' && styles.filled, variant === 'plain' && styles.plain, badge && styles.withBadge, shape === 'pill' && styles.pill, shape === 'diamond' && styles.diamond].filter(Boolean).join(' ')
 
   return (
     <div className={className} style={style}>

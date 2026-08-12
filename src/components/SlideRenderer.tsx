@@ -24,6 +24,7 @@ import { Table, type TableSpec } from './table'
 import { Compare, type CompareSpec } from './compare'
 import { Flow, type FlowStep } from './flow'
 import { ClassDiagram, type ClassDiagramSpec, HierarchyDiagram, type HierarchyDiagramSpec, OrgChart, type OrgChartSpec, ServerDiagram, type ServerDiagramSpec } from './structureDiagram'
+import { Flowchart, type FlowchartSpec, Gantt, type GanttSpec, Swimlane, type SwimlaneSpec } from './processDiagram'
 import { AccentText } from './AccentText'
 import { Quote } from './Quote'
 import { BigMessage } from './BigMessage'
@@ -296,7 +297,7 @@ function renderSteps(content: SlideContent): ReactNode {
       <Timeline
         columns={content.stepColumns as number | undefined}
         items={steps.map((step) => (
-          <TimelineNode key={step.number} number={step.number} title={step.title}>
+          <TimelineNode key={step.number} badge={step.number} title={step.title}>
             {/* 多列時は行数に応じて Timeline.module.css が --timeline-body-size を狭める（未定義なら body2 の既定サイズ） */}
             <Typography variant="body2" sx={{ fontSize: 'var(--timeline-body-size, var(--theme-font-size-body2))' }}>
               {step.description}
@@ -316,6 +317,26 @@ function renderSteps(content: SlideContent): ReactNode {
         </Typography>
       )}
     </>
+  )
+}
+
+/**
+ * dateTimelineを日付付きマイルストーンタイムラインとしてレンダリング（#206）。既存のsteps（連番）と
+ * 見た目の基盤（Timeline/TimelineNode）を共有し、バッジの中身だけ番号ではなく日付文字列にする。
+ *
+ * 日付の間隔は等間隔配置（実際の日付差には比例させない）。マイルストーンは近接した日付が並ぶことも
+ * 多く、間隔に比例させると密集して読めなくなるため、順序だけを保証する離散配置に決めた（設計判断）。
+ */
+function renderDateTimeline(content: SlideContent): ReactNode {
+  const milestones = content.dateTimeline as Array<{ date: string; title: string; description?: string }>
+  return (
+    <Timeline
+      items={milestones.map((milestone, i) => (
+        <TimelineNode key={i} badge={milestone.date} title={milestone.title}>
+          {milestone.description && <Typography variant="body2">{milestone.description}</Typography>}
+        </TimelineNode>
+      ))}
+    />
   )
 }
 
@@ -403,6 +424,8 @@ type ContentBranch = {
  */
 const CONTENT_BRANCHES: ContentBranch[] = [
   { match: (content) => Boolean(content.steps), fill: false, render: renderSteps },
+  // 日付付きマイルストーンタイムライン（#206）はstepsと見た目の基盤を共有するが独立フィールド（既存stepsの描画は変えない）
+  { match: (content) => Boolean(content.dateTimeline), fill: false, render: renderDateTimeline },
   { match: (content) => Boolean(content.checklist), fill: false, render: renderChecklist },
   { match: (content) => Boolean(content.toc) && typeof content.toc === 'object', fill: false, render: renderToc },
   { match: (content) => Boolean(content.tiles), fill: false, render: renderTiles },
@@ -420,6 +443,10 @@ const CONTENT_BRANCHES: ContentBranch[] = [
   { match: (content) => Boolean(content.serverDiagram) && typeof content.serverDiagram === 'object', fill: true, render: (content) => <ServerDiagram {...(content.serverDiagram as ServerDiagramSpec)} /> },
   { match: (content) => Boolean(content.orgChart) && typeof content.orgChart === 'object', fill: true, render: (content) => <OrgChart {...(content.orgChart as OrgChartSpec)} /> },
   { match: (content) => Boolean(content.classDiagram) && typeof content.classDiagram === 'object', fill: true, render: (content) => <ClassDiagram {...(content.classDiagram as ClassDiagramSpec)} /> },
+  // プロセス図（#206）もいずれも Diagram（DiagramCanvas）に載るので埋める。ノード/エッジは構成図と同じ structureNode/structureEdge を再利用する
+  { match: (content) => Boolean(content.flowchart) && typeof content.flowchart === 'object', fill: true, render: (content) => <Flowchart {...(content.flowchart as FlowchartSpec)} /> },
+  { match: (content) => Boolean(content.swimlane) && typeof content.swimlane === 'object', fill: true, render: (content) => <Swimlane {...(content.swimlane as SwimlaneSpec)} /> },
+  { match: (content) => Boolean(content.gantt) && typeof content.gantt === 'object', fill: true, render: (content) => <Gantt {...(content.gantt as GanttSpec)} /> },
   { match: (content) => Boolean(content.component), fill: (content) => componentFillsContentArea(content.component!.name), render: (content) => renderComponent(content.component!) },
   // 上のいずれも無指定の場合のみ、プレーン本文（body/items）を描画する（#193）
   { match: (content) => Boolean(content.body) || Boolean(content.items?.length), fill: false, render: renderBody },

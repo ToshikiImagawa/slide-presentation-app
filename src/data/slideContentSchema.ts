@@ -46,6 +46,9 @@ interface SlideContentSchema {
   serverDiagram: FieldMap & { description?: string }
   orgChart: FieldMap & { description?: string }
   classDiagram: FieldMap & { description?: string }
+  flowchart: FieldMap & { description?: string }
+  swimlane: FieldMap & { description?: string }
+  gantt: FieldMap & { description?: string }
 }
 
 const SCHEMA = schemaJson as unknown as SlideContentSchema
@@ -70,6 +73,9 @@ const REF_MAPS: Record<string, FieldMap> = {
   serverDiagram: stripMetaKeys(SCHEMA.serverDiagram),
   orgChart: stripMetaKeys(SCHEMA.orgChart),
   classDiagram: stripMetaKeys(SCHEMA.classDiagram),
+  flowchart: stripMetaKeys(SCHEMA.flowchart),
+  swimlane: stripMetaKeys(SCHEMA.swimlane),
+  gantt: stripMetaKeys(SCHEMA.gantt),
 }
 
 /** stringConstraint の種類ごとの判定関数とエラーメッセージ用の期待値表記。新しい種類を追加してもここに1行足すだけで済む（#211） */

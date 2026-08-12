@@ -508,6 +508,78 @@
           "relations": [{ "from": "admin", "to": "user", "type": "inheritance" }]
         }
       }
+    },
+    {
+      "id": "layout-content-date-timeline",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (dateTimeline)",
+        "dateTimeline": [
+          { "date": "2026/01", "title": "Requirements finalized", "description": "Scope locked" },
+          { "date": "2026/03", "title": "Implementation complete" },
+          { "date": "2026/04", "title": "Release", "description": "Shipped to production" }
+        ]
+      }
+    },
+    {
+      "id": "layout-content-flowchart",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (flowchart)",
+        "flowchart": {
+          "nodes": [
+            { "id": "start", "label": "Request", "shape": "start", "row": 0, "col": 1 },
+            { "id": "check", "label": "Approved?", "shape": "decision", "row": 1, "col": 1 },
+            { "id": "approve", "label": "Process approval", "shape": "process", "row": 2, "col": 0 },
+            { "id": "reject", "label": "Notify rejection", "shape": "process", "row": 2, "col": 2 },
+            { "id": "end", "label": "Done", "shape": "end", "row": 3, "col": 1 }
+          ],
+          "edges": [
+            { "from": "start", "to": "check" },
+            { "from": "check", "to": "approve", "label": "Yes" },
+            { "from": "check", "to": "reject", "label": "No" },
+            { "from": "approve", "to": "end" },
+            { "from": "reject", "to": "end" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "layout-content-swimlane",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (swimlane)",
+        "swimlane": {
+          "phases": ["Design", "Build", "Review", "Release"],
+          "lanes": [
+            { "title": "PM", "nodes": [{ "id": "req", "label": "Requirements", "col": 0 }] },
+            { "title": "Engineer", "nodes": [{ "id": "impl", "label": "Build", "col": 1 }, { "id": "fix", "label": "Fix", "col": 2 }] },
+            { "title": "QA", "nodes": [{ "id": "review", "label": "Review", "col": 2 }, { "id": "release", "label": "Release", "col": 3 }] }
+          ],
+          "connections": [
+            { "from": "req", "to": "impl" },
+            { "from": "impl", "to": "review" },
+            { "from": "review", "to": "fix" },
+            { "from": "fix", "to": "release" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "layout-content-gantt",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (gantt)",
+        "gantt": {
+          "axis": ["Jan", "Feb", "Mar", "Apr"],
+          "tasks": [
+            { "label": "Design", "startCol": 0, "span": 1 },
+            { "label": "Build", "startCol": 1, "span": 2 },
+            { "label": "Test", "startCol": 2, "span": 1 },
+            { "label": "Release", "startCol": 3, "span": 1 }
+          ]
+        }
+      }
     }
   ]
 }
