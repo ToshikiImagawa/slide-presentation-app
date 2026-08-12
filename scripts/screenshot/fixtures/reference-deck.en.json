@@ -288,6 +288,22 @@
       }
     },
     {
+      "id": "layout-content-chart-kpi-row",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (chart: kpi row)",
+        "chart": {
+          "type": "kpi",
+          "items": [
+            { "label": "Revenue growth", "value": 24.6, "unit": "%", "delta": "+3.1pt", "deltaDirection": "up", "deltaStatus": "success" },
+            { "label": "New contracts", "value": 342, "delta": "+6.5%", "deltaDirection": "up", "deltaStatus": "success", "color": "series3" },
+            { "label": "Churn rate", "value": 3.1, "unit": "%", "delta": "+0.4pt", "deltaDirection": "up", "deltaStatus": "danger", "color": "series4" },
+            { "label": "NPS", "value": 42, "delta": "±0", "deltaDirection": "flat", "deltaStatus": "neutral", "color": "series5" }
+          ]
+        }
+      }
+    },
+    {
       "id": "layout-content-table",
       "layout": "content",
       "content": {

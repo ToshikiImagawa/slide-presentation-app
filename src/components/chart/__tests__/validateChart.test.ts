@@ -33,6 +33,16 @@ describe('getChartSpecIssues', () => {
     expect(getChartSpecIssues({ type: 'kpi', label: 'MAU' })).toHaveLength(1)
   })
 
+  it('kpi のitemsが全てvalue/trendを持てば検出しない（#196）', () => {
+    expect(getChartSpecIssues({ type: 'kpi', items: [{ value: 1 }, { trend: [1, 2] }] })).toEqual([])
+  })
+
+  it('kpi のitems内にvalue/trendが両方無い要素があると位置つきで検出する（#196）', () => {
+    const issues = getChartSpecIssues({ type: 'kpi', items: [{ value: 1 }, { label: 'B' }] })
+    expect(issues).toHaveLength(1)
+    expect(issues[0]).toContain('items[1]')
+  })
+
   it('series/categories が配列でなくても落ちない', () => {
     expect(getChartSpecIssues({ type: 'bar', series: 'broken' as never, categories: 'broken' as never })).toHaveLength(1)
   })

@@ -159,10 +159,7 @@
   "layout": "content",
   "content": {
     "title": "リリース前チェック",
-    "checklist": [
-      { "title": "テストが通った", "description": "説明（<br/>等HTMLタグ利用可）", "checked": true },
-      { "title": "CI が緑になった" }
-    ]
+    "checklist": [{ "title": "テストが通った", "description": "説明（<br/>等HTMLタグ利用可）", "checked": true }, { "title": "CI が緑になった" }]
   }
 }
 ```
@@ -220,13 +217,13 @@
 
 実績報告・推移説明のためのグラフ。`type` で 5 種類から選ぶ。寸法・座標の指定はなく本文領域いっぱいに自動で収まり、系列色・線幅・角丸はテーマトークンに追従する。外部で作った画像を貼る必要はない。
 
-| type | 用途 |
-|---|---|
-| `bar` | 縦棒。期間ごとの推移・少数項目の比較（省略時の既定） |
-| `line` | 折れ線。連続した推移 |
-| `pie` | 円。構成比（`series[0].values` だけを使う） |
-| `hbar` | 横棒。項目名が長い比較（施策名・部署名等） |
-| `kpi` | 大数値 ＋ 推移線。1 つの指標を主役にする |
+| type   | 用途                                                 |
+| ------ | ---------------------------------------------------- |
+| `bar`  | 縦棒。期間ごとの推移・少数項目の比較（省略時の既定） |
+| `line` | 折れ線。連続した推移                                 |
+| `pie`  | 円。構成比（`series[0].values` だけを使う）          |
+| `hbar` | 横棒。項目名が長い比較（施策名・部署名等）           |
+| `kpi`  | 大数値 ＋ 推移線。1 つの指標を主役にする             |
 
 ```json
 {
@@ -266,9 +263,32 @@
 }
 ```
 
+複数の指標を横に並べる KPI 行にしたい場合は `items`（2〜5個）を使う。`items` を指定すると `value`/`label`/`delta`/`trend`/`color` の単体フィールドは無視される（`items` が無いときの単体 KPI は `items` 長さ1 として同じ経路で描画されるので、書式が変わるだけで挙動は同じ）。
+
+```json
+{
+  "id": "slide-id",
+  "layout": "content",
+  "content": {
+    "title": "タイトル",
+    "chart": {
+      "type": "kpi",
+      "items": [
+        { "label": "売上成長率", "value": 24.6, "unit": "%", "delta": "+3.1pt", "deltaDirection": "up", "deltaStatus": "success" },
+        { "label": "新規契約数", "value": 342, "delta": "+6.5%", "deltaDirection": "up", "deltaStatus": "success", "color": "series3" },
+        { "label": "解約率", "value": 3.1, "unit": "%", "delta": "+0.4pt", "deltaDirection": "up", "deltaStatus": "danger", "color": "series4" },
+        { "label": "NPS", "value": 42, "delta": "±0", "deltaDirection": "flat", "deltaStatus": "neutral", "color": "series5" }
+      ]
+    }
+  }
+}
+```
+
+増減注記の見た目は `deltaDirection`（`up`/`down`/`flat`。▲/▼/– の記号）と `deltaStatus`（色トークン。省略時はその指標の `color` と同じ）の2フィールドで決める。方向（数値が上下したか）と状態（それが良いか悪いか）は別の軸なので分離している。上の例の「解約率」は `deltaDirection: "up"` だが `deltaStatus: "danger"`（解約率の増加は悪い変化）。
+
 表示制御は `axis`（軸の目盛りと格子線）・`legend`（凡例）・`valueLabels`（値ラベル）で、いずれも省略時は自動判定する。項目名は 12 個を超えると等間隔に間引かれ（先頭と末尾は必ず表示）、値ラベルは描画点が多いと既定で省かれるため、項目数が多くてもラベルは重ならない。軸の範囲は `min` / `max` で固定できる（百分率を 0〜100 に固定する場合等）。
 
-`series[].color` と `kpi` の `color` は色トークン名（`series1`〜`series6`/`primary`/`accent`/`success`/`warning`/`danger`/`neutral` 等）。省略時は系列順に `series1`〜`series6` が割り当たる（円は `categories` の順）。
+`series[].color` と `kpi` の `color`/`deltaStatus`（`items[].color`/`items[].deltaStatus` も同様）は色トークン名（`series1`〜`series6`/`primary`/`accent`/`success`/`warning`/`danger`/`neutral` 等）。省略時は系列順に `series1`〜`series6` が割り当たる（円は `categories` の順）。
 
 `content.chart` の短縮記法は `layout: content` 専用だが、`Chart` は ComponentRegistry にも登録されているため `component: { name: "Chart", props: {...} }`（`props` は上記と同じフィールド）でも置ける。two-column の各カラム（`left.component`/`right.component`）・bleed・custom など、`component` を受け付けるすべての経路から使え、チャートと箇条書きを左右に並べるレイアウトも組める。
 
@@ -342,11 +362,7 @@
       },
       "right": {
         "heading": "採用しない",
-        "items": [
-          { "text": "色値のハードコード", "status": "fail" },
-          { "text": "検証は手動のみ", "status": "warn" },
-          { "text": "対象外の項目" }
-        ]
+        "items": [{ "text": "色値のハードコード", "status": "fail" }, { "text": "検証は手動のみ", "status": "warn" }, { "text": "対象外の項目" }]
       }
     }
   }
@@ -355,12 +371,12 @@
 
 各ペインの `items[].status` は状態記号・状態色を出す（省略時は記号なしの通常項目）。
 
-| `status` | 記号 | 色トークン |
-|---|---|---|
-| `pass` | ✓ | `success` |
-| `fail` | ✕ | `danger` |
-| `warn` | ! | `warning` |
-| `neutral` | – | `neutral` |
+| `status`  | 記号 | 色トークン |
+| --------- | ---- | ---------- |
+| `pass`    | ✓    | `success`  |
+| `fail`    | ✕    | `danger`   |
+| `warn`    | !    | `warning`  |
+| `neutral` | –    | `neutral`  |
 
 ### flow（横フロー）
 
@@ -372,12 +388,7 @@
   "layout": "content",
   "content": {
     "title": "タイトル",
-    "flow": [
-      { "title": "要件定義", "description": "課題を洗い出す" },
-      { "title": "実装" },
-      { "title": "レビュー" },
-      { "title": "リリース", "description": "本番反映" }
-    ]
+    "flow": [{ "title": "要件定義", "description": "課題を洗い出す" }, { "title": "実装" }, { "title": "レビュー" }, { "title": "リリース", "description": "本番反映" }]
   }
 }
 ```
@@ -420,7 +431,13 @@
     "serverDiagram": {
       "zones": [
         { "title": "パブリックサブネット", "nodes": [{ "id": "lb", "label": "ロードバランサ" }] },
-        { "title": "プライベートサブネット", "nodes": [{ "id": "app1", "label": "APIサーバ" }, { "id": "app2", "label": "APIサーバ" }] },
+        {
+          "title": "プライベートサブネット",
+          "nodes": [
+            { "id": "app1", "label": "APIサーバ" },
+            { "id": "app2", "label": "APIサーバ" }
+          ]
+        },
         { "title": "データ層", "nodes": [{ "id": "db", "label": "RDS" }] }
       ],
       "connections": [
@@ -500,9 +517,7 @@
   "heading": "見出し",
   "headingDescription": "見出し補足",
   "paragraphs": ["段落1（HTMLタグ可）", "段落2"],
-  "items": [
-    { "text": "項目名", "emphasis": true, "description": "説明" }
-  ],
+  "items": [{ "text": "項目名", "emphasis": true, "description": "説明" }],
   "codeBlock": {
     "header": "> ヘッダー",
     "items": ["行1", "行2"]
@@ -675,13 +690,13 @@
 
 `background` はマスター単位の背景意匠。省略するとデッキ既定の背景（テーマ背景色＋格子）がそのまま見える。`opacity`（0〜1）を下げるとデッキ既定の背景が透ける。**そのスライドに `meta.backgroundColor`/`backgroundImage`（前述の共通 meta フィールド）があるときは、この `background` を描かず個別指定が勝つ**（#236）。
 
-| `type` | 追加プロパティ | 用途 |
-|---|---|---|
-| `plain` | なし | 無地（テーマ背景色で塗り、デッキ既定の格子を隠す） |
-| `grid` | `color`（下地色・省略時テーマ背景色）/ `size`（格子の間隔px） | 格子（デッキ既定と同じ意匠）。`size` 省略時はデッキ既定と同じ間隔なので、密度・下地色を変えるときだけ指定する |
-| `fill` | `color`（必須） | 全面塗り（章扉の反転面等） |
-| `gradient` | `from` / `to`（必須）/ `angle`（deg・省略時 180 = 上→下） | グラデーション |
-| `image` | `src`（必須）/ `fit`（`cover`/`contain`・省略時 `cover`） | 画像を全面に敷く |
+| `type`     | 追加プロパティ                                                | 用途                                                                                                          |
+| ---------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `plain`    | なし                                                          | 無地（テーマ背景色で塗り、デッキ既定の格子を隠す）                                                            |
+| `grid`     | `color`（下地色・省略時テーマ背景色）/ `size`（格子の間隔px） | 格子（デッキ既定と同じ意匠）。`size` 省略時はデッキ既定と同じ間隔なので、密度・下地色を変えるときだけ指定する |
+| `fill`     | `color`（必須）                                               | 全面塗り（章扉の反転面等）                                                                                    |
+| `gradient` | `from` / `to`（必須）/ `angle`（deg・省略時 180 = 上→下）     | グラデーション                                                                                                |
+| `image`    | `src`（必須）/ `fit`（`cover`/`contain`・省略時 `cover`）     | 画像を全面に敷く                                                                                              |
 
 `plain`/`grid`（`color` 省略時）に加え、`gradient` の半透明部分・`image` の `fit: contain` の余白の下地も既定でテーマ背景色になる（#239。真実源は `global.css` の `.master-background`）。
 
@@ -689,22 +704,22 @@
 
 `only` は装飾を出すスライドの絞り込み条件。
 
-| `only` | 適用されるスライド |
-|---|---|
-| `all` | すべて（省略時） |
-| `first` / `last` | 最初 / 最後だけ |
-| `not-first` | 最初以外 |
-| `middle` | 最初と最後以外（表紙と締めを除く） |
-| `section-first` | 各章の先頭スライドだけ（章扉） |
+| `only`              | 適用されるスライド                         |
+| ------------------- | ------------------------------------------ |
+| `all`               | すべて（省略時）                           |
+| `first` / `last`    | 最初 / 最後だけ                            |
+| `not-first`         | 最初以外                                   |
+| `middle`            | 最初と最後以外（表紙と締めを除く）         |
+| `section-first`     | 各章の先頭スライドだけ（章扉）             |
 | `not-section-first` | 章の先頭以外（章に属さないスライドも含む） |
 
 `text` の `content` では次のテンプレート変数を展開できる。`{sectionNumber:02}` のように `:0N` を付けると N 桁ゼロ詰めになる（`3` → `03`）。章の変数は `meta.section` を持たないスライドでは空文字になる。
 
-| 変数 | 展開結果 |
-|---|---|
-| `{index}` / `{total}` | ページ番号（1始まり）/ 総ページ数 |
-| `{sectionNumber}` | 章番号（1始まり） |
-| `{sectionTitle}` | 章タイトル（`meta.section` の値） |
+| 変数                                | 展開結果                            |
+| ----------------------------------- | ----------------------------------- |
+| `{index}` / `{total}`               | ページ番号（1始まり）/ 総ページ数   |
+| `{sectionNumber}`                   | 章番号（1始まり）                   |
+| `{sectionTitle}`                    | 章タイトル（`meta.section` の値）   |
 | `{sectionIndex}` / `{sectionTotal}` | 章内の連番（1始まり）/ 章内の総枚数 |
 
 `masterMap` はレイアウト種別（`center`/`content`/`two-column`/`bleed`/`custom`）→ masterKey の対応表。未指定のレイアウトには装飾を描画しない（masters/masterMap を省略したデッキは現行と完全同一のDOMになる）。
@@ -715,20 +730,20 @@
 
 意匠トークン（角丸・線幅・装飾線の太さ・カード内側アクセント幅・影の強さ・表のゼブラ濃度）は `"*"` から一括で変えられる。企業テンプレートは色より「角の丸み・線の太さ」で個性が出るため、色を合わせても別物に見えるときはここを調整する。
 
-| トークン | 既定値 | 効く対象 |
-|---|---|---|
-| `theme-radius-sm` | `8px` | パネル・インラインコード・スライド番号の角丸 |
-| `theme-radius-md` | `12px` | QRコードカード・タイルのアイコンチップの角丸 |
-| `theme-radius-lg` | `16px` | カード（`tiles`）の角丸 |
-| `theme-border-width` | `1px` | カード・パネルのヘアライン境界線の太さ（装飾的な太線は下の 5 つで制御する） |
-| `theme-heading-accent-width` | `6px` | スライド見出し左端のアクセントバーの太さ |
-| `theme-heading-underline-width` | `1.5px` | 見出し直下の下線の太さ（`bleed` レイアウトの見出し） |
-| `theme-frame-rule-width` | `4px` | スライド上端に走るブランド帯の太さ |
-| `theme-rule-width` | `4px` | 本文中の装飾的な区切り線の太さ（`steps` を貫く水平線） |
-| `theme-node-ring-width` | `3px` | 番号バッジを囲むリングの太さ（`steps` のノード） |
-| `theme-card-accent-width` | `0px` | カード左端のアクセントバーの幅（`0` でバーなし。色は `tiles[].accentColor`） |
-| `theme-shadow-strength` | `1` | 影の濃さの倍率（`0` で影なし・`2` で倍） |
-| `theme-zebra-opacity` | `0.04` | 表の偶数行の背景の濃さ |
+| トークン                        | 既定値  | 効く対象                                                                     |
+| ------------------------------- | ------- | ---------------------------------------------------------------------------- |
+| `theme-radius-sm`               | `8px`   | パネル・インラインコード・スライド番号の角丸                                 |
+| `theme-radius-md`               | `12px`  | QRコードカード・タイルのアイコンチップの角丸                                 |
+| `theme-radius-lg`               | `16px`  | カード（`tiles`）の角丸                                                      |
+| `theme-border-width`            | `1px`   | カード・パネルのヘアライン境界線の太さ（装飾的な太線は下の 5 つで制御する）  |
+| `theme-heading-accent-width`    | `6px`   | スライド見出し左端のアクセントバーの太さ                                     |
+| `theme-heading-underline-width` | `1.5px` | 見出し直下の下線の太さ（`bleed` レイアウトの見出し）                         |
+| `theme-frame-rule-width`        | `4px`   | スライド上端に走るブランド帯の太さ                                           |
+| `theme-rule-width`              | `4px`   | 本文中の装飾的な区切り線の太さ（`steps` を貫く水平線）                       |
+| `theme-node-ring-width`         | `3px`   | 番号バッジを囲むリングの太さ（`steps` のノード）                             |
+| `theme-card-accent-width`       | `0px`   | カード左端のアクセントバーの幅（`0` でバーなし。色は `tiles[].accentColor`） |
+| `theme-shadow-strength`         | `1`     | 影の濃さの倍率（`0` で影なし・`2` で倍）                                     |
+| `theme-zebra-opacity`           | `0.04`  | 表の偶数行の背景の濃さ                                                       |
 
 ### content.toc（目次・#195）
 
@@ -839,8 +854,20 @@
       "phases": ["設計", "実装", "レビュー", "リリース"],
       "lanes": [
         { "title": "PM", "nodes": [{ "id": "req", "label": "要件定義", "col": 0 }] },
-        { "title": "エンジニア", "nodes": [{ "id": "impl", "label": "実装", "col": 1 }, { "id": "fix", "label": "修正", "col": 2 }] },
-        { "title": "QA", "nodes": [{ "id": "review", "label": "レビュー", "col": 2 }, { "id": "release", "label": "リリース", "col": 3 }] }
+        {
+          "title": "エンジニア",
+          "nodes": [
+            { "id": "impl", "label": "実装", "col": 1 },
+            { "id": "fix", "label": "修正", "col": 2 }
+          ]
+        },
+        {
+          "title": "QA",
+          "nodes": [
+            { "id": "review", "label": "レビュー", "col": 2 },
+            { "id": "release", "label": "リリース", "col": 3 }
+          ]
+        }
       ],
       "connections": [
         { "from": "req", "to": "impl" },

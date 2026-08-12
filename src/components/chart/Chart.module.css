@@ -305,7 +305,16 @@
   transform: translate(-50%, -50%);
 }
 
-/* ---- 大数値＋推移 ---- */
+/* ---- 大数値＋推移（KPI・#196でKPI行に拡張） ---- */
+/* 1〜5個のKPIを横に並べる行。個数から決まる密度（Table・Checklistと同じdata-density方式）で
+   値・増減注記の文字サイズを段階的に縮める。単一KPI（items未指定）もこの1個の行として同じ経路を通る */
+.kpiRow {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  gap: 32px;
+}
+
 .kpi {
   display: flex;
   flex: 1;
@@ -313,6 +322,14 @@
   justify-content: center;
   gap: 12px;
   min-height: 0;
+  min-width: 0;
+}
+
+/* 2個以上を並べるときだけ枠で視覚的に区切る（#190のカード意匠トークン）。1個のときは既存の見た目を変えない */
+.kpiRow .kpi:not(:only-child) {
+  padding: 24px;
+  border: var(--theme-border-width) solid var(--theme-border-light);
+  border-radius: var(--theme-radius-md);
 }
 
 .kpiLabel {
@@ -327,9 +344,30 @@
   line-height: 1.05;
 }
 
+/* 個数が増えるほど1個あたりの幅が狭まるため、値・増減注記の文字サイズを段階的に縮める（はみ出し防止・#196） */
+.kpiRow[data-density='dense'] .kpiValue {
+  font-size: var(--theme-font-size-h2);
+}
+
+.kpiRow[data-density='compact'] .kpiValue {
+  font-size: var(--theme-font-size-subtitle1);
+}
+
 .kpiDelta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: var(--theme-font-size-h3);
   font-weight: 600;
+}
+
+.kpiRow[data-density='dense'] .kpiDelta,
+.kpiRow[data-density='compact'] .kpiDelta {
+  font-size: var(--theme-font-size-body1);
+}
+
+.kpiDeltaMark {
+  font-size: 0.75em;
 }
 
 /* 推移線は大数値の下に控えめな高さで添える（主役は数値なので上限を持たせる） */

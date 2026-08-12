@@ -3,7 +3,8 @@ import { buildAxisScale, defaultValueLabels, formatValue, seriesColor, type Axis
 import { ChartLegend, type LegendEntry } from './ChartLegend'
 import { asArray, getChartSpecIssues } from './validateChart'
 import { HBarChart } from './HBarChart'
-import { KpiTrend } from './KpiTrend'
+import { KpiRow } from './KpiRow'
+import { resolveKpiItems } from './kpiItems'
 import { LineChart } from './LineChart'
 import { PieChart } from './PieChart'
 import type { ChartSpec, ResolvedSeries } from './types'
@@ -49,7 +50,7 @@ export function Chart(spec: ChartSpec) {
   if (type === 'kpi') {
     return (
       <div className={ROOT_CLASS_NAME} data-testid="chart" data-chart-type={type}>
-        <KpiTrend value={spec.value} label={spec.label} delta={spec.delta} unit={spec.unit} trend={asArray(spec.trend).map(Number)} color={seriesColor(0, spec.color)} />
+        <KpiRow items={resolveKpiItems(spec)} />
       </div>
     )
   }
