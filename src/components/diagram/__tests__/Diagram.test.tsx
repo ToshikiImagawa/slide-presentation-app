@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { render } from '@testing-library/react'
 import { Diagram } from '../Diagram'
 
@@ -112,13 +112,10 @@ describe('Diagram', () => {
     expect(getByText('注記').className).toMatch(/anchorRight/)
   })
 
-  it('存在しないノードを参照するコネクタは警告して描画しない（デッキ全体を落とさない）', () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  it('存在しないノードを参照するコネクタは描画しない（デッキ全体を落とさない。利用者への報告は getThemeWarnings 経路が担う・#232）', () => {
     const { container } = render(<Diagram nodes={NODES} connectors={[{ from: 'a', to: 'missing' }]} />)
 
     expect(container.querySelector('polyline')).toBeNull()
-    expect(warn).toHaveBeenCalledOnce()
-    warn.mockRestore()
   })
 
   it('配列でない props を渡されても描画を継続する', () => {
