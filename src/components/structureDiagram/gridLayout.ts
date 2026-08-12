@@ -1,5 +1,5 @@
 import type { NormRect } from '../diagram'
-import { packAxis } from './packAxis'
+import { getAxisSlot, packAxis } from './packAxis'
 
 const MARGIN = 0.02
 const GAP = 0.05
@@ -33,8 +33,10 @@ export function computeGridLayout(nodes: GridPosition[]): NormRect[] {
   const colSlots = packAxis(colCount, MARGIN, 1 - MARGIN * 2, GAP)
 
   return positions.map(({ row, col }) => {
-    const rowSlot = rowSlots[row]
+    // getAxisSlotで範囲外・非整数のrow/colをガードする（#276）
+    const rowSlot = getAxisSlot(rowSlots, row)
+    const colSlot = getAxisSlot(colSlots, col)
     const h = Math.min(rowSlot.size, MAX_ROW_HEIGHT)
-    return { x: colSlots[col].offset, y: rowSlot.offset + (rowSlot.size - h) / 2, w: colSlots[col].size, h }
+    return { x: colSlot.offset, y: rowSlot.offset + (rowSlot.size - h) / 2, w: colSlot.size, h }
   })
 }

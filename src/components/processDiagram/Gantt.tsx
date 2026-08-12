@@ -1,6 +1,6 @@
 import { Diagram } from '../diagram'
 import { defaultSeriesColor } from '../structureDiagram/colors'
-import { packAxis } from '../structureDiagram/packAxis'
+import { getAxisSlot, packAxis } from '../structureDiagram/packAxis'
 import { asArray } from '../structureDiagram/types'
 import { axisHeaderNodes } from './axisHeaderNodes'
 
@@ -66,13 +66,12 @@ export function Gantt({ axis, tasks }: GanttSpec) {
     variant: 'plain' as const,
   }))
 
-  // colCount は全タスクの startCol + span を含めて導出している（上記）ため、
-  // start/endCol は常に colSlots の範囲内になる（クランプ不要）
+  // getAxisSlotで範囲外・非整数のstartColをガードする（colCountの導出だけでは防げない・#276）
   const barNodes = taskList.map((task, i) => {
     const row = rowSlots[i]
-    const start = colSlots[task.startCol]
+    const start = getAxisSlot(colSlots, task.startCol)
     const endCol = task.startCol + Math.max(1, task.span ?? 1) - 1
-    const end = colSlots[endCol]
+    const end = getAxisSlot(colSlots, endCol)
     const barHeight = row.size * BAR_HEIGHT_RATIO
     return {
       id: `bar-${i}`,

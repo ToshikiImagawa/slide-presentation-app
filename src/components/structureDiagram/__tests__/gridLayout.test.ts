@@ -43,4 +43,21 @@ describe('computeGridLayout', () => {
     const input = [{ row: 1, col: 0 }, {}, { col: 2 }]
     expect(computeGridLayout(input)).toEqual(computeGridLayout(input))
   })
+
+  it('rowが負値・非整数でも例外にならず描画を続ける（#276）', () => {
+    const rects = computeGridLayout([{ row: -1, col: 0 }, { row: 0.5, col: 1 }, {}])
+    expect(rects).toHaveLength(3)
+    rects.forEach((rect) => {
+      expect(Number.isFinite(rect.x)).toBe(true)
+      expect(Number.isFinite(rect.y)).toBe(true)
+    })
+  })
+
+  it('colが負値でも例外にならず描画を続ける（#276）', () => {
+    const rects = computeGridLayout([
+      { row: 0, col: -1 },
+      { row: 1, col: 0 },
+    ])
+    expect(rects).toHaveLength(2)
+  })
 })

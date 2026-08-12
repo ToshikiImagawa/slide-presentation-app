@@ -47,4 +47,10 @@ describe('Swimlane', () => {
     expect(render(<Swimlane />).container.firstChild).toBeNull()
     expect(render(<Swimlane lanes={[]} />).container.firstChild).toBeNull()
   })
+
+  it('colが負値でも例外にならず描画を続ける（#276）', () => {
+    const lanes = [{ title: 'A', nodes: [{ id: 'bad', label: '負値', col: -1 }] }]
+    const { getByText } = render(<Swimlane phases={PHASES} lanes={lanes} />)
+    expect(getByText('負値')).toBeTruthy()
+  })
 })
