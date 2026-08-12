@@ -5,6 +5,8 @@ import { ALLOWED_LAYOUTS, getSchemaConformanceErrors } from '../slideContentSche
 import { registerComponent } from '../../components/ComponentRegistry'
 import { registerDefaultComponents } from '../../components/registerDefaults'
 import samplesManifest from '../../../samples/manifest.json'
+import schemaJson from '../../../schema/slide-content-schema.json'
+import { MASTER_ANCHORS, MASTER_BACKGROUND_FITS, MASTER_BACKGROUND_TYPES, MASTER_DECORATION_LAYER, MASTER_DECORATION_ONLY, MASTER_DECORATION_TYPES } from '../../masters'
 import type { PresentationData } from '../types'
 
 const projectRoot = resolve(import.meta.dirname, '../../..')
@@ -18,6 +20,25 @@ beforeAll(() => {
 describe('ALLOWED_LAYOUTS', () => {
   it('SlideRendererが対応する5種のlayoutを含む', () => {
     expect(ALLOWED_LAYOUTS.sort()).toEqual(['bleed', 'center', 'content', 'custom', 'two-column'])
+  })
+})
+
+describe('マスター語彙 enum のスキーマ間ドリフト検知（#238）', () => {
+  // masters.ts の実行時定数と schema/slide-content-schema.json の同名 enum は手作業で同期しているため、
+  // 語彙を1つ追加してどちらか一方を更新し忘れると、このテストが落ちて修正漏れを検知する
+  const masterFields = schemaJson.theme.masters.itemFields
+  const decorationFields = masterFields.decorations.itemFields
+  const backgroundFields = masterFields.background.fields
+
+  it.each([
+    ['decorations[].type', MASTER_DECORATION_TYPES, decorationFields.type.enum],
+    ['decorations[].anchor', MASTER_ANCHORS, decorationFields.anchor.enum],
+    ['decorations[].only', MASTER_DECORATION_ONLY, decorationFields.only.enum],
+    ['decorations[].layer', MASTER_DECORATION_LAYER, decorationFields.layer.enum],
+    ['background.type', MASTER_BACKGROUND_TYPES, backgroundFields.type.enum],
+    ['background.fit', MASTER_BACKGROUND_FITS, backgroundFields.fit.enum],
+  ])('%s: masters.ts の実行時定数と schema の enum が一致する', (_label, runtimeValues, schemaEnum) => {
+    expect([...runtimeValues].sort()).toEqual([...schemaEnum].sort())
   })
 })
 

@@ -1,12 +1,17 @@
 import { hasComponent } from './components/ComponentRegistry'
 import type { MasterBackground, MasterDecoration, MasterDecorationOnly, MasterDefinition, MasterGradient, MasterRenderContext, SlideData, ThemeData } from './data'
 
-const MASTER_DECORATION_TYPES = ['logo', 'band', 'rule', 'text', 'image', 'component'] as const
-const MASTER_ANCHORS = ['top-left', 'top-center', 'top-right', 'middle-left', 'middle-center', 'middle-right', 'bottom-left', 'bottom-center', 'bottom-right'] as const
-const MASTER_DECORATION_ONLY = ['first', 'last', 'not-first', 'all', 'middle', 'section-first', 'not-section-first'] as const
-const MASTER_DECORATION_LAYER = ['back', 'front'] as const
-const MASTER_BACKGROUND_TYPES = ['plain', 'grid', 'fill', 'gradient', 'image'] as const
-const MASTER_BACKGROUND_FITS = ['cover', 'contain'] as const
+// schema/slide-content-schema.json の theme.masters 配下の同名 enum と手作業で同期している。
+// slideContentSchema.ts の SCHEMA は AI生成専用の厳格検証のためのモジュールであり、汎用の
+// getMasterWarnings（手動編集・アドオン拡張を阻害しないための検証）をそこへ結合させない設計上、
+// ここでは自前の定数として持つ。値がずれると生成AIが受け取る仕様と実行時検証が食い違うため、
+// 両者の同値性は slideContentSchema.test.ts でドリフト検知する（#238）
+export const MASTER_DECORATION_TYPES = ['logo', 'band', 'rule', 'text', 'image', 'component'] as const
+export const MASTER_ANCHORS = ['top-left', 'top-center', 'top-right', 'middle-left', 'middle-center', 'middle-right', 'bottom-left', 'bottom-center', 'bottom-right'] as const
+export const MASTER_DECORATION_ONLY = ['first', 'last', 'not-first', 'all', 'middle', 'section-first', 'not-section-first'] as const
+export const MASTER_DECORATION_LAYER = ['back', 'front'] as const
+export const MASTER_BACKGROUND_TYPES = ['plain', 'grid', 'fill', 'gradient', 'image'] as const
+export const MASTER_BACKGROUND_FITS = ['cover', 'contain'] as const
 
 /** extends が解けた状態のマスター定義（decorations は常に配列に正規化する）。継承できるフィールドは
  * MasterDefinition 側の語彙で決まるため、フィールドを増やしてもこの型は追随不要 */
@@ -232,32 +237,28 @@ function unknownTextVariables(content: string): string[] {
   return [...new Set(names)]
 }
 
-/**
- * masters/masterMap/tokens、および slides[].meta.master（スライド個別指定）の値検証エラー
- * （綴りミス等）を警告として返す。getThemeWarnings と同じ方針: 検証エラーではなく警告として扱い、
- * 描画は継続する（resolveMaster は循環・未解決を静かに次の候補へフォールバックするため、
- * その事実をここで利用者に伝える）。slides は省略可能（省略時は meta.master の検証をスキップする）。
- */
-export function getMasterWarnings(theme?: ThemeData, slides?: SlideData[]): string[] {
+/** theme.masterMap の各エントリが masters に存在する masterKey を参照しているかを検証する */
+function masterMapWarnings(masterMap: Record<string, string> | undefined, masterKeys: Set<string>): string[] {
+  return Object.entries(masterMap ?? {})
+    .filter(([, masterKey]) => !masterKeys.has(masterKey))
+    .map(([layout, masterKey]) => `theme.masterMap.${layout}: 存在しない masterKey "${masterKey}" を参照しています`)
+}
+
+/** slides[].meta.master（スライド個別指定）が masters に存在する masterKey を参照しているかを検証する */
+function slideMasterWarnings(slides: SlideData[] | undefined, masterKeys: Set<string>): string[] {
   const warnings: string[] = []
-  if (!theme) return warnings
-
-  const masters = theme.masters ?? {}
-  const masterKeys = new Set(Object.keys(masters))
-
-  for (const [layout, masterKey] of Object.entries(theme.masterMap ?? {})) {
-    if (!masterKeys.has(masterKey)) {
-      warnings.push(`theme.masterMap.${layout}: 存在しない masterKey "${masterKey}" を参照しています`)
-    }
-  }
-
   for (const [index, slide] of (slides ?? []).entries()) {
     const masterKey = slide.meta?.master
     if (masterKey && !masterKeys.has(masterKey)) {
       warnings.push(`slides[${index}].meta.master: 存在しない masterKey "${masterKey}" を参照しています`)
     }
   }
+  return warnings
+}
 
+/** theme.masters の各定義（extends の存在・循環、background、decorations）を検証する */
+function definitionWarnings(masters: Record<string, MasterDefinition>, masterKeys: Set<string>): string[] {
+  const warnings: string[] = []
   for (const [masterKey, definition] of Object.entries(masters)) {
     if (definition.extends && !masterKeys.has(definition.extends)) {
       warnings.push(`theme.masters.${masterKey}.extends: 存在しない masterKey "${definition.extends}" を参照しています`)
@@ -273,14 +274,29 @@ export function getMasterWarnings(theme?: ThemeData, slides?: SlideData[]): stri
       warnings.push(...decorationWarnings(decoration, `theme.masters.${masterKey}.decorations[${i}]`))
     }
   }
-
-  for (const masterKey of Object.keys(theme.tokens ?? {})) {
-    if (masterKey !== GLOBAL_TOKEN_SCOPE && !masterKeys.has(masterKey)) {
-      warnings.push(`theme.tokens.${masterKey}: 存在しない masterKey です`)
-    }
-  }
-
   return warnings
+}
+
+/** theme.tokens のスコープキー（GLOBAL_TOKEN_SCOPE を除く）が masters に存在する masterKey かを検証する */
+function tokenWarnings(tokens: Record<string, Record<string, string>> | undefined, masterKeys: Set<string>): string[] {
+  return Object.keys(tokens ?? {})
+    .filter((masterKey) => masterKey !== GLOBAL_TOKEN_SCOPE && !masterKeys.has(masterKey))
+    .map((masterKey) => `theme.tokens.${masterKey}: 存在しない masterKey です`)
+}
+
+/**
+ * masters/masterMap/tokens、および slides[].meta.master（スライド個別指定）の値検証エラー
+ * （綴りミス等）を警告として返す。getThemeWarnings と同じ方針: 検証エラーではなく警告として扱い、
+ * 描画は継続する（resolveMaster は循環・未解決を静かに次の候補へフォールバックするため、
+ * その事実をここで利用者に伝える）。slides は省略可能（省略時は meta.master の検証をスキップする）。
+ */
+export function getMasterWarnings(theme?: ThemeData, slides?: SlideData[]): string[] {
+  if (!theme) return []
+
+  const masters = theme.masters ?? {}
+  const masterKeys = new Set(Object.keys(masters))
+
+  return [masterMapWarnings(theme.masterMap, masterKeys), slideMasterWarnings(slides, masterKeys), definitionWarnings(masters, masterKeys), tokenWarnings(theme.tokens, masterKeys)].flat()
 }
 
 function isCircular(masters: Record<string, MasterDefinition>, startKey: string): boolean {
