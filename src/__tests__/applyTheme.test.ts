@@ -848,6 +848,46 @@ describe('getThemeWarnings', () => {
     expect(warnings.some((w) => w.includes('slides[0].content.tiles[0].icon') && w.includes('NoSuchIcon'))).toBe(true)
   })
 
+  // #232: connectors[].from/to が存在しないノード id を参照する場合は白紙描画（コネクタのみスキップ）になり
+  // 原因が伝わらないため、既存の警告集約機構に載せる（描画側のスキップは Diagram.tsx にそのまま残す）
+  describe('component:{name:"Diagram"} の connectors[].from/to 参照エラー（#232）', () => {
+    const nodes = [
+      { id: 'a', rect: { x: 0, y: 0, w: 0.2, h: 0.2 } },
+      { id: 'b', rect: { x: 0.5, y: 0.5, w: 0.2, h: 0.2 } },
+    ]
+
+    it('存在しないノード id を参照する場合に警告する', () => {
+      const warnings = getThemeWarnings(undefined, [{ id: 's1', layout: 'custom', content: { component: { name: 'Diagram', props: { nodes, connectors: [{ from: 'a', to: 'missing' }] } } } }])
+      expect(warnings.some((w) => w.includes('slides[0].content.component.props.connectors[0].to') && w.includes('missing'))).toBe(true)
+    })
+
+    it('from/to とも存在すれば警告しない', () => {
+      const warnings = getThemeWarnings(undefined, [{ id: 's1', layout: 'custom', content: { component: { name: 'Diagram', props: { nodes, connectors: [{ from: 'a', to: 'b' }] } } } }])
+      expect(warnings).toEqual([])
+    })
+
+    it('two-column の左右カラムの component:{name:"Diagram"} も検出する', () => {
+      const warnings = getThemeWarnings(undefined, [
+        {
+          id: 's1',
+          layout: 'two-column',
+          content: {
+            title: 'T',
+            left: { component: { name: 'Diagram', props: { nodes, connectors: [{ from: 'a', to: 'missing-left' }] } } },
+            right: { component: { name: 'Diagram', props: { nodes, connectors: [{ from: 'missing-right', to: 'b' }] } } },
+          },
+        },
+      ])
+      expect(warnings.some((w) => w.includes('slides[0].content.left.component.props') && w.includes('missing-left'))).toBe(true)
+      expect(warnings.some((w) => w.includes('slides[0].content.right.component.props') && w.includes('missing-right'))).toBe(true)
+    })
+
+    it('Diagram 以外の component は対象外', () => {
+      const warnings = getThemeWarnings(undefined, [{ id: 's1', layout: 'custom', content: { component: { name: 'Chart', props: { nodes, connectors: [{ from: 'a', to: 'missing' }] } } } }])
+      expect(warnings.filter((w) => w.includes('connectors'))).toEqual([])
+    })
+  })
+
   // #241: content.chart の指定ミスは白紙描画になり原因が伝わらないため、既存の警告集約機構に載せる
   describe('content.chart / component:{name:"Chart"} の指定ミス（#241）', () => {
     it('未知の type を警告する', () => {

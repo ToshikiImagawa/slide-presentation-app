@@ -7,6 +7,7 @@ import { FallbackImage } from './components/FallbackImage'
 // 依存を持たない validateChart.ts / types.ts から直接importする
 import { asArray, getChartSpecIssues } from './components/chart/validateChart'
 import type { ChartSpec } from './components/chart/types'
+import type { DiagramProps } from './components/diagram/Diagram'
 
 /** 6桁hex（#rrggbb）を [r, g, b] へ分解する（hexToRgb・relativeLuminance・brand/compile.ts の mix 計算が共有する） */
 export function hexToRgbTuple(hex: string): [number, number, number] {
@@ -738,15 +739,30 @@ export function getThemeWarnings(theme?: ThemeData, slides?: SlideData[]): strin
 
   warnings.push(...getMasterWarnings(theme, slides))
   warnings.push(...getTileIconWarnings(slides))
+  warnings.push(...getDiagramWarnings(slides))
   warnings.push(...getChartWarnings(slides))
 
   return warnings
 }
 
-/** ComponentReference が Chart を指す場合、その props を ChartSpec として取り出す */
-function chartSpecFromComponentRef(ref: unknown): ChartSpec | undefined {
+/** ComponentReference の name が一致する場合、その props を取り出す（Chart/Diagram 等の component 検証が共有する・#232） */
+function componentPropsFromRef<T>(ref: unknown, name: string): T | undefined {
   const component = ref as { name?: unknown; props?: Record<string, unknown> } | undefined
-  return component?.name === 'Chart' ? ((component.props ?? {}) as ChartSpec) : undefined
+  return component?.name === name ? ((component.props ?? {}) as T) : undefined
+}
+
+/** スライド1件から、name が一致する component 参照の props を集める（content/left/right の3箇所・#241/#232） */
+function collectComponentProps<T>(content: SlideContent, name: string): Array<{ path: string; props: T }> {
+  const specs: Array<{ path: string; props: T }> = []
+  const root = componentPropsFromRef<T>(content.component, name)
+  if (root) specs.push({ path: 'content.component.props', props: root })
+
+  for (const side of ['left', 'right'] as const) {
+    const column = componentPropsFromRef<T>((content[side] as Record<string, unknown> | undefined)?.component, name)
+    if (column) specs.push({ path: `content.${side}.component.props`, props: column })
+  }
+
+  return specs
 }
 
 /** スライド1件から検証すべき ChartSpec を集める（content.chart の短縮記法・component 参照は content/left/right の3箇所・#241） */
@@ -756,13 +772,7 @@ function collectChartSpecs(content: SlideContent): Array<{ path: string; spec: C
     specs.push({ path: 'content.chart', spec: content.chart as ChartSpec })
   }
 
-  const rootChart = chartSpecFromComponentRef(content.component)
-  if (rootChart) specs.push({ path: 'content.component.props', spec: rootChart })
-
-  for (const side of ['left', 'right'] as const) {
-    const columnChart = chartSpecFromComponentRef((content[side] as Record<string, unknown> | undefined)?.component)
-    if (columnChart) specs.push({ path: `content.${side}.component.props`, spec: columnChart })
-  }
+  specs.push(...collectComponentProps<ChartSpec>(content, 'Chart').map(({ path, props }) => ({ path, spec: props })))
 
   return specs
 }
@@ -803,6 +813,33 @@ function getTileIconWarnings(slides?: SlideData[]): string[] {
         warnings.push(`slides[${index}].content.tiles[${i}].icon: 未登録のアイコン名 "${icon}" です`)
       }
     })
+  }
+  return warnings
+}
+
+/**
+ * content.component（two-column の left/right を含む）が Diagram を指す場合、connectors[].from/to が
+ * nodes[].id に存在するかを検査する（#232）。描画時のスキップ（Diagram.tsx。デッキを落とさないための現状維持）
+ * とは別に、利用者・AI 自動修正ループ向けの報告はこの経路に一本化する（先例: getTileIconWarnings #201）。
+ */
+function getDiagramWarnings(slides?: SlideData[]): string[] {
+  const warnings: string[] = []
+  for (const [index, slide] of (slides ?? []).entries()) {
+    for (const { path, props } of collectComponentProps<DiagramProps>(slide.content, 'Diagram')) {
+      const nodeIds = new Set(
+        asArray(props.nodes)
+          .map((node) => node.id)
+          .filter((id): id is string => typeof id === 'string'),
+      )
+      asArray(props.connectors).forEach((connector, i) => {
+        for (const role of ['from', 'to'] as const) {
+          const id: unknown = connector[role]
+          if (typeof id === 'string' && !nodeIds.has(id)) {
+            warnings.push(`slides[${index}].${path}.connectors[${i}].${role}: 存在しないノード id "${id}" を参照しています`)
+          }
+        }
+      })
+    }
   }
   return warnings
 }

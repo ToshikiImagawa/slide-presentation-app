@@ -57,7 +57,6 @@ export function Diagram({ nodes, connectors, arrows, badges, callouts }: Diagram
         const from = rects.get(connector.from)
         const to = rects.get(connector.to)
         if (!from || !to) {
-          console.warn(`[Diagram] コネクタが参照するノードが見つかりません: "${connector.from}" -> "${connector.to}"`)
           return null
         }
         // from/to はスプレッド後に上書きする（id 文字列 → 矩形。後勝ちなので型も NormRect になる）
