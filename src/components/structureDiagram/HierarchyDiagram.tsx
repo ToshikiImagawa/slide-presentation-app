@@ -1,7 +1,7 @@
+import { asArray } from '../../data/loader'
 import { Diagram } from '../diagram'
 import { defaultSeriesColor } from './colors'
 import { packAxis } from './packAxis'
-import { asArray } from './types'
 
 const INSET = 0.03
 const GAP = 0.04

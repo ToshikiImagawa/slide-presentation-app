@@ -1,7 +1,8 @@
+import { asArray } from '../../data/loader'
 import { Diagram } from '../diagram'
 import { defaultSeriesColor } from '../structureDiagram/colors'
 import { computeGridLayout } from '../structureDiagram/gridLayout'
-import { asArray, type StructureEdge, type StructureNode } from '../structureDiagram/types'
+import type { StructureEdge, StructureNode } from '../structureDiagram/types'
 
 export type FlowchartSpec = {
   nodes?: StructureNode[]
