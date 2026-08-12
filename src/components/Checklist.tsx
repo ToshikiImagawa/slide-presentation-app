@@ -11,7 +11,12 @@ export type ChecklistItemData = {
 }
 
 type Props = {
-  items: ChecklistItemData[]
+  items?: ChecklistItemData[]
+}
+
+/** JSON 由来の値は配列でない可能性があるため、描画前に配列だけを通す（不正なデッキでデッキ全体を落とさない） */
+function asArray<T>(value: T[] | undefined): T[] {
+  return Array.isArray(value) ? value : []
 }
 
 /** 項目数から密度（行間・文字サイズの縮小段階）を決める。Table の resolveDensity と同じ考え方で、
@@ -30,9 +35,10 @@ function resolveDensity(count: number): 'normal' | 'dense' | 'compact' {
  * 済は丸＋✓・未は角丸の空枠で、色だけでなく形でも区別できるようにする（Compare の状態記号と同じ考え方）。
  */
 export function Checklist({ items }: Props) {
+  const list = asArray(items)
   return (
-    <ul className={styles.list} data-testid="checklist" data-density={resolveDensity(items.length)}>
-      {items.map((item, i) => (
+    <ul className={styles.list} data-testid="checklist" data-density={resolveDensity(list.length)}>
+      {list.map((item, i) => (
         <li key={i} className={styles.item}>
           <DiagramBadge color={item.checked ? 'success' : 'neutral'} shape={item.checked ? 'circle' : 'square'}>
             {item.checked ? '✓' : ''}
