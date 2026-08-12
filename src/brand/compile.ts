@@ -89,7 +89,7 @@ export function compile(profile: BrandProfile, overrides: BrandOverrides): { the
   const assignedLayouts = resolveAssignedLayouts(profile, overrides)
   const masters = { [BRAND_MASTER_KEY]: { decorations }, ...buildLayoutMasters(assignedLayouts) }
   const masterMap = { ...Object.fromEntries(LAYOUT_KINDS.map((layout) => [layout, BRAND_MASTER_KEY])), ...buildLayoutMasterMap(assignedLayouts) }
-  const tokens = { [BRAND_MASTER_KEY]: buildTokens(colors) }
+  const tokens = { [BRAND_MASTER_KEY]: buildTokens(colors), ...buildLayoutTokens(assignedLayouts, colors) }
 
   return { theme: { colors, fonts, masters, masterMap, tokens, logo, canvas }, report }
 }
@@ -139,6 +139,26 @@ function buildLayoutMasterMap(assignedLayouts: AssignedLayout[]): Record<string,
   return Object.fromEntries(assignedLayouts.map(({ key, slot, name }) => [slot, layoutMasterKey(key, name)]))
 }
 
+/**
+ * `fill` 背景を持つ layout 別 masterKey（`buildLayoutMasters`）に、その背景色に対して WCAG AA を
+ * 満たす文字色（tx1/tx2 相当）を積む（#262）。`getMasterBackgroundContrastWarnings`（`applyTheme.ts`）は
+ * masterKey ごとの `theme.tokens` しか見ず extends 元（`brand`）へフォールバックしない設計のため、
+ * ここで明示的に上書きトークンを持たせないと「文字色が見つからず検証されない」まま素通りしてしまう
+ * （検証エラーではなく検証漏れ）。`colors.tx1`/`colors.tx2` は主背景（bg1/bg2）向けに収束済みだが、
+ * layout 個別の背景色は bg1/bg2 と異なりうるため、layout ごとに再収束する。
+ * `center/message-inverse`/`center/closing`（#262 で追加した2枠）だけでなく、`fill` 背景を持つ
+ * すべての割り当て（既存5枠を含む）に同じ規則を適用する: 同じ根本原因（layout 固有の背景色に対する
+ * 文字色の未検証）を1箇所で塞ぐ方が、枠ごとに特別扱いするより設計として単純で取りこぼしがない */
+function buildLayoutTokens(assignedLayouts: AssignedLayout[], colors: Record<MappedColorKey, string>): Record<string, Record<string, string>> {
+  const bodyVar = KEY_TO_CSS_VAR.tx1!.replace(/^--/, '')
+  const mutedVar = KEY_TO_CSS_VAR.tx2!.replace(/^--/, '')
+  return Object.fromEntries(
+    assignedLayouts
+      .filter(({ backgroundColorHex }) => backgroundColorHex !== null)
+      .map(({ key, name, backgroundColorHex }) => [layoutMasterKey(key, name), { [bodyVar]: convergedTextColor(colors.tx1, backgroundColorHex!), [mutedVar]: convergedTextColor(colors.tx2, backgroundColorHex!) }]),
+  )
+}
+
 /** `brand-<slug>-<masterIndex>-<layoutIndex>` 形式（`/` を含まない）。index を含めるのは、
  * 同名の layout が複数あってもスラッグの衝突で masterKey が重複しないようにするため */
 function layoutMasterKey(key: string, name: string | null): string {
@@ -168,14 +188,19 @@ function resolveColors(profile: BrandProfile, overrides: BrandOverrides, report:
 /** AA 未達の文字色/背景色の組を、閾値を満たすまで黒 or 白へ mix して上書きする（収束条件として内包する） */
 function convergeContrast(colors: Record<MappedColorKey, string>, report: BrandImportReport): void {
   for (const [textKey, bgKey] of TEXT_ON_BACKGROUND) {
-    const ratio = getContrastRatio(colors[textKey], colors[bgKey])
-    if (ratio !== null && ratio >= WCAG_AA_THRESHOLD) continue
     const before = colors[textKey]
-    colors[textKey] = adjustForContrast(colors[textKey], colors[bgKey])
+    colors[textKey] = convergedTextColor(colors[textKey], colors[bgKey])
     if (colors[textKey] !== before) {
       report.fields[`colors.${textKey}`] = { status: 'derived', detail: `WCAG AA（${WCAG_AA_THRESHOLD}:1）を満たすよう調整` }
     }
   }
+}
+
+/** 既に閾値を満たす組はそのまま返す（`adjustForContrast` は常に mix 計算を行うため、満たしている場合の不要な色ブレを避ける）。
+ * `convergeContrast`（tx1/bg1・tx2/bg2 の主背景向け）と `buildLayoutTokens`（layout 個別の背景色向け）が共有する */
+function convergedTextColor(textHex: string, bgHex: string, threshold = WCAG_AA_THRESHOLD): string {
+  const ratio = getContrastRatio(textHex, bgHex)
+  return ratio !== null && ratio >= threshold ? textHex : adjustForContrast(textHex, bgHex, threshold)
 }
 
 /** `textHex` を黒または白へ mix し、`bgHex` に対して閾値を満たす最小の mix 係数を二分探索で決める（決定的） */

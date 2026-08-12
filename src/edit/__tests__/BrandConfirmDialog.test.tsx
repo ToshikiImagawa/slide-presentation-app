@@ -162,6 +162,46 @@ describe('BrandConfirmDialog（#168 並置比較・取り込み確認）', () =>
     expect(arg.compiled.masters['brand-section-divider-0-0']).toEqual({ extends: 'brand', background: { type: 'fill', color: '#000000' } })
   })
 
+  it('反転面・締め用の2枠が選択肢に表示される（#262）', () => {
+    const profile = buildProfile({
+      masters: [
+        {
+          part: 'ppt/slideMasters/slideMaster1.xml',
+          slideLayouts: [{ part: 'ppt/slideLayouts/slideLayout1.xml', name: 'Dark Section', layoutType: 'secHead', placeholders: [], backgroundColorHex: '#000000' }],
+        },
+      ],
+    })
+    renderDialog({ profile })
+
+    const layoutSelect = screen.getByRole('combobox', { name: /Dark Section/ })
+    fireEvent.mouseDown(layoutSelect)
+    expect(screen.getByRole('option', { name: '大メッセージ（全面塗り）' })).toBeTruthy()
+    expect(screen.getByRole('option', { name: '締め' })).toBeTruthy()
+  })
+
+  it('center/message-inverse へ割り当てて取り込むと layoutAssignments と収束済みの文字色トークンが渡る（#262）', () => {
+    const profile = buildProfile({
+      masters: [
+        {
+          part: 'ppt/slideMasters/slideMaster1.xml',
+          slideLayouts: [{ part: 'ppt/slideLayouts/slideLayout1.xml', name: 'Dark Section', layoutType: 'secHead', placeholders: [], backgroundColorHex: '#000000' }],
+        },
+      ],
+    })
+    const { onApply } = renderDialog({ profile })
+
+    const layoutSelect = screen.getByRole('combobox', { name: /Dark Section/ })
+    fireEvent.mouseDown(layoutSelect)
+    fireEvent.click(screen.getByRole('option', { name: '大メッセージ（全面塗り）' }))
+
+    fireEvent.click(screen.getByRole('button', { name: '取り込む' }))
+    const arg = onApply.mock.calls[0][0] as { overrides: BrandOverrides; compiled: CompiledBrandTheme }
+    expect(arg.overrides.layoutAssignments).toEqual({ '0:0': 'center/message-inverse' })
+    const masterKey = arg.compiled.masterMap['center/message-inverse']
+    // tx1 の既定値 #000000 は背景 #000000 と無コントラストなため、AA を満たす値へ調整されている
+    expect(arg.compiled.tokens[masterKey]?.['theme-text-body']).not.toBe('#000000')
+  })
+
   it('前回保存済みの上書きを初期値として反映する（再取り込みで人手修正が保持される）', () => {
     renderDialog({ initialOverrides: { colorHex: { accent1: '#00ff00' } } })
     expect(screen.getByDisplayValue('#00ff00')).toBeTruthy()
