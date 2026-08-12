@@ -82,9 +82,10 @@ function applyDerivedSeriesColors(root: HTMLElement, colors?: ColorPalette): voi
   const accentHex = normalizeHex(colors?.accent ?? computed.getPropertyValue('--theme-accent'))
   if (!primaryHex || !accentHex) return
 
-  for (const [i, key] of SERIES_COLOR_KEYS.entries()) {
+  for (const index of [1, 2, 3, 4, 5, 6] as const) {
+    const key = SERIES_COLOR_KEYS[index - 1]
     if (colors?.[key]) continue
-    setColorVar(root, THEME_COLOR_TOKENS[key], deriveSeriesColor((i + 1) as 1 | 2 | 3 | 4 | 5 | 6, primaryHex, accentHex))
+    setColorVar(root, THEME_COLOR_TOKENS[key], deriveSeriesColor(index, primaryHex, accentHex))
   }
 }
 

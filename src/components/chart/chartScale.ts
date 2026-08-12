@@ -93,7 +93,7 @@ export function defaultValueLabels(type: ChartType, categoryCount: number, serie
 
 /** 系列色のCSS変数参照。明示指定が無ければ series1〜series6 を巡回して割り当てる */
 export function seriesColor(index: number, color?: string): string {
-  return `var(${resolveColorToken(color ?? SERIES_KEYS[index % SERIES_KEYS.length])})`
+  return `var(${resolveColorToken(color ?? SERIES_COLOR_KEYS[index % SERIES_COLOR_KEYS.length])})`
 }
 
 /** 小数桁数（0/1/2）ごとの Intl.NumberFormat。桁数の種類は固定3通りなので起動時に1度だけ構築し、

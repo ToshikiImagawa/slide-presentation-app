@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { formatValue, pickLabelIndices, ratioOf, type AxisScale } from './chartScale'
 import styles from './Chart.module.css'
 
@@ -27,12 +27,18 @@ type Props = {
  */
 export function AxisFrame({ orientation, scale, categories, unit, axis, dense, children }: Props) {
   const isHorizontal = orientation === 'horizontal'
-  const visibleLabels = pickLabelIndices(categories.length, MAX_AXIS_LABELS)
+  // 横棒は各項目が1行を占めるため間引きの対象にしない（#204 の間引き規則は縦棒・折れ線の項目名にのみ適用する）。
+  // 未使用のまま Set を作る無駄を避けるため、対象になるときだけ計算する
+  const visibleLabels = isHorizontal ? undefined : pickLabelIndices(categories.length, MAX_AXIS_LABELS)
+  // 主軸の位置指定（横棒は left、縦棒・折れ線は bottom）。目盛り・基準線のスタイルが1箇所で決まる
+  const positionStyle = (ratio: number): CSSProperties => (isHorizontal ? { left: `${ratio * 100}%` } : { bottom: `${ratio * 100}%` })
+  const gridlineClass = isHorizontal ? styles.gridlineVertical : styles.gridline
+  const baselineClass = isHorizontal ? styles.baselineVertical : styles.baseline
 
   // 項目名（categories）は axis の指定に関わらず常に描く。目盛り値（scale.ticks）は axis: false で消える側
-  // （縦棒・折れ線は側の列、横棒は下の行）。#204 の間引き規則（visibleLabels）は項目名にのみ適用する
-  const tickLabels = (reversed: boolean) => (reversed ? [...scale.ticks].reverse() : scale.ticks).map((tick, index) => <span key={index}>{formatValue(tick, unit)}</span>)
-  const categoryLabels = (thinned: boolean) =>
+  // （縦棒・折れ線は側の列、横棒は下の行）。向き（isHorizontal）は関数内で直接参照し、呼び出し側では渡さない
+  const tickLabels = () => (isHorizontal ? scale.ticks : [...scale.ticks].reverse()).map((tick, index) => <span key={index}>{formatValue(tick, unit)}</span>)
+  const categoryLabels = () =>
     categories.map((category, index) =>
       isHorizontal ? (
         <span key={index} className={styles.hbarLabel}>
@@ -40,25 +46,22 @@ export function AxisFrame({ orientation, scale, categories, unit, axis, dense, c
         </span>
       ) : (
         <span key={index} className={styles.xLabel}>
-          {!thinned || visibleLabels.has(index) ? category : ''}
+          {visibleLabels?.has(index) ? category : ''}
         </span>
       ),
     )
 
   return (
     <div className={isHorizontal ? styles.hbarGrid : styles.plotGrid} data-dense={isHorizontal ? dense : undefined} data-testid={isHorizontal ? 'chart-hbar' : undefined}>
-      {isHorizontal ? <div className={styles.hbarLabels}>{categoryLabels(false)}</div> : axis && <div className={styles.yAxis}>{tickLabels(true)}</div>}
+      {isHorizontal ? <div className={styles.hbarLabels}>{categoryLabels()}</div> : axis && <div className={styles.yAxis}>{tickLabels()}</div>}
 
       <div className={styles.plot} data-testid="chart-plot">
-        {axis &&
-          scale.ticks.map((tick, index) => (
-            <div key={index} className={isHorizontal ? styles.gridlineVertical : styles.gridline} style={isHorizontal ? { left: `${ratioOf(tick, scale) * 100}%` } : { bottom: `${ratioOf(tick, scale) * 100}%` }} />
-          ))}
-        {scale.min < 0 && <div className={isHorizontal ? styles.baselineVertical : styles.baseline} style={isHorizontal ? { left: `${scale.zeroRatio * 100}%` } : { bottom: `${scale.zeroRatio * 100}%` }} />}
+        {axis && scale.ticks.map((tick, index) => <div key={index} className={gridlineClass} style={positionStyle(ratioOf(tick, scale))} />)}
+        {scale.min < 0 && <div className={baselineClass} style={positionStyle(scale.zeroRatio)} />}
         {children}
       </div>
 
-      {isHorizontal ? axis && <div className={styles.hbarAxis}>{tickLabels(false)}</div> : <div className={styles.xAxis}>{categoryLabels(true)}</div>}
+      {isHorizontal ? axis && <div className={styles.hbarAxis}>{tickLabels()}</div> : <div className={styles.xAxis}>{categoryLabels()}</div>}
     </div>
   )
 }
