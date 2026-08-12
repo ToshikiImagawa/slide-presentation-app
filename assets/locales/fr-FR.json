@@ -281,6 +281,9 @@
       "installing": "Installation…",
       "installNow": "Installer maintenant et redémarrer",
       "installFailed": "Échec de l'installation de la mise à jour"
+    },
+    "slideError": {
+      "message": "Cette diapositive n'a pas pu être affichée"
     }
   }
 }

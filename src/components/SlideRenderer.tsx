@@ -5,6 +5,7 @@ import type { ContentItem, LogoConfig, MasterRenderContext, SectionInfo, SlideCo
 import { buildSections, findSectionAt } from '../sections'
 import { renderMasterText } from '../masters'
 import { componentFillsContentArea, renderRegisteredComponent, resolveComponent } from './ComponentRegistry'
+import { SlideErrorBoundary } from './SlideErrorBoundary'
 import { BleedLayout, ContentLayout, MessageLayout, SectionLayout, SlideFrame, TitleLayout } from '../layouts'
 import type { SlideFrameCommonProps } from '../layouts/SlideFrame'
 import { SlideHeading } from './SlideHeading'
@@ -551,10 +552,30 @@ export function SlideRenderer({ slides, logo, theme }: SlideRendererProps) {
   )
 }
 
+/** renderSlide の呼び出しをReactコンポーネントの中に置く。SlideErrorBoundary は自身より下の
+ * 子孫コンポーネントの描画中の例外しか捕捉できないため、renderSlide（renderColumnContent 等、
+ * JSXではなく通常の関数呼び出しで配列・オブジェクトにアクセスする箇所を含む）を境界の外側で
+ * 直接呼ぶと、その場で投げられた例外は境界に届かず素通りする。SlideErrorBoundary の子として
+ * このコンポーネントを置くことで、renderSlide の呼び出し自体がReactの描画フェーズ内（境界の
+ * 子孫の実行）で行われるようにし、同期例外も確実に捕捉できるようにする（#280） */
+function SlideBody({ slide, logo, theme, ctx }: { slide: SlideData; logo?: LogoConfig; theme?: ThemeData; ctx: MasterRenderContext }) {
+  return <>{renderSlide(slide, logo, theme, ctx)}</>
+}
+
 /** 個別スライドコンポーネント。index/total/sections は masterMap 装飾のページ番号・章情報・only 判定に使う
  * （3経路: 本編・発表者ビュー・編集プレビューで必須）。sections はデッキ全体から buildSections で導出した章で、
- * 章を持たないデッキでは空配列を渡す（省略可にすると配線もれが「章が無い」として静かに埋もれる・#191） */
+ * 章を持たないデッキでは空配列を渡す（省略可にすると配線もれが「章が無い」として静かに埋もれる・#191）。
+ * SlideErrorBoundary で包むことで、本編・PDF・発表者ビュー・編集プレビューの4経路すべてを1箇所で
+ * カバーする（1スライドの描画例外がデッキ全体を白画面にしない・#280）。
+ * key={slide.id} は、発表者ビュー（PresenterViewWindow）・編集プレビュー（SlidePreview）が
+ * 同一の SlideRenderer.Slide インスタンスを再利用したまま slide だけ差し替える経路のため。
+ * key を付けないと、あるスライドで一度例外が起きた後、別の正常なスライドに切り替えても
+ * フォールバックが表示され続ける（Reactのエラーバウンダリは props 変化で自動リセットしない） */
 SlideRenderer.Slide = function SlideRendererSlide({ slide, index, total, sections, logo, theme }: { slide: SlideData; index: number; total: number; sections: SectionInfo[]; logo?: LogoConfig; theme?: ThemeData }) {
   const ctx: MasterRenderContext = { index, total, section: findSectionAt(sections, index), sections }
-  return <>{renderSlide(slide, logo, theme, ctx)}</>
+  return (
+    <SlideErrorBoundary key={slide.id}>
+      <SlideBody slide={slide} logo={logo} theme={theme} ctx={ctx} />
+    </SlideErrorBoundary>
+  )
 }

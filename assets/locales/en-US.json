@@ -281,6 +281,9 @@
       "installing": "Installing…",
       "installNow": "Install now and restart",
       "installFailed": "Failed to install the update"
+    },
+    "slideError": {
+      "message": "This slide could not be displayed"
     }
   }
 }
