@@ -3,6 +3,7 @@ import { Diagram } from '../diagram'
 import { defaultSeriesColor } from '../structureDiagram/colors'
 import { getAxisSlot, packAxis } from '../structureDiagram/packAxis'
 import { axisHeaderNodes } from './axisHeaderNodes'
+import { computeGanttColCount } from './columnCount'
 
 const LABEL_WIDTH = 0.2
 const LABEL_GAP = 0.02
@@ -52,7 +53,7 @@ export function Gantt({ axis, tasks }: GanttSpec) {
   const axisList = asArray(axis)
   const hasHeader = axisList.length > 0
   const headerHeight = hasHeader ? HEADER_HEIGHT : 0
-  const colCount = Math.max(axisList.length, ...taskList.map((task) => task.startCol + Math.max(1, task.span ?? 1)), 1)
+  const colCount = computeGanttColCount(axisList, taskList)
 
   const rowSlots = packAxis(taskList.length, headerHeight, 1 - headerHeight, ROW_GAP)
   const colSlots = packAxis(colCount, LABEL_WIDTH, 1 - LABEL_WIDTH - MARGIN, COL_GAP)

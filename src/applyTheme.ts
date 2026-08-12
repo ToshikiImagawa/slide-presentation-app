@@ -8,6 +8,17 @@ import { FallbackImage } from './components/FallbackImage'
 import { asArray, getChartSpecIssues } from './components/chart/validateChart'
 import type { ChartSpec } from './components/chart/types'
 import type { DiagramProps } from './components/diagram/Diagram'
+import { computeGridDimensions } from './components/structureDiagram/gridLayout'
+import { clampAxisIndex } from './components/structureDiagram/packAxis'
+import type { StructureNode } from './components/structureDiagram/types'
+import type { ClassDiagramSpec } from './components/structureDiagram/ClassDiagram'
+import type { FlowchartSpec } from './components/processDiagram/Flowchart'
+import type { SwimlaneLane, SwimlaneSpec } from './components/processDiagram/Swimlane'
+import type { GanttSpec, GanttTask } from './components/processDiagram/Gantt'
+// computeGanttColCount/computeSwimlaneColCount は Gantt.tsx/Swimlane.tsx が Diagram（→DiagramCard等→
+// resolveColorTokenをapplyTheme.tsから値import）を値importしているため、ここから値importすると循環importになる。
+// 上記2ファイルからのimportが型のみ（消去される）なのに対し、値は依存を持たない columnCount.ts から取る
+import { computeGanttColCount, computeSwimlaneColCount } from './components/processDiagram/columnCount'
 
 /** 6桁hex（#rrggbb）を [r, g, b] へ分解する（hexToRgb・relativeLuminance・brand/compile.ts の mix 計算が共有する） */
 export function hexToRgbTuple(hex: string): [number, number, number] {
@@ -765,16 +776,83 @@ function collectComponentProps<T>(content: SlideContent, name: string): Array<{ 
   return specs
 }
 
-/** スライド1件から検証すべき ChartSpec を集める（content.chart の短縮記法・component 参照は content/left/right の3箇所・#241） */
-function collectChartSpecs(content: SlideContent): Array<{ path: string; spec: ChartSpec }> {
-  const specs: Array<{ path: string; spec: ChartSpec }> = []
-  if (content.chart && typeof content.chart === 'object') {
-    specs.push({ path: 'content.chart', spec: content.chart as ChartSpec })
+/** スライド1件から検証すべき図解プリミティブのspecを集める（content.<shortcutKey> の短縮記法・component 参照は
+ * content/left/right の3箇所。既存のcollectChartSpecs（#241）と同じ形を、row/col/startCol の範囲外検査（#279）が
+ * 必要とする7種の短縮記法向けに一般化したもの） */
+function collectDiagramSpecs<T>(content: SlideContent, shortcutKey: string, componentName: string): Array<{ path: string; spec: T }> {
+  const specs: Array<{ path: string; spec: T }> = []
+  const shortcut = (content as Record<string, unknown>)[shortcutKey]
+  if (shortcut && typeof shortcut === 'object') {
+    specs.push({ path: `content.${shortcutKey}`, spec: shortcut as T })
   }
 
-  specs.push(...collectComponentProps<ChartSpec>(content, 'Chart').map(({ path, props }) => ({ path, spec: props })))
+  specs.push(...collectComponentProps<T>(content, componentName).map(({ path, props }) => ({ path, spec: props })))
 
   return specs
+}
+
+/** スライド1件から検証すべき ChartSpec を集める（content.chart の短縮記法・component 参照は content/left/right の3箇所・#241） */
+function collectChartSpecs(content: SlideContent): Array<{ path: string; spec: ChartSpec }> {
+  return collectDiagramSpecs<ChartSpec>(content, 'chart', 'Chart')
+}
+
+/**
+ * row/col/startCol の生値とクランプ後の添字（getAxisSlot が実際に使う添字）を比較し、差があれば warnings に積む（#279）。
+ * クランプ規則自体は packAxis.ts の clampAxisIndex（getAxisSlot と単一の真実源）に委ね、ここでは複製しない。
+ * 差が無ければ何もしない（呼び出し元4箇所の同型の null チェックを集約する）。
+ */
+function pushRangeWarning(warnings: string[], path: string, raw: number, count: number): void {
+  const clamped = clampAxisIndex(count, raw)
+  if (clamped === raw) return
+  warnings.push(`${path}: 指定値 ${raw} は範囲外または非整数のため、描画時は ${clamped} に丸められます`)
+}
+
+/**
+ * StructureNode[] の row/col が範囲外・非整数でないかを検査する（ClassDiagram・Flowchart が computeGridLayout
+ * を共有するため、行数・列数の導出（computeGridDimensions）も含めて共有する・#279）。
+ * 未指定ノード（id無し）は描画時にフィルタされ getAxisSlot を通らないため、同じフィルタを適用してから検査する。
+ */
+function getGridRangeWarnings(basePath: string, nodes: StructureNode[]): string[] {
+  const list = nodes.filter((node) => node.id)
+  const { rowCount, colCount } = computeGridDimensions(list)
+  const warnings: string[] = []
+  list.forEach((node, i) => {
+    if (typeof node.row === 'number') pushRangeWarning(warnings, `${basePath}[${i}].row`, node.row, rowCount)
+    if (typeof node.col === 'number') pushRangeWarning(warnings, `${basePath}[${i}].col`, node.col, colCount)
+  })
+  return warnings
+}
+
+/** SwimlaneSpec の lanes[].nodes[].col が範囲外・非整数でないかを検査する（#279）。
+ * 列数（computeSwimlaneColCount）はフェーズ見出し数・各レーンのノード数から決まり、col の生値には依存しない
+ * ため、明示指定が列数を超える（上限超え）ケースもここで検出できる。 */
+function getSwimlaneRangeWarnings(basePath: string, phases: string[] | undefined, lanes: SwimlaneLane[] | undefined): string[] {
+  const phaseList = asArray(phases)
+  const laneList = asArray(lanes)
+  const colCount = computeSwimlaneColCount(phaseList, laneList)
+  const warnings: string[] = []
+  laneList.forEach((lane, laneIndex) => {
+    asArray(lane.nodes)
+      .filter((node) => node.id)
+      .forEach((node, nodeIndex) => {
+        if (typeof node.col !== 'number') return
+        pushRangeWarning(warnings, `${basePath}.lanes[${laneIndex}].nodes[${nodeIndex}].col`, node.col, colCount)
+      })
+  })
+  return warnings
+}
+
+/** GanttSpec の tasks[].startCol が範囲外・非整数でないかを検査する（#279。colCountの導出だけでは防げないstartCol
+ * の負値・非整数は computeGanttColCount 側では捉えられないため、getAxisSlot 相当のクランプ比較で検出する） */
+function getGanttRangeWarnings(basePath: string, axis: string[] | undefined, tasks: GanttTask[] | undefined): string[] {
+  const axisList = asArray(axis)
+  const taskList = asArray(tasks).filter((task) => typeof task.startCol === 'number')
+  const colCount = computeGanttColCount(axisList, taskList)
+  const warnings: string[] = []
+  taskList.forEach((task, i) => {
+    pushRangeWarning(warnings, `${basePath}.tasks[${i}].startCol`, task.startCol, colCount)
+  })
+  return warnings
 }
 
 /** ChartSpec の色トークン参照が未知でないか検査する（#241）。seriesColor 経由だと未知トークンが `primary` へ黙って
@@ -821,6 +899,12 @@ function getTileIconWarnings(slides?: SlideData[]): string[] {
  * content.component（two-column の left/right を含む）が Diagram を指す場合、connectors[].from/to が
  * nodes[].id に存在するかを検査する（#232）。描画時のスキップ（Diagram.tsx。デッキを落とさないための現状維持）
  * とは別に、利用者・AI 自動修正ループ向けの報告はこの経路に一本化する（先例: getTileIconWarnings #201）。
+ *
+ * row/col/startCol の範囲外・非整数の検出（#279）もここに集約する。対象は getAxisSlot（#276）で実際に
+ * クランプされる4種（classDiagram/flowchart は computeGridLayout・swimlane は col・gantt は startCol）。
+ * hierarchyDiagram/serverDiagram/orgChart は StructureNode 型上は row/col を持つが、実装（ツリー・ゾーン配置）
+ * がそれらを読まず getAxisSlot を通らないため対象外（types.ts のコメントの通り「UMLクラス図・フローチャートで
+ * のみ使用」）。
  */
 function getDiagramWarnings(slides?: SlideData[]): string[] {
   const warnings: string[] = []
@@ -839,6 +923,19 @@ function getDiagramWarnings(slides?: SlideData[]): string[] {
           }
         }
       })
+    }
+
+    for (const { path, spec } of collectDiagramSpecs<ClassDiagramSpec>(slide.content, 'classDiagram', 'ClassDiagram')) {
+      warnings.push(...getGridRangeWarnings(`slides[${index}].${path}.classes`, asArray(spec.classes)))
+    }
+    for (const { path, spec } of collectDiagramSpecs<FlowchartSpec>(slide.content, 'flowchart', 'Flowchart')) {
+      warnings.push(...getGridRangeWarnings(`slides[${index}].${path}.nodes`, asArray(spec.nodes)))
+    }
+    for (const { path, spec } of collectDiagramSpecs<SwimlaneSpec>(slide.content, 'swimlane', 'Swimlane')) {
+      warnings.push(...getSwimlaneRangeWarnings(`slides[${index}].${path}`, spec.phases, spec.lanes))
+    }
+    for (const { path, spec } of collectDiagramSpecs<GanttSpec>(slide.content, 'gantt', 'Gantt')) {
+      warnings.push(...getGanttRangeWarnings(`slides[${index}].${path}`, spec.axis, spec.tasks))
     }
   }
   return warnings

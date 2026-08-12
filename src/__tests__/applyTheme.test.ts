@@ -942,6 +942,156 @@ describe('getThemeWarnings', () => {
     })
   })
 
+  // #279: row/col/startCol が範囲外・非整数だった場合、getAxisSlot（#276）が黒画面防止のためクランプするだけで
+  // 利用者に伝わらない問題を解消する。検出はクランプ前の生値とクランプ後の添字を比較する形（#276の丸め・クランプ
+  // 規則自体は書き写さない）。対象はgetAxisSlotで実際にクランプされる4種（classDiagram/flowchart/swimlane/gantt）。
+  describe('row/col/startCol の範囲外・非整数の警告（#279）', () => {
+    describe('content.classDiagram / component:{name:"ClassDiagram"}', () => {
+      it('負値のrowを警告する', () => {
+        const warnings = getThemeWarnings(undefined, [{ id: 's1', layout: 'content', content: { classDiagram: { classes: [{ id: 'a', row: -1 }, { id: 'b' }] } } }])
+        expect(warnings.some((w) => w.includes('slides[0].content.classDiagram.classes[0].row') && w.includes('-1'))).toBe(true)
+      })
+
+      it('非整数のcolを警告する', () => {
+        const warnings = getThemeWarnings(undefined, [{ id: 's1', layout: 'content', content: { classDiagram: { classes: [{ id: 'a', col: 0.5 }, { id: 'b' }] } } }])
+        expect(warnings.some((w) => w.includes('slides[0].content.classDiagram.classes[0].col') && w.includes('0.5'))).toBe(true)
+      })
+
+      it('丸め後の値が警告文に含まれる', () => {
+        const warnings = getThemeWarnings(undefined, [{ id: 's1', layout: 'content', content: { classDiagram: { classes: [{ id: 'a', row: -1 }, { id: 'b' }] } } }])
+        expect(warnings.some((w) => w.includes('slides[0].content.classDiagram.classes[0].row') && w.includes('0 に丸められます'))).toBe(true)
+      })
+
+      it('row/colとも範囲内の整数なら警告しない', () => {
+        const warnings = getThemeWarnings(undefined, [
+          {
+            id: 's1',
+            layout: 'content',
+            content: {
+              classDiagram: {
+                classes: [
+                  { id: 'a', row: 0, col: 0 },
+                  { id: 'b', row: 0, col: 1 },
+                ],
+              },
+            },
+          },
+        ])
+        expect(warnings).toEqual([])
+      })
+
+      it('row/col省略（自動配置）では警告しない', () => {
+        const warnings = getThemeWarnings(undefined, [{ id: 's1', layout: 'content', content: { classDiagram: { classes: [{ id: 'a' }, { id: 'b' }, { id: 'c' }] } } }])
+        expect(warnings).toEqual([])
+      })
+
+      it('component: { name: "ClassDiagram" } 経由でも検出する', () => {
+        const warnings = getThemeWarnings(undefined, [{ id: 's1', layout: 'custom', content: { component: { name: 'ClassDiagram', props: { classes: [{ id: 'a', row: -1 }] } } } }])
+        expect(warnings.some((w) => w.includes('slides[0].content.component.props.classes[0].row'))).toBe(true)
+      })
+    })
+
+    describe('content.flowchart / component:{name:"Flowchart"}', () => {
+      it('負値のrowを警告する', () => {
+        const warnings = getThemeWarnings(undefined, [{ id: 's1', layout: 'content', content: { flowchart: { nodes: [{ id: 'a', row: -2 }] } } }])
+        expect(warnings.some((w) => w.includes('slides[0].content.flowchart.nodes[0].row') && w.includes('-2'))).toBe(true)
+      })
+
+      it('id無しノードは検査対象外（描画時にフィルタされるため）', () => {
+        const warnings = getThemeWarnings(undefined, [{ id: 's1', layout: 'content', content: { flowchart: { nodes: [{ row: -1 }, { id: 'b' }] } } }])
+        expect(warnings).toEqual([])
+      })
+
+      it('妥当な指定では警告しない', () => {
+        const warnings = getThemeWarnings(undefined, [{ id: 's1', layout: 'content', content: { flowchart: { nodes: [{ id: 'a', row: 0, col: 0 }] } } }])
+        expect(warnings).toEqual([])
+      })
+    })
+
+    describe('content.swimlane / component:{name:"Swimlane"}（col の上限超え）', () => {
+      it('レーンのノード数（列数の導出元）を超えるcolを警告する', () => {
+        const warnings = getThemeWarnings(undefined, [{ id: 's1', layout: 'content', content: { swimlane: { lanes: [{ nodes: [{ id: 'a', col: 5 }] }] } } }])
+        expect(warnings.some((w) => w.includes('slides[0].content.swimlane.lanes[0].nodes[0].col') && w.includes('5'))).toBe(true)
+      })
+
+      it('phasesの見出し数まではcolの上限超えにならない', () => {
+        const warnings = getThemeWarnings(undefined, [{ id: 's1', layout: 'content', content: { swimlane: { phases: ['A', 'B', 'C'], lanes: [{ nodes: [{ id: 'a', col: 2 }] }] } } }])
+        expect(warnings).toEqual([])
+      })
+
+      it('col省略（レーン内配列順）では警告しない', () => {
+        const warnings = getThemeWarnings(undefined, [{ id: 's1', layout: 'content', content: { swimlane: { lanes: [{ nodes: [{ id: 'a' }, { id: 'b' }] }] } } }])
+        expect(warnings).toEqual([])
+      })
+
+      it('負値のcolを警告する', () => {
+        const warnings = getThemeWarnings(undefined, [{ id: 's1', layout: 'content', content: { swimlane: { lanes: [{ nodes: [{ id: 'a', col: -1 }] }] } } }])
+        expect(warnings.some((w) => w.includes('slides[0].content.swimlane.lanes[0].nodes[0].col') && w.includes('-1'))).toBe(true)
+      })
+
+      it('component: { name: "Swimlane" } 経由でも検出する', () => {
+        const warnings = getThemeWarnings(undefined, [{ id: 's1', layout: 'custom', content: { component: { name: 'Swimlane', props: { lanes: [{ nodes: [{ id: 'a', col: 5 }] }] } } } }])
+        expect(warnings.some((w) => w.includes('slides[0].content.component.props.lanes[0].nodes[0].col'))).toBe(true)
+      })
+    })
+
+    describe('content.gantt / component:{name:"Gantt"}', () => {
+      it('負値のstartColを警告する', () => {
+        const warnings = getThemeWarnings(undefined, [{ id: 's1', layout: 'content', content: { gantt: { tasks: [{ startCol: -1 }] } } }])
+        expect(warnings.some((w) => w.includes('slides[0].content.gantt.tasks[0].startCol') && w.includes('-1'))).toBe(true)
+      })
+
+      it('非整数のstartColを警告する', () => {
+        const warnings = getThemeWarnings(undefined, [{ id: 's1', layout: 'content', content: { gantt: { tasks: [{ startCol: 1.5 }] } } }])
+        expect(warnings.some((w) => w.includes('slides[0].content.gantt.tasks[0].startCol') && w.includes('1.5'))).toBe(true)
+      })
+
+      it('正のstartColは列数がそれに合わせて広がるため上限超えにならない', () => {
+        const warnings = getThemeWarnings(undefined, [{ id: 's1', layout: 'content', content: { gantt: { tasks: [{ startCol: 10 }] } } }])
+        expect(warnings).toEqual([])
+      })
+
+      it('component: { name: "Gantt" } 経由でも検出する', () => {
+        const warnings = getThemeWarnings(undefined, [{ id: 's1', layout: 'custom', content: { component: { name: 'Gantt', props: { tasks: [{ startCol: -1 }] } } } }])
+        expect(warnings.some((w) => w.includes('slides[0].content.component.props.tasks[0].startCol'))).toBe(true)
+      })
+    })
+
+    it('正常な値のデッキ（7種すべて含む見本相当）では警告が1件も出ない', () => {
+      const warnings = getThemeWarnings(undefined, [
+        {
+          id: 's1',
+          layout: 'content',
+          content: {
+            classDiagram: {
+              classes: [
+                { id: 'a', row: 0, col: 0 },
+                { id: 'b', row: 0, col: 1 },
+              ],
+            },
+            flowchart: { nodes: [{ id: 'x' }, { id: 'y' }] },
+            swimlane: {
+              phases: ['P1', 'P2'],
+              lanes: [
+                {
+                  nodes: [
+                    { id: 'n1', col: 0 },
+                    { id: 'n2', col: 1 },
+                  ],
+                },
+              ],
+            },
+            gantt: { tasks: [{ startCol: 0 }, { startCol: 2, span: 2 }] },
+            hierarchyDiagram: { layers: [{ nodes: [{ id: 'h1' }] }] },
+            serverDiagram: { zones: [{ nodes: [{ id: 's1n' }] }] },
+            orgChart: { nodes: [{ id: 'o1' }] },
+          },
+        },
+      ])
+      expect(warnings).toEqual([])
+    })
+  })
+
   // #187: heading/body/code がオブジェクト形式の場合の weight 検証
   it('文字列指定（後方互換）では weight 検証をスキップし警告しない', () => {
     expect(getThemeWarnings({ fonts: { heading: 'Poppins' } })).toEqual([])
