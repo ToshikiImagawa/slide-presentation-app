@@ -7,6 +7,7 @@ import { registerDefaultComponents } from '../../components/registerDefaults'
 import samplesManifest from '../../../samples/manifest.json'
 import schemaJson from '../../../schema/slide-content-schema.json'
 import { MASTER_ANCHORS, MASTER_BACKGROUND_FITS, MASTER_BACKGROUND_TYPES, MASTER_DECORATION_LAYER, MASTER_DECORATION_ONLY, MASTER_DECORATION_TYPES } from '../../masters'
+import { expectRuntimeMatchesSchemaEnum } from '../../schemaEnumTestUtils'
 import type { PresentationData } from '../types'
 
 const projectRoot = resolve(import.meta.dirname, '../../..')
@@ -38,7 +39,7 @@ describe('マスター語彙 enum のスキーマ間ドリフト検知（#238）
     ['background.type', MASTER_BACKGROUND_TYPES, backgroundFields.type.enum],
     ['background.fit', MASTER_BACKGROUND_FITS, backgroundFields.fit.enum],
   ])('%s: masters.ts の実行時定数と schema の enum が一致する', (_label, runtimeValues, schemaEnum) => {
-    expect([...runtimeValues].sort()).toEqual([...schemaEnum].sort())
+    expectRuntimeMatchesSchemaEnum(runtimeValues, schemaEnum)
   })
 })
 

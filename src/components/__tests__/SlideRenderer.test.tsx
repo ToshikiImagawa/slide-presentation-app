@@ -6,6 +6,7 @@ import schemaJson from '../../../schema/slide-content-schema.json'
 import { registerDefaultComponents } from '../registerDefaults'
 import type { SlideData, ThemeData } from '../../data'
 import { theme } from '../../theme'
+import { expectRuntimeMatchesSchemaEnum } from '../../schemaEnumTestUtils'
 
 // レイアウト網羅用のテストデータ。テンプレートガイドのサンプルは .spkg として外部配布するため、
 // テストは自前の入力を持つ（サンプルの内容変更でテストが壊れないようにする）
@@ -983,7 +984,7 @@ describe('SlideRenderer', () => {
     // 別ファイルにあるため、片方だけに足すと「描けるのに生成が弾かれる（またはその逆）」が静かに起きる
     it('描画できる variant の一覧がスキーマの enum と一致する', () => {
       const schemaEnum = (schemaJson as { layouts: { center: { contentFields: { variant: { enum: string[] } } } } }).layouts.center.contentFields.variant.enum
-      expect([...CENTER_VARIANT_NAMES].sort()).toEqual([...schemaEnum].sort())
+      expectRuntimeMatchesSchemaEnum(CENTER_VARIANT_NAMES, schemaEnum)
     })
   })
 
