@@ -1,7 +1,8 @@
+import { asArray } from '../../data/loader'
 import { Diagram } from '../diagram'
 import { defaultSeriesColor } from './colors'
 import { packAxis } from './packAxis'
-import { asArray, type StructureEdge, type StructureNode } from './types'
+import type { StructureEdge, StructureNode } from './types'
 
 const ZONE_GAP = 0.06
 const ZONE_MARGIN = 0.02

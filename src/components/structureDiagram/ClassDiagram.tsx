@@ -1,7 +1,8 @@
+import { asArray } from '../../data/loader'
 import { Diagram } from '../diagram'
 import { defaultSeriesColor } from './colors'
 import { computeGridLayout } from './gridLayout'
-import { asArray, type StructureEdge, type StructureEdgeType, type StructureNode } from './types'
+import type { StructureEdge, StructureEdgeType, StructureNode } from './types'
 
 export type ClassDiagramSpec = {
   classes?: StructureNode[]

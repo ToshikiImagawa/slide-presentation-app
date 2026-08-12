@@ -55,9 +55,3 @@ export type StructureEdge = {
   /** UMLクラス図のrelationsでのみ使用。head/dashed省略時の既定値を決める */
   type?: StructureEdgeType
 }
-
-/** JSON 由来の値は配列でない可能性があるため、描画前に配列だけを通す（不正なデッキでデッキ全体を落とさない）。
- * 4つの構成図コンポーネントすべてが使う共通ヘルパー（Diagram.tsx/Flow.tsx と同じ考え方） */
-export function asArray<T>(value: T[] | undefined): T[] {
-  return Array.isArray(value) ? value : []
-}

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { asArray } from '../data/loader'
 import { DiagramBadge } from './diagram'
 import styles from './Checklist.module.css'
 
@@ -12,11 +13,6 @@ export type ChecklistItemData = {
 
 type Props = {
   items?: ChecklistItemData[]
-}
-
-/** JSON 由来の値は配列でない可能性があるため、描画前に配列だけを通す（不正なデッキでデッキ全体を落とさない） */
-function asArray<T>(value: T[] | undefined): T[] {
-  return Array.isArray(value) ? value : []
 }
 
 /** 項目数から密度（行間・文字サイズの縮小段階）を決める。Table の resolveDensity と同じ考え方で、

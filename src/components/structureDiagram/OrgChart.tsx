@@ -1,7 +1,8 @@
+import { asArray } from '../../data/loader'
 import { Diagram } from '../diagram'
 import { defaultSeriesColor } from './colors'
 import { computeTreeLayout, resolveTree } from './treeLayout'
-import { asArray, type StructureNode } from './types'
+import type { StructureNode } from './types'
 
 export type OrgChartSpec = {
   nodes?: StructureNode[]

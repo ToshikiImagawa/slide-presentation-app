@@ -1,3 +1,4 @@
+import { asArray } from '../../data/loader'
 import { Connector, DiagramBadge, DiagramCanvas, DiagramCard, type NormRect } from '../diagram'
 import type { FlowStep } from './types'
 
@@ -14,11 +15,6 @@ function resolveMetrics(count: number): { width: number; fontScale: number } {
 
 function cardRect(index: number, width: number): NormRect {
   return { x: index * (width + GAP), y: 0.28, w: width, h: 0.44 }
-}
-
-/** JSON 由来の値は配列でない可能性があるため、描画前に配列だけを通す（不正なデッキでデッキ全体を落とさない） */
-function asArray<T>(value: T[] | undefined): T[] {
-  return Array.isArray(value) ? value : []
 }
 
 /**

@@ -1,7 +1,8 @@
+import { asArray } from '../../data/loader'
 import { Diagram } from '../diagram'
 import { defaultSeriesColor } from '../structureDiagram/colors'
 import { getAxisSlot, packAxis } from '../structureDiagram/packAxis'
-import { asArray, type StructureEdge, type StructureNode } from '../structureDiagram/types'
+import type { StructureEdge, StructureNode } from '../structureDiagram/types'
 import { axisHeaderNodes } from './axisHeaderNodes'
 
 const LANE_MARGIN = 0.02

@@ -1,7 +1,7 @@
+import { asArray } from '../../data/loader'
 import { Diagram } from '../diagram'
 import { defaultSeriesColor } from '../structureDiagram/colors'
 import { getAxisSlot, packAxis } from '../structureDiagram/packAxis'
-import { asArray } from '../structureDiagram/types'
 import { axisHeaderNodes } from './axisHeaderNodes'
 
 const LABEL_WIDTH = 0.2
