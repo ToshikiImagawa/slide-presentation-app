@@ -1,12 +1,15 @@
-import { resolveColorToken } from '../../applyTheme'
-import type { ChartType } from './types'
+import { resolveColorToken, SERIES_COLOR_KEYS } from '../../applyTheme'
+import { round2 } from '../diagram/geometry'
+import type { ChartType, ResolvedSeries } from './types'
 
 /** Y軸（横棒はX軸）の目盛りの目標本数。1/2/5刻みに丸めるので実際の本数はこの前後になる */
 const DEFAULT_TICK_COUNT = 5
 
 /** 系列色の既定。明示指定が無い系列にはこの順で割り当てる（#186 で確定した系列色トークン）。
- * 構成図（structureDiagram・#205）のノード色の既定にも流用するため export する（複製しない） */
-export const SERIES_KEYS = ['series1', 'series2', 'series3', 'series4', 'series5', 'series6']
+ * 定義そのものは applyTheme.ts の SERIES_COLOR_KEYS（THEME_COLOR_TOKENS・applyDerivedSeriesColors と共有する
+ * 単一の真実源）で、ここは構成図（structureDiagram・#205）のノード色の既定が既に import している名前を
+ * 変えないための re-export（#240。複製しない） */
+export const SERIES_KEYS = SERIES_COLOR_KEYS
 
 export type AxisScale = {
   min: number
@@ -93,6 +96,14 @@ export function seriesColor(index: number, color?: string): string {
   return `var(${resolveColorToken(color ?? SERIES_KEYS[index % SERIES_KEYS.length])})`
 }
 
+/** 小数桁数（0/1/2）ごとの Intl.NumberFormat。桁数の種類は固定3通りなので起動時に1度だけ構築し、
+ * toLocaleString の毎呼び出し構築（ファストパスに乗らない）を避ける（#240） */
+const VALUE_FORMATTERS: Record<0 | 1 | 2, Intl.NumberFormat> = {
+  0: new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }),
+  1: new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 }),
+  2: new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }),
+}
+
 /**
  * 数値を軸ラベル・値ラベル用の文字列にする。桁区切りは ja / en で同じ書式なのでロケールを固定し、
  * 4経路（本編・発表者ビュー・編集プレビュー・PDF）で同一の表記になるようにする。
@@ -101,7 +112,7 @@ export function formatValue(value: number, unit?: string): string {
   if (!Number.isFinite(value)) return ''
   const abs = Math.abs(value)
   const digits = Number.isInteger(value) || abs >= 100 ? 0 : abs >= 10 ? 1 : 2
-  return `${value.toLocaleString('en-US', { maximumFractionDigits: digits })}${unit ?? ''}`
+  return `${VALUE_FORMATTERS[digits].format(value)}${unit ?? ''}`
 }
 
 export type PieSlice = {
@@ -131,11 +142,6 @@ export function pieSlices(values: number[]): PieSlice[] {
     .filter((slice) => slice.share > 0)
 }
 
-/** SVG の座標値を2桁に丸める（浮動小数の誤差がそのまま属性値に出るのを防ぐ） */
-export function round2(value: number): number {
-  return Number(value.toFixed(2))
-}
-
 /** 角度（度・0度が右、時計回り）上の点を返す */
 export function polarPoint(cx: number, cy: number, r: number, degrees: number): { x: number; y: number } {
   const rad = (degrees * Math.PI) / 180
@@ -148,4 +154,25 @@ export function arcPath(cx: number, cy: number, r: number, startAngle: number, e
   const to = polarPoint(cx, cy, r, endAngle)
   const largeArc = endAngle - startAngle > 180 ? 1 : 0
   return `M ${cx} ${cy} L ${from.x} ${from.y} A ${r} ${r} 0 ${largeArc} 1 ${to.x} ${to.y} Z`
+}
+
+/** 棒の伸び範囲（基準線 0 からの from/to）。負の値は基準線から下（横棒は左）へ伸びる（BarChart・HBarChart が共有・#240） */
+export function barSpan(value: number, scale: AxisScale): { from: number; to: number } {
+  const ratio = ratioOf(value, scale)
+  return { from: Math.min(ratio, scale.zeroRatio), to: Math.max(ratio, scale.zeroRatio) }
+}
+
+/** 値ラベルを棒・点の内側へ回す閾値（プロット端に近いラベルが外側にはみ出して切れるのを防ぐ）。
+ * 横棒は項目名の分だけ描画余白が少ないため、縦棒・折れ線より控えめにする（BarChart・LineChart・HBarChart が共有・#240） */
+export const VALUE_INSIDE_THRESHOLD_VERTICAL = 0.92
+export const VALUE_INSIDE_THRESHOLD_HORIZONTAL = 0.88
+
+/** 座標軸を持つチャート（縦棒・折れ線・横棒）が共有する描画 props（#240）。AxisScale をここで定義しているため types.ts ではなく本体に置く */
+export type AxisChartProps = {
+  categories: string[]
+  series: ResolvedSeries[]
+  scale: AxisScale
+  unit?: string
+  axis: boolean
+  valueLabels: boolean
 }

@@ -1,4 +1,5 @@
-import { formatValue, round2 } from './chartScale'
+import { ChartLineLayer, ChartPolyline } from './ChartPolyline'
+import { formatValue } from './chartScale'
 import styles from './Chart.module.css'
 
 /** 推移線を描く縦方向の使用範囲（上下に余白を残し、最大値・最小値の点が切れないようにする） */
@@ -21,11 +22,18 @@ function ratios(values: number[]): number[] {
   return values.map((value) => TREND_PADDING + ((value - min) / span) * (1 - TREND_PADDING * 2))
 }
 
+/** 大数値の表示形式。数値は formatValue（桁区切り＋単位）、文字列はそのまま単位を添える */
+function formatKpiValue(value: string | number | undefined, unit?: string): string {
+  if (typeof value === 'number') return formatValue(value, unit)
+  if (value === undefined) return ''
+  return `${value}${unit ?? ''}`
+}
+
 /** 大数値＋推移（KPI）。主役は数値なので、推移線は傾向だけが読めるスパークラインとして添える */
 export function KpiTrend({ value, label, delta, unit, trend, color }: Props) {
-  const points = trend.filter((entry) => Number.isFinite(entry))
-  const heights = points.length >= 2 ? ratios(points) : []
-  const formatted = typeof value === 'number' ? formatValue(value, unit) : value === undefined ? '' : `${value}${unit ?? ''}`
+  const values = trend.filter((entry) => Number.isFinite(entry))
+  const heights = values.length >= 2 ? ratios(values) : []
+  const formatted = formatKpiValue(value, unit)
 
   return (
     <div className={styles.kpi} data-testid="chart-kpi">
@@ -41,19 +49,11 @@ export function KpiTrend({ value, label, delta, unit, trend, color }: Props) {
         </span>
       )}
 
-      {heights.length >= 2 && (
+      {heights.length > 0 && (
         <div className={styles.kpiTrend}>
-          <svg className={styles.lineLayer} viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-            <polyline
-              points={heights.map((ratio, index) => `${round2((index / (heights.length - 1)) * 100)},${round2((1 - ratio) * 100)}`).join(' ')}
-              fill="none"
-              stroke={color}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              vectorEffect="non-scaling-stroke"
-              style={{ strokeWidth: 'calc(var(--theme-border-width) * 3)' }}
-            />
-          </svg>
+          <ChartLineLayer>
+            <ChartPolyline points={heights.map((ratio, index) => ({ x: (index / (heights.length - 1)) * 100, y: (1 - ratio) * 100 }))} color={color} />
+          </ChartLineLayer>
           <span className={styles.point} style={{ left: '100%', bottom: `${heights[heights.length - 1] * 100}%`, background: color }} />
         </div>
       )}

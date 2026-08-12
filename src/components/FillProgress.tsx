@@ -1,3 +1,4 @@
+import { clamp01 } from './chart/chartScale'
 import styles from './FillProgress.module.css'
 
 export interface FillProgressProps {
@@ -20,7 +21,7 @@ export function FillProgress({ progress, visible, animationDuration, resetKey, p
     return <div key={resetKey} className={`${styles.fill} ${styles.animated}`} style={{ animationDuration: `${animationDuration}s`, animationPlayState: paused ? 'paused' : 'running' }} />
   }
 
-  const clampedProgress = Math.min(Math.max(progress, 0), 1)
+  const clampedProgress = clamp01(progress)
 
   return <div className={styles.fill} style={{ height: `${clampedProgress * 100}%` }} />
 }

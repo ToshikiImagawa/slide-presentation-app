@@ -213,16 +213,18 @@ describe('exportSlidesToPdf', () => {
   // 撮影の瞬間だけ実測値へ置き換え、チャート・図解プリミティブが PDF でも同じ色・線幅で描かれるようにする
   describe('SVG 内の CSS 変数のインライン化', () => {
     /** 色・線幅を var() で持つ SVG を含むデッキを作る。
-     * jsdom の getComputedStyle は継承したカスタムプロパティを解決しないため、変数の定義も参照元の要素自身に置く
-     * （実ブラウザではカスタムプロパティが継承するので、実際には :root や section[data-master] 側の定義でも解決できる） */
+     * inlineSvgCssVariables は <svg> 単位で getComputedStyle を1回だけ取るため、変数の定義は svg 要素自身に置く
+     * （実ブラウザではカスタムプロパティが継承するので、実際には :root や section[data-master] 側の定義でも解決できる。
+     * jsdom の getComputedStyle は継承したカスタムプロパティを解決しないため、テストでは svg 自身の定義で代替する） */
     function buildDeckWithSvg(): { deck: HTMLElement; polyline: SVGElement } {
       const deck = buildDeck(1)
       const section = deck.querySelector('section') as HTMLElement
 
       const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+      svg.setAttribute('style', '--theme-series-1: rgb(1, 2, 3); --theme-border-width: 2px')
       const polyline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline')
       polyline.setAttribute('stroke', 'var(--theme-series-1)')
-      polyline.setAttribute('style', '--theme-series-1: rgb(1, 2, 3); --theme-border-width: 2px; stroke-width: calc(var(--theme-border-width) * 3)')
+      polyline.setAttribute('style', 'stroke-width: calc(var(--theme-border-width) * 3)')
       svg.appendChild(polyline)
       section.appendChild(svg)
       document.body.appendChild(deck)

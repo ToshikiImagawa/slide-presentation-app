@@ -141,11 +141,19 @@ const CSS_VAR_MAX_DEPTH = 4
  * 文字列中の CSS 変数参照を、要素の計算済みカスタムプロパティ値へ置き換える。
  * 変数はカスタムプロパティなので継承する＝要素自身から読めば `:root` の値もマスター単位の
  * 上書き（theme.tokens の `section[data-master=...]` スコープ）も正しく解決できる。
+ * cache 省略時はメモ化しない（呼び出し元が同一 computed に対して複数回呼ぶ場合だけ渡す・#240）。
  */
-export function resolveCssVars(value: string, computed: CSSStyleDeclaration): string {
+export function resolveCssVars(value: string, computed: CSSStyleDeclaration, cache?: Map<string, string>): string {
   let resolved = value
   for (let depth = 0; depth < CSS_VAR_MAX_DEPTH && resolved.includes('var('); depth++) {
-    const next = resolved.replace(CSS_VAR_PATTERN, (_match, name: string, fallback?: string) => computed.getPropertyValue(name).trim() || (fallback ?? '').trim())
+    const next = resolved.replace(CSS_VAR_PATTERN, (_match, name: string, fallback?: string) => {
+      let propertyValue = cache?.get(name)
+      if (propertyValue === undefined) {
+        propertyValue = computed.getPropertyValue(name).trim()
+        cache?.set(name, propertyValue)
+      }
+      return propertyValue || (fallback ?? '').trim()
+    })
     if (next === resolved) break
     resolved = next
   }
@@ -158,33 +166,45 @@ export function resolveCssVars(value: string, computed: CSSStyleDeclaration): st
  * html2canvas は `<svg>` を XMLSerializer で単体シリアライズして data URI の画像として描くため
  * （html2canvas の SVGElementContainer）、SVG の中の `var(--theme-series-1)` は祖先を失って解決できず、
  * 黒や未描画になる。チャート（#204）・図解プリミティブ（#202）はいずれも色・線幅を意匠トークンから
- * 引いているので、この置き換えがないと PDF だけ表示が一致しない。
+ * 引いているので、この置き換えがないと PDF だけ表示が一致しない。SVG の塗りは属性かインライン style
+ * で書く前提（CSS Module の class 経由の fill/stroke は var() の有無に関わらず解決できないため対象外）。
+ *
+ * 読み取り（getComputedStyle・var() 解決）と書き込み（setAttribute）のフェーズを分けて読み書きの
+ * 強制再計算（read/write thrash）を避ける。カスタムプロパティは継承するので、getComputedStyle は
+ * `<svg>` ごとに1回だけ取り、変数名→値は svg 単位の Map でキャッシュする（#240）。
  *
  * 戻り値を呼ぶと元の属性値へ戻す（ライブDOMを一時的に触るのは、この関数の呼び出し元が
  * class や transform に対して既に行っているのと同じ方針）。
  */
 export function inlineSvgCssVariables(root: HTMLElement): () => void {
-  const restores: Array<() => void> = []
+  const records: Array<{ element: Element; name: string; original: string; next: string }> = []
+  const svgCaches = new Map<Element, { computed: CSSStyleDeclaration; vars: Map<string, string> }>()
 
-  const inline = (element: Element) => {
+  for (const element of Array.from(root.querySelectorAll('svg, svg *'))) {
     const targets = Array.from(element.attributes).filter((attr) => attr.value.includes('var('))
-    if (targets.length === 0) return
-    const computed = getComputedStyle(element)
+    if (targets.length === 0) continue
+
+    const svg = element.closest('svg') as Element
+    let svgCache = svgCaches.get(svg)
+    if (!svgCache) {
+      svgCache = { computed: getComputedStyle(svg), vars: new Map() }
+      svgCaches.set(svg, svgCache)
+    }
+
     for (const attr of targets) {
-      const { name, value } = attr
-      element.setAttribute(name, resolveCssVars(value, computed))
-      restores.push(() => element.setAttribute(name, value))
+      records.push({ element, name: attr.name, original: attr.value, next: resolveCssVars(attr.value, svgCache.computed, svgCache.vars) })
     }
   }
 
-  for (const svg of Array.from(root.querySelectorAll('svg'))) {
-    inline(svg)
-    for (const descendant of Array.from(svg.querySelectorAll('*'))) {
-      inline(descendant)
-    }
+  for (const record of records) {
+    record.element.setAttribute(record.name, record.next)
   }
 
-  return () => restores.forEach((restore) => restore())
+  return () => {
+    for (const record of records) {
+      record.element.setAttribute(record.name, record.original)
+    }
+  }
 }
 
 /**

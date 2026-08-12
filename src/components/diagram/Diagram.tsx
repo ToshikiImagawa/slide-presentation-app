@@ -1,4 +1,5 @@
 import type { ComponentProps } from 'react'
+import { asArray } from '../../data/loader'
 import { Arrow } from './Arrow'
 import { Callout } from './Callout'
 import { Connector } from './Connector'
@@ -36,11 +37,6 @@ export type DiagramProps = {
   arrows?: ArrowSpec[]
   badges?: BadgeSpec[]
   callouts?: CalloutSpec[]
-}
-
-/** JSON 由来の値は配列でない可能性があるため、描画前に配列だけを通す（不正なデッキでデッキ全体を落とさない） */
-function asArray<T>(value: T[] | undefined): T[] {
-  return Array.isArray(value) ? value : []
 }
 
 /**
