@@ -281,6 +281,9 @@
       "installing": "更新中…",
       "installNow": "今すぐ更新して再起動",
       "installFailed": "更新の適用に失敗しました"
+    },
+    "slideError": {
+      "message": "このスライドを表示できませんでした"
     }
   }
 }
