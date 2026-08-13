@@ -26,6 +26,7 @@ import { Compare, type CompareSpec } from './compare'
 import { Flow, type FlowStep } from './flow'
 import { ClassDiagram, type ClassDiagramSpec, HierarchyDiagram, type HierarchyDiagramSpec, OrgChart, type OrgChartSpec, ServerDiagram, type ServerDiagramSpec } from './structureDiagram'
 import { Flowchart, type FlowchartSpec, Gantt, type GanttSpec, Swimlane, type SwimlaneSpec } from './processDiagram'
+import { Funnel, type FunnelSpec, Heatmap, type HeatmapSpec, Swot, type SwotSpec, TwoByTwoMatrix, type TwoByTwoMatrixSpec } from './analysisDiagram'
 import { AccentText } from './AccentText'
 import { Quote } from './Quote'
 import { BigMessage } from './BigMessage'
@@ -464,6 +465,15 @@ const CONTENT_BRANCHES: ContentBranch[] = [
   { match: (content) => Boolean(content.flowchart) && typeof content.flowchart === 'object', fill: () => componentFillsContentArea('Flowchart'), render: (content) => <Flowchart {...(content.flowchart as FlowchartSpec)} /> },
   { match: (content) => Boolean(content.swimlane) && typeof content.swimlane === 'object', fill: () => componentFillsContentArea('Swimlane'), render: (content) => <Swimlane {...(content.swimlane as SwimlaneSpec)} /> },
   { match: (content) => Boolean(content.gantt) && typeof content.gantt === 'object', fill: () => componentFillsContentArea('Gantt'), render: (content) => <Gantt {...(content.gantt as GanttSpec)} /> },
+  // 分析図（#207）。プロセス図と同じく DiagramCanvas に載せ、本文領域の残り高さを埋める
+  {
+    match: (content) => Boolean(content.twoByTwo) && typeof content.twoByTwo === 'object',
+    fill: () => componentFillsContentArea('TwoByTwoMatrix'),
+    render: (content) => <TwoByTwoMatrix {...(content.twoByTwo as TwoByTwoMatrixSpec)} />,
+  },
+  { match: (content) => Boolean(content.funnel) && typeof content.funnel === 'object', fill: () => componentFillsContentArea('Funnel'), render: (content) => <Funnel {...(content.funnel as FunnelSpec)} /> },
+  { match: (content) => Boolean(content.swot) && typeof content.swot === 'object', fill: () => componentFillsContentArea('Swot'), render: (content) => <Swot {...(content.swot as SwotSpec)} /> },
+  { match: (content) => Boolean(content.heatmap) && typeof content.heatmap === 'object', fill: () => componentFillsContentArea('Heatmap'), render: (content) => <Heatmap {...(content.heatmap as HeatmapSpec)} /> },
   { match: (content) => Boolean(content.component), fill: (content) => componentFillsContentArea(content.component!.name), render: (content) => renderComponent(content.component!) },
   // 上のいずれも無指定の場合のみ、プレーン本文（body/items）を描画する（#193）
   { match: (content) => Boolean(content.body) || Boolean(content.items?.length), fill: false, render: renderBody },

@@ -847,6 +847,69 @@ describe('SlideRenderer', () => {
     })
   })
 
+  // #207: 分析図（2×2マトリクス・ファネル・SWOT・ヒートマップ）
+  describe('contentスライド(分析図)', () => {
+    function renderContent(content: SlideData['content']) {
+      return renderWithTheme(<SlideRenderer slides={[{ id: 'test-analysis-diagram', layout: 'content', content: { title: 'タイトル', ...content } }]} />)
+    }
+
+    it('twoByTwoの象限タイトルと項目ラベルを描画する', () => {
+      const { getByText } = renderContent({
+        twoByTwo: {
+          quadrants: [{ title: '第1象限' }, { title: '第2象限' }, { title: '第3象限' }, { title: '第4象限' }],
+          items: [{ label: '項目A', x: 0.3, y: 0.3 }],
+        },
+      })
+      expect(getByText('第1象限')).not.toBeNull()
+      expect(getByText('項目A')).not.toBeNull()
+    })
+
+    it('funnelの段ラベルと数値を描画する', () => {
+      const { container } = renderContent({
+        funnel: {
+          stages: [
+            { label: 'アクセス', value: 1000 },
+            { label: '登録', value: 300 },
+          ],
+          unit: '件',
+        },
+      })
+      expect(container.textContent).toContain('アクセス')
+      expect(container.textContent).toContain('1,000件')
+    })
+
+    it('swotのペイン表題と項目を描画する', () => {
+      const { container } = renderContent({ swot: { strengths: { items: ['ブランド認知'] }, weaknesses: { items: ['技術負債'] } } })
+      expect(container.textContent).toContain('Strengths')
+      expect(container.textContent).toContain('ブランド認知')
+      expect(container.textContent).toContain('Weaknesses')
+      expect(container.textContent).toContain('技術負債')
+    })
+
+    it('heatmapの行・列ラベルとセル値を描画する', () => {
+      const { getByText, container } = renderContent({
+        heatmap: {
+          rows: ['行A'],
+          cols: ['列1', '列2'],
+          values: [[10, 20]],
+        },
+      })
+      expect(getByText('行A')).not.toBeNull()
+      expect(getByText('列1')).not.toBeNull()
+      expect(container.textContent).toContain('10')
+      expect(container.textContent).toContain('20')
+    })
+
+    it('複数の分析図フィールドが同時にあっても twoByTwo が優先される（先勝ちの優先順位）', () => {
+      const { container } = renderContent({
+        twoByTwo: { quadrants: [{ title: 'Q1' }, { title: 'Q2' }, { title: 'Q3' }, { title: 'Q4' }] },
+        funnel: { stages: [{ label: 'アクセス', value: 100 }] },
+      })
+      expect(container.textContent).toContain('Q1')
+      expect(container.textContent).not.toContain('アクセス')
+    })
+  })
+
   // #206: 日付付きマイルストーンタイムライン。既存steps（連番）の描画は変えない（受け入れ基準）ため、
   // stepsとの併存時の優先順位も検証する
   describe('contentスライド(dateTimeline)', () => {
@@ -892,6 +955,10 @@ describe('SlideRenderer', () => {
       { name: 'flowchart', content: { flowchart: { nodes: [{ id: 'a', label: 'ノード' }] } }, fill: true },
       { name: 'swimlane', content: { swimlane: { lanes: [{ title: 'レーン', nodes: [{ id: 'a', label: 'ノード' }] }] } }, fill: true },
       { name: 'gantt', content: { gantt: { tasks: [{ label: '工程', startCol: 0 }] } }, fill: true },
+      { name: 'twoByTwo', content: { twoByTwo: { quadrants: [{ title: 'q1' }, { title: 'q2' }, { title: 'q3' }, { title: 'q4' }] } }, fill: true },
+      { name: 'funnel', content: { funnel: { stages: [{ label: '段', value: 100 }] } }, fill: true },
+      { name: 'swot', content: { swot: { strengths: { items: ['s'] } } }, fill: true },
+      { name: 'heatmap', content: { heatmap: { rows: ['R'], cols: ['C'], values: [[1]] } }, fill: true },
       { name: 'component:Diagram（登録側が fillsContentArea を宣言）', content: { component: { name: 'Diagram', props: { nodes: [{ id: 'a', rect: { x: 0, y: 0, w: 0.3, h: 0.3 }, title: 'カード' }] } } }, fill: true },
       { name: 'component:TerminalAnimation（既定は埋めない）', content: { component: { name: 'TerminalAnimation' } }, fill: false },
       { name: 'body/items', content: { body: '本文' }, fill: false },

@@ -632,6 +632,79 @@
           ]
         }
       }
+    },
+    {
+      "id": "layout-content-two-by-two",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (twoByTwo)",
+        "twoByTwo": {
+          "quadrants": [
+            { "title": "Strong / Hard" },
+            { "title": "Strong / Easy" },
+            { "title": "Weak / Hard" },
+            { "title": "Weak / Easy" }
+          ],
+          "axes": {
+            "x": { "label": "Effort", "low": "Easy", "high": "Hard" },
+            "y": { "label": "Impact", "low": "Low", "high": "High" }
+          },
+          "items": [
+            { "label": "Initiative A", "x": 0.15, "y": 0.2 },
+            { "label": "Initiative B", "x": 0.72, "y": 0.28 },
+            { "label": "Initiative C", "x": 0.3, "y": 0.78 },
+            { "label": "Initiative D", "x": 0.82, "y": 0.7 }
+          ]
+        }
+      }
+    },
+    {
+      "id": "layout-content-funnel",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (funnel)",
+        "funnel": {
+          "unit": "",
+          "stages": [
+            { "label": "Visits", "value": 10000, "description": "Traffic" },
+            { "label": "Signups", "value": 3000, "description": "Registrations" },
+            { "label": "Paid", "value": 800, "description": "Subscriptions" },
+            { "label": "Retained", "value": 300, "description": "Month 2" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "layout-content-swot",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (swot)",
+        "swot": {
+          "strengths": { "items": ["Brand awareness", "Senior engineers", "Existing customer base"] },
+          "weaknesses": { "items": ["Legacy code", "Hiring difficulty", "High ops cost"] },
+          "opportunities": { "items": ["Market expansion", "AI adoption", "New segments"] },
+          "threats": { "items": ["Competition", "Regulation", "FX volatility"] }
+        }
+      }
+    },
+    {
+      "id": "layout-content-heatmap",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (heatmap)",
+        "heatmap": {
+          "rows": ["Product A", "Product B", "Product C", "Product D"],
+          "cols": ["Q1", "Q2", "Q3", "Q4"],
+          "color": "series2",
+          "unit": "%",
+          "values": [
+            [12, 18, 24, 30],
+            [8, 14, 22, 28],
+            [20, 26, 32, 38],
+            [4, 10, 16, 22]
+          ]
+        }
+      }
     }
   ]
 }

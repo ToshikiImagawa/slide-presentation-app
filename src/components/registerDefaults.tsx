@@ -15,6 +15,7 @@ import { Flow } from './flow'
 import { Checklist } from './Checklist'
 import { ClassDiagram, HierarchyDiagram, OrgChart, ServerDiagram } from './structureDiagram'
 import { Flowchart, Gantt, Swimlane } from './processDiagram'
+import { Funnel, Heatmap, Swot, TwoByTwoMatrix } from './analysisDiagram'
 import { registerDefaultComponent } from './ComponentRegistry'
 
 /** TerminalAnimationのラッパー（デフォルトlogTextを注入） */
@@ -53,6 +54,11 @@ export function registerDefaultComponents(): void {
   registerDefaultComponent('Flowchart', Flowchart, { fillsContentArea: true })
   registerDefaultComponent('Swimlane', Swimlane, { fillsContentArea: true })
   registerDefaultComponent('Gantt', Gantt, { fillsContentArea: true })
+  // 分析図（#207）。同じく DiagramCanvas に載せるので fill 変種を要求する
+  registerDefaultComponent('TwoByTwoMatrix', TwoByTwoMatrix, { fillsContentArea: true })
+  registerDefaultComponent('Funnel', Funnel, { fillsContentArea: true })
+  registerDefaultComponent('Swot', Swot, { fillsContentArea: true })
+  registerDefaultComponent('Heatmap', Heatmap, { fillsContentArea: true })
 
   // MUIアイコン
   registerDefaultComponent('Icon:Description', () => <DescriptionIcon sx={{ fontSize: 32 }} />)

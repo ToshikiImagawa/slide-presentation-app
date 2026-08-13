@@ -338,9 +338,9 @@
 }
 ```
 
-`name` はComponentRegistryに登録済みの名前を指定する。デフォルト登録済み: `TerminalAnimation`, `Image`, `Diagram`, `Chart`, `Table`, `Compare`, `Flow`, `Checklist`, `HierarchyDiagram`, `ServerDiagram`, `OrgChart`, `ClassDiagram`, `Flowchart`, `Swimlane`, `Gantt`（アドオン・ブランドテーマが追加登録する名前も指定できる。アイコンは `Icon:<name>` という別のネームスペースで登録され対象外）。
+`name` はComponentRegistryに登録済みの名前を指定する。デフォルト登録済み: `TerminalAnimation`, `Image`, `Diagram`, `Chart`, `Table`, `Compare`, `Flow`, `Checklist`, `HierarchyDiagram`, `ServerDiagram`, `OrgChart`, `ClassDiagram`, `Flowchart`, `Swimlane`, `Gantt`, `TwoByTwoMatrix`, `Funnel`, `Swot`, `Heatmap`（アドオン・ブランドテーマが追加登録する名前も指定できる。アイコンは `Icon:<name>` という別のネームスペースで登録され対象外）。
 
-`Chart`/`Table`/`Compare`/`HierarchyDiagram`/`ServerDiagram`/`OrgChart`/`ClassDiagram`/`Flowchart`/`Swimlane`/`Gantt` は同名の短縮記法（`content.chart`/`content.table` 等）でも描けるが、ComponentRegistry にも登録されているため `component: { name: "Table", props: {...} }`（`props` は各短縮記法のオブジェクトと同じフィールド）でも同じ見た目で置ける。`Flow`/`Checklist` も同様に置けるが、短縮記法（`content.flow`/`content.checklist`）はフィールド値がオブジェクトではなく配列そのものなので、`props` はその配列をそれぞれ `steps`/`items` に包んだ形（`{ "steps": [...] }`/`{ "items": [...] }`）になる。`Checklist` はさらに、短縮記法側が `description` 内のHTMLタグ（`<b>` 等）を解釈するのに対し、`component` 経由ではそのまま文字列として表示される差がある（`description` にHTMLタグを含めない場合は差が出ない）。いずれも two-column の各カラム（`left.component`/`right.component`）・bleed・custom など `component` を受け付けるすべての経路から使え、表と箇条書きを左右に並べるレイアウトも組める（#241/#274）。
+`Chart`/`Table`/`Compare`/`HierarchyDiagram`/`ServerDiagram`/`OrgChart`/`ClassDiagram`/`Flowchart`/`Swimlane`/`Gantt`/`TwoByTwoMatrix`/`Funnel`/`Swot`/`Heatmap` は同名の短縮記法（`content.chart`/`content.table`/`content.twoByTwo` 等）でも描けるが、ComponentRegistry にも登録されているため `component: { name: "Table", props: {...} }`（`props` は各短縮記法のオブジェクトと同じフィールド）でも同じ見た目で置ける。`Flow`/`Checklist` も同様に置けるが、短縮記法（`content.flow`/`content.checklist`）はフィールド値がオブジェクトではなく配列そのものなので、`props` はその配列をそれぞれ `steps`/`items` に包んだ形（`{ "steps": [...] }`/`{ "items": [...] }`）になる。`Checklist` はさらに、短縮記法側が `description` 内のHTMLタグ（`<b>` 等）を解釈するのに対し、`component` 経由ではそのまま文字列として表示される差がある（`description` にHTMLタグを含めない場合は差が出ない）。いずれも two-column の各カラム（`left.component`/`right.component`）・bleed・custom など `component` を受け付けるすべての経路から使え、表と箇条書きを左右に並べるレイアウトも組める（#241/#274）。
 
 ### compare（比較）
 
@@ -897,6 +897,112 @@
         { "label": "実装", "startCol": 1, "span": 2 },
         { "label": "テスト", "startCol": 2, "span": 1 },
         { "label": "リリース", "startCol": 3, "span": 1 }
+      ]
+    }
+  }
+}
+```
+
+### 分析図（2×2マトリクス・ファネル・SWOT・ヒートマップ・#207）
+
+意思決定・戦略説明の図式。いずれも `content` レイアウトの下で使い、系列色（`series1`〜`series6`）に色分けを追従させる（単一のアクセント色に意味を持たせすぎない）。ヒートマップの濃淡は単一の系列色 + alpha の階調で作り、`shadeSeries`（`src/components/structureDiagram/colors.ts`）に集約している（4図式で複製しない）。
+
+#### twoByTwo（2×2 マトリクス）
+
+4象限（左上・右上・左下・右下＝Zパターン）を敷き、`items` を正規化座標（`x`・`y` はいずれも 0〜1・左上原点）で散布する。優先度×影響度・工数×効果などの意思決定図に使う。`axes.x.low`/`high`/`label`・`axes.y.low`/`high`/`label` で軸ラベルを添える。項目の色は明示指定または落ちる先の象限インデックスから決定される。範囲外の座標は端に丸められる（破綻ではなく縮退）。
+
+```json
+{
+  "id": "slide-id",
+  "layout": "content",
+  "content": {
+    "title": "施策の優先順位",
+    "twoByTwo": {
+      "quadrants": [
+        { "title": "強い / 難しい" },
+        { "title": "強い / 簡単" },
+        { "title": "弱い / 難しい" },
+        { "title": "弱い / 簡単" }
+      ],
+      "axes": {
+        "x": { "label": "実装難易度", "low": "簡単", "high": "難しい" },
+        "y": { "label": "効果", "low": "低", "high": "高" }
+      },
+      "items": [
+        { "label": "施策A", "x": 0.15, "y": 0.2 },
+        { "label": "施策B", "x": 0.72, "y": 0.28 },
+        { "label": "施策C", "x": 0.3, "y": 0.78 },
+        { "label": "施策D", "x": 0.82, "y": 0.7 }
+      ]
+    }
+  }
+}
+```
+
+#### funnel（ファネル）
+
+上から下へ段を積む絞り込み図。`value` の比率で各段の幅を決める（省略時は等幅）。段の色は並び順に `series1`〜`series6` を巡回する。ラベル・値・説明は右側の別領域に置く（段の中に文字を詰め込まない）。`unit` で値の単位を指定できる。推奨上限6段。
+
+```json
+{
+  "id": "slide-id",
+  "layout": "content",
+  "content": {
+    "title": "コンバージョンファネル",
+    "funnel": {
+      "unit": "件",
+      "stages": [
+        { "label": "アクセス", "value": 10000, "description": "訪問数" },
+        { "label": "登録", "value": 3000, "description": "会員登録" },
+        { "label": "有料化", "value": 800, "description": "課金" },
+        { "label": "継続", "value": 300, "description": "翌月継続" }
+      ]
+    }
+  }
+}
+```
+
+#### swot（SWOT）
+
+SWOT の慣習に従い S=左上 / W=右上 / O=左下 / T=右下 の4ペインに固定する（S/W が内部要因、O/T が外部要因）。各ペインの `items` は改行区切りで並ぶ。`labels` で各ペインの表題を差し替えられる（省略時は英語表記）。1ペインあたり推奨上限6件。
+
+```json
+{
+  "id": "slide-id",
+  "layout": "content",
+  "content": {
+    "title": "SWOT 分析",
+    "swot": {
+      "labels": { "strengths": "強み", "weaknesses": "弱み", "opportunities": "機会", "threats": "脅威" },
+      "strengths": { "items": ["ブランド認知", "熟練エンジニア", "既存顧客基盤"] },
+      "weaknesses": { "items": ["レガシーコード", "採用難", "運用コスト高"] },
+      "opportunities": { "items": ["市場拡大", "AI活用", "新規セグメント"] },
+      "threats": { "items": ["競合強化", "規制強化", "為替変動"] }
+    }
+  }
+}
+```
+
+#### heatmap（ヒートマップ）
+
+行×列の値をセルの濃さで表す。セルの塗りは `color` で指定した基準色（既定 `primary`）の alpha 階調で、値の大小は色相ではなく濃さで示す。`min`/`max` を明示しない場合はデータの最小・最大値に写像する。8×8 を超えると値ラベルが既定で省かれる（自動縮退）。単位は `unit`。
+
+```json
+{
+  "id": "slide-id",
+  "layout": "content",
+  "content": {
+    "title": "四半期別プロダクト成長率",
+    "heatmap": {
+      "rows": ["Product A", "Product B", "Product C", "Product D"],
+      "cols": ["Q1", "Q2", "Q3", "Q4"],
+      "color": "series2",
+      "unit": "%",
+      "values": [
+        [12, 18, 24, 30],
+        [8, 14, 22, 28],
+        [20, 26, 32, 38],
+        [4, 10, 16, 22]
       ]
     }
   }

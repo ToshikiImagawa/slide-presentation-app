@@ -1,0 +1,45 @@
+/* ヒートマップのセルとラベル（#207）。DiagramCanvas 内で正規化座標 % で配置するため、
+   セル自体には座標を持たせず、backgroundColor と枠線のみここで定義する。 */
+
+.cell {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  color: var(--theme-text-heading);
+  font-family: var(--theme-font-body);
+}
+
+.value {
+  font-size: calc(var(--theme-font-size-body2) * 0.9);
+  font-weight: 500;
+  /* 濃い塗りの上でも読めるよう、周囲に淡い縁取りを付ける */
+  text-shadow: 0 0 4px var(--theme-background);
+}
+
+.rowLabel {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 8px;
+  font-size: var(--theme-font-size-body2);
+  color: var(--theme-text-body);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.colLabel {
+  position: absolute;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 4px;
+  font-size: var(--theme-font-size-body2);
+  color: var(--theme-text-body);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
