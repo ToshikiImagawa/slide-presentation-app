@@ -541,6 +541,37 @@ mermaidはd3/dagre/katex/cytoscape等の重い依存を持ち込むため、コ�
 }
 ```
 
+### UMLシーケンス図（#269）
+
+`content.sequenceDiagram` で描画する。構成図（#205）の `structureNode`/`structureEdge` とは意図的に別のデータ構造で、`lifelines`（ライフライン・列）の配列順がそのまま左から右への配置、`messages`（メッセージ・行）の配列順がそのまま時系列（上から下）になる（明示的な `row`/`col` は持たない）。
+
+`messages[].from`/`to` は `lifelines[].id` を参照する。同じ値を指定すると自己メッセージ（同一ライフライン上に戻る経路）になる。`type`（`sync`/`async`）で矢先の見た目が変わる（`sync`=塗り三角・省略時既定 / `async`=開いた矢羽根）。`activations` は活性区間（処理中を示す帯）で、`from`/`to` は `messages` 配列の添字（0始まり・inclusive）で指定する。
+
+```json
+{
+  "id": "slide-id",
+  "layout": "content",
+  "content": {
+    "title": "ログイン処理",
+    "sequenceDiagram": {
+      "lifelines": [
+        { "id": "user", "label": "User" },
+        { "id": "api", "label": "API" },
+        { "id": "db", "label": "DB" }
+      ],
+      "messages": [
+        { "from": "user", "to": "api", "label": "login()" },
+        { "from": "api", "to": "api", "label": "validate()" },
+        { "from": "api", "to": "db", "label": "query()", "type": "async" },
+        { "from": "db", "to": "api", "label": "result" },
+        { "from": "api", "to": "user", "label": "response" }
+      ],
+      "activations": [{ "lifeline": "api", "from": 0, "to": 4 }]
+    }
+  }
+}
+```
+
 ## two-column
 
 左右2カラムレイアウト。各カラムには以下を組み合わせて配置できる。

@@ -887,6 +887,25 @@ describe('SlideRenderer', () => {
     })
   })
 
+  // #269: UMLシーケンス図。ライフライン列・メッセージ行の配置詳細はSequenceDiagram.test.tsxで検証済みなので、
+  // ここでは SlideRenderer からの配線（フィールド→コンポーネント）と分岐優先順位のみを確認する
+  describe('contentスライド(UMLシーケンス図)', () => {
+    function renderContent(content: SlideData['content']) {
+      return renderWithTheme(<SlideRenderer slides={[{ id: 'test-sequence-diagram', layout: 'content', content: { title: 'タイトル', ...content } }]} />)
+    }
+
+    it('sequenceDiagramのライフラインラベルを描画する', () => {
+      const { getByText } = renderContent({ sequenceDiagram: { lifelines: [{ id: 'user', label: 'User' }] } })
+      expect(getByText('User')).not.toBeNull()
+    })
+
+    it('classDiagramとsequenceDiagramが同時にあってもclassDiagramが優先される（既存の優先順位パターンと同じ先勝ち）', () => {
+      const { getByText, queryByText } = renderContent({ classDiagram: { classes: [{ id: 'a', label: 'クラス' }] }, sequenceDiagram: { lifelines: [{ id: 'b', label: 'ライフライン' }] } })
+      expect(getByText('クラス')).not.toBeNull()
+      expect(queryByText('ライフライン')).toBeNull()
+    })
+  })
+
   // #206: プロセス図（フローチャート・スイムレーン・ガント）。配置・分岐合流等の詳細は各コンポーネントの単体テストで検証済みなので、
   // ここでは SlideRenderer からの配線（フィールド→コンポーネント）と分岐優先順位のみを確認する
   describe('contentスライド(プロセス図)', () => {
@@ -1023,6 +1042,7 @@ describe('SlideRenderer', () => {
       { name: 'serverDiagram', content: { serverDiagram: { zones: [{ title: 'ゾーン', nodes: [{ id: 'n', label: 'ノード' }] }] } }, fill: true },
       { name: 'orgChart', content: { orgChart: { nodes: [{ id: 'a', label: 'ノード' }] } }, fill: true },
       { name: 'classDiagram', content: { classDiagram: { classes: [{ id: 'a', label: 'クラス' }] } }, fill: true },
+      { name: 'sequenceDiagram', content: { sequenceDiagram: { lifelines: [{ id: 'a', label: 'ライフライン' }] } }, fill: true },
       { name: 'flowchart', content: { flowchart: { nodes: [{ id: 'a', label: 'ノード' }] } }, fill: true },
       { name: 'swimlane', content: { swimlane: { lanes: [{ title: 'レーン', nodes: [{ id: 'a', label: 'ノード' }] }] } }, fill: true },
       { name: 'gantt', content: { gantt: { tasks: [{ label: '工程', startCol: 0 }] } }, fill: true },

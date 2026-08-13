@@ -728,6 +728,28 @@
           "caption": "Renders Mermaid text-diagram syntax (mermaid loads via dynamic import on first use)"
         }
       }
+    },
+    {
+      "id": "layout-content-sequence-diagram",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (sequenceDiagram)",
+        "sequenceDiagram": {
+          "lifelines": [
+            { "id": "user", "label": "User" },
+            { "id": "api", "label": "API" },
+            { "id": "db", "label": "DB" }
+          ],
+          "messages": [
+            { "from": "user", "to": "api", "label": "login()" },
+            { "from": "api", "to": "api", "label": "validate()" },
+            { "from": "api", "to": "db", "label": "query()", "type": "async" },
+            { "from": "db", "to": "api", "label": "result" },
+            { "from": "api", "to": "user", "label": "response" }
+          ],
+          "activations": [{ "lifeline": "api", "from": 0, "to": 4 }]
+        }
+      }
     }
   ]
 }

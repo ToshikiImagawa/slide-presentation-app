@@ -20,7 +20,7 @@
       }
     },
     "content": {
-      "description": "コンテンツ表示用レイアウト。子要素のフィールドで描画が決まる。優先順位: steps→Timeline / dateTimeline→日付付きマイルストーンタイムライン / checklist→チェックリスト / toc→目次 / tiles→FeatureTileGrid / images→画像スライド / svg→インラインSVG / textDiagram→テキスト図法（Mermaid） / chart→チャート / table→表 / compare→比較 / flow→横フロー / hierarchyDiagram→階層構成図 / serverDiagram→サーバ/クラウド構成図 / orgChart→組織図 / classDiagram→UMLクラス図 / flowchart→フローチャート / swimlane→スイムレーン / gantt→ガント / twoByTwo→2×2マトリクス / funnel→ファネル / swot→SWOT / heatmap→ヒートマップ / component→カスタム。いずれも無指定の場合に限り body/items（プレーン本文）を描画する（#193・#200・#199・#195・#205・#206・#207・#203）",
+      "description": "コンテンツ表示用レイアウト。子要素のフィールドで描画が決まる。優先順位: steps→Timeline / dateTimeline→日付付きマイルストーンタイムライン / checklist→チェックリスト / toc→目次 / tiles→FeatureTileGrid / images→画像スライド / svg→インラインSVG / textDiagram→テキスト図法（Mermaid） / chart→チャート / table→表 / compare→比較 / flow→横フロー / hierarchyDiagram→階層構成図 / serverDiagram→サーバ/クラウド構成図 / orgChart→組織図 / classDiagram→UMLクラス図 / sequenceDiagram→UMLシーケンス図 / flowchart→フローチャート / swimlane→スイムレーン / gantt→ガント / twoByTwo→2×2マトリクス / funnel→ファネル / swot→SWOT / heatmap→ヒートマップ / component→カスタム。いずれも無指定の場合に限り body/items（プレーン本文）を描画する（#193・#200・#199・#195・#205・#206・#207・#203・#269）",
       "contentFields": {
         "title": { "type": "string" },
         "steps": {
@@ -129,6 +129,7 @@
         "serverDiagram": { "type": "object", "ref": "serverDiagram" },
         "orgChart": { "type": "object", "ref": "orgChart" },
         "classDiagram": { "type": "object", "ref": "classDiagram" },
+        "sequenceDiagram": { "type": "object", "ref": "sequenceDiagram" },
         "flowchart": { "type": "object", "ref": "flowchart" },
         "swimlane": { "type": "object", "ref": "swimlane" },
         "gantt": { "type": "object", "ref": "gantt" },
@@ -140,13 +141,13 @@
         "footer": { "type": "string" },
         "body": {
           "type": "string",
-          "description": "プレーン本文の段落（改行は\\n）。steps/dateTimeline/checklist/toc/tiles/images/svg/textDiagram/chart/table/compare/flow/hierarchyDiagram/serverDiagram/orgChart/classDiagram/flowchart/swimlane/gantt/twoByTwo/funnel/swot/heatmap/componentのいずれも無指定の場合のみ描画される。itemsと併用可。段落配列が必要な場合はtwo-columnのparagraphsを使う（1カラム全幅の自由記述文はbody、カラム構成用の複数ブロックはparagraphsという役割分担）"
+          "description": "プレーン本文の段落（改行は\\n）。steps/dateTimeline/checklist/toc/tiles/images/svg/textDiagram/chart/table/compare/flow/hierarchyDiagram/serverDiagram/orgChart/classDiagram/sequenceDiagram/flowchart/swimlane/gantt/twoByTwo/funnel/swot/heatmap/componentのいずれも無指定の場合のみ描画される。itemsと併用可。段落配列が必要な場合はtwo-columnのparagraphsを使う（1カラム全幅の自由記述文はbody、カラム構成用の複数ブロックはparagraphsという役割分担）"
         },
         "items": {
           "type": "array",
           "ref": "contentItem",
           "maxItems": 7,
-          "description": "箇条書き（ネスト可）。steps/dateTimeline/checklist/toc/tiles/images/svg/textDiagram/chart/table/compare/flow/hierarchyDiagram/serverDiagram/orgChart/classDiagram/flowchart/swimlane/gantt/twoByTwo/funnel/swot/heatmap/componentのいずれも無指定の場合のみ描画される。bodyと併用可。推奨上限7件（超えると密度過多として自動修正対象になる）"
+          "description": "箇条書き（ネスト可）。steps/dateTimeline/checklist/toc/tiles/images/svg/textDiagram/chart/table/compare/flow/hierarchyDiagram/serverDiagram/orgChart/classDiagram/sequenceDiagram/flowchart/swimlane/gantt/twoByTwo/funnel/swot/heatmap/componentのいずれも無指定の場合のみ描画される。bodyと併用可。推奨上限7件（超えると密度過多として自動修正対象になる）"
         }
       }
     },
@@ -364,6 +365,40 @@
     "description": "content.classDiagramのUMLクラス図指定（#205）。属性・メソッドを持つクラスボックスと関係線。classes[].row/colを指定すると明示配置、省略時は決定的な自動グリッド配置になる",
     "classes": { "type": "array", "ref": "structureNode", "maxItems": 8, "description": "推奨上限8クラス" },
     "relations": { "type": "array", "ref": "structureEdge", "maxItems": 10, "description": "推奨上限10本" }
+  },
+  "sequenceDiagram": {
+    "description": "content.sequenceDiagramのUMLシーケンス図指定（#269）。lifelinesの配列順が左から右への列位置、messagesの配列順が上から下への時系列になる（構成図のstructureNode/structureEdgeとは意図的に別のデータ構造。列×時間のグリッド上の有向イベント列のため）。配置は配列順から決定的に導出し、乱数・力学モデルは使わない",
+    "lifelines": {
+      "type": "array",
+      "maxItems": 6,
+      "description": "推奨上限6本。配列順が左から右への列位置になる",
+      "itemFields": {
+        "id": { "type": "string", "description": "messages[].from/to・activations[].lifelineから参照する識別子" },
+        "label": { "type": "string" },
+        "color": { "type": "string", "stringConstraint": "colorToken", "description": "省略時はライフラインの並び順にseries1〜series6を巡回して割り当てる" }
+      }
+    },
+    "messages": {
+      "type": "array",
+      "maxItems": 12,
+      "description": "推奨上限12本。配列順が時系列（上から下）になる",
+      "itemFields": {
+        "from": { "type": "string", "description": "送信元ライフラインのid" },
+        "to": { "type": "string", "description": "送信先ライフラインのid。fromと同じ値を指定すると自己メッセージとして描画する" },
+        "label": { "type": "string" },
+        "type": { "type": "string", "enum": ["sync", "async"], "description": "sync=塗り三角の矢先（省略時既定） / async=開いた矢羽根の矢先" }
+      }
+    },
+    "activations": {
+      "type": "array",
+      "maxItems": 8,
+      "description": "活性区間（ライフライン上の処理中を示す帯）。推奨上限8件",
+      "itemFields": {
+        "lifeline": { "type": "string", "description": "対象ライフラインのid" },
+        "from": { "type": "integer", "minimum": 0, "description": "活性区間の開始（messagesの添字・0始まり）" },
+        "to": { "type": "integer", "minimum": 0, "description": "活性区間の終了（messagesの添字・0始まり・inclusive）" }
+      }
+    }
   },
   "flowchart": {
     "description": "content.flowchartのフローチャート指定（#206）。開始/処理/判断/終了のノード種別（structureNode.shape）と、分岐・合流を表現できる。分岐（1つのノードから複数のedges）・合流（複数のedgesが1つのノードへ集まる）はいずれも通常のedgesを複数指定するだけで表現し、専用のデータ構造は持たない。エッジは直交経路でノード境界に接する（#202のコネクタを再利用）。nodes[].row/colを指定すると明示配置、省略時は決定的な自動グリッド配置（classDiagramと同じcomputeGridLayout）になる",

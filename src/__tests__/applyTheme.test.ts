@@ -1189,6 +1189,64 @@ describe('getThemeWarnings', () => {
     })
   })
 
+  // #269: UMLシーケンス図。messages[].from/to・activations[].lifelineの存在しないライフラインid参照と、
+  // activations[].from/toの範囲外・非整数を検出する（from/toの範囲検査は#279と同じpushRangeWarningを再利用）
+  describe('content.sequenceDiagram / component:{name:"SequenceDiagram"}（#269）', () => {
+    it('messages[].from が存在しないライフラインidを参照している場合を警告する', () => {
+      const warnings = getThemeWarnings(undefined, [{ id: 's1', layout: 'content', content: { sequenceDiagram: { lifelines: [{ id: 'a' }], messages: [{ from: 'ghost', to: 'a' }] } } }])
+      expect(warnings.some((w) => w.includes('slides[0].content.sequenceDiagram.messages[0].from') && w.includes('"ghost"'))).toBe(true)
+    })
+
+    it('messages[].to が存在しないライフラインidを参照している場合を警告する', () => {
+      const warnings = getThemeWarnings(undefined, [{ id: 's1', layout: 'content', content: { sequenceDiagram: { lifelines: [{ id: 'a' }], messages: [{ from: 'a', to: 'ghost' }] } } }])
+      expect(warnings.some((w) => w.includes('slides[0].content.sequenceDiagram.messages[0].to') && w.includes('"ghost"'))).toBe(true)
+    })
+
+    it('activations[].lifeline が存在しないライフラインidを参照している場合を警告する', () => {
+      const warnings = getThemeWarnings(undefined, [{ id: 's1', layout: 'content', content: { sequenceDiagram: { lifelines: [{ id: 'a' }], messages: [{ from: 'a', to: 'a' }], activations: [{ lifeline: 'ghost', from: 0, to: 0 }] } } }])
+      expect(warnings.some((w) => w.includes('slides[0].content.sequenceDiagram.activations[0].lifeline') && w.includes('"ghost"'))).toBe(true)
+    })
+
+    it('activations[].from/to が範囲外・非整数の場合を警告する', () => {
+      const warnings = getThemeWarnings(undefined, [
+        {
+          id: 's1',
+          layout: 'content',
+          content: {
+            sequenceDiagram: { lifelines: [{ id: 'a' }], messages: [{ from: 'a', to: 'a' }], activations: [{ lifeline: 'a', from: -1, to: 0.5 }] },
+          },
+        },
+      ])
+      expect(warnings.some((w) => w.includes('slides[0].content.sequenceDiagram.activations[0].from') && w.includes('-1'))).toBe(true)
+      expect(warnings.some((w) => w.includes('slides[0].content.sequenceDiagram.activations[0].to') && w.includes('0.5'))).toBe(true)
+    })
+
+    it('妥当な指定では警告しない', () => {
+      const warnings = getThemeWarnings(undefined, [
+        {
+          id: 's1',
+          layout: 'content',
+          content: {
+            sequenceDiagram: {
+              lifelines: [{ id: 'a' }, { id: 'b' }],
+              messages: [
+                { from: 'a', to: 'b' },
+                { from: 'b', to: 'a' },
+              ],
+              activations: [{ lifeline: 'b', from: 0, to: 1 }],
+            },
+          },
+        },
+      ])
+      expect(warnings).toEqual([])
+    })
+
+    it('component: { name: "SequenceDiagram" } 経由でも検出する', () => {
+      const warnings = getThemeWarnings(undefined, [{ id: 's1', layout: 'custom', content: { component: { name: 'SequenceDiagram', props: { lifelines: [{ id: 'a' }], messages: [{ from: 'a', to: 'ghost' }] } } } }])
+      expect(warnings.some((w) => w.includes('slides[0].content.component.props.messages[0].to'))).toBe(true)
+    })
+  })
+
   // #187: heading/body/code がオブジェクト形式の場合の weight 検証
   it('文字列指定（後方互換）では weight 検証をスキップし警告しない', () => {
     expect(getThemeWarnings({ fonts: { heading: 'Poppins' } })).toEqual([])

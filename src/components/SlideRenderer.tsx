@@ -27,6 +27,7 @@ import { Table, type TableSpec } from './table'
 import { Compare, type CompareSpec } from './compare'
 import { Flow, type FlowStep } from './flow'
 import { ClassDiagram, type ClassDiagramSpec, HierarchyDiagram, type HierarchyDiagramSpec, OrgChart, type OrgChartSpec, ServerDiagram, type ServerDiagramSpec } from './structureDiagram'
+import { SequenceDiagram, type SequenceDiagramSpec } from './sequenceDiagram'
 import { Flowchart, type FlowchartSpec, Gantt, type GanttSpec, Swimlane, type SwimlaneSpec } from './processDiagram'
 import { Funnel, type FunnelSpec, Heatmap, type HeatmapSpec, Swot, type SwotSpec, TwoByTwoMatrix, type TwoByTwoMatrixSpec } from './analysisDiagram'
 import { AccentText } from './AccentText'
@@ -471,6 +472,13 @@ const CONTENT_BRANCHES: ContentBranch[] = [
     match: (content) => Boolean(content.classDiagram) && typeof content.classDiagram === 'object',
     fill: () => componentFillsContentArea('ClassDiagram'),
     render: (content) => <ClassDiagram {...(content.classDiagram as ClassDiagramSpec)} />,
+  },
+  // UMLシーケンス図（#269）。構成図とはノード/エッジのデータ構造を共有しない（列×時間のグリッド上の
+  // 有向イベント列という別のデータモデル）が、同じDiagramCanvasに載るので埋める
+  {
+    match: (content) => Boolean(content.sequenceDiagram) && typeof content.sequenceDiagram === 'object',
+    fill: () => componentFillsContentArea('SequenceDiagram'),
+    render: (content) => <SequenceDiagram {...(content.sequenceDiagram as SequenceDiagramSpec)} />,
   },
   // プロセス図（#206）もいずれも Diagram（DiagramCanvas）に載るので埋める。ノード/エッジは構成図と同じ structureNode/structureEdge を再利用する
   { match: (content) => Boolean(content.flowchart) && typeof content.flowchart === 'object', fill: () => componentFillsContentArea('Flowchart'), render: (content) => <Flowchart {...(content.flowchart as FlowchartSpec)} /> },
