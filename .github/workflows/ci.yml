@@ -121,7 +121,7 @@ jobs:
   visual-check:
     name: Visual Check (reference deck)
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -138,14 +138,8 @@ jobs:
       # e2e ジョブと同様に WebKit を Linux で実行できる（#209）
       - name: Install Playwright WebKit
         run: npx playwright install --with-deps webkit
-      # #297 の再発確認用: Linux CI 上で 10 回連続実行して警告 0 件が続くことを確認する一時的なループ。
-      # 確認後にこのループを外す（恒久化しない）
-      - name: Inspect reference deck (x10, #297 flake check)
-        run: |
-          for i in $(seq 1 10); do
-            echo "=== run $i ==="
-            npm run reference-deck:inspect
-          done
+      - name: Inspect reference deck
+        run: npm run reference-deck:inspect
 
   build:
     name: Build (frontend)
