@@ -910,8 +910,34 @@ describe('getThemeWarnings', () => {
       expect(warnings.some((w) => w.includes('slides[0].content.chart') && w.includes('seriez1'))).toBe(true)
     })
 
+    it('KPI 行の items[].color の未知トークンを警告する（#290）', () => {
+      const warnings = getThemeWarnings(undefined, [{ id: 's1', layout: 'content', content: { chart: { type: 'kpi', items: [{ value: 100, label: 'MAU', color: 'seriez1' }] } } }])
+      expect(warnings.some((w) => w.includes('slides[0].content.chart') && w.includes('seriez1'))).toBe(true)
+    })
+
+    it('KPI 行の items[].deltaStatus の未知トークンを警告する（#290）', () => {
+      const warnings = getThemeWarnings(undefined, [{ id: 's1', layout: 'content', content: { chart: { type: 'kpi', items: [{ value: 100, label: 'MAU', delta: '+10%', deltaStatus: 'succes' }] } } }])
+      expect(warnings.some((w) => w.includes('slides[0].content.chart') && w.includes('succes'))).toBe(true)
+    })
+
+    it('単一 KPI の deltaStatus の未知トークンを警告する（#290）', () => {
+      const warnings = getThemeWarnings(undefined, [{ id: 's1', layout: 'content', content: { chart: { type: 'kpi', value: 100, label: 'MAU', delta: '+10%', deltaStatus: 'dangeer' } } }])
+      expect(warnings.some((w) => w.includes('slides[0].content.chart') && w.includes('dangeer'))).toBe(true)
+    })
+
     it('妥当な chart 指定では警告しない', () => {
       const warnings = getThemeWarnings(undefined, [{ id: 's1', layout: 'content', content: { chart: { type: 'bar', categories: ['A', 'B'], series: [{ values: [1, 2], color: 'series2' }] } } }])
+      expect(warnings.filter((w) => w.includes('content.chart'))).toEqual([])
+    })
+
+    it('妥当な KPI 行の items[].color / items[].deltaStatus では警告しない（#290）', () => {
+      const warnings = getThemeWarnings(undefined, [
+        {
+          id: 's1',
+          layout: 'content',
+          content: { chart: { type: 'kpi', items: [{ value: 100, label: 'MAU', color: 'series1', delta: '+10%', deltaStatus: 'success' }] } },
+        },
+      ])
       expect(warnings.filter((w) => w.includes('content.chart'))).toEqual([])
     })
 

@@ -856,9 +856,11 @@ function getGanttRangeWarnings(basePath: string, axis: string[] | undefined, tas
 }
 
 /** ChartSpec の色トークン参照が未知でないか検査する（#241）。seriesColor 経由だと未知トークンが `primary` へ黙って
- * フォールバックし判定できないため、THEME_COLOR_TOKENS を直接照合する */
+ * フォールバックし判定できないため、THEME_COLOR_TOKENS を直接照合する。
+ * kpi 行（items[]）の color/deltaStatus と、単体 kpi の deltaStatus（KpiItemSpec 交差型でトップレベルにある）も対象にする（#290）。 */
 function getChartColorTokenIssues(spec: ChartSpec): string[] {
-  const colors: unknown[] = [spec.color, ...asArray(spec.series).map((entry) => entry?.color)]
+  const items = asArray(spec.items)
+  const colors: unknown[] = [spec.color, spec.deltaStatus, ...asArray(spec.series).map((entry) => entry?.color), ...items.map((item) => item?.color), ...items.map((item) => item?.deltaStatus)]
   return colors.filter((color): color is string => typeof color === 'string' && !THEME_COLOR_TOKENS[color]).map((color) => `未知の色トークン名です: "${color}"`)
 }
 
