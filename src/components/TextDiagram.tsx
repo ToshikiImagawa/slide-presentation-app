@@ -17,10 +17,10 @@ type RenderState = { status: 'loading' } | { status: 'done'; svg: string } | { s
  * ローカルファイルとして提供されるため、テキスト図法を含まないデッキの起動時間・オフライン動作には影響しない。
  *
  * mermaid.render は非同期（Promise<{svg}>）。構文が不正な場合はrejectするので、描画スキップ（プレースホルダ表示）
- * のみ行い console.warn は使わない（#203の受け入れ基準）。InlineSvg（同じ#203）と異なり getThemeWarnings
- * （applyTheme.ts）への警告集約は行わない: そちらはテーマ適用時に同期的に全スライドを検査する経路で、
- * mermaid構文の妥当性を判定するには mermaid 本体（動的import対象そのもの）が必要になり、検証のためだけに
- * 常時読み込む形になると遅延ロードの意図が崩れる。構文ミスは表示中のプレースホルダで気づける。
+ * のみ行い console.warn は使わない（#203の受け入れ基準）。getThemeWarnings（getTextDiagramWarnings・applyTheme.ts）
+ * は source が空・未指定という静的に判定可能な誤りだけを検出する。Mermaid構文そのものの妥当性判定には
+ * mermaid 本体（動的import対象そのもの）が必要で、検証のためだけに常時読み込むと遅延ロードの意図が崩れるため、
+ * 構文ミス自体は getThemeWarnings の対象外とし、表示中のプレースホルダで気づける形にする。
  */
 export function TextDiagram({ source, caption }: TextDiagramSpec) {
   const renderId = useId().replace(/:/g, '-')

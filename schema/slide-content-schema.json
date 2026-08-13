@@ -195,7 +195,7 @@
     "caption": { "type": "string", "description": "SVGの下に表示するキャプション（<br/>等HTMLタグ利用可）" }
   },
   "textDiagram": {
-    "description": "content.textDiagramのテキスト図法指定（Mermaid・#203）。mermaidは重い依存（d3/dagre/katex/cytoscape等）を持ち込むため、コアの初期バンドルには含めず利用時に動的import（別チャンク）で読み込む（TextDiagram.tsx）。構文が不正な場合・チャンク読み込み前は破線プレースホルダになる（console.warnは使わない）",
+    "description": "content.textDiagramのテキスト図法指定（Mermaid・#203）。mermaidは重い依存（d3/dagre/katex/cytoscape等）を持ち込むため、コアの初期バンドルには含めず利用時に動的import（別チャンク）で読み込む（TextDiagram.tsx）。sourceが空・未指定な場合は利用者への警告になる（getThemeWarnings経路）。Mermaid構文自体が不正な場合・チャンク読み込み前は破線プレースホルダになる（いずれもconsole.warnは使わない）",
     "source": { "type": "string", "description": "Mermaid記法のダイアグラム定義（flowchart/sequenceDiagram等）。mermaid公式の記法をそのまま書く" },
     "caption": { "type": "string", "description": "図の下に表示するキャプション（<br/>等HTMLタグ利用可）" }
   },

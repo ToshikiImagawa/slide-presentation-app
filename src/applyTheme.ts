@@ -10,6 +10,7 @@ import type { ChartSpec } from './components/chart/types'
 import type { DiagramProps } from './components/diagram/Diagram'
 import type { SvgSpec } from './components/InlineSvg'
 import { sanitizeSvgMarkup } from './components/inlineSvg/sanitizeSvg'
+import type { TextDiagramSpec } from './components/TextDiagram'
 import { computeGridDimensions } from './components/structureDiagram/gridLayout'
 import { clampAxisIndex } from './components/structureDiagram/packAxis'
 import type { StructureNode } from './components/structureDiagram/types'
@@ -755,6 +756,7 @@ export function getThemeWarnings(theme?: ThemeData, slides?: SlideData[]): strin
   warnings.push(...getDiagramWarnings(slides))
   warnings.push(...getChartWarnings(slides))
   warnings.push(...getSvgWarnings(slides))
+  warnings.push(...getTextDiagramWarnings(slides))
 
   return warnings
 }
@@ -961,6 +963,24 @@ function getSvgWarnings(slides?: SlideData[]): string[] {
         warnings.push(`slides[${index}].${path}.markup: 有効なSVG（<svg>...</svg>）として解析できません（描画をスキップします）`)
       } else if (sanitized.removed.length > 0) {
         warnings.push(`slides[${index}].${path}.markup: 安全性のため次を除去しました: ${sanitized.removed.join(', ')}`)
+      }
+    }
+  }
+  return warnings
+}
+
+/**
+ * content.textDiagram / component:{name:"TextDiagram"} のsourceが空・未指定でないかを検査する（#203）。
+ * mermaid本体は動的importの遅延ロード対象のため、Mermaid構文そのものの妥当性はここでは検証できない
+ * （検証のためだけに常時読み込むと遅延ロードの意図が崩れる。TextDiagram.tsx参照）。静的に判定可能な
+ * 「空/未指定」の誤りだけをここで検出し、構文エラー自体は描画時のプレースホルダ表示に委ねる。
+ */
+function getTextDiagramWarnings(slides?: SlideData[]): string[] {
+  const warnings: string[] = []
+  for (const [index, slide] of (slides ?? []).entries()) {
+    for (const { path, spec } of collectDiagramSpecs<TextDiagramSpec>(slide.content, 'textDiagram', 'TextDiagram')) {
+      if (typeof spec.source !== 'string' || spec.source.trim() === '') {
+        warnings.push(`slides[${index}].${path}.source: Mermaid記法のダイアグラム定義が指定されていません（描画をスキップします）`)
       }
     }
   }
