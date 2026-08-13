@@ -67,6 +67,9 @@ type FillMetrics = {
 /** 表示中スライドの本文領域と「埋める要素」を実測し、共有の見た目検査（window.__VISUAL_CHECK__）も併せて取る */
 async function measureFill(page: Page): Promise<FillMetrics> {
   return page.evaluate(async () => {
+    // web フォント読み込み前に測ると、フォールバックフォントの字形でわずかに大きく計測されセーフエリア侵入の
+    // 誤検知になる（inspect-reference-deck.mjs も同じ理由で待っている）
+    await document.fonts.ready
     const section = document.querySelector<HTMLElement>('section.present')
     if (!section) throw new Error('section.present が見つかりません')
     const area = section.querySelector<HTMLElement>('.content-area-fill')
@@ -76,22 +79,41 @@ async function measureFill(page: Page): Promise<FillMetrics> {
     // screenshot モード限定で生える共有の見た目検査（src/visualChecks.ts）。参照の仕方は同ファイルの公開口と揃える
     const bridge = window as unknown as {
       __VISUAL_CHECK__?: (section: HTMLElement) => string[]
-      __VISUAL_CHECK_WAIT_IMAGES__?: (section: HTMLElement) => Promise<void>
-      __VISUAL_CHECK_WAIT_ANIMATIONS__?: (section: HTMLElement) => Promise<void>
+      __VISUAL_CHECK_WAIT_IMAGES__?: (section: HTMLElement) => Promise<{ timedOut: boolean }>
+      __VISUAL_CHECK_WAIT_LAYOUT__?: (section: HTMLElement) => Promise<{ timedOut: boolean }>
+      __VISUAL_CHECK_SETTLE_CLASS__?: string
     }
-    // 画像の読み込み確定と fadeInUp の完了を待ってから実測する（固定の待ち時間だと環境の速さに依存する）
+    // 画像の読み込み確定を待ってから実測する（固定の待ち時間だと環境の速さに依存する）
     if (bridge.__VISUAL_CHECK_WAIT_IMAGES__) await bridge.__VISUAL_CHECK_WAIT_IMAGES__(section)
-    if (bridge.__VISUAL_CHECK_WAIT_ANIMATIONS__) await bridge.__VISUAL_CHECK_WAIT_ANIMATIONS__(section)
+    // Reveal.js 自身のレイアウト・スケール再計算が収束する前に測ると数px ずれる（アニメーションとは無関係。
+    // CPU 負荷の高い並列実行で発生しうる・#297）
+    if (bridge.__VISUAL_CHECK_WAIT_LAYOUT__) await bridge.__VISUAL_CHECK_WAIT_LAYOUT__(section)
 
-    const areaRect = area.getBoundingClientRect()
-    const itemRect = item.getBoundingClientRect()
+    // fadeInUp 等の entrance animation は待たず、visualChecks.ts と同じ共有クラスで最終状態へ強制してから
+    // getBoundingClientRect を読む（待つ実装は実行環境の速さに依存して誤検知するため・#297）。
+    // 読み取り中に例外が起きても解除されるよう try/finally で括る（bridge.__VISUAL_CHECK__ は
+    // 内部で同じクラスを自前に付与・解除するため、ここでは外している）
+    const settleClass = bridge.__VISUAL_CHECK_SETTLE_CLASS__
+    let areaRect: DOMRect
+    let itemRect: DOMRect
+    let imageBottoms: number[]
+    if (settleClass) section.classList.add(settleClass)
+    try {
+      areaRect = area.getBoundingClientRect()
+      itemRect = item.getBoundingClientRect()
+      imageBottoms = Array.from(section.querySelectorAll('img')).map((img) => img.getBoundingClientRect().bottom)
+    } finally {
+      if (settleClass) section.classList.remove(settleClass)
+    }
+    const warnings = bridge.__VISUAL_CHECK__?.(section) ?? []
+
     return {
       areaHeight: areaRect.height,
       areaBottom: areaRect.bottom,
       itemHeight: itemRect.height,
       itemBottom: itemRect.bottom,
-      imageBottoms: Array.from(section.querySelectorAll('img')).map((img) => img.getBoundingClientRect().bottom),
-      warnings: bridge.__VISUAL_CHECK__?.(section) ?? [],
+      imageBottoms,
+      warnings,
     }
   })
 }

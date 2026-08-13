@@ -27,6 +27,11 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const URL = 'http://localhost:1420'
 const VIEWPORT_KEY = 'reference-deck'
 
+/** ログ表示用のスライド識別ラベル（`locale/00-id`）。formatResult() と診断ログの双方が使う（書き写さない） */
+function slideLabel(locale, index, id) {
+  return `${locale}/${String(index).padStart(2, '0')}-${id}`
+}
+
 /** 1ロケール分、デッキを開いてから hash ナビで全スライドを順に検査する */
 async function inspectLocale(browser, locale, vp) {
   const slides = fixtureSlides(locale.lang)
@@ -45,21 +50,30 @@ async function inspectLocale(browser, locale, vp) {
       await page.evaluate((h) => (window.location.hash = h), `#/${index}`)
       await page.evaluate(() => document.fonts.ready)
 
-      const warnings = await page.evaluate(async () => {
+      const { warnings, imagesTimedOut, layoutTimedOut } = await page.evaluate(async () => {
         const section = document.querySelector('section.present')
         const check = window.__VISUAL_CHECK__
         const waitImages = window.__VISUAL_CHECK_WAIT_IMAGES__
-        const waitAnimations = window.__VISUAL_CHECK_WAIT_ANIMATIONS__
-        if (!section) return ['section.present が見つかりません']
-        if (!check || !waitImages || !waitAnimations) return ['window.__VISUAL_CHECK__ が公開されていません（screenshot モードのビルドを確認してください）']
-        // 画像の読み込み確定前は FallbackImage が <img> を display:none にするため、確定を待ってから実測する
-        await waitImages(section)
-        // fadeInUp 等の完了前に実測すると途中の座標を誤検知する（translateY 分がセーフエリア侵入として出る）。
-        // 固定の待ち時間だと実行環境が遅くなるたびに破綻するため、アニメーションの完了そのものを待つ
-        // （待ちロジックはアプリ本体の useVisualCheckWarnings と共有する・src/visualChecks.ts）
-        await waitAnimations(section)
-        return check(section)
+        const waitLayout = window.__VISUAL_CHECK_WAIT_LAYOUT__
+        if (!section) return { warnings: ['section.present が見つかりません'], imagesTimedOut: false, layoutTimedOut: false }
+        if (!check || !waitImages || !waitLayout) return { warnings: ['window.__VISUAL_CHECK__ が公開されていません（screenshot モードのビルドを確認してください）'], imagesTimedOut: false, layoutTimedOut: false }
+        // 画像の読み込み確定前は FallbackImage が <img> を display:none にするため、確定を待ってから実測する。
+        // timedOut は画像読み込みが打ち切られたことを示す診断情報（黙って起きない・#297）
+        const { timedOut: imagesTimedOut } = await waitImages(section)
+        // Reveal.js 自身のレイアウト・スケール再計算が収束する前に測ると .slide-title が数px ずれて
+        // セーフエリア侵入と誤検知される（CPU 負荷の高い CI で発生。fadeInUp とは無関係・#297）
+        const { timedOut: layoutTimedOut } = await waitLayout(section)
+        // fadeInUp 等のentrance animationは待たない。check() が実測直前に最終状態へ強制するため、
+        // 実行環境の速さに実測結果が左右されない（#297。待ちロジックは削除済み・アプリ本体の
+        // useVisualCheckWarnings と同じ方針を共有する・src/visualChecks.ts）
+        return { warnings: check(section), imagesTimedOut, layoutTimedOut }
       })
+      if (imagesTimedOut) {
+        console.warn(`[inspect] ${slideLabel(locale.dir, index, slide.id)}: 画像の読み込み確定待ちがタイムアウトしました。実測結果が不正確な可能性があります`)
+      }
+      if (layoutTimedOut) {
+        console.warn(`[inspect] ${slideLabel(locale.dir, index, slide.id)}: レイアウトの収束待ちがタイムアウトしました。実測結果が不正確な可能性があります`)
+      }
       results.push({ locale: locale.dir, index, id: slide.id, warnings })
     }
   } finally {
@@ -69,7 +83,7 @@ async function inspectLocale(browser, locale, vp) {
 }
 
 function formatResult(result) {
-  const label = `${result.locale}/${String(result.index).padStart(2, '0')}-${result.id}`
+  const label = slideLabel(result.locale, result.index, result.id)
   if (result.warnings.length === 0) return `  ✅ ${label}`
   return [`  ❌ ${label}`, ...result.warnings.map((w) => `      - ${w}`)].join('\n')
 }

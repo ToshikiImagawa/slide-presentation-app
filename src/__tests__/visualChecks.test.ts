@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
-import { getVisualCheckWarnings, waitForAnimationsToSettle, waitForImagesToSettle } from '../visualChecks'
+import { describe, expect, it, vi } from 'vitest'
+import { getVisualCheckWarnings, waitForImagesToSettle, waitForLayoutToSettle } from '../visualChecks'
 
 /** テスト用の DOMRect を要素へ固定する（jsdom はレイアウトを計算しないため実測値を明示的に与える） */
 function setRect(el: HTMLElement, r: { left: number; top: number; width: number; height: number }): void {
@@ -158,89 +158,136 @@ describe('getVisualCheckWarnings（#209）', () => {
     const warnings = getVisualCheckWarnings(section)
     expect(warnings.some((w) => w.includes('装飾との重なり'))).toBe(false)
   })
+
+  // #297: fadeInUp の途中（translateY 分だけずれた座標）を実測してしまう誤検知の再発防止。
+  // 「完了を待つ」実装は実行環境の速さに依存して4回破綻したため、待たずに最終状態を強制する方式にした
+  it('実測の間だけアニメーション最終状態固定用クラスを付与し、完了後は必ず外す', () => {
+    const { section, body } = buildSection()
+    let hadClassDuringMeasure = false
+    const originalGetBoundingClientRect = body.getBoundingClientRect.bind(body)
+    body.getBoundingClientRect = () => {
+      hadClassDuringMeasure = section.classList.contains('visual-check-settling')
+      return originalGetBoundingClientRect()
+    }
+
+    getVisualCheckWarnings(section)
+
+    expect(hadClassDuringMeasure).toBe(true)
+    expect(section.classList.contains('visual-check-settling')).toBe(false)
+  })
 })
 
-describe('waitForImagesToSettle（#209）', () => {
-  it('img が無ければ即座に解決する', async () => {
+describe('waitForImagesToSettle（#209/#297）', () => {
+  it('img が無ければ即座に timedOut: false で解決する', async () => {
     const section = document.createElement('section')
-    await expect(waitForImagesToSettle(section)).resolves.toBeUndefined()
+    await expect(waitForImagesToSettle(section)).resolves.toEqual({ timedOut: false })
   })
 
-  it('読み込み確定済み（complete）の img は待たずに解決する', async () => {
+  it('読み込み確定済み（complete）の img は待たずに timedOut: false で解決する', async () => {
     const section = document.createElement('section')
     const img = document.createElement('img')
     Object.defineProperty(img, 'complete', { value: true, configurable: true })
     section.appendChild(img)
-    await expect(waitForImagesToSettle(section)).resolves.toBeUndefined()
+    await expect(waitForImagesToSettle(section)).resolves.toEqual({ timedOut: false })
   })
 
-  it('読み込み未確定の img は load/error イベント発火まで解決を待つ', async () => {
+  it('読み込み未確定の img は load/error イベント発火まで解決を待ち、timedOut: false で解決する', async () => {
     const section = document.createElement('section')
     const img = document.createElement('img')
     Object.defineProperty(img, 'complete', { value: false, configurable: true })
     section.appendChild(img)
 
-    let resolved = false
-    waitForImagesToSettle(section).then(() => {
-      resolved = true
+    let resolved: { timedOut: boolean } | undefined
+    waitForImagesToSettle(section).then((result) => {
+      resolved = result
     })
     await Promise.resolve()
-    expect(resolved).toBe(false)
+    expect(resolved).toBeUndefined()
 
     img.dispatchEvent(new Event('load'))
     await new Promise((r) => setTimeout(r, 0))
-    expect(resolved).toBe(true)
+    expect(resolved).toEqual({ timedOut: false })
+  })
+
+  // 打ち切りが起きたかどうかを呼び出し元（CIログ・コンソール）が判別できることを保証する（#297）
+  it('タイムアウトまで読み込みが確定しない場合は timedOut: true で解決する', async () => {
+    vi.useFakeTimers()
+    try {
+      const section = document.createElement('section')
+      const img = document.createElement('img')
+      Object.defineProperty(img, 'complete', { value: false, configurable: true })
+      section.appendChild(img)
+
+      const promise = waitForImagesToSettle(section)
+      await vi.advanceTimersByTimeAsync(2000)
+      await expect(promise).resolves.toEqual({ timedOut: true })
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
 
-describe('waitForAnimationsToSettle（#225）', () => {
-  /** getAnimations が返す Animation の代役（jsdom は Web Animations API を実装しないため）。
-   * finished は参照された時点で作る（本物と同じく、待ち手が現れてから初めて reject が観測される） */
-  function fakeAnimation(iterations: number, finished: () => Promise<unknown>) {
-    return {
-      effect: { getComputedTiming: () => ({ iterations }) },
-      get finished() {
-        return finished()
-      },
-    } as unknown as Animation
+describe('waitForLayoutToSettle（#297）', () => {
+  /** 呼ぶたびに配列の次の矩形を返し、尽きたら最後の矩形を返し続ける（収束後の安定を模す） */
+  function setSequentialRects(el: HTMLElement, rects: Array<{ left: number; top: number; width: number; height: number }>): void {
+    let index = 0
+    el.getBoundingClientRect = () => {
+      const r = rects[Math.min(index, rects.length - 1)]
+      index++
+      return { ...r, right: r.left + r.width, bottom: r.top + r.height, x: r.left, y: r.top, toJSON: () => r } as DOMRect
+    }
   }
 
-  function sectionWithAnimations(animations: Animation[]): HTMLElement {
+  it('矩形が最初から変化しなければ1フレームで timedOut: false になる', async () => {
     const section = document.createElement('section')
-    section.getAnimations = () => animations
-    return section
-  }
+    setSequentialRects(section, [{ left: 0, top: 0, width: 1280, height: 720 }])
+    await expect(waitForLayoutToSettle(section)).resolves.toEqual({ timedOut: false })
+  })
 
-  it('Web Animations API が無い環境では即座に解決する（実測を止めない）', async () => {
+  it('数フレーム変化した後に収束すれば timedOut: false になる（Reveal.js のレイアウト再計算の遅延を模す）', async () => {
+    const section = document.createElement('section')
+    setSequentialRects(section, [
+      { left: 0, top: 0, width: 1280, height: 720 },
+      { left: 5, top: 0, width: 1280, height: 720 },
+      { left: 10, top: 0, width: 1280, height: 720 },
+      { left: 10, top: 0, width: 1280, height: 720 },
+    ])
+    await expect(waitForLayoutToSettle(section)).resolves.toEqual({ timedOut: false })
+  })
+
+  // 収束せず打ち切った場合が判別できることを保証する（誤検知か実装の不具合かを切り分けるための診断情報・#297）
+  it('フレーム数の上限まで収束しない場合は timedOut: true になる', async () => {
+    const section = document.createElement('section')
+    let left = 0
+    section.getBoundingClientRect = () => {
+      left += 1
+      return { left, top: 0, width: 1280, height: 720, right: left + 1280, bottom: 720, x: left, y: 0, toJSON: () => ({}) } as DOMRect
+    }
+    await expect(waitForLayoutToSettle(section)).resolves.toEqual({ timedOut: true })
+  })
+
+  // 対象要素は global.css の entrance animation 選択子リストを書き写さず getAnimations() から動的に
+  // 求める（#297）。.slide-title に限らず、entrance animation を持つ要素なら等しく収束対象になることを確認する
+  it('entrance animation が付与された要素（getAnimations の effect.target）も収束対象に含める', async () => {
+    const section = document.createElement('section')
+    const title = document.createElement('h2')
+    title.className = 'slide-title'
+    section.appendChild(title)
+    section.getAnimations = () => [{ effect: { target: title } } as unknown as Animation]
+
+    setSequentialRects(section, [{ left: 0, top: 0, width: 1280, height: 720 }])
+    setSequentialRects(title, [
+      { left: 20, top: 60, width: 1160, height: 60 },
+      { left: 15, top: 60, width: 1160, height: 60 },
+      { left: 15, top: 60, width: 1160, height: 60 },
+    ])
+    await expect(waitForLayoutToSettle(section)).resolves.toEqual({ timedOut: false })
+  })
+
+  it('getAnimations が無い環境（Web Animations API 非対応）では section だけを対象にする', async () => {
     const section = document.createElement('section')
     expect(typeof section.getAnimations).toBe('undefined')
-    await expect(waitForAnimationsToSettle(section)).resolves.toBeUndefined()
-  })
-
-  it('進行中のアニメーションが完了するまで解決を待つ', async () => {
-    let finish: () => void = () => {}
-    const pending = new Promise<void>((resolve) => (finish = resolve))
-    const section = sectionWithAnimations([fakeAnimation(1, () => pending)])
-
-    let resolved = false
-    waitForAnimationsToSettle(section).then(() => {
-      resolved = true
-    })
-    await new Promise((r) => setTimeout(r, 0))
-    expect(resolved).toBe(false)
-
-    finish()
-    await new Promise((r) => setTimeout(r, 0))
-    expect(resolved).toBe(true)
-  })
-
-  it('無限に繰り返すアニメーション（TerminalAnimation の点滅）は待たない', async () => {
-    const section = sectionWithAnimations([fakeAnimation(Infinity, () => new Promise(() => {}))])
-    await expect(waitForAnimationsToSettle(section)).resolves.toBeUndefined()
-  })
-
-  it('キャンセルされたアニメーション（finished が reject）でも例外にせず解決する', async () => {
-    const section = sectionWithAnimations([fakeAnimation(1, () => Promise.reject(new Error('cancelled')))])
-    await expect(waitForAnimationsToSettle(section)).resolves.toBeUndefined()
+    setSequentialRects(section, [{ left: 0, top: 0, width: 1280, height: 720 }])
+    await expect(waitForLayoutToSettle(section)).resolves.toEqual({ timedOut: false })
   })
 })
