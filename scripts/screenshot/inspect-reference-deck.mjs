@@ -16,22 +16,16 @@
  *
  * 実行: node scripts/screenshot/inspect-reference-deck.mjs
  */
-import { readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { webkit } from 'playwright'
+import { fixtureSlides } from './reference-deck-fixture.mjs'
 import { LOCALES, sleep, startScreenshotVite, stopScreenshotVite, waitForServer } from './vite-runtime.mjs'
 import { contentViewport } from './viewports.mjs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const URL = 'http://localhost:1420'
 const VIEWPORT_KEY = 'reference-deck'
-
-/** ロケール別 fixture からスライド一覧を読む（capture-reference-deck.mjs と同じ単一真実源） */
-function fixtureSlides(lang) {
-  const path = resolve(ROOT, `scripts/screenshot/fixtures/reference-deck.${lang}.json`)
-  return JSON.parse(readFileSync(path, 'utf-8')).slides
-}
 
 /** 1ロケール分、デッキを開いてから hash ナビで全スライドを順に検査する */
 async function inspectLocale(browser, locale, vp) {
