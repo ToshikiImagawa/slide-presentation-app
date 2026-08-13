@@ -4,6 +4,7 @@ import { defaultSeriesColor } from '../structureDiagram/colors'
 import { getAxisSlot, packAxis } from '../structureDiagram/packAxis'
 import type { StructureEdge, StructureNode } from '../structureDiagram/types'
 import { axisHeaderNodes } from './axisHeaderNodes'
+import { computeSwimlaneColCount } from './columnCount'
 
 const LANE_MARGIN = 0.02
 const LANE_GAP = 0.05
@@ -45,7 +46,7 @@ export function Swimlane({ phases, lanes, connections }: SwimlaneSpec) {
   const phaseList = asArray(phases)
   const hasHeader = phaseList.length > 0
   const headerHeight = hasHeader ? HEADER_HEIGHT : 0
-  const colCount = Math.max(phaseList.length, ...laneList.map((lane) => asArray(lane.nodes).length), 1)
+  const colCount = computeSwimlaneColCount(phaseList, laneList)
 
   const laneSlots = packAxis(laneList.length, headerHeight, 1 - headerHeight - LANE_MARGIN, LANE_GAP)
   const colSlots = packAxis(colCount, COL_MARGIN, 1 - COL_MARGIN * 2, COL_GAP)

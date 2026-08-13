@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getAxisSlot, packAxis } from '../packAxis'
+import { clampAxisIndex, getAxisSlot, packAxis } from '../packAxis'
 
 describe('packAxis', () => {
   it('countが0以下なら空配列を返す', () => {
@@ -55,5 +55,32 @@ describe('getAxisSlot', () => {
 
   it('空配列には例外を出さず既定スロットを返す（#276）', () => {
     expect(getAxisSlot([], 0)).toEqual({ offset: 0, size: 0 })
+  })
+})
+
+// #279: 範囲外警告（applyTheme.ts の getDiagramWarnings）が getAxisSlot と同じクランプ結果を得るための
+// 単一の真実源。count は常に整数である前提（computeGridDimensions・computeGanttColCount が
+// packAxis の Array.from({ length: count }) と同じ整数化を導出側の1箇所で保証する）
+describe('clampAxisIndex', () => {
+  it('範囲内の整数indexはそのまま返す', () => {
+    expect(clampAxisIndex(4, 2)).toBe(2)
+  })
+
+  it('負のindexは0へクランプする', () => {
+    expect(clampAxisIndex(4, -1)).toBe(0)
+  })
+
+  it('過大なindexはcount-1へクランプする', () => {
+    expect(clampAxisIndex(4, 100)).toBe(3)
+  })
+
+  it('非整数のindexは最も近い整数へ丸める', () => {
+    expect(clampAxisIndex(4, 0.5)).toBe(1)
+    expect(clampAxisIndex(4, 1.4)).toBe(1)
+  })
+
+  it('countが0以下なら0を返す', () => {
+    expect(clampAxisIndex(0, 5)).toBe(0)
+    expect(clampAxisIndex(-1, 5)).toBe(0)
   })
 })
