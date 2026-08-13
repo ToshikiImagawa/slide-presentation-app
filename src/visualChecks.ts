@@ -46,6 +46,17 @@ function describeElement(el: Element): string {
   return text ? `<${tag}>"${text}"` : `<${tag}>`
 }
 
+/**
+ * アニメーションを最終状態に固定するクラス（global.css の共有セレクタリストが .pdf-capturing と
+ * 同じ無効化ルールを当てる）。実測の直前に付与し直後に外す（同期処理のため、間に描画が挟まらず
+ * 見た目のちらつきは生じない）。待ってから測るのではなく強制してから測ることで、実行環境の速さに
+ * 依存しない実測にする（#209/#225 で「待つ」実装が4回破綻した経緯を踏まえた根本策・#297）。
+ * getVisualCheckWarnings 以外で `.content-area` 等の実寸を直接読む箇所
+ * （e2e/content-area-fill.spec.ts の getBoundingClientRect 直呼び）も同じクラスを使って
+ * 最終状態へ固定できるよう export する（screenshot モード限定で window にも公開する）。
+ */
+export const ANIMATION_SETTLE_CLASS = 'visual-check-settling'
+
 type ElementRect = readonly [HTMLElement, DOMRect]
 
 /**
@@ -119,67 +130,83 @@ function getSafeBounds(masterBody: HTMLElement): Bounds {
  * ①はみ出し（スライド領域の外）②セーフエリア侵入（余白への侵入）③マスター装飾との重なり
  * ④高さを受け取れていない「埋める要素」（#259）、を警告として返す。
  * `.master-body` が無い（現行と完全同一のフォールバック等）場合は検査対象がないため空配列を返す。
+ *
+ * 実測前に `.content-area` 等の entrance animation（fadeInUp）を ANIMATION_SETTLE_CLASS で
+ * 最終状態へ強制する。付与・実測・解除を同期的に行うため、間に描画が挟まらず見た目に影響しない
+ * （待ってから測ると実行環境の速さにより途中の座標を拾って誤検知になる・#297）。
  */
 export function getVisualCheckWarnings(section: HTMLElement): string[] {
   const masterBody = section.querySelector<HTMLElement>('.master-body')
   if (!masterBody) return []
 
-  const warnings: string[] = []
-  const sectionBounds = toBounds(section.getBoundingClientRect())
-  const safeBounds = getSafeBounds(masterBody)
-  const rects = measureDescendants(masterBody)
-  const leaves = getContentLeaves(rects)
+  section.classList.add(ANIMATION_SETTLE_CLASS)
+  try {
+    const warnings: string[] = []
+    const sectionBounds = toBounds(section.getBoundingClientRect())
+    const safeBounds = getSafeBounds(masterBody)
+    const rects = measureDescendants(masterBody)
+    const leaves = getContentLeaves(rects)
 
-  const overflowing = new Set<HTMLElement>()
-  for (const [leaf, rect] of leaves) {
-    const overshoot = overshootPx(rect, sectionBounds)
-    if (overshoot > BOUNDS_TOLERANCE_PX) {
-      overflowing.add(leaf)
-      warnings.push(`はみ出し: ${describeElement(leaf)} がスライド領域の外に出ています（${overshoot.toFixed(1)}px 超過）`)
-    }
-  }
-
-  for (const [leaf, rect] of leaves) {
-    if (overflowing.has(leaf)) continue
-    const overshoot = overshootPx(rect, safeBounds)
-    if (overshoot > BOUNDS_TOLERANCE_PX) {
-      warnings.push(`セーフエリア侵入: ${describeElement(leaf)} が余白（セーフエリア）に侵入しています（${overshoot.toFixed(1)}px 超過）`)
-    }
-  }
-
-  for (const item of getCollapsedFillItems(rects)) {
-    warnings.push(`高さ 0: ${describeElement(item)} が本文領域の残り高さを受け取れていません（.content-area-fill を名乗る区画の外に置かれている可能性）`)
-  }
-
-  const decorations: ElementRect[] = getDecorationElements(section)
-    .map((el): ElementRect => [el, el.getBoundingClientRect()])
-    .filter(([, rect]) => hasVisibleSize(rect))
-  for (const [decoration, decorationRect] of decorations) {
+    const overflowing = new Set<HTMLElement>()
     for (const [leaf, rect] of leaves) {
-      if (rectsOverlap(decorationRect, rect)) {
-        warnings.push(`装飾との重なり: ${describeElement(leaf)} がマスター装飾（${describeElement(decoration)}）と重なっています`)
+      const overshoot = overshootPx(rect, sectionBounds)
+      if (overshoot > BOUNDS_TOLERANCE_PX) {
+        overflowing.add(leaf)
+        warnings.push(`はみ出し: ${describeElement(leaf)} がスライド領域の外に出ています（${overshoot.toFixed(1)}px 超過）`)
       }
     }
-  }
 
-  return warnings
+    for (const [leaf, rect] of leaves) {
+      if (overflowing.has(leaf)) continue
+      const overshoot = overshootPx(rect, safeBounds)
+      if (overshoot > BOUNDS_TOLERANCE_PX) {
+        warnings.push(`セーフエリア侵入: ${describeElement(leaf)} が余白（セーフエリア）に侵入しています（${overshoot.toFixed(1)}px 超過）`)
+      }
+    }
+
+    for (const item of getCollapsedFillItems(rects)) {
+      warnings.push(`高さ 0: ${describeElement(item)} が本文領域の残り高さを受け取れていません（.content-area-fill を名乗る区画の外に置かれている可能性）`)
+    }
+
+    const decorations: ElementRect[] = getDecorationElements(section)
+      .map((el): ElementRect => [el, el.getBoundingClientRect()])
+      .filter(([, rect]) => hasVisibleSize(rect))
+    for (const [decoration, decorationRect] of decorations) {
+      for (const [leaf, rect] of leaves) {
+        if (rectsOverlap(decorationRect, rect)) {
+          warnings.push(`装飾との重なり: ${describeElement(leaf)} がマスター装飾（${describeElement(decoration)}）と重なっています`)
+        }
+      }
+    }
+
+    return warnings
+  } finally {
+    section.classList.remove(ANIMATION_SETTLE_CLASS)
+  }
 }
 
 /** img の読み込み確定（成功/失敗問わず complete）を待つタイムアウト（ms）。読み込みが遅い/止まっている
- * 場合に検査自体が止まらないようにする保険で、実測はほぼ即座に解決する想定 */
+ * 場合に検査自体が止まらないようにする保険で、実測はほぼ即座に解決する想定。
+ * 画像はアニメーションと異なり「最終状態を強制する」手段がない（読み込み自体が非同期のIO）ため、
+ * このタイムアウトは残す。打ち切りが起きたかどうかは戻り値の `timedOut` で判別できる（黙って起きない・#297） */
 const IMAGE_SETTLE_TIMEOUT_MS = 2000
+
+type ImageSettleResult = { timedOut: boolean }
 
 /**
  * section 内の `<img>` がすべて読み込み確定（成功/失敗問わず）するまで待つ。
  * `FallbackImage`（`src/components/FallbackImage.tsx`）は読み込み確定まで `<img>` を `display:none` にし、
  * 確定後に実寸の `<img>` またはエラー用プレースホルダへ切り替える。読み込み確定前に実測すると、画像を
  * 含む figure/grid 等のレイアウトが最終形と異なり得るため、getVisualCheckWarnings を呼ぶ前に必ず待つ。
+ *
+ * `timedOut: true` で解決した場合、一部の画像が読み込み未確定のまま実測される可能性がある
+ * （呼び出し元が CI ログ・コンソールに出す診断情報。誤検知と実装の不具合を切り分けるための材料）。
  */
-export function waitForImagesToSettle(section: HTMLElement): Promise<void> {
+export function waitForImagesToSettle(section: HTMLElement): Promise<ImageSettleResult> {
   const pending = Array.from(section.querySelectorAll('img')).filter((img) => !img.complete)
-  if (pending.length === 0) return Promise.resolve()
+  if (pending.length === 0) return Promise.resolve({ timedOut: false })
 
-  const settled = Promise.all(
+  const settled: Promise<ImageSettleResult> = Promise.all(
     pending.map(
       (img) =>
         new Promise<void>((resolve) => {
@@ -187,40 +214,61 @@ export function waitForImagesToSettle(section: HTMLElement): Promise<void> {
           img.addEventListener('error', () => resolve(), { once: true })
         }),
     ),
-  ).then(() => undefined)
+  ).then(() => ({ timedOut: false }))
 
-  return Promise.race([settled, new Promise<void>((resolve) => setTimeout(resolve, IMAGE_SETTLE_TIMEOUT_MS))])
+  const timeout: Promise<ImageSettleResult> = new Promise((resolve) => setTimeout(() => resolve({ timedOut: true }), IMAGE_SETTLE_TIMEOUT_MS))
+
+  return Promise.race([settled, timeout])
 }
 
-/** アニメーション完了待ちの保険タイムアウト（ms）。想定外に長いアニメーションで検査自体が止まらないようにする */
-const ANIMATION_SETTLE_TIMEOUT_MS = 2000
+/** レイアウト収束待ちの安全弁（フレーム数）。フレーム数は時間の上限を保証しない（rAF 自体が CPU 負荷で
+ * 遅延しうるため、負荷が高い環境ほどこの安全弁も長くかかる。これは意図通り: 完了そのものを待つ設計であり、
+ * 環境が遅いことを理由に途中の座標へ諦めて落ちることこそ避けたい）。fadeInUp とは無関係に Reveal.js 自身が
+ * `.present` 付与後に行う transform:scale() 等の再計算が、CPU 負荷の高い環境（CI・並列実行）で数フレーム
+ * 遅れて収束することがある（#297。ANIMATION_SETTLE_CLASS を導入して初めて実測が瞬時になったことで露呈した
+ * 別要因）。固定の待ち時間ではなく「連続2フレームで矩形が変化しなくなる」という完了そのものを待ち、
+ * 収束しない場合の頭打ちとしてのみフレーム数を使う（打ち切りは戻り値の `timedOut` で判別できる） */
+const LAYOUT_SETTLE_MAX_FRAMES = 120
 
-/** 次のフレームを待つ（requestAnimationFrame が無い環境では即座に解決する） */
+type LayoutSettleResult = { timedOut: boolean }
+
 function nextFrame(): Promise<void> {
-  if (typeof requestAnimationFrame !== 'function') return Promise.resolve()
   return new Promise((resolve) => requestAnimationFrame(() => resolve()))
 }
 
+function rectsEqual(a: DOMRect, b: DOMRect): boolean {
+  return a.left === b.left && a.top === b.top && a.width === b.width && a.height === b.height
+}
+
 /**
- * section 内で進行中のアニメーション（`.content-area` の fadeInUp 等）が完了するまで待つ。
- *
- * 固定の待ち時間で代用すると、実行環境が遅いときにアニメーション途中の座標を実測して誤検知になる
- * （translateY(30px) の途中 = 約28px のセーフエリア侵入として報告される。CI 実測）。待ち時間の延長は
- * 環境が遅くなるたびに破綻するため、完了そのものを待つ。
- * カーソルの点滅（TerminalAnimation の blink）のように無限に繰り返すアニメーションは完了しないので除外する。
+ * section と、entrance animation（fadeInUp）が付与された要素すべての矩形が連続する2フレームで
+ * 変化しなくなるまで待つ。対象要素は `getAnimations({subtree:true})` の effect.target から動的に
+ * 求める（global.css の entrance animation 選択子リストを JS 側に書き写さないための設計）。
+ * Reveal.js の内部レイアウト・スケール再計算が収束する前に実測すると、これらの要素が数px
+ * ずれた位置で観測され、セーフエリア侵入として誤検知される（CI 実測。CPU 負荷が高いほど収束が遅れる）。
  */
-export async function waitForAnimationsToSettle(section: HTMLElement): Promise<void> {
+export async function waitForLayoutToSettle(section: HTMLElement): Promise<LayoutSettleResult> {
   // アニメーションは .present 付与後のスタイル再計算で初めて生成されるため、1フレーム待ってから収集する
   await nextFrame()
-  if (typeof section.getAnimations !== 'function') return
+  const animatedTargets =
+    typeof section.getAnimations === 'function'
+      ? section
+          .getAnimations({ subtree: true })
+          .map((animation) => (animation.effect as { target?: EventTarget | null } | null)?.target)
+          .filter((target): target is HTMLElement => target instanceof HTMLElement)
+      : []
+  const targets = [section, ...new Set(animatedTargets)]
 
-  const pending = section.getAnimations({ subtree: true }).filter((animation) => animation.effect?.getComputedTiming().iterations !== Infinity)
-  if (pending.length === 0) return
-
-  // finished は途中でキャンセルされると reject するため、待ちを打ち切る合図として扱う（例外にしない）
-  const settled = Promise.all(pending.map((animation) => animation.finished.catch(() => undefined))).then(() => undefined)
-
-  await Promise.race([settled, new Promise<void>((resolve) => setTimeout(resolve, ANIMATION_SETTLE_TIMEOUT_MS))])
+  let previous = targets.map((el) => el.getBoundingClientRect())
+  for (let frame = 0; frame < LAYOUT_SETTLE_MAX_FRAMES; frame++) {
+    await nextFrame()
+    const current = targets.map((el) => el.getBoundingClientRect())
+    if (current.every((rect, i) => rectsEqual(rect, previous[i]))) {
+      return { timedOut: false }
+    }
+    previous = current
+  }
+  return { timedOut: true }
 }
 
 /**
@@ -233,9 +281,11 @@ if (import.meta.env.MODE === 'screenshot') {
   const bridge = window as unknown as {
     __VISUAL_CHECK__?: typeof getVisualCheckWarnings
     __VISUAL_CHECK_WAIT_IMAGES__?: typeof waitForImagesToSettle
-    __VISUAL_CHECK_WAIT_ANIMATIONS__?: typeof waitForAnimationsToSettle
+    __VISUAL_CHECK_WAIT_LAYOUT__?: typeof waitForLayoutToSettle
+    __VISUAL_CHECK_SETTLE_CLASS__?: typeof ANIMATION_SETTLE_CLASS
   }
   bridge.__VISUAL_CHECK__ = getVisualCheckWarnings
   bridge.__VISUAL_CHECK_WAIT_IMAGES__ = waitForImagesToSettle
-  bridge.__VISUAL_CHECK_WAIT_ANIMATIONS__ = waitForAnimationsToSettle
+  bridge.__VISUAL_CHECK_WAIT_LAYOUT__ = waitForLayoutToSettle
+  bridge.__VISUAL_CHECK_SETTLE_CLASS__ = ANIMATION_SETTLE_CLASS
 }
