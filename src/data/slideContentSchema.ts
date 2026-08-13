@@ -50,6 +50,7 @@ interface SlideContentSchema {
   serverDiagram: FieldMap & { description?: string }
   orgChart: FieldMap & { description?: string }
   classDiagram: FieldMap & { description?: string }
+  sequenceDiagram: FieldMap & { description?: string }
   flowchart: FieldMap & { description?: string }
   swimlane: FieldMap & { description?: string }
   gantt: FieldMap & { description?: string }
@@ -84,6 +85,7 @@ const REF_MAPS: Record<string, FieldMap> = {
   serverDiagram: stripMetaKeys(SCHEMA.serverDiagram),
   orgChart: stripMetaKeys(SCHEMA.orgChart),
   classDiagram: stripMetaKeys(SCHEMA.classDiagram),
+  sequenceDiagram: stripMetaKeys(SCHEMA.sequenceDiagram),
   flowchart: stripMetaKeys(SCHEMA.flowchart),
   swimlane: stripMetaKeys(SCHEMA.swimlane),
   gantt: stripMetaKeys(SCHEMA.gantt),

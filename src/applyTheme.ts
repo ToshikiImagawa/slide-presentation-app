@@ -18,6 +18,7 @@ import type { ClassDiagramSpec } from './components/structureDiagram/ClassDiagra
 import type { FlowchartSpec } from './components/processDiagram/Flowchart'
 import type { SwimlaneLane, SwimlaneSpec } from './components/processDiagram/Swimlane'
 import type { GanttSpec, GanttTask } from './components/processDiagram/Gantt'
+import type { SequenceDiagramSpec } from './components/sequenceDiagram/types'
 // computeGanttColCount/computeSwimlaneColCount は Gantt.tsx/Swimlane.tsx が Diagram（→DiagramCard等→
 // resolveColorTokenをapplyTheme.tsから値import）を値importしているため、ここから値importすると循環importになる。
 // 上記2ファイルからのimportが型のみ（消去される）なのに対し、値は依存を持たない columnCount.ts から取る
@@ -860,6 +861,42 @@ function getGanttRangeWarnings(basePath: string, axis: string[] | undefined, tas
   return warnings
 }
 
+/**
+ * SequenceDiagramSpec の messages[].from/to・activations[].lifeline が存在しないライフラインidを参照していないか、
+ * activations[].from/toが範囲外・非整数でないかを検査する（#269）。id参照の検出は既存のgetDiagramWarnings
+ * （content.component:{name:"Diagram"}のconnectors[].from/to検査）と同じ文言パターンを踏襲する。
+ * from/toの範囲検査はpushRangeWarning（#279と同じクランプ規則。対象はmessages配列の添字）を再利用する。
+ */
+function getSequenceDiagramWarnings(basePath: string, spec: SequenceDiagramSpec): string[] {
+  const warnings: string[] = []
+  const lifelineIds = new Set(
+    asArray(spec.lifelines)
+      .map((lifeline) => lifeline.id)
+      .filter((id): id is string => typeof id === 'string'),
+  )
+  const messageList = asArray(spec.messages)
+
+  messageList.forEach((message, i) => {
+    for (const role of ['from', 'to'] as const) {
+      const id: unknown = message[role]
+      if (typeof id === 'string' && !lifelineIds.has(id)) {
+        warnings.push(`${basePath}.messages[${i}].${role}: 存在しないライフライン id "${id}" を参照しています`)
+      }
+    }
+  })
+
+  asArray(spec.activations).forEach((activation, i) => {
+    const id: unknown = activation.lifeline
+    if (typeof id === 'string' && !lifelineIds.has(id)) {
+      warnings.push(`${basePath}.activations[${i}].lifeline: 存在しないライフライン id "${id}" を参照しています`)
+    }
+    if (typeof activation.from === 'number') pushRangeWarning(warnings, `${basePath}.activations[${i}].from`, activation.from, messageList.length)
+    if (typeof activation.to === 'number') pushRangeWarning(warnings, `${basePath}.activations[${i}].to`, activation.to, messageList.length)
+  })
+
+  return warnings
+}
+
 /** ChartSpec の色トークン参照が未知でないか検査する（#241）。seriesColor 経由だと未知トークンが `primary` へ黙って
  * フォールバックし判定できないため、THEME_COLOR_TOKENS を直接照合する。
  * kpi 行（items[]）の color/deltaStatus と、単体 kpi の deltaStatus（KpiItemSpec 交差型でトップレベルにある）も対象にする（#290）。 */
@@ -943,6 +980,9 @@ function getDiagramWarnings(slides?: SlideData[]): string[] {
     }
     for (const { path, spec } of collectDiagramSpecs<GanttSpec>(slide.content, 'gantt', 'Gantt')) {
       warnings.push(...getGanttRangeWarnings(`slides[${index}].${path}`, spec.axis, spec.tasks))
+    }
+    for (const { path, spec } of collectDiagramSpecs<SequenceDiagramSpec>(slide.content, 'sequenceDiagram', 'SequenceDiagram')) {
+      warnings.push(...getSequenceDiagramWarnings(`slides[${index}].${path}`, spec))
     }
   }
   return warnings

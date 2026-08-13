@@ -16,6 +16,7 @@ import { Compare } from './compare'
 import { Flow } from './flow'
 import { Checklist } from './Checklist'
 import { ClassDiagram, HierarchyDiagram, OrgChart, ServerDiagram } from './structureDiagram'
+import { SequenceDiagram } from './sequenceDiagram'
 import { Flowchart, Gantt, Swimlane } from './processDiagram'
 import { Funnel, Heatmap, Swot, TwoByTwoMatrix } from './analysisDiagram'
 import { registerDefaultComponent } from './ComponentRegistry'
@@ -58,6 +59,9 @@ export function registerDefaultComponents(): void {
   registerDefaultComponent('ServerDiagram', ServerDiagram, { fillsContentArea: true })
   registerDefaultComponent('OrgChart', OrgChart, { fillsContentArea: true })
   registerDefaultComponent('ClassDiagram', ClassDiagram, { fillsContentArea: true })
+  // UMLシーケンス図（#269）。構成図とはノード/エッジのデータ構造を共有しないが、同じDiagramCanvasに
+  // 載るコンポーネントなので fill 変種は他の構成図/プロセス図と同様に要求する
+  registerDefaultComponent('SequenceDiagram', SequenceDiagram, { fillsContentArea: true })
   registerDefaultComponent('Flowchart', Flowchart, { fillsContentArea: true })
   registerDefaultComponent('Swimlane', Swimlane, { fillsContentArea: true })
   registerDefaultComponent('Gantt', Gantt, { fillsContentArea: true })
