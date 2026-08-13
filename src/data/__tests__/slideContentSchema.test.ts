@@ -229,11 +229,54 @@ describe('getSchemaConformanceErrors', () => {
       meta: { title: 't' },
       slides: [
         { id: 's1', layout: 'content', content: { title: 'x', chart: { type: 'bar', unit: '%', categories: ['Q1'], series: [{ name: '今期', values: [42], color: 'series3' }], legend: true, valueLabels: false, min: 0, max: 100 } } },
-        { id: 's2', layout: 'content', content: { title: 'x', chart: { type: 'kpi', label: 'MAU', value: 128400, delta: '+18.2%', trend: [1, 2, 3], color: 'series2' } } },
+        { id: 's2', layout: 'content', content: { title: 'x', chart: { type: 'kpi', label: 'MAU', value: 128400, delta: '+18.2%', deltaDirection: 'up', deltaStatus: 'success', trend: [1, 2, 3], color: 'series2' } } },
         { id: 's3', layout: 'content', content: { title: 'x', chart: { type: 'kpi', value: '1.2M' } } },
       ],
     }
     expect(getSchemaConformanceErrors(data)).toEqual([])
+  })
+
+  it('content.chart.items（KPI行）の正常な指定はエラーにしない（#196）', () => {
+    const data: PresentationData = {
+      meta: { title: 't' },
+      slides: [
+        {
+          id: 's1',
+          layout: 'content',
+          content: {
+            title: 'x',
+            chart: {
+              type: 'kpi',
+              items: [
+                { label: '売上成長率', value: 24.6, unit: '%', delta: '+3.1pt', deltaDirection: 'up', deltaStatus: 'success' },
+                { label: '解約率', value: 3.1, unit: '%', delta: '+0.4pt', deltaDirection: 'up', deltaStatus: 'danger', color: 'series4' },
+              ],
+            },
+          },
+        },
+      ],
+    }
+    expect(getSchemaConformanceErrors(data)).toEqual([])
+  })
+
+  it('content.chart.items[].deltaDirectionが未知の値だとエラーにする', () => {
+    const data = {
+      meta: { title: 't' },
+      slides: [{ id: 's1', layout: 'content', content: { title: 'x', chart: { type: 'kpi', items: [{ value: 1, deltaDirection: 'sideways' }] } } }],
+    } as unknown as PresentationData
+    const errors = getSchemaConformanceErrors(data)
+    expect(errors).toHaveLength(1)
+    expect(errors[0].path).toBe('slides[0].content.chart.items[0].deltaDirection')
+  })
+
+  it('content.chart.items[].deltaStatusが未知の色トークン名だとエラーにする', () => {
+    const data = {
+      meta: { title: 't' },
+      slides: [{ id: 's1', layout: 'content', content: { title: 'x', chart: { type: 'kpi', items: [{ value: 1, deltaStatus: 'purple' }] } } }],
+    } as unknown as PresentationData
+    const errors = getSchemaConformanceErrors(data)
+    expect(errors).toHaveLength(1)
+    expect(errors[0].path).toBe('slides[0].content.chart.items[0].deltaStatus')
   })
 
   it('content.chart.typeが5種以外だとエラーにする', () => {

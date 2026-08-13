@@ -34,7 +34,10 @@
             "command": { "type": "string" }
           }
         },
-        "stepColumns": { "type": "number", "description": "stepsを多列の番号付きリストとして並べる列数（1〜3。範囲外は丸める）。省略時は現行と同じ連結線つきの横1列。指定すると連結線は描かず、番号バッジの右に見出しと説明を置いた項目を1〜3列×複数行に配置し、行数に応じて行間・説明文の文字サイズを自動で詰める（#199）" },
+        "stepColumns": {
+          "type": "number",
+          "description": "stepsを多列の番号付きリストとして並べる列数（1〜3。範囲外は丸める）。省略時は現行と同じ連結線つきの横1列。指定すると連結線は描かず、番号バッジの右に見出しと説明を置いた項目を1〜3列×複数行に配置し、行数に応じて行間・説明文の文字サイズを自動で詰める（#199）"
+        },
         "dateTimeline": {
           "type": "array",
           "maxItems": 8,
@@ -91,7 +94,11 @@
             },
             "title": { "type": "string" },
             "description": { "type": "string", "description": "<br/>等HTMLタグ利用可" },
-            "accentColor": { "type": "string", "stringConstraint": "colorToken", "description": "アイコン背景・枠のアクセント色トークン名（primary/accent/series1-6/success/warning/danger/neutral等、theme.colorsのキーと同じ）。省略時は既定でprimary" }
+            "accentColor": {
+              "type": "string",
+              "stringConstraint": "colorToken",
+              "description": "アイコン背景・枠のアクセント色トークン名（primary/accent/series1-6/success/warning/danger/neutral等、theme.colorsのキーと同じ）。省略時は既定でprimary"
+            }
           }
         },
         "tileColumns": { "type": "number", "description": "tilesの列数。省略時はタイル数と同数の列（現行と同一の1行表示）。6枚以上のtilesを読める大きさで折返し表示したい場合に指定する" },
@@ -177,7 +184,11 @@
   },
   "chart": {
     "description": "content.chart のチャート指定（#204）。棒・折れ線・円・横棒・大数値＋推移の5種。寸法・座標は持たず本文領域いっぱいに自動で収まり、系列色・線幅・角丸はテーマトークンに追従する。軸ラベルは項目が12個を超えると等間隔に間引かれ、値ラベルは描画点が多いと既定で省かれる（表示は axis / legend / valueLabels で上書きできる）",
-    "type": { "type": "string", "enum": ["bar", "line", "pie", "hbar", "kpi"], "description": "bar=縦棒（推移・比較） / line=折れ線（推移） / pie=円（構成比） / hbar=横棒（項目名が長い比較） / kpi=大数値＋推移線。省略時はbar" },
+    "type": {
+      "type": "string",
+      "enum": ["bar", "line", "pie", "hbar", "kpi"],
+      "description": "bar=縦棒（推移・比較） / line=折れ線（推移） / pie=円（構成比） / hbar=横棒（項目名が長い比較） / kpi=大数値＋推移線（itemsで2〜5個のKPI行にできる）。省略時はbar"
+    },
     "categories": { "type": "array", "maxItems": 8, "description": "項目名（横軸、円は内訳）の文字列配列。series[].values と同じ順序で対応する。kpiでは使わない。推奨上限8件（超えると密度過多として自動修正対象になる）" },
     "series": {
       "type": "array",
@@ -195,11 +206,32 @@
     "valueLabels": { "type": "boolean", "description": "値ラベル。省略時は描画点の数から自動判定する（重なりを避けるため点が多いと省く）" },
     "min": { "type": "number", "description": "軸の下限。省略時はデータから導出（0を必ず含む1/2/5刻みの範囲）" },
     "max": { "type": "number", "description": "軸の上限。省略時はデータから導出。百分率を0〜100で固定したい場合等に指定する" },
-    "value": { "type": ["string", "number"], "description": "type=kpi の大数値。数値なら桁区切りされ、文字列ならそのまま表示する" },
+    "value": { "type": ["string", "number"], "description": "type=kpi の大数値。数値なら桁区切りされ、文字列ならそのまま表示する。itemsを指定する場合は無視される（items[0]相当）" },
     "label": { "type": "string", "description": "type=kpi の大数値の見出し" },
     "delta": { "type": "string", "description": "type=kpi の増減注記（\"+12% 前年比\" 等）" },
+    "deltaDirection": { "type": "string", "enum": ["up", "down", "flat"], "description": "type=kpi の増減注記の方向記号（▲/▼/–）。省略時は記号なし。良し悪しの判定はしない（色はdeltaStatusが別に決める）" },
+    "deltaStatus": {
+      "type": "string",
+      "stringConstraint": "colorToken",
+      "description": "type=kpi の増減注記の色トークン名（success/warning/danger/neutral等）。省略時はvalue/trendと同じcolor。方向（上下）と状態色（良し悪し）は直交する概念のため別フィールドにしている（例: 解約率の増加はdirection:upだがdeltaStatus:danger）"
+    },
     "trend": { "type": "array", "description": "type=kpi の推移線の数値配列（2点以上で描画。0基準ではなくデータ範囲に合わせるので変化が読める）" },
-    "color": { "type": "string", "stringConstraint": "colorToken", "description": "type=kpi の大数値・推移線の色トークン名。省略時はseries1" }
+    "color": { "type": "string", "stringConstraint": "colorToken", "description": "type=kpi の大数値・推移線の色トークン名。省略時はseries1" },
+    "items": {
+      "type": "array",
+      "maxItems": 5,
+      "description": "type=kpi を2〜5個横に並べるKPI行にする場合の指標配列。省略時は上記のvalue/label/delta等を要素数1のKPIとして扱う（単一KPIとKPI行は同じ描画経路）。個数に応じて値の文字サイズが自動で縮む",
+      "itemFields": {
+        "value": { "type": ["string", "number"], "description": "大数値。数値なら桁区切りされ、文字列ならそのまま表示する" },
+        "label": { "type": "string" },
+        "unit": { "type": "string", "description": "値ラベルに付ける単位。省略時はchart.unitを使う" },
+        "delta": { "type": "string", "description": "増減注記（\"+12% 前年比\" 等）" },
+        "deltaDirection": { "type": "string", "enum": ["up", "down", "flat"], "description": "増減注記の方向記号。省略時は記号なし" },
+        "deltaStatus": { "type": "string", "stringConstraint": "colorToken", "description": "増減注記の色トークン名。省略時はこの要素のcolorと同じ" },
+        "trend": { "type": "array", "description": "推移線の数値配列（2点以上で描画）" },
+        "color": { "type": "string", "stringConstraint": "colorToken", "description": "大数値・推移線の色トークン名。省略時は並び順にseries1〜" }
+      }
+    }
   },
   "table": {
     "description": "content.table の表指定（#194）。ヘッダー行＋本文行の表。寸法・座標は持たず本文領域いっぱいに自動で収まり、罫線・ゼブラ・ヘッダ行の塗り・角丸はテーマトークンに追従する。行数・列数が多いときはpadding・文字サイズが段階的に縮む",
@@ -244,7 +276,11 @@
     "color": { "type": "string", "stringConstraint": "colorToken", "description": "省略時はノードの並び順にseries1〜series6を巡回して割り当てる" },
     "variant": { "type": "string", "enum": ["outline", "filled", "plain"], "description": "省略時はoutline" },
     "row": { "type": "integer", "minimum": 0, "description": "明示的な行位置（0始まり）。UMLクラス図・フローチャートでのみ使用。省略時は自動グリッド配置（決定的）" },
-    "col": { "type": "integer", "minimum": 0, "description": "明示的な列位置（0始まり）。UMLクラス図・フローチャートでは自動グリッド配置の列（省略時は自動グリッド配置）。スイムレーンでは「フェーズ（工程）列」の位置（省略時はレーン内の配列順）" },
+    "col": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "明示的な列位置（0始まり）。UMLクラス図・フローチャートでは自動グリッド配置の列（省略時は自動グリッド配置）。スイムレーンでは「フェーズ（工程）列」の位置（省略時はレーン内の配列順）"
+    },
     "parent": { "type": "string", "description": "親ノードのid。組織図でのみ使用。ツリーの階層・配置（行=深さ・列=決定的な自動配置）はここから導出する。省略した場合はルート（複数可）" },
     "attributes": { "type": "array", "description": "UMLクラス図でのみ使用。属性の文字列配列（例: \"id: string\"）" },
     "methods": { "type": "array", "description": "UMLクラス図でのみ使用。メソッドの文字列配列（例: \"login(): void\"）" },
@@ -464,10 +500,17 @@
           "type": "object",
           "description": "マスター単位の背景意匠。省略するとデッキ既定の背景（テーマ背景色＋格子）がそのまま見える",
           "fields": {
-            "type": { "type": "string", "enum": ["plain", "grid", "fill", "gradient", "image"], "description": "plain=無地（テーマ背景色で塗り格子を隠す）/ grid=格子（デッキ既定と同じ意匠）/ fill=全面塗り / gradient=グラデーション / image=画像を全面に敷く" },
+            "type": {
+              "type": "string",
+              "enum": ["plain", "grid", "fill", "gradient", "image"],
+              "description": "plain=無地（テーマ背景色で塗り格子を隠す）/ grid=格子（デッキ既定と同じ意匠）/ fill=全面塗り / gradient=グラデーション / image=画像を全面に敷く"
+            },
             "opacity": { "type": "number", "description": "0〜1。省略時1。下げるとデッキ既定の背景が透ける" },
             "color": { "type": "string", "description": "type: fill で必須（塗り色）。type: grid では格子の下地色（省略時テーマ背景色）" },
-            "size": { "type": "number", "description": "type: grid で使用（格子の間隔px）。省略時はデッキ既定の格子と同じ間隔になるので、密度を変えるときだけ指定する。格子線の色はtokensのmasterKeyスコープでtheme-background-gridを上書きする" },
+            "size": {
+              "type": "number",
+              "description": "type: grid で使用（格子の間隔px）。省略時はデッキ既定の格子と同じ間隔になるので、密度を変えるときだけ指定する。格子線の色はtokensのmasterKeyスコープでtheme-background-gridを上書きする"
+            },
             "from": { "type": "string", "description": "type: gradient で必須（開始色）" },
             "to": { "type": "string", "description": "type: gradient で必須（終了色）" },
             "angle": { "type": "number", "description": "type: gradient で使用（deg。省略時180=上→下）" },

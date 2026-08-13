@@ -1,4 +1,5 @@
 import { asArray } from '../../data/loader'
+import { resolveKpiItems } from './kpiItems'
 import type { ChartSpec, ChartType } from './types'
 
 // Chart.tsx の描画準備（resolveSeries/resolveCategories）・getChartColorTokenIssues（applyTheme.ts）・
@@ -28,9 +29,16 @@ export function getChartSpecIssues(spec: ChartSpec): string[] {
   }
 
   if (type === 'kpi') {
-    const hasValue = spec.value !== undefined && spec.value !== null && spec.value !== ''
-    const hasTrend = asArray(spec.trend).length > 0
-    return hasValue || hasTrend ? [] : ['type: "kpi" ですが value と trend のいずれも指定されていません']
+    // 単一KPI（items未指定）もitems[0]として同じ形で検証する（resolveKpiItemsが単一の真実源・#196）
+    const items = resolveKpiItems(spec)
+    const invalidIndex = items.findIndex((item) => {
+      const hasValue = item.value !== undefined && item.value !== null && item.value !== ''
+      const hasTrend = asArray(item.trend).length > 0
+      return !(hasValue || hasTrend)
+    })
+    if (invalidIndex === -1) return []
+    const where = items.length > 1 ? `items[${invalidIndex}]の` : ''
+    return [`type: "kpi" ですが${where}value と trend のいずれも指定されていません`]
   }
 
   return asArray(spec.series).length === 0 || countCategories(spec) === 0 ? ['categories と series の少なくとも一方が空のため描画できません'] : []

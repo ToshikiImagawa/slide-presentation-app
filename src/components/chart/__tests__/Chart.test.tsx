@@ -232,6 +232,65 @@ describe('Chart（大数値＋推移）', () => {
     // 最大値がプロット上端付近（余白の 12% を残した位置）へ来る
     expect(last).toBe('100,12')
   })
+
+  it('単一KPI（items未指定）はKPI行の要素数1として描画され、密度はnormalになる（#196）', () => {
+    const { getByTestId } = render(<Chart type="kpi" value={128400} trend={[1, 2, 3]} />)
+
+    expect(getByTestId('chart-kpi-row').dataset.density).toBe('normal')
+    expect(getByTestId('chart-kpi-row').querySelectorAll('[data-testid="chart-kpi"]')).toHaveLength(1)
+  })
+})
+
+describe('Chart（KPI行・#196）', () => {
+  it('itemsで2〜5個の指標を横に並べて描画する（3個は密度denseになる）', () => {
+    const { getByTestId, getAllByTestId } = render(
+      <Chart
+        type="kpi"
+        items={[
+          { label: '売上成長率', value: 24.6, unit: '%' },
+          { label: '新規契約数', value: 342 },
+          { label: '解約率', value: 3.1, unit: '%' },
+        ]}
+      />,
+    )
+
+    expect(getByTestId('chart-kpi-row').dataset.density).toBe('dense')
+    expect(getAllByTestId('chart-kpi')).toHaveLength(3)
+  })
+
+  it('deltaDirectionの記号とdeltaStatusの色を表示する（テーマのsuccess/dangerに追従する）', () => {
+    const { getByText } = render(
+      <Chart
+        type="kpi"
+        items={[
+          { label: '売上成長率', value: 24.6, delta: '+3.1pt', deltaDirection: 'up', deltaStatus: 'success' },
+          { label: '解約率', value: 3.1, delta: '+0.4pt', deltaDirection: 'up', deltaStatus: 'danger' },
+        ]}
+      />,
+    )
+
+    const upGood = getByText('+3.1pt')
+    const upBad = getByText('+0.4pt')
+    expect(upGood.style.color).toBe('var(--theme-success)')
+    expect(upBad.style.color).toBe('var(--theme-danger)')
+    expect(upGood.querySelector('span')?.textContent).toBe('▲')
+    expect(upBad.querySelector('span')?.textContent).toBe('▲')
+  })
+
+  it('deltaStatus省略時はvalue/trendと同じcolorをdeltaに使う（既存の単一KPIの見た目を変えない）', () => {
+    const { getByText } = render(<Chart type="kpi" value={100} delta="+1%" trend={[1, 2]} color="series4" />)
+
+    expect(getByText('+1%').style.color).toBe('var(--theme-series-4)')
+  })
+
+  it('items[]でvalue/trendの両方が無い要素があると位置つきで警告する', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const { container } = render(<Chart type="kpi" items={[{ label: 'A', value: 1 }, { label: 'B' }]} />)
+
+    expect(container.firstChild).toBeNull()
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('items[1]'))
+    warn.mockRestore()
+  })
 })
 
 describe('Chart（凡例）', () => {
