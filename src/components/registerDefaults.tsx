@@ -7,6 +7,8 @@ import TrafficIcon from '@mui/icons-material/Traffic'
 import logText from '../data/default-log.txt?raw'
 import { TerminalAnimation } from './TerminalAnimation'
 import { FallbackImage } from './FallbackImage'
+import { InlineSvg } from './InlineSvg'
+import { TextDiagram } from './TextDiagram'
 import { Diagram } from './diagram'
 import { Chart } from './chart'
 import { Table } from './table'
@@ -33,6 +35,11 @@ export function registerDefaultComponents(): void {
   // ビジュアルコンポーネント
   registerDefaultComponent('TerminalAnimation', DefaultTerminalAnimation)
   registerDefaultComponent('Image', DefaultImage)
+  // インラインSVG（#203）。<img>のImageと異なりマークアップをそのまま挿入するのでテーマ色に追従する。
+  // 本文領域の残り高さいっぱいに広がるので fill 変種を要求する
+  registerDefaultComponent('InlineSvg', InlineSvg, { fillsContentArea: true })
+  // テキスト図法（Mermaid・#203）。mermaid本体は動的import（TextDiagram.tsx）のため、この登録自体は軽量
+  registerDefaultComponent('TextDiagram', TextDiagram, { fillsContentArea: true })
   // 図解プリミティブ（#202）。矢印・コネクタ・カード・バッジ・引出線を正規化座標で組み立てる。
   // キャンバス（DiagramCanvas）は本文領域の残り高さいっぱいに広がるので fill 変種を要求する（#256）
   registerDefaultComponent('Diagram', Diagram, { fillsContentArea: true })

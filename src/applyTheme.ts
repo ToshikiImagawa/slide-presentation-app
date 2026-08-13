@@ -8,6 +8,8 @@ import { FallbackImage } from './components/FallbackImage'
 import { asArray, getChartSpecIssues } from './components/chart/validateChart'
 import type { ChartSpec } from './components/chart/types'
 import type { DiagramProps } from './components/diagram/Diagram'
+import type { SvgSpec } from './components/InlineSvg'
+import { sanitizeSvgMarkup } from './components/inlineSvg/sanitizeSvg'
 import { computeGridDimensions } from './components/structureDiagram/gridLayout'
 import { clampAxisIndex } from './components/structureDiagram/packAxis'
 import type { StructureNode } from './components/structureDiagram/types'
@@ -752,6 +754,7 @@ export function getThemeWarnings(theme?: ThemeData, slides?: SlideData[]): strin
   warnings.push(...getTileIconWarnings(slides))
   warnings.push(...getDiagramWarnings(slides))
   warnings.push(...getChartWarnings(slides))
+  warnings.push(...getSvgWarnings(slides))
 
   return warnings
 }
@@ -938,6 +941,27 @@ function getDiagramWarnings(slides?: SlideData[]): string[] {
     }
     for (const { path, spec } of collectDiagramSpecs<GanttSpec>(slide.content, 'gantt', 'Gantt')) {
       warnings.push(...getGanttRangeWarnings(`slides[${index}].${path}`, spec.axis, spec.tasks))
+    }
+  }
+  return warnings
+}
+
+/**
+ * content.svg / component:{name:"InlineSvg"} のmarkupを検証する（#203）。解析不能（不正なXML・ルートが
+ * svgでない）な場合は白紙描画（InlineSvg.tsxがnullを返す）になり原因が伝わらないため、既存の警告集約機構
+ * （先例: getChartWarnings #241）に載せる。script・イベントハンドラ属性・外部参照・foreignObject・image
+ * 要素を除去した場合も、作者が意図しない見た目の変化に気づけるよう警告する（console.warnは使わない）。
+ */
+function getSvgWarnings(slides?: SlideData[]): string[] {
+  const warnings: string[] = []
+  for (const [index, slide] of (slides ?? []).entries()) {
+    for (const { path, spec } of collectDiagramSpecs<SvgSpec>(slide.content, 'svg', 'InlineSvg')) {
+      const sanitized = sanitizeSvgMarkup(spec.markup)
+      if (!sanitized) {
+        warnings.push(`slides[${index}].${path}.markup: 有効なSVG（<svg>...</svg>）として解析できません（描画をスキップします）`)
+      } else if (sanitized.removed.length > 0) {
+        warnings.push(`slides[${index}].${path}.markup: 安全性のため次を除去しました: ${sanitized.removed.join(', ')}`)
+      }
     }
   }
   return warnings

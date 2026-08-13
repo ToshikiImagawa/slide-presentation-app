@@ -20,7 +20,7 @@
       }
     },
     "content": {
-      "description": "コンテンツ表示用レイアウト。子要素のフィールドで描画が決まる。優先順位: steps→Timeline / dateTimeline→日付付きマイルストーンタイムライン / checklist→チェックリスト / toc→目次 / tiles→FeatureTileGrid / images→画像スライド / chart→チャート / table→表 / compare→比較 / flow→横フロー / hierarchyDiagram→階層構成図 / serverDiagram→サーバ/クラウド構成図 / orgChart→組織図 / classDiagram→UMLクラス図 / flowchart→フローチャート / swimlane→スイムレーン / gantt→ガント / twoByTwo→2×2マトリクス / funnel→ファネル / swot→SWOT / heatmap→ヒートマップ / component→カスタム。いずれも無指定の場合に限り body/items（プレーン本文）を描画する（#193・#200・#199・#195・#205・#206・#207）",
+      "description": "コンテンツ表示用レイアウト。子要素のフィールドで描画が決まる。優先順位: steps→Timeline / dateTimeline→日付付きマイルストーンタイムライン / checklist→チェックリスト / toc→目次 / tiles→FeatureTileGrid / images→画像スライド / svg→インラインSVG / textDiagram→テキスト図法（Mermaid） / chart→チャート / table→表 / compare→比較 / flow→横フロー / hierarchyDiagram→階層構成図 / serverDiagram→サーバ/クラウド構成図 / orgChart→組織図 / classDiagram→UMLクラス図 / flowchart→フローチャート / swimlane→スイムレーン / gantt→ガント / twoByTwo→2×2マトリクス / funnel→ファネル / swot→SWOT / heatmap→ヒートマップ / component→カスタム。いずれも無指定の場合に限り body/items（プレーン本文）を描画する（#193・#200・#199・#195・#205・#206・#207・#203）",
       "contentFields": {
         "title": { "type": "string" },
         "steps": {
@@ -111,6 +111,8 @@
             "caption": { "type": "string", "description": "画像の下に表示するキャプション（<br/>等HTMLタグ利用可）" }
           }
         },
+        "svg": { "type": "object", "ref": "svg" },
+        "textDiagram": { "type": "object", "ref": "textDiagram" },
         "chart": { "type": "object", "ref": "chart" },
         "table": { "type": "object", "ref": "table" },
         "compare": { "type": "object", "ref": "compare" },
@@ -138,13 +140,13 @@
         "footer": { "type": "string" },
         "body": {
           "type": "string",
-          "description": "プレーン本文の段落（改行は\\n）。steps/dateTimeline/checklist/toc/tiles/images/chart/table/compare/flow/hierarchyDiagram/serverDiagram/orgChart/classDiagram/flowchart/swimlane/gantt/twoByTwo/funnel/swot/heatmap/componentのいずれも無指定の場合のみ描画される。itemsと併用可。段落配列が必要な場合はtwo-columnのparagraphsを使う（1カラム全幅の自由記述文はbody、カラム構成用の複数ブロックはparagraphsという役割分担）"
+          "description": "プレーン本文の段落（改行は\\n）。steps/dateTimeline/checklist/toc/tiles/images/svg/textDiagram/chart/table/compare/flow/hierarchyDiagram/serverDiagram/orgChart/classDiagram/flowchart/swimlane/gantt/twoByTwo/funnel/swot/heatmap/componentのいずれも無指定の場合のみ描画される。itemsと併用可。段落配列が必要な場合はtwo-columnのparagraphsを使う（1カラム全幅の自由記述文はbody、カラム構成用の複数ブロックはparagraphsという役割分担）"
         },
         "items": {
           "type": "array",
           "ref": "contentItem",
           "maxItems": 7,
-          "description": "箇条書き（ネスト可）。steps/dateTimeline/checklist/toc/tiles/images/chart/table/compare/flow/hierarchyDiagram/serverDiagram/orgChart/classDiagram/flowchart/swimlane/gantt/twoByTwo/funnel/swot/heatmap/componentのいずれも無指定の場合のみ描画される。bodyと併用可。推奨上限7件（超えると密度過多として自動修正対象になる）"
+          "description": "箇条書き（ネスト可）。steps/dateTimeline/checklist/toc/tiles/images/svg/textDiagram/chart/table/compare/flow/hierarchyDiagram/serverDiagram/orgChart/classDiagram/flowchart/swimlane/gantt/twoByTwo/funnel/swot/heatmap/componentのいずれも無指定の場合のみ描画される。bodyと併用可。推奨上限7件（超えると密度過多として自動修正対象になる）"
         }
       }
     },
@@ -185,6 +187,17 @@
     "fragment": { "type": "boolean", "description": "Reveal.jsのフラグメント表示（段階的に表示）を有効にする" },
     "fragmentIndex": { "type": "number", "description": "フラグメント表示の順序" },
     "items": { "type": "array", "ref": "contentItem", "description": "ネストした箇条書き（再帰）" }
+  },
+  "svg": {
+    "description": "content.svgのインラインSVG指定（#203）。<img>参照ではなくSVGマークアップをそのまま挿入するため、fill=\"currentColor\"やfill=\"var(--theme-primary)\"等でテーマの色変数を参照していれば、テーマ切り替えに自動で追従する（色の書き換えは行わない。作者がテーマ変数を使う設計）。安全性のためscript・イベントハンドラ属性（on*）・外部参照（href/xlink:hrefの#始まり以外）・foreignObject・image要素は自動的に除去される（既存のrenderHtml/body等の無サニタイズ経路とは異なる。理由はInlineSvg.tsxのコメントを参照）。解析できない・ルートがsvgでない場合は描画をスキップし警告を出す",
+    "markup": { "type": "string", "description": "SVGマークアップ文字列（<svg>...</svg>）。viewBoxを指定すると縦横比を保ってセーフエリア内に自動フィットする" },
+    "color": { "type": "string", "stringConstraint": "colorToken", "description": "fill=\"currentColor\"等が参照する文字色トークン名。省略時はprimary" },
+    "caption": { "type": "string", "description": "SVGの下に表示するキャプション（<br/>等HTMLタグ利用可）" }
+  },
+  "textDiagram": {
+    "description": "content.textDiagramのテキスト図法指定（Mermaid・#203）。mermaidは重い依存（d3/dagre/katex/cytoscape等）を持ち込むため、コアの初期バンドルには含めず利用時に動的import（別チャンク）で読み込む（TextDiagram.tsx）。構文が不正な場合・チャンク読み込み前は破線プレースホルダになる（console.warnは使わない）",
+    "source": { "type": "string", "description": "Mermaid記法のダイアグラム定義（flowchart/sequenceDiagram等）。mermaid公式の記法をそのまま書く" },
+    "caption": { "type": "string", "description": "図の下に表示するキャプション（<br/>等HTMLタグ利用可）" }
   },
   "chart": {
     "description": "content.chart のチャート指定（#204）。棒・折れ線・円・横棒・大数値＋推移の5種。寸法・座標は持たず本文領域いっぱいに自動で収まり、系列色・線幅・角丸はテーマトークンに追従する。軸ラベルは項目が12個を超えると等間隔に間引かれ、値ラベルは描画点が多いと既定で省かれる（表示は axis / legend / valueLabels で上書きできる）",
@@ -517,7 +530,7 @@
     "props": { "type": "object" },
     "style": { "type": "object" }
   },
-  "builtinComponents": ["TerminalAnimation", "Image", "Diagram"],
+  "builtinComponents": ["TerminalAnimation", "Image", "InlineSvg", "TextDiagram", "Diagram"],
   "builtinIcons": ["Description", "PlaylistAddCheck", "Traffic", "FactCheck", "Memory", "Search"],
   "presentationMeta": {
     "description": "トップレベル meta（プレゼン全体の設定）",

@@ -707,6 +707,29 @@
           ]
         }
       }
+    },
+    {
+      "id": "layout-content-svg",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (svg)",
+        "svg": {
+          "markup": "<svg viewBox=\"0 0 200 120\"><rect x=\"10\" y=\"70\" width=\"40\" height=\"40\" fill=\"currentColor\" /><rect x=\"80\" y=\"40\" width=\"40\" height=\"70\" fill=\"currentColor\" opacity=\"0.7\" /><rect x=\"150\" y=\"10\" width=\"40\" height=\"100\" fill=\"currentColor\" opacity=\"0.4\" /></svg>",
+          "color": "accent",
+          "caption": "SVGマークアップをインライン展開し、currentColor でテーマ色に追従"
+        }
+      }
+    },
+    {
+      "id": "layout-content-text-diagram",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (textDiagram)",
+        "textDiagram": {
+          "source": "flowchart LR\n  A[開始] --> B{判断}\n  B -->|Yes| C[完了]\n  B -->|No| A",
+          "caption": "Mermaid記法のテキスト図法を描画（初回はmermaidを動的importで読み込む）"
+        }
+      }
     }
   ]
 }

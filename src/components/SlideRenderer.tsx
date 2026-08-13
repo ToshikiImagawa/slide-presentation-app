@@ -20,6 +20,8 @@ import { Timeline } from './Timeline'
 import { TimelineNode } from './TimelineNode'
 import { FeatureTileGrid } from './FeatureTileGrid'
 import { ImageFigureGrid } from './ImageFigureGrid'
+import { InlineSvg, type SvgSpec } from './InlineSvg'
+import { TextDiagram, type TextDiagramSpec } from './TextDiagram'
 import { Chart, type ChartSpec } from './chart'
 import { Table, type TableSpec } from './table'
 import { Compare, type CompareSpec } from './compare'
@@ -435,6 +437,15 @@ const CONTENT_BRANCHES: ContentBranch[] = [
   { match: (content) => Boolean(content.toc) && typeof content.toc === 'object', fill: false, render: renderToc },
   { match: (content) => Boolean(content.tiles), fill: false, render: renderTiles },
   { match: (content) => Boolean(content.images), fill: true, render: renderImages },
+  // インラインSVG（#203）。<img>参照ではなくマークアップをそのまま挿入するのでテーマ色（currentColor/var(--theme-*)）に追従する
+  { match: (content) => Boolean(content.svg) && typeof content.svg === 'object', fill: () => componentFillsContentArea('InlineSvg'), render: (content) => <InlineSvg {...(content.svg as SvgSpec)} /> },
+  // テキスト図法（Mermaid・#203）。mermaidは動的importで別チャンクに切り出す（TextDiagram.tsx参照）ため、
+  // このスライドを含まないデッキの初期バンドルには影響しない
+  {
+    match: (content) => Boolean(content.textDiagram) && typeof content.textDiagram === 'object',
+    fill: () => componentFillsContentArea('TextDiagram'),
+    render: (content) => <TextDiagram {...(content.textDiagram as TextDiagramSpec)} />,
+  },
   // チャート（#204）・表（#194）は本文領域の残り高さを埋める。fill は登録側（registerDefaults.tsx）の
   // fillsContentArea が単一真実源で、ここでは複製しない（#274）
   { match: (content) => Boolean(content.chart) && typeof content.chart === 'object', fill: () => componentFillsContentArea('Chart'), render: (content) => <Chart {...(content.chart as ChartSpec)} /> },
