@@ -633,6 +633,80 @@
           ]
         }
       }
+    },
+    {
+      "id": "layout-content-two-by-two",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (twoByTwo)",
+        "twoByTwo": {
+          "quadrants": [
+            { "title": "強い / 難しい" },
+            { "title": "強い / 簡単" },
+            { "title": "弱い / 難しい" },
+            { "title": "弱い / 簡単" }
+          ],
+          "axes": {
+            "x": { "label": "実装難易度", "low": "簡単", "high": "難しい" },
+            "y": { "label": "効果", "low": "低", "high": "高" }
+          },
+          "items": [
+            { "label": "施策A", "x": 0.15, "y": 0.2 },
+            { "label": "施策B", "x": 0.72, "y": 0.28 },
+            { "label": "施策C", "x": 0.3, "y": 0.78 },
+            { "label": "施策D", "x": 0.82, "y": 0.7 }
+          ]
+        }
+      }
+    },
+    {
+      "id": "layout-content-funnel",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (funnel)",
+        "funnel": {
+          "unit": "件",
+          "stages": [
+            { "label": "アクセス", "value": 10000, "description": "訪問数" },
+            { "label": "登録", "value": 3000, "description": "会員登録" },
+            { "label": "有料化", "value": 800, "description": "課金" },
+            { "label": "継続", "value": 300, "description": "翌月継続" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "layout-content-swot",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (swot)",
+        "swot": {
+          "labels": { "strengths": "強み", "weaknesses": "弱み", "opportunities": "機会", "threats": "脅威" },
+          "strengths": { "items": ["ブランド認知", "熟練エンジニア", "既存顧客基盤"] },
+          "weaknesses": { "items": ["レガシーコード", "採用難", "運用コスト高"] },
+          "opportunities": { "items": ["市場拡大", "AI活用", "新規セグメント"] },
+          "threats": { "items": ["競合強化", "規制強化", "為替変動"] }
+        }
+      }
+    },
+    {
+      "id": "layout-content-heatmap",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (heatmap)",
+        "heatmap": {
+          "rows": ["Product A", "Product B", "Product C", "Product D"],
+          "cols": ["Q1", "Q2", "Q3", "Q4"],
+          "color": "series2",
+          "unit": "%",
+          "values": [
+            [12, 18, 24, 30],
+            [8, 14, 22, 28],
+            [20, 26, 32, 38],
+            [4, 10, 16, 22]
+          ]
+        }
+      }
     }
   ]
 }

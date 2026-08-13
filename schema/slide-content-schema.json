@@ -20,7 +20,7 @@
       }
     },
     "content": {
-      "description": "コンテンツ表示用レイアウト。子要素のフィールドで描画が決まる。優先順位: steps→Timeline / dateTimeline→日付付きマイルストーンタイムライン / checklist→チェックリスト / toc→目次 / tiles→FeatureTileGrid / images→画像スライド / chart→チャート / table→表 / compare→比較 / flow→横フロー / hierarchyDiagram→階層構成図 / serverDiagram→サーバ/クラウド構成図 / orgChart→組織図 / classDiagram→UMLクラス図 / flowchart→フローチャート / swimlane→スイムレーン / gantt→ガント / component→カスタム。いずれも無指定の場合に限り body/items（プレーン本文）を描画する（#193・#200・#199・#195・#205・#206）",
+      "description": "コンテンツ表示用レイアウト。子要素のフィールドで描画が決まる。優先順位: steps→Timeline / dateTimeline→日付付きマイルストーンタイムライン / checklist→チェックリスト / toc→目次 / tiles→FeatureTileGrid / images→画像スライド / chart→チャート / table→表 / compare→比較 / flow→横フロー / hierarchyDiagram→階層構成図 / serverDiagram→サーバ/クラウド構成図 / orgChart→組織図 / classDiagram→UMLクラス図 / flowchart→フローチャート / swimlane→スイムレーン / gantt→ガント / twoByTwo→2×2マトリクス / funnel→ファネル / swot→SWOT / heatmap→ヒートマップ / component→カスタム。いずれも無指定の場合に限り body/items（プレーン本文）を描画する（#193・#200・#199・#195・#205・#206・#207）",
       "contentFields": {
         "title": { "type": "string" },
         "steps": {
@@ -130,17 +130,21 @@
         "flowchart": { "type": "object", "ref": "flowchart" },
         "swimlane": { "type": "object", "ref": "swimlane" },
         "gantt": { "type": "object", "ref": "gantt" },
+        "twoByTwo": { "type": "object", "ref": "twoByTwo" },
+        "funnel": { "type": "object", "ref": "funnel" },
+        "swot": { "type": "object", "ref": "swot" },
+        "heatmap": { "type": "object", "ref": "heatmap" },
         "component": { "type": "object", "ref": "componentReference" },
         "footer": { "type": "string" },
         "body": {
           "type": "string",
-          "description": "プレーン本文の段落（改行は\\n）。steps/dateTimeline/checklist/toc/tiles/images/chart/table/compare/flow/hierarchyDiagram/serverDiagram/orgChart/classDiagram/flowchart/swimlane/gantt/componentのいずれも無指定の場合のみ描画される。itemsと併用可。段落配列が必要な場合はtwo-columnのparagraphsを使う（1カラム全幅の自由記述文はbody、カラム構成用の複数ブロックはparagraphsという役割分担）"
+          "description": "プレーン本文の段落（改行は\\n）。steps/dateTimeline/checklist/toc/tiles/images/chart/table/compare/flow/hierarchyDiagram/serverDiagram/orgChart/classDiagram/flowchart/swimlane/gantt/twoByTwo/funnel/swot/heatmap/componentのいずれも無指定の場合のみ描画される。itemsと併用可。段落配列が必要な場合はtwo-columnのparagraphsを使う（1カラム全幅の自由記述文はbody、カラム構成用の複数ブロックはparagraphsという役割分担）"
         },
         "items": {
           "type": "array",
           "ref": "contentItem",
           "maxItems": 7,
-          "description": "箇条書き（ネスト可）。steps/dateTimeline/checklist/toc/tiles/images/chart/table/compare/flow/hierarchyDiagram/serverDiagram/orgChart/classDiagram/flowchart/swimlane/gantt/componentのいずれも無指定の場合のみ描画される。bodyと併用可。推奨上限7件（超えると密度過多として自動修正対象になる）"
+          "description": "箇条書き（ネスト可）。steps/dateTimeline/checklist/toc/tiles/images/chart/table/compare/flow/hierarchyDiagram/serverDiagram/orgChart/classDiagram/flowchart/swimlane/gantt/twoByTwo/funnel/swot/heatmap/componentのいずれも無指定の場合のみ描画される。bodyと併用可。推奨上限7件（超えると密度過多として自動修正対象になる）"
         }
       }
     },
@@ -382,6 +386,98 @@
         "color": { "type": "string", "stringConstraint": "colorToken", "description": "省略時はタスクの並び順にseries1〜series6を巡回して割り当てる" }
       }
     }
+  },
+  "twoByTwo": {
+    "description": "content.twoByTwoの2×2マトリクス指定（散布配置・#207）。4象限（左上・右上・左下・右下）を敷き、itemsを正規化座標（0〜1・CSSと同じ左上原点）で散布する。優先度×影響度・工数×効果などの意思決定図に使う",
+    "quadrants": {
+      "type": "array",
+      "description": "4象限の見出し。並びは左上・右上・左下・右下（Zパターン）。省略時は無地の枠のみ描き、色は象限インデックス（0〜3）から系列色を巡回する",
+      "itemFields": {
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "color": { "type": "string", "stringConstraint": "colorToken", "description": "象限の枠色。省略時は象限インデックス由来の系列色（series1〜series4）" }
+      }
+    },
+    "items": {
+      "type": "array",
+      "maxItems": 12,
+      "description": "散布する項目。正規化座標（0〜1）で位置を指定する。推奨上限12件（超えると重なって読めなくなる）",
+      "itemFields": {
+        "label": { "type": "string" },
+        "x": { "type": "number", "description": "横位置（0=左端、1=右端）。範囲外・非数値は端に丸める（破綻ではなく縮退）" },
+        "y": { "type": "number", "description": "縦位置（0=上端、1=下端）。範囲外・非数値は端に丸める" },
+        "color": { "type": "string", "stringConstraint": "colorToken", "description": "省略時は落ちる先の象限インデックス由来の系列色" }
+      }
+    },
+    "axes": {
+      "type": "object",
+      "description": "軸の見出し・両端ラベル。省略時は軸ラベルなし",
+      "fields": {
+        "x": {
+          "type": "object",
+          "fields": {
+            "label": { "type": "string", "description": "x軸の軸名（例: \"影響度\"）" },
+            "low": { "type": "string", "description": "x軸の低い側ラベル（例: \"低\"）" },
+            "high": { "type": "string", "description": "x軸の高い側ラベル（例: \"高\"）" }
+          }
+        },
+        "y": {
+          "type": "object",
+          "fields": {
+            "label": { "type": "string" },
+            "low": { "type": "string" },
+            "high": { "type": "string" }
+          }
+        }
+      }
+    }
+  },
+  "funnel": {
+    "description": "content.funnelのファネル指定（段階ごとの絞り込み・#207）。上から下へ段を積み、valueの比率で段幅を決める（value省略時は等幅）。段の色はstages並び順の系列色を巡回する（単一のアクセント色に意味を持たせすぎない）",
+    "stages": {
+      "type": "array",
+      "maxItems": 6,
+      "description": "段の配列。推奨上限6段（超えると各段が細くなり読めなくなる）",
+      "itemFields": {
+        "label": { "type": "string" },
+        "value": { "type": "number", "description": "段の相対的な絞り込み量（例: 通過人数）。省略時は等幅。負値・NaNは等幅として扱う" },
+        "description": { "type": "string" },
+        "color": { "type": "string", "stringConstraint": "colorToken", "description": "省略時は段の並び順にseries1〜series6を巡回して割り当てる" }
+      }
+    },
+    "unit": { "type": "string", "description": "value に付ける単位（\"件\" / \"%\" 等）。数値の直後に連結する" }
+  },
+  "swot": {
+    "description": "content.swotのSWOTマトリクス指定（4ペイン・#207）。並びはSWOTの慣習に従いS=左上・W=右上・O=左下・T=右下に固定（S/Wは内部要因、O/Tは外部要因）。4ペインの色は象限インデックス由来の系列色（series1〜series4）を割り当てる（単一のアクセント色に意味を持たせすぎない）",
+    "strengths": { "type": "object", "ref": "swotPane" },
+    "weaknesses": { "type": "object", "ref": "swotPane" },
+    "opportunities": { "type": "object", "ref": "swotPane" },
+    "threats": { "type": "object", "ref": "swotPane" },
+    "labels": {
+      "type": "object",
+      "description": "4ペインの表題ラベル（省略時はStrengths/Weaknesses/Opportunities/Threats）",
+      "fields": {
+        "strengths": { "type": "string" },
+        "weaknesses": { "type": "string" },
+        "opportunities": { "type": "string" },
+        "threats": { "type": "string" }
+      }
+    }
+  },
+  "swotPane": {
+    "description": "content.swot.strengths等の1ペイン指定。items は改行区切りで1ペイン内に並ぶ",
+    "items": { "type": "array", "maxItems": 6, "description": "1ペインあたりの項目一覧（推奨上限6件・超えるとカード内で読めなくなる）" }
+  },
+  "heatmap": {
+    "description": "content.heatmapのヒートマップ指定（行×列の値の濃淡・#207）。セルの塗りは単一の系列色（color）＋alphaの階調（濃淡ヘルパーshadeSeriesに集約）で作る。行数×列数が8×8を超えると値ラベルを既定で省く（自動縮退）",
+    "rows": { "type": "array", "maxItems": 12, "description": "行見出し（縦軸ラベル・上から下）。推奨上限12行" },
+    "cols": { "type": "array", "maxItems": 12, "description": "列見出し（横軸ラベル・左から右）。推奨上限12列" },
+    "values": { "type": "array", "description": "行×列の値の2次元配列（values[rowIndex][colIndex]）。rows/colsと数が揃わない分は空セルにする" },
+    "color": { "type": "string", "stringConstraint": "colorToken", "description": "濃淡の基準色トークン名（例: 'series1'）。alphaを段階的に振るため、色の意味は色相ではなく濃さで表す。省略時は'primary'" },
+    "min": { "type": "number", "description": "濃度写像の下限値。省略時はデータの最小値" },
+    "max": { "type": "number", "description": "濃度写像の上限値。省略時はデータの最大値" },
+    "valueLabels": { "type": "boolean", "description": "各セルに数値を重ねるか。省略時は8×8以下なら表示" },
+    "unit": { "type": "string", "description": "値の単位（\"%\"等）。valueLabels表示時に数値の後ろへ連結する" }
   },
   "columnContentFields": {
     "description": "two-columnの left/right に指定可能なフィールド（すべてオプション、組み合わせ可）。componentを指定した場合は他のフィールドは無視される",

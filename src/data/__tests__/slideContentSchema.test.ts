@@ -496,6 +496,161 @@ describe('getSchemaConformanceErrors', () => {
     expect(errors[0].path).toBe('slides[0].content.gantt.tasks[0].color')
   })
 
+  it('content.twoByTwoの正常な指定はエラーにしない（#207 2×2マトリクス）', () => {
+    const data: PresentationData = {
+      meta: { title: 't' },
+      slides: [
+        {
+          id: 's1',
+          layout: 'content',
+          content: {
+            title: 'x',
+            twoByTwo: {
+              quadrants: [{ title: 'q1' }, { title: 'q2' }, { title: 'q3' }, { title: 'q4' }],
+              axes: { x: { label: '影響', low: '低', high: '高' }, y: { label: '工数' } },
+              items: [{ label: 'a', x: 0.3, y: 0.7, color: 'series2' }],
+            },
+          },
+        },
+      ],
+    }
+    expect(getSchemaConformanceErrors(data)).toEqual([])
+  })
+
+  it('content.twoByTwo.items[].colorが未知のトークン名だとエラーにする', () => {
+    const data = {
+      meta: { title: 't' },
+      slides: [{ id: 's1', layout: 'content', content: { title: 'x', twoByTwo: { items: [{ x: 0, y: 0, color: 'not-a-token' }] } } }],
+    } as unknown as PresentationData
+    const errors = getSchemaConformanceErrors(data)
+    expect(errors).toHaveLength(1)
+    expect(errors[0].path).toBe('slides[0].content.twoByTwo.items[0].color')
+  })
+
+  it('content.twoByTwo.itemsが推奨上限（12件）を超える場合はエラーにする', () => {
+    const items = Array.from({ length: 13 }, (_, i) => ({ label: `i${i}`, x: 0.5, y: 0.5 }))
+    const data: PresentationData = {
+      meta: { title: 't' },
+      slides: [{ id: 's1', layout: 'content', content: { title: 'x', twoByTwo: { items } } }],
+    }
+    const errors = getSchemaConformanceErrors(data)
+    expect(errors).toHaveLength(1)
+    expect(errors[0].path).toBe('slides[0].content.twoByTwo.items')
+  })
+
+  it('content.funnelの正常な指定はエラーにしない（#207 ファネル）', () => {
+    const data: PresentationData = {
+      meta: { title: 't' },
+      slides: [
+        {
+          id: 's1',
+          layout: 'content',
+          content: {
+            title: 'x',
+            funnel: {
+              unit: '件',
+              stages: [
+                { label: 'アクセス', value: 1000, color: 'series1' },
+                { label: '登録', value: 300 },
+              ],
+            },
+          },
+        },
+      ],
+    }
+    expect(getSchemaConformanceErrors(data)).toEqual([])
+  })
+
+  it('content.funnel.stages[].colorが未知のトークン名だとエラーにする', () => {
+    const data = {
+      meta: { title: 't' },
+      slides: [{ id: 's1', layout: 'content', content: { title: 'x', funnel: { stages: [{ label: 'a', value: 1, color: 'not-a-token' }] } } }],
+    } as unknown as PresentationData
+    const errors = getSchemaConformanceErrors(data)
+    expect(errors).toHaveLength(1)
+    expect(errors[0].path).toBe('slides[0].content.funnel.stages[0].color')
+  })
+
+  it('content.funnel.stagesが推奨上限（6件）を超える場合はエラーにする', () => {
+    const stages = Array.from({ length: 7 }, (_, i) => ({ label: `s${i}`, value: 1 }))
+    const data: PresentationData = {
+      meta: { title: 't' },
+      slides: [{ id: 's1', layout: 'content', content: { title: 'x', funnel: { stages } } }],
+    }
+    const errors = getSchemaConformanceErrors(data)
+    expect(errors).toHaveLength(1)
+    expect(errors[0].path).toBe('slides[0].content.funnel.stages')
+  })
+
+  it('content.swotの正常な指定はエラーにしない（#207 SWOT）', () => {
+    const data: PresentationData = {
+      meta: { title: 't' },
+      slides: [
+        {
+          id: 's1',
+          layout: 'content',
+          content: {
+            title: 'x',
+            swot: {
+              strengths: { items: ['a'] },
+              weaknesses: { items: ['b'] },
+              opportunities: { items: ['c'] },
+              threats: { items: ['d'] },
+              labels: { strengths: '強み', weaknesses: '弱み', opportunities: '機会', threats: '脅威' },
+            },
+          },
+        },
+      ],
+    }
+    expect(getSchemaConformanceErrors(data)).toEqual([])
+  })
+
+  it('content.swot.strengths.itemsが推奨上限（6件）を超える場合はエラーにする', () => {
+    const items = Array.from({ length: 7 }, (_, i) => `i${i}`)
+    const data: PresentationData = {
+      meta: { title: 't' },
+      slides: [{ id: 's1', layout: 'content', content: { title: 'x', swot: { strengths: { items } } } }],
+    }
+    const errors = getSchemaConformanceErrors(data)
+    expect(errors).toHaveLength(1)
+    expect(errors[0].path).toBe('slides[0].content.swot.strengths.items')
+  })
+
+  it('content.heatmapの正常な指定はエラーにしない（#207 ヒートマップ）', () => {
+    const data: PresentationData = {
+      meta: { title: 't' },
+      slides: [
+        {
+          id: 's1',
+          layout: 'content',
+          content: { title: 'x', heatmap: { rows: ['A'], cols: ['Q1'], values: [[42]], color: 'series2', unit: '%', min: 0, max: 100 } },
+        },
+      ],
+    }
+    expect(getSchemaConformanceErrors(data)).toEqual([])
+  })
+
+  it('content.heatmap.colorが未知のトークン名だとエラーにする', () => {
+    const data = {
+      meta: { title: 't' },
+      slides: [{ id: 's1', layout: 'content', content: { title: 'x', heatmap: { rows: ['A'], cols: ['Q'], values: [[1]], color: 'not-a-token' } } }],
+    } as unknown as PresentationData
+    const errors = getSchemaConformanceErrors(data)
+    expect(errors).toHaveLength(1)
+    expect(errors[0].path).toBe('slides[0].content.heatmap.color')
+  })
+
+  it('content.heatmap.rowsが推奨上限（12行）を超える場合はエラーにする', () => {
+    const rows = Array.from({ length: 13 }, (_, i) => `R${i}`)
+    const data: PresentationData = {
+      meta: { title: 't' },
+      slides: [{ id: 's1', layout: 'content', content: { title: 'x', heatmap: { rows, cols: ['Q'], values: [[1]] } } }],
+    }
+    const errors = getSchemaConformanceErrors(data)
+    expect(errors).toHaveLength(1)
+    expect(errors[0].path).toBe('slides[0].content.heatmap.rows')
+  })
+
   it('content.tocの正常な指定はエラーにしない（#195 目次）', () => {
     const data: PresentationData = {
       meta: { title: 't' },
