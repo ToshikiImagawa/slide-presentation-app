@@ -99,6 +99,44 @@ describe('getSchemaConformanceErrors', () => {
     expect(errors[0].path).toBe('slides[0].content.tiles[0].accentColor')
   })
 
+  it('content.svg.colorがTHEME_COLOR_TOKENSにない値の場合はエラーにする（#203）', () => {
+    const data: PresentationData = {
+      meta: { title: 't' },
+      slides: [{ id: 's1', layout: 'content', content: { title: 'x', svg: { markup: '<svg></svg>', color: 'purple' } } }],
+    }
+    const errors = getSchemaConformanceErrors(data)
+    expect(errors).toHaveLength(1)
+    expect(errors[0].path).toBe('slides[0].content.svg.color')
+  })
+
+  it('content.svg.markupが文字列でない場合はエラーにする', () => {
+    const data: PresentationData = {
+      meta: { title: 't' },
+      slides: [{ id: 's1', layout: 'content', content: { title: 'x', svg: { markup: 123 } } }],
+    }
+    const errors = getSchemaConformanceErrors(data)
+    expect(errors).toHaveLength(1)
+    expect(errors[0].path).toBe('slides[0].content.svg.markup')
+  })
+
+  it('content.textDiagram.sourceが文字列でない場合はエラーにする（#203）', () => {
+    const data: PresentationData = {
+      meta: { title: 't' },
+      slides: [{ id: 's1', layout: 'content', content: { title: 'x', textDiagram: { source: 123 } } }],
+    }
+    const errors = getSchemaConformanceErrors(data)
+    expect(errors).toHaveLength(1)
+    expect(errors[0].path).toBe('slides[0].content.textDiagram.source')
+  })
+
+  it('content.textDiagramが妥当な指定なら0エラーである（#203）', () => {
+    const data: PresentationData = {
+      meta: { title: 't' },
+      slides: [{ id: 's1', layout: 'content', content: { title: 'x', textDiagram: { source: 'flowchart LR\n  A --> B', caption: 'c' } } }],
+    }
+    expect(getSchemaConformanceErrors(data)).toEqual([])
+  })
+
   it('tilesが推奨上限（8件）を超える場合はエラーにする（情報密度・#211）', () => {
     const tiles = Array.from({ length: 9 }, (_, i) => ({ icon: 'Description', title: `t${i}`, description: 'd' }))
     const data: PresentationData = {

@@ -88,11 +88,11 @@
 
 ## content
 
-コンテンツ表示用レイアウト。子要素のフィールドで描画が決まる。優先順位: `steps` → `checklist` → `toc` → `tiles` → `images` → `chart` → `table` → `compare` → `flow` → `component` → `body`/`items`（いずれかが指定されていたら以降は評価しない）。`toc`（目次）は末尾の節を参照。
+コンテンツ表示用レイアウト。子要素のフィールドで描画が決まる。優先順位: `steps` → `checklist` → `toc` → `tiles` → `images` → `svg` → `textDiagram` → `chart` → `table` → `compare` → `flow` → `component` → `body`/`items`（いずれかが指定されていたら以降は評価しない）。`toc`（目次）は末尾の節を参照。
 
 ### body / items（プレーン本文）
 
-`steps`/`checklist`/`tiles`/`images`/`chart`/`table`/`compare`/`flow`/`component` のいずれも指定しない場合に描画される、タイトル＋左寄せ本文の基本形。`body`（段落）と `items`（箇条書き、ネスト可）は併用できる。
+`steps`/`checklist`/`tiles`/`images`/`svg`/`textDiagram`/`chart`/`table`/`compare`/`flow`/`component` のいずれも指定しない場合に描画される、タイトル＋左寄せ本文の基本形。`body`（段落）と `items`（箇条書き、ネスト可）は併用できる。
 
 ```json
 {
@@ -212,6 +212,53 @@
 ```
 
 1枚指定なら本文領域いっぱいの単一画像、2〜3枚なら横並びグリッドになる（4枚以上は3列で折返し）。`src` はパッケージ内 `image/` 配下の相対パス・外部URL・data URI を指定できる。読み込みに失敗した画像は破線枠のプレースホルダになる。
+
+### svg（インラインSVG・#203）
+
+`images`（`<img>` 参照）と異なり、SVGマークアップをそのまま挿入して描画する。`fill="currentColor"` や `fill="var(--theme-primary)"` 等でテーマの色変数を参照していれば、テーマ切り替え時に自動で追従する（色の書き換えロジックは無いので、テーマに追従させたい図形は作者側がこれらを使って書く）。
+
+```json
+{
+  "id": "slide-id",
+  "layout": "content",
+  "content": {
+    "title": "タイトル",
+    "svg": {
+      "markup": "<svg viewBox=\"0 0 100 100\"><circle cx=\"50\" cy=\"50\" r=\"40\" fill=\"currentColor\" /></svg>",
+      "color": "primary",
+      "caption": "図の下に表示するキャプション（<br/>等HTMLタグ利用可）"
+    }
+  }
+}
+```
+
+`markup` は `viewBox` を指定すると縦横比を保ってセーフエリア内に自動フィットする。`color` は `currentColor` が参照する文字色トークン名（省略時は `primary`）。
+
+安全性のため、`script`・イベントハンドラ属性（`onclick` 等の `on*`）・外部参照（`href`/`xlink:href` の `#` 始まり以外）・`foreignObject`・`image` 要素は自動的に除去される（`body`/`items` 等の既存の無サニタイズ経路とは異なる扱い。理由は `src/components/InlineSvg.tsx` のコメントを参照）。解析できないマークアップ・ルートが `<svg>` でないものは描画をスキップし、利用者への警告になる。
+
+### textDiagram（テキスト図法・#203）
+
+Mermaid記法でダイアグラムをソースとして書ける。
+
+```json
+{
+  "id": "slide-id",
+  "layout": "content",
+  "content": {
+    "title": "タイトル",
+    "textDiagram": {
+      "source": "flowchart LR\n  A[開始] --> B{判断}\n  B -->|Yes| C[完了]\n  B -->|No| A",
+      "caption": "図の下に表示するキャプション"
+    }
+  }
+}
+```
+
+`source` はmermaid公式の記法をそのまま書く（`flowchart`/`sequenceDiagram`等）。構文が不正な場合は破線枠のプレースホルダになる。mermaidは `securityLevel: 'strict'` で初期化されるため、diagram内のクリックイベント等によるコード実行はmermaid自身が拒否する。
+
+mermaidはd3/dagre/katex/cytoscape等の重い依存を持ち込むため、コンポーネント登録は軽量に保ちつつ、mermaid本体は初回描画時に動的import（別チャンク）で読み込む（`src/components/TextDiagram.tsx`。PDF書き出しの `html2canvas`/`jspdf` と同じ手法）。テキスト図法を含まないデッキの初期バンドル・起動時間には影響しない。
+
+`source` はmermaid公式の記法をそのまま書く（`flowchart`/`sequenceDiagram`等）。構文が不正な場合は破線枠のプレースホルダになる。mermaidは `securityLevel: 'strict'` で初期化されるため、diagram内のクリックイベント等によるコード実行はmermaid自身が拒否する。
 
 ### chart（チャート）
 
@@ -338,7 +385,7 @@
 }
 ```
 
-`name` はComponentRegistryに登録済みの名前を指定する。デフォルト登録済み: `TerminalAnimation`, `Image`, `Diagram`, `Chart`, `Table`, `Compare`, `Flow`, `Checklist`, `HierarchyDiagram`, `ServerDiagram`, `OrgChart`, `ClassDiagram`, `Flowchart`, `Swimlane`, `Gantt`, `TwoByTwoMatrix`, `Funnel`, `Swot`, `Heatmap`（アドオン・ブランドテーマが追加登録する名前も指定できる。アイコンは `Icon:<name>` という別のネームスペースで登録され対象外）。
+`name` はComponentRegistryに登録済みの名前を指定する。デフォルト登録済み: `TerminalAnimation`, `Image`, `InlineSvg`, `TextDiagram`, `Diagram`, `Chart`, `Table`, `Compare`, `Flow`, `Checklist`, `HierarchyDiagram`, `ServerDiagram`, `OrgChart`, `ClassDiagram`, `Flowchart`, `Swimlane`, `Gantt`, `TwoByTwoMatrix`, `Funnel`, `Swot`, `Heatmap`（アドオン・ブランドテーマが追加登録する名前も指定できる。アイコンは `Icon:<name>` という別のネームスペースで登録され対象外）。
 
 `Chart`/`Table`/`Compare`/`HierarchyDiagram`/`ServerDiagram`/`OrgChart`/`ClassDiagram`/`Flowchart`/`Swimlane`/`Gantt`/`TwoByTwoMatrix`/`Funnel`/`Swot`/`Heatmap` は同名の短縮記法（`content.chart`/`content.table`/`content.twoByTwo` 等）でも描けるが、ComponentRegistry にも登録されているため `component: { name: "Table", props: {...} }`（`props` は各短縮記法のオブジェクトと同じフィールド）でも同じ見た目で置ける。`Flow`/`Checklist` も同様に置けるが、短縮記法（`content.flow`/`content.checklist`）はフィールド値がオブジェクトではなく配列そのものなので、`props` はその配列をそれぞれ `steps`/`items` に包んだ形（`{ "steps": [...] }`/`{ "items": [...] }`）になる。`Checklist` はさらに、短縮記法側が `description` 内のHTMLタグ（`<b>` 等）を解釈するのに対し、`component` 経由ではそのまま文字列として表示される差がある（`description` にHTMLタグを含めない場合は差が出ない）。いずれも two-column の各カラム（`left.component`/`right.component`）・bleed・custom など `component` を受け付けるすべての経路から使え、表と箇条書きを左右に並べるレイアウトも組める（#241/#274）。
 

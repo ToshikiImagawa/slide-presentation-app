@@ -1,0 +1,31 @@
+/* テキスト図法（Mermaid・#203）。本文領域の残り高さは global.css の fill 変種（.content-area-fill-item・#225）
+   から得る。InlineSvg.module.css と同じ考え方で、mermaidが返すSVGのwidth/height属性をCSSで上書きし、
+   viewBoxが持つ縦横比を保って自動フィットさせる */
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  min-height: 0;
+}
+
+.diagramArea {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  align-items: center;
+  justify-content: center;
+}
+
+.diagramArea svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* 構文が不正・読み込み中（mermaidチャンクの動的import待ち）はFallbackImageの寸法未指定時と同じ破線プレースホルダにする */
+.placeholder {
+  flex: 1;
+  min-height: 0;
+  border: 1px dashed var(--theme-border-light);
+  border-radius: var(--theme-radius-md);
+}

@@ -1,6 +1,15 @@
-import { describe, expect, it, beforeEach } from 'vitest'
-import { render } from '@testing-library/react'
+import { describe, expect, it, beforeEach, vi } from 'vitest'
+import { render, waitFor } from '@testing-library/react'
 import { ThemeProvider } from '@mui/material/styles'
+
+// #203: TextDiagram は mermaid を動的import（別チャンク）で読み込む（pdfExport.ts の html2canvas/jspdf と同じ手法）。
+// vi.mock は dynamic import も差し替えるため、mermaid本体を読み込まずに描画経路を検証できる
+const mermaidMock = vi.hoisted(() => ({
+  initialize: vi.fn(),
+  render: vi.fn(async () => ({ svg: '<svg data-mock-diagram="true"></svg>' })),
+}))
+vi.mock('mermaid', () => ({ default: mermaidMock }))
+
 import { CENTER_VARIANT_NAMES, SlideRenderer } from '../SlideRenderer'
 import schemaJson from '../../../schema/slide-content-schema.json'
 import { registerDefaultComponents } from '../registerDefaults'
@@ -90,6 +99,7 @@ function domSkeleton(el: Element, maxDepth: number, depth = 0): string {
 describe('SlideRenderer', () => {
   beforeEach(() => {
     registerDefaultComponents()
+    mermaidMock.render.mockReset().mockImplementation(async () => ({ svg: '<svg data-mock-diagram="true"></svg>' }))
   })
 
   it('テストデータで全スライドがレンダリングされる', () => {
@@ -447,6 +457,65 @@ describe('SlideRenderer', () => {
     it('images以外の子（tiles）では fill 変種にならない', () => {
       const { container } = renderContent({ tiles: [{ icon: 'Description', title: 'タイル', description: '説明' }] })
       expect(container.querySelector('.content-area')!.classList.contains('content-area-fill')).toBe(false)
+    })
+  })
+
+  // #203: インラインSVG（content.svg → InlineSvg）
+  describe('contentスライド(svg)', () => {
+    function renderContent(content: SlideData['content']) {
+      return renderWithTheme(<SlideRenderer slides={[{ id: 'test-svg', layout: 'content', content: { title: 'タイトル', ...content } }]} />)
+    }
+
+    it('有効なSVGマークアップがインライン展開される', () => {
+      const { container } = renderContent({ svg: { markup: '<svg viewBox="0 0 10 10"><rect width="10" height="10" /></svg>' } })
+      expect(container.querySelector('[data-testid="inline-svg"] svg')).not.toBeNull()
+    })
+
+    it('colorトークンをラッパーのCSS colorに解決する（currentColor追従・省略時はprimary）', () => {
+      const { container } = renderContent({ svg: { markup: '<svg viewBox="0 0 10 10"><rect width="10" height="10" fill="currentColor" /></svg>' } })
+      const svgArea = container.querySelector('[data-testid="inline-svg"]')!.firstElementChild as HTMLElement
+      expect(svgArea.style.color).toBe('var(--theme-primary)')
+    })
+
+    it('script要素を除去してから挿入する（安全性・#203）', () => {
+      const { container } = renderContent({ svg: { markup: '<svg viewBox="0 0 10 10"><script>alert(1)</script><rect width="10" height="10" /></svg>' } })
+      expect(container.querySelector('[data-testid="inline-svg"] script')).toBeNull()
+    })
+
+    it('解析不能なマークアップは例外を投げず描画をスキップする（利用者への警告はgetThemeWarningsが担う）', () => {
+      const { queryByTestId } = renderContent({ svg: { markup: '<not-svg>' } })
+      expect(queryByTestId('inline-svg')).toBeNull()
+    })
+
+    it('captionが指定されていれば描画される', () => {
+      const { container } = renderContent({ svg: { markup: '<svg viewBox="0 0 10 10"><rect width="10" height="10" /></svg>', caption: 'キャプション' } })
+      expect(container.textContent).toContain('キャプション')
+    })
+  })
+
+  // #203: テキスト図法（content.textDiagram → TextDiagram）。mermaidは動的importなので描画は非同期
+  describe('contentスライド(textDiagram)', () => {
+    function renderContent(content: SlideData['content']) {
+      return renderWithTheme(<SlideRenderer slides={[{ id: 'test-text-diagram', layout: 'content', content: { title: 'タイトル', ...content } }]} />)
+    }
+
+    it('mermaid.renderの結果（SVG）が描画される', async () => {
+      const { container } = renderContent({ textDiagram: { source: 'flowchart LR\n  A --> B' } })
+      await waitFor(() => expect(container.querySelector('[data-testid="text-diagram"] svg')).not.toBeNull())
+      expect(mermaidMock.render).toHaveBeenCalledWith(expect.stringContaining('text-diagram-'), 'flowchart LR\n  A --> B')
+    })
+
+    it('構文が不正（mermaid.renderがreject）な場合は例外を投げずプレースホルダになる', async () => {
+      mermaidMock.render.mockRejectedValueOnce(new Error('parse error'))
+      const { container } = renderContent({ textDiagram: { source: 'not a valid diagram' } })
+      await waitFor(() => expect(container.querySelector('[data-testid="text-diagram"] > div')?.getAttribute('data-state')).toBe('error'))
+      expect(container.querySelector('[data-testid="text-diagram"] svg')).toBeNull()
+    })
+
+    it('captionが指定されていれば描画される', async () => {
+      const { container } = renderContent({ textDiagram: { source: 'flowchart LR\n  A --> B', caption: 'キャプション' } })
+      await waitFor(() => expect(container.querySelector('[data-testid="text-diagram"] svg')).not.toBeNull())
+      expect(container.textContent).toContain('キャプション')
     })
   })
 
@@ -944,6 +1013,8 @@ describe('SlideRenderer', () => {
       { name: 'toc', content: { toc: { items: [{ title: '章1', page: 1 }] } }, fill: false },
       { name: 'tiles', content: { tiles: [{ icon: 'Description', title: 'タイル', description: '説明' }] }, fill: false },
       { name: 'images', content: { images: [{ src: '/a.png' }] }, fill: true },
+      { name: 'svg', content: { svg: { markup: '<svg viewBox="0 0 10 10"><rect width="10" height="10" /></svg>' } }, fill: true },
+      { name: 'textDiagram', content: { textDiagram: { source: 'flowchart LR\n  A --> B' } }, fill: true },
       { name: 'chart', content: { chart: { type: 'bar', categories: ['A'], series: [{ values: [1] }] } }, fill: true },
       { name: 'table', content: { table: { columns: [{ label: '項目' }], rows: [['値']] } }, fill: true },
       { name: 'compare', content: { compare: { left: { heading: '見出し' } } }, fill: true },

@@ -1,0 +1,26 @@
+/* インラインSVG（#203）。本文領域（.content-area = セーフエリア内）の残り高さは global.css の fill 変種
+   （.content-area-fill-item を付けた要素が受け取る・#225）から得る。svgArea を flex:1 + min-height:0 の
+   確定高さにし、挿入されるSVG自身の width/height を 100% へ上書きすることで、SVGのviewBoxが持つ縦横比を
+   保ったまま自動フィットさせる（ImageFigureGrid・#198 と同じ考え方）。 */
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  min-height: 0;
+}
+
+.svgArea {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  align-items: center;
+  justify-content: center;
+}
+
+/* svg要素自身が持つ width/height 属性より優先して確定高さいっぱいに広げる（CSSはSVGの提示属性より常に優先されるため !important は不要）。
+   viewBox を持つSVGはこれで縦横比を保って自動フィットする（viewBox が無い場合は歪む可能性があるが、SVGの標準的な作法としてviewBox指定を前提にする） */
+.svgArea svg {
+  width: 100%;
+  height: 100%;
+}

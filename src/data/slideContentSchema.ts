@@ -38,6 +38,8 @@ interface SlideContentSchema {
   columnContentFields: FieldMap & { description?: string }
   componentReference: FieldMap & { description?: string }
   contentItem: FieldMap & { description?: string }
+  svg: FieldMap & { description?: string }
+  textDiagram: FieldMap & { description?: string }
   chart: FieldMap & { description?: string }
   table: FieldMap & { description?: string }
   compare: FieldMap & { description?: string }
@@ -70,6 +72,8 @@ const REF_MAPS: Record<string, FieldMap> = {
   columnContentFields: stripMetaKeys(SCHEMA.columnContentFields),
   componentReference: stripMetaKeys(SCHEMA.componentReference),
   contentItem: stripMetaKeys(SCHEMA.contentItem),
+  svg: stripMetaKeys(SCHEMA.svg),
+  textDiagram: stripMetaKeys(SCHEMA.textDiagram),
   chart: stripMetaKeys(SCHEMA.chart),
   table: stripMetaKeys(SCHEMA.table),
   compare: stripMetaKeys(SCHEMA.compare),

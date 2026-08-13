@@ -968,6 +968,77 @@ describe('getThemeWarnings', () => {
     })
   })
 
+  // #203: content.svg の指定ミスは白紙描画になり原因が伝わらないため、既存の警告集約機構に載せる
+  describe('content.svg / component:{name:"InlineSvg"} の指定ミス（#203）', () => {
+    it('解析不能なmarkupを警告する', () => {
+      const warnings = getThemeWarnings(undefined, [{ id: 's1', layout: 'content', content: { svg: { markup: '<not-svg>' } } }])
+      expect(warnings.some((w) => w.includes('slides[0].content.svg.markup'))).toBe(true)
+    })
+
+    it('ルートがsvgでないmarkupを警告する', () => {
+      const warnings = getThemeWarnings(undefined, [{ id: 's1', layout: 'content', content: { svg: { markup: '<div>not svg</div>' } } }])
+      expect(warnings.some((w) => w.includes('slides[0].content.svg.markup'))).toBe(true)
+    })
+
+    it('scriptを含むmarkupは除去した旨を警告する（描画自体は継続する）', () => {
+      const warnings = getThemeWarnings(undefined, [{ id: 's1', layout: 'content', content: { svg: { markup: '<svg><script>alert(1)</script></svg>' } } }])
+      expect(warnings.some((w) => w.includes('slides[0].content.svg.markup') && w.includes('script'))).toBe(true)
+    })
+
+    it('妥当なmarkupでは警告しない', () => {
+      const warnings = getThemeWarnings(undefined, [{ id: 's1', layout: 'content', content: { svg: { markup: '<svg viewBox="0 0 10 10"><rect width="10" height="10" fill="currentColor" /></svg>' } } }])
+      expect(warnings).toEqual([])
+    })
+
+    it('two-column の左右カラムの component: { name: "InlineSvg" } も検出する', () => {
+      const warnings = getThemeWarnings(undefined, [
+        {
+          id: 's1',
+          layout: 'two-column',
+          content: {
+            title: 'T',
+            left: { component: { name: 'InlineSvg', props: { markup: '<not-svg>' } } },
+          },
+        },
+      ])
+      expect(warnings.some((w) => w.includes('slides[0].content.left.component.props.markup'))).toBe(true)
+    })
+
+    it('InlineSvg 以外の component は対象外', () => {
+      const warnings = getThemeWarnings(undefined, [{ id: 's1', layout: 'custom', content: { component: { name: 'Diagram', props: { markup: '<not-svg>' } } } }])
+      expect(warnings).toEqual([])
+    })
+  })
+
+  // #203: content.textDiagram / component:{name:"TextDiagram"} のsourceが空・未指定なのは静的に判定できるため警告する。
+  // Mermaid構文自体の妥当性はmermaid本体（動的import対象）が無いと判定できないため対象外（TextDiagram.tsxのコメント参照）
+  describe('content.textDiagram / component:{name:"TextDiagram"} の指定ミス（#203）', () => {
+    it('sourceが未指定の場合を警告する', () => {
+      const warnings = getThemeWarnings(undefined, [{ id: 's1', layout: 'content', content: { textDiagram: {} } }])
+      expect(warnings.some((w) => w.includes('slides[0].content.textDiagram.source'))).toBe(true)
+    })
+
+    it('sourceが空文字の場合を警告する', () => {
+      const warnings = getThemeWarnings(undefined, [{ id: 's1', layout: 'content', content: { textDiagram: { source: '   ' } } }])
+      expect(warnings.some((w) => w.includes('slides[0].content.textDiagram.source'))).toBe(true)
+    })
+
+    it('妥当なsourceでは警告しない', () => {
+      const warnings = getThemeWarnings(undefined, [{ id: 's1', layout: 'content', content: { textDiagram: { source: 'flowchart LR\n  A --> B' } } }])
+      expect(warnings).toEqual([])
+    })
+
+    it('two-column の左右カラムの component: { name: "TextDiagram" } も検出する', () => {
+      const warnings = getThemeWarnings(undefined, [{ id: 's1', layout: 'two-column', content: { title: 'T', right: { component: { name: 'TextDiagram', props: {} } } } }])
+      expect(warnings.some((w) => w.includes('slides[0].content.right.component.props.source'))).toBe(true)
+    })
+
+    it('TextDiagram 以外の component は対象外', () => {
+      const warnings = getThemeWarnings(undefined, [{ id: 's1', layout: 'custom', content: { component: { name: 'Diagram', props: {} } } }])
+      expect(warnings).toEqual([])
+    })
+  })
+
   // #279: row/col/startCol が範囲外・非整数だった場合、getAxisSlot（#276）が黒画面防止のためクランプするだけで
   // 利用者に伝わらない問題を解消する。検出はクランプ前の生値とクランプ後の添字を比較する形（#276の丸め・クランプ
   // 規則自体は書き写さない）。対象はgetAxisSlotで実際にクランプされる4種（classDiagram/flowchart/swimlane/gantt）。
