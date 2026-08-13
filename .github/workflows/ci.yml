@@ -129,6 +129,10 @@ jobs:
           node-version: 20
           cache: 'npm'
       - run: npm ci
+      # fixture と resources/reference-deck/ のファイル名照合。撮影もフォント描画も不要なため、
+      # WebKit 起動前に実行して孤児・欠落を早期に検知する（#293）
+      - name: Check reference deck file names
+        run: npm run reference-deck:check-files
       # はみ出し・セーフエリア侵入・マスター装飾との重なりは DOM 実測（getBoundingClientRect）で判定するため、
       # ピクセル比較（reference-deck:diff）と違い撮影の非決定性の影響を受けず、フォント描画差にも依存しない。
       # e2e ジョブと同様に WebKit を Linux で実行できる（#209）

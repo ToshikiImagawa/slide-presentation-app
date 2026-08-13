@@ -24,11 +24,12 @@
  * 既定: --base=HEAD, --mask-bottom=120
  */
 import { execFileSync } from 'node:child_process'
-import { existsSync, readdirSync, readFileSync } from 'node:fs'
-import { basename, dirname, resolve } from 'node:path'
+import { existsSync, readFileSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import pixelmatch from 'pixelmatch'
 import { PNG } from 'pngjs'
+import { expectedFileNames, fixtureSlides } from './reference-deck-fixture.mjs'
 import { LOCALES } from './vite-runtime.mjs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
@@ -60,9 +61,7 @@ function componentNamesOf(content) {
 function deriveKnownResidualIds() {
   const ids = new Set()
   for (const locale of LOCALES) {
-    const path = resolve(ROOT, `scripts/screenshot/fixtures/reference-deck.${locale.lang}.json`)
-    if (!existsSync(path)) continue
-    for (const slide of JSON.parse(readFileSync(path, 'utf8')).slides ?? []) {
+    for (const slide of fixtureSlides(locale.lang)) {
       if (!slide?.id) continue
       if (componentNamesOf(slide.content).some((n) => JS_ANIMATED_COMPONENTS.has(n))) ids.add(slide.id)
     }
@@ -105,18 +104,6 @@ function tryGit(args, options) {
 function readRefPng(base, relPath) {
   const buf = tryGit(['show', `${base}:${relPath}`], { maxBuffer: 1024 * 1024 * 64 })
   return buf ? PNG.sync.read(buf) : null
-}
-
-/** git ref 側のディレクトリに存在する png ファイル名一覧 */
-function refFileNames(base, dir) {
-  const out = tryGit(['ls-tree', '--name-only', base, `${DECK_DIR}/${dir}/`], { encoding: 'utf-8' })
-  if (!out) return []
-  return out
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((p) => basename(p))
-    .filter((name) => name.endsWith('.png'))
 }
 
 /** 下端 maskBottom px を全幅にわたって同一色（不透明黒）で塗りつぶす（ページ番号・進捗バー領域） */
@@ -220,10 +207,11 @@ function main() {
   const summary = {}
   const bump = (status) => (summary[status] = (summary[status] ?? 0) + 1)
 
-  for (const { dir: locale } of LOCALES) {
-    const workDir = resolve(ROOT, DECK_DIR, locale)
-    const workNames = existsSync(workDir) ? readdirSync(workDir).filter((f) => f.endsWith('.png')) : []
-    const names = [...new Set([...refFileNames(base, locale), ...workNames])].sort()
+  for (const { dir: locale, lang } of LOCALES) {
+    // 比較対象は fixture から導出した期待ファイル名のみ（ディレクトリの実ファイル列挙をやめる）。
+    // 孤児（fixture に対応するスライドが無い PNG）を比較対象に含めない（#293）。孤児・欠落の検知は
+    // check-reference-deck-files.mjs が担う
+    const names = expectedFileNames(lang)
 
     console.log(`## ${locale} (${names.length}枚)`)
     for (const name of names) {

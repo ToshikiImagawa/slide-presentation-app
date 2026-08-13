@@ -16,11 +16,12 @@
  *
  * 実行: node scripts/screenshot/capture-reference-deck.mjs
  */
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, unlinkSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { webkit } from 'playwright'
 import { compositeChrome, renderTitleBar } from './chrome.mjs'
+import { expectedFileName, fixtureSlides, pngFileNames } from './reference-deck-fixture.mjs'
 import { LOCALES, sleep, startScreenshotVite, stopScreenshotVite, waitForServer } from './vite-runtime.mjs'
 import { DEVICE_SCALE_FACTOR, contentViewport } from './viewports.mjs'
 
@@ -30,10 +31,14 @@ const OUT_BASE = process.env.SCREENSHOT_OUT ? resolve(ROOT, process.env.SCREENSH
 const URL = 'http://localhost:1420'
 const VIEWPORT_KEY = 'reference-deck'
 
-/** ロケール別 fixture からスライド一覧を読む（撮影枚数・出力ファイル名の単一真実源） */
-function fixtureSlides(lang) {
-  const path = resolve(ROOT, `scripts/screenshot/fixtures/reference-deck.${lang}.json`)
-  return JSON.parse(readFileSync(path, 'utf-8')).slides
+/** 期待ファイル名に無い PNG（旧番号・削除済みスライドの残骸）を出力先から削除する（#293） */
+function removeOrphans(outDir, expectedNames) {
+  for (const name of pngFileNames(outDir)) {
+    if (!expectedNames.has(name)) {
+      unlinkSync(resolve(outDir, name))
+      console.log(`🗑  ${name}（孤児を削除）`)
+    }
+  }
 }
 
 /** タイトルバーの合成用画像をキャッシュから取得する。無ければレンダリングして登録する */
@@ -63,6 +68,7 @@ async function captureLocale(browser, bar, vp, locale, outDir) {
     await page.waitForSelector('.reveal .slides section', { timeout: 15000 })
     await sleep(500)
 
+    const expectedNames = new Set(slides.map((slide, index) => expectedFileName(index, slide)))
     for (const [index, slide] of slides.entries()) {
       await page.evaluate((h) => (window.location.hash = h), `#/${index}`)
       await page.evaluate(() => document.fonts.ready)
@@ -72,10 +78,13 @@ async function captureLocale(browser, bar, vp, locale, outDir) {
       // ピクセル差が出る（git 差分ベースの回帰検知が機能しなくなる）
       const contentBuf = await page.screenshot({ fullPage: vp.fullPage, animations: 'disabled' })
       const finalBuf = compositeChrome(contentBuf, bar)
-      const name = `${String(index).padStart(2, '0')}-${slide.id}.png`
+      const name = expectedFileName(index, slide)
       writeFileSync(resolve(outDir, name), finalBuf)
       console.log(`✅  ${locale.dir}/${name}`)
     }
+    // スライドの挿入・削除・リネームで前回撮影の旧番号ファイルが残ると、diff-reference-deck.mjs の
+    // 比較対象に紛れ込む（孤児が偽の一致・偽の差分を生む・#293）。撮影が全件成功した場合のみ削除する。
+    removeOrphans(outDir, expectedNames)
     if (errors.length) {
       console.log(`⚠ pageerror ${errors.length}件`)
       errors.slice(0, 5).forEach((e) => console.log(`    - ${e}`))
