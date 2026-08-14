@@ -484,8 +484,11 @@ code {
 
 /* .present を付与すると毎回 fadeInUp が再生されるため、アニメーション途中（低opacity・ズレた位置）で
    撮影・実測されてしまう不具合を防ぐ。付与中は最初から最終状態で表示する。
-   選択子リストは PDF書き出し（.pdf-capturing・src/pdfExport.ts）と見た目検査（.visual-check-settling・
-   src/visualChecks.ts）の双方から共有する（#297。書き写すと片方だけ更新漏れが起きるため1箇所にまとめる） */
+   選択子リストは PDF書き出し（.pdf-capturing・src/pdfExport.ts）と、実寸を直接読む箇所
+   （.visual-check-settling・e2e/content-area-fill.spec.ts）の双方から共有する（#297。書き写すと
+   片方だけ更新漏れが起きるため1箇所にまとめる）。getVisualCheckWarnings（src/visualChecks.ts）は
+   このクラスを使わず Animation.finish() で確定する（クラス着脱は解除時に animation-name が
+   再適用され新規アニメーションとして扱われるため、本番UIで entrance animation が二重発火した・#299） */
 :where(.pdf-capturing, .visual-check-settling) :is(.slide-title, .content-area, .title-layout, .section-title-layout, .message-layout, .bleed-content) {
   animation: none !important;
   opacity: 1 !important;
