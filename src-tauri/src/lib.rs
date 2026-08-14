@@ -362,7 +362,7 @@ async fn run_generation(
   request: &generation::GenerateRequest,
   app: &tauri::AppHandle,
   cancel: &generation::CancelToken,
-) -> Result<String, generation::GenerateError> {
+) -> Result<generation::GenerateCandidate, generation::GenerateError> {
   // 生成種別: dev override（env・untyped）→ UI/設定の型付き選択（request.kind）を fallback に解決する
   let env_override = std::env::var(GENERATOR_ENV).ok();
   let kind = generation::resolve_generator_kind(env_override.as_deref(), request.kind);
@@ -398,7 +398,7 @@ async fn generate_slides(
   edit_mode: tauri::State<'_, EditMode>,
   generation: tauri::State<'_, GenerationEnabled>,
   active: tauri::State<'_, ActiveGeneration>,
-) -> Result<String, String> {
+) -> Result<generation::GenerateCandidate, String> {
   // ゲート: 編集モード かつ 生成有効（どちらか欠けたら keyring/network に到達しない）
   {
     let edit = *edit_mode.0.lock().map_err(|e| e.to_string())?;
