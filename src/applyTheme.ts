@@ -689,6 +689,9 @@ function resolveEffectiveTextColors(theme: ThemeData, masterKey: string): Array<
 /**
  * マスターの全面塗り背景（`background.type` が `fill`/`gradient`）と文字色のコントラスト検証（#209）。
  * `grid`/`image`/`plain` は下地色が不定または画像なので対象外（fill/gradient のみ塗り色が確定する）。
+ * `image` は静止画のピクセル明暗解析が必要になり、getContrastRatio が前提とする単色比較の枠を超えるため
+ * 意図的に対象外としている（#303）。画像上のテキスト可読性は、画像側にスクリム（半透明の暗幕）を焼き込む等、
+ * 画像の作り手側で担保する運用とする。
  */
 function getMasterBackgroundContrastWarnings(theme: ThemeData): string[] {
   const warnings: string[] = []
