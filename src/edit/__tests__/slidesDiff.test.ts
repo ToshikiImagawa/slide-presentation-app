@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { computeSlidesDiff, deepEqual, hasChanges } from '../slidesDiff'
+import { applySelectedChanges, computeSlidesDiff, deepEqual, hasChanges, selectAllChanges } from '../slidesDiff'
 
 const BEFORE = JSON.stringify({
   meta: { title: 'プレゼン資料', author: '山田' },
@@ -107,5 +107,87 @@ describe('deepEqual', () => {
     expect(deepEqual({ a: [1, 2] }, { a: [1, 2] })).toBe(true)
     expect(deepEqual({ a: 1 }, { a: 1, b: 2 })).toBe(false)
     expect(deepEqual([1, 2], [2, 1])).toBe(false)
+  })
+})
+
+describe('applySelectedChanges（部分適用・#301）', () => {
+  const before = JSON.stringify({
+    meta: { title: '旧タイトル' },
+    theme: { colors: { primary: '#111111' } },
+    slides: [
+      { id: 's1', layout: 'center', content: { title: '旧1' } },
+      { id: 's2', layout: 'center', content: { title: '旧2' } },
+      { id: 's3', layout: 'center', content: { title: '旧3' } },
+    ],
+  })
+  const after = JSON.stringify({
+    meta: { title: '新タイトル' },
+    theme: { colors: { primary: '#222222' } },
+    slides: [
+      { id: 's1', layout: 'center', content: { title: '新1' } },
+      { id: 's4', layout: 'center', content: { title: '新4' } },
+      { id: 's3', layout: 'center', content: { title: '新3' } },
+    ],
+  })
+
+  it('全選択（selectAllChanges）は全体適用と等価（after と一致）', () => {
+    const diff = computeSlidesDiff(before, after)
+    const merged = JSON.parse(applySelectedChanges(before, after, selectAllChanges(diff)))
+    expect(merged).toEqual(JSON.parse(after))
+  })
+
+  it('テーマのみ選択すると、テーマだけ変わりスライドは元のまま', () => {
+    const merged = JSON.parse(applySelectedChanges(before, after, { theme: true, slideIds: new Set() }))
+    expect(merged.theme).toEqual({ colors: { primary: '#222222' } })
+    expect(merged.slides.map((s: { id: string }) => s.id)).toEqual(['s1', 's2', 's3'])
+    expect(merged.slides.find((s: { id: string }) => s.id === 's1').content.title).toBe('旧1')
+  })
+
+  it('特定スライドの変更のみ選択すると、そのスライドだけ反映され他はそのまま（テーマも不変）', () => {
+    const merged = JSON.parse(applySelectedChanges(before, after, { theme: false, slideIds: new Set(['s1']) }))
+    expect(merged.theme).toEqual({ colors: { primary: '#111111' } })
+    expect(merged.slides.map((s: { id: string }) => s.id)).toEqual(['s1', 's2', 's3'])
+    expect(merged.slides.find((s: { id: string }) => s.id === 's1').content.title).toBe('新1')
+    expect(merged.slides.find((s: { id: string }) => s.id === 's2').content.title).toBe('旧2')
+  })
+
+  it('追加スライドの選択は after での相対順序を保って挿入される', () => {
+    const merged = JSON.parse(applySelectedChanges(before, after, { theme: false, slideIds: new Set(['s4']) }))
+    // after では s1, s4, s3 の順（s2 は before のまま残る）
+    expect(merged.slides.map((s: { id: string }) => s.id)).toEqual(['s1', 's4', 's2', 's3'])
+  })
+
+  it('削除の選択で該当スライドが除去され、非選択なら残る', () => {
+    const b = JSON.stringify({
+      meta: { title: 'x' },
+      slides: [
+        { id: 's1', layout: 'center', content: {} },
+        { id: 's2', layout: 'center', content: {} },
+      ],
+    })
+    const a = JSON.stringify({ meta: { title: 'x' }, slides: [{ id: 's1', layout: 'center', content: {} }] })
+    const removed = JSON.parse(applySelectedChanges(b, a, { theme: true, slideIds: new Set(['s2']) }))
+    expect(removed.slides.map((s: { id: string }) => s.id)).toEqual(['s1'])
+    const kept = JSON.parse(applySelectedChanges(b, a, { theme: true, slideIds: new Set() }))
+    expect(kept.slides.map((s: { id: string }) => s.id)).toEqual(['s1', 's2'])
+  })
+
+  it('meta と theme 以外のトップレベル変更は選択に関わらず常に適用される', () => {
+    const b = JSON.stringify({ meta: { title: '旧' }, slides: [{ id: 's1', layout: 'center', content: {} }] })
+    const a = JSON.stringify({ meta: { title: '新' }, custom: { flag: true }, slides: [{ id: 's1', layout: 'center', content: {} }] })
+    const merged = JSON.parse(applySelectedChanges(b, a, { theme: false, slideIds: new Set() }))
+    expect(merged.meta.title).toBe('新')
+    expect(merged.custom).toEqual({ flag: true })
+  })
+
+  it('部分適用後も2スペース整形が保たれる', () => {
+    const diff = computeSlidesDiff(before, after)
+    const merged = applySelectedChanges(before, after, selectAllChanges(diff))
+    expect(merged).toBe(JSON.stringify(JSON.parse(merged), null, 2))
+  })
+
+  it('構造解析不能なら before をそのまま返す（フォールバック）', () => {
+    const result = applySelectedChanges('{ broken', after, { theme: true, slideIds: new Set() })
+    expect(result).toBe('{ broken')
   })
 })

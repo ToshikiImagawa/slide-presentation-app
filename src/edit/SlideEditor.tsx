@@ -25,6 +25,7 @@ import { mergeCompiledBrandTheme } from '../brand/compile'
 import type { BrandOverrides, BrandProfile, CompiledBrandTheme } from '../brand/types'
 import { delegateThemeColors } from '../brandMigration'
 import { parseSlides, serializeSlides, prettyPrintJson } from './slidesSerialize'
+import { applySelectedChanges, type DiffSelection } from './slidesDiff'
 import { AiGeneratePanel } from './AiGeneratePanel'
 import { BrandConfirmDialog } from './BrandConfirmDialog'
 import { GeneratedDiffDialog } from './GeneratedDiffDialog'
@@ -367,11 +368,12 @@ export function SlideEditor({
     setPendingGenerated(candidate)
   }
 
-  // 差分確認で [適用する]。候補を 2 スペース整形して単一真実源 text へ全体置換（③）。
+  // 差分確認で [適用する]。selection があれば選択された項目（テーマ・スライド単位）のみを既存の text に
+  // 部分マージし、null（構造解析不能でのフォールバック）なら候補を 2 スペース整形して全体置換する（②③・#301）。
   // 以降は既存の useMemo(parseSlides) → プレビュー/フォームへ反映される（無損失・NFR-002）。
-  const confirmApplyGenerated = () => {
+  const confirmApplyGenerated = (selection: DiffSelection | null) => {
     if (pendingGenerated === null) return
-    setText(prettyPrintJson(pendingGenerated.slidesJson))
+    setText(selection ? applySelectedChanges(text, pendingGenerated.slidesJson, selection) : prettyPrintJson(pendingGenerated.slidesJson))
     setSelectedIndex(0)
     setPendingGenerated(null)
     setStatus({ kind: 'ok', message: t('aiGenerate.applied', '生成結果を反映しました') })
