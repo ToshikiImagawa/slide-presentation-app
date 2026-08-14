@@ -160,20 +160,25 @@ describe('getVisualCheckWarnings（#209）', () => {
   })
 
   // #297: fadeInUp の途中（translateY 分だけずれた座標）を実測してしまう誤検知の再発防止。
-  // 「完了を待つ」実装は実行環境の速さに依存して4回破綻したため、待たずに最終状態を強制する方式にした
-  it('実測の間だけアニメーション最終状態固定用クラスを付与し、完了後は必ず外す', () => {
-    const { section, body } = buildSection()
-    let hadClassDuringMeasure = false
-    const originalGetBoundingClientRect = body.getBoundingClientRect.bind(body)
-    body.getBoundingClientRect = () => {
-      hadClassDuringMeasure = section.classList.contains('visual-check-settling')
-      return originalGetBoundingClientRect()
-    }
+  // 「完了を待つ」実装は実行環境の速さに依存して4回破綻したため、待たずに最終状態を強制する方式にした。
+  // #299: 最終状態への強制はクラスの付与/解除（animation: none のトグル）ではなく Animation.finish() で行う。
+  // クラス着脱は解除時に animation-name が再適用され新規アニメーションとして扱われ、本番UIで
+  // entrance animation が丸ごと再生され直す（二重発火）バグを踏んだため、クラスには一切触れない
+  it('実測前に非無限アニメーションを Animation.finish() で最終状態へ確定し、クラスの着脱は行わない', () => {
+    const { section } = buildSection()
+    const finish = vi.fn()
+    const finite = { finish, effect: { getComputedTiming: () => ({ iterations: 1 }) } } as unknown as Animation
+    const infinite = { finish: vi.fn(), effect: { getComputedTiming: () => ({ iterations: Infinity }) } } as unknown as Animation
+    section.getAnimations = vi.fn().mockReturnValue([finite, infinite])
+    const classListAdd = vi.spyOn(section.classList, 'add')
+    const classListRemove = vi.spyOn(section.classList, 'remove')
 
     getVisualCheckWarnings(section)
 
-    expect(hadClassDuringMeasure).toBe(true)
-    expect(section.classList.contains('visual-check-settling')).toBe(false)
+    expect(finish).toHaveBeenCalledTimes(1)
+    expect(infinite.finish).not.toHaveBeenCalled()
+    expect(classListAdd).not.toHaveBeenCalled()
+    expect(classListRemove).not.toHaveBeenCalled()
   })
 })
 

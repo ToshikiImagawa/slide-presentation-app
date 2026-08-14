@@ -48,12 +48,10 @@ function describeElement(el: Element): string {
 
 /**
  * アニメーションを最終状態に固定するクラス（global.css の共有セレクタリストが .pdf-capturing と
- * 同じ無効化ルールを当てる）。実測の直前に付与し直後に外す（同期処理のため、間に描画が挟まらず
- * 見た目のちらつきは生じない）。待ってから測るのではなく強制してから測ることで、実行環境の速さに
- * 依存しない実測にする（#209/#225 で「待つ」実装が4回破綻した経緯を踏まえた根本策・#297）。
- * getVisualCheckWarnings 以外で `.content-area` 等の実寸を直接読む箇所
- * （e2e/content-area-fill.spec.ts の getBoundingClientRect 直呼び）も同じクラスを使って
- * 最終状態へ固定できるよう export する（screenshot モード限定で window にも公開する）。
+ * 同じ無効化ルールを当てる）。PDF書き出し（src/pdfExport.ts）と、`.content-area` 等の実寸を
+ * 直接読む箇所（e2e/content-area-fill.spec.ts の getBoundingClientRect 直呼び）が使う。
+ * getVisualCheckWarnings は使わない（クラス着脱による entrance animation の二重発火を招くため、
+ * Animation.finish() 方式に変更した・#299。screenshot モード限定で window にも公開する）。
  */
 export const ANIMATION_SETTLE_CLASS = 'visual-check-settling'
 
@@ -126,63 +124,79 @@ function getSafeBounds(masterBody: HTMLElement): Bounds {
 }
 
 /**
+ * section 内で進行中の非無限アニメーション（`.content-area` の fadeInUp 等）を
+ * Animation.finish() で最終状態（fill-mode: both の "to" 側）へ確定する。
+ *
+ * 以前は ANIMATION_SETTLE_CLASS の付与→解除（`animation: none` のトグル）で強制していたが、
+ * 解除時に `animation-name` が再適用されるとブラウザは別インスタンスの新規アニメーションとして
+ * 扱うため、測定直後に fadeInUp が丸ごと再生され、本番UIでスライド切替の度に二重発火していた
+ * （#299）。Animation.finish() は同一の Animation インスタンスを終端まで進めるだけで
+ * `animation-name` 自体には触れないため、呼んだあとに何かを "元に戻す" 操作が発生せず、
+ * 再生の再トリガーが起きない。既に完了しているアニメーションに対しては no-op。
+ * カーソル点滅等の無限アニメーションは終端が無いため対象から除外する
+ * （#209/#225 以前の `waitForAnimationsToSettle` と同じ判定基準）。
+ */
+function finishSettlingAnimations(section: HTMLElement): void {
+  const animations = typeof section.getAnimations === 'function' ? section.getAnimations({ subtree: true }) : []
+  for (const animation of animations) {
+    if (animation.effect?.getComputedTiming().iterations === Infinity) continue
+    animation.finish()
+  }
+}
+
+/**
  * レンダリング済みのスライド1枚（`<section class="slide-container">`）を実測し、
  * ①はみ出し（スライド領域の外）②セーフエリア侵入（余白への侵入）③マスター装飾との重なり
  * ④高さを受け取れていない「埋める要素」（#259）、を警告として返す。
  * `.master-body` が無い（現行と完全同一のフォールバック等）場合は検査対象がないため空配列を返す。
  *
- * 実測前に `.content-area` 等の entrance animation（fadeInUp）を ANIMATION_SETTLE_CLASS で
- * 最終状態へ強制する。付与・実測・解除を同期的に行うため、間に描画が挟まらず見た目に影響しない
- * （待ってから測ると実行環境の速さにより途中の座標を拾って誤検知になる・#297）。
+ * 実測前に finishSettlingAnimations で entrance animation を最終状態へ強制する（理由は同関数の doc 参照）。
  */
 export function getVisualCheckWarnings(section: HTMLElement): string[] {
   const masterBody = section.querySelector<HTMLElement>('.master-body')
   if (!masterBody) return []
 
-  section.classList.add(ANIMATION_SETTLE_CLASS)
-  try {
-    const warnings: string[] = []
-    const sectionBounds = toBounds(section.getBoundingClientRect())
-    const safeBounds = getSafeBounds(masterBody)
-    const rects = measureDescendants(masterBody)
-    const leaves = getContentLeaves(rects)
+  finishSettlingAnimations(section)
 
-    const overflowing = new Set<HTMLElement>()
-    for (const [leaf, rect] of leaves) {
-      const overshoot = overshootPx(rect, sectionBounds)
-      if (overshoot > BOUNDS_TOLERANCE_PX) {
-        overflowing.add(leaf)
-        warnings.push(`はみ出し: ${describeElement(leaf)} がスライド領域の外に出ています（${overshoot.toFixed(1)}px 超過）`)
-      }
+  const warnings: string[] = []
+  const sectionBounds = toBounds(section.getBoundingClientRect())
+  const safeBounds = getSafeBounds(masterBody)
+  const rects = measureDescendants(masterBody)
+  const leaves = getContentLeaves(rects)
+
+  const overflowing = new Set<HTMLElement>()
+  for (const [leaf, rect] of leaves) {
+    const overshoot = overshootPx(rect, sectionBounds)
+    if (overshoot > BOUNDS_TOLERANCE_PX) {
+      overflowing.add(leaf)
+      warnings.push(`はみ出し: ${describeElement(leaf)} がスライド領域の外に出ています（${overshoot.toFixed(1)}px 超過）`)
     }
-
-    for (const [leaf, rect] of leaves) {
-      if (overflowing.has(leaf)) continue
-      const overshoot = overshootPx(rect, safeBounds)
-      if (overshoot > BOUNDS_TOLERANCE_PX) {
-        warnings.push(`セーフエリア侵入: ${describeElement(leaf)} が余白（セーフエリア）に侵入しています（${overshoot.toFixed(1)}px 超過）`)
-      }
-    }
-
-    for (const item of getCollapsedFillItems(rects)) {
-      warnings.push(`高さ 0: ${describeElement(item)} が本文領域の残り高さを受け取れていません（.content-area-fill を名乗る区画の外に置かれている可能性）`)
-    }
-
-    const decorations: ElementRect[] = getDecorationElements(section)
-      .map((el): ElementRect => [el, el.getBoundingClientRect()])
-      .filter(([, rect]) => hasVisibleSize(rect))
-    for (const [decoration, decorationRect] of decorations) {
-      for (const [leaf, rect] of leaves) {
-        if (rectsOverlap(decorationRect, rect)) {
-          warnings.push(`装飾との重なり: ${describeElement(leaf)} がマスター装飾（${describeElement(decoration)}）と重なっています`)
-        }
-      }
-    }
-
-    return warnings
-  } finally {
-    section.classList.remove(ANIMATION_SETTLE_CLASS)
   }
+
+  for (const [leaf, rect] of leaves) {
+    if (overflowing.has(leaf)) continue
+    const overshoot = overshootPx(rect, safeBounds)
+    if (overshoot > BOUNDS_TOLERANCE_PX) {
+      warnings.push(`セーフエリア侵入: ${describeElement(leaf)} が余白（セーフエリア）に侵入しています（${overshoot.toFixed(1)}px 超過）`)
+    }
+  }
+
+  for (const item of getCollapsedFillItems(rects)) {
+    warnings.push(`高さ 0: ${describeElement(item)} が本文領域の残り高さを受け取れていません（.content-area-fill を名乗る区画の外に置かれている可能性）`)
+  }
+
+  const decorations: ElementRect[] = getDecorationElements(section)
+    .map((el): ElementRect => [el, el.getBoundingClientRect()])
+    .filter(([, rect]) => hasVisibleSize(rect))
+  for (const [decoration, decorationRect] of decorations) {
+    for (const [leaf, rect] of leaves) {
+      if (rectsOverlap(decorationRect, rect)) {
+        warnings.push(`装飾との重なり: ${describeElement(leaf)} がマスター装飾（${describeElement(decoration)}）と重なっています`)
+      }
+    }
+  }
+
+  return warnings
 }
 
 /** img の読み込み確定（成功/失敗問わず complete）を待つタイムアウト（ms）。読み込みが遅い/止まっている
