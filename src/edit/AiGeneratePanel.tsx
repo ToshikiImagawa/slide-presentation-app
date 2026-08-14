@@ -14,7 +14,7 @@ import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Typography from '@mui/material/Typography'
 import { useTranslation } from '../i18n'
-import type { ClaudeCliEnvVar, GenerateProgress, GeneratedCandidate, GeneratorKind } from '../aiGenerate'
+import type { ClaudeCliEnvVar, GenerateProgress, GeneratedCandidate, GeneratorKind, PromptIntent } from '../aiGenerate'
 import {
   cancelGenerate,
   checkExternalAvailable,
@@ -36,7 +36,8 @@ type PanelStatus = { kind: 'idle' | 'ok' | 'warn' | 'error'; message: string }
 /**
  * 編集モード内の AI 生成パネル（#14・FR-001/007/010）。
  *
- * プロンプト入力・方式選択（内蔵 Vertex / 外部 CLI）・事前ゲート（内蔵=Vertex 設定済み／外部=CLI 可用性）・
+ * プロンプト入力・入力モード選択（新規内容 / 変更指示。AI がプロンプトの意味を取り違えないための明示・#302）・
+ * 方式選択（内蔵 Vertex / 外部 CLI）・事前ゲート（内蔵=Vertex 設定済み／外部=CLI 可用性）・
  * 進捗表示・中断・方式別の課金/オンライン依存注意書きを提供する。生成結果は `onApply`（全体置換）で
  * 器の単一真実源 `text` へ流し込む。失敗/中断時は器に触れず手動編集へ退避する（FR-008）。
  *
@@ -58,6 +59,7 @@ export function AiGeneratePanel({
   const [expanded, setExpanded] = useState(defaultExpanded)
   const [prompt, setPrompt] = useState('')
   const [kind, setKind] = useState<GeneratorKind>('builtin-vertex')
+  const [promptIntent, setPromptIntent] = useState<PromptIntent>('new-content')
   const [useBase, setUseBase] = useState(false)
   const [configured, setConfigured] = useState(false)
   const [externalAvailable, setExternalAvailable] = useState(false)
@@ -188,7 +190,7 @@ export function AiGeneratePanel({
     setProgress(null)
     setStatus({ kind: 'idle', message: '' })
     try {
-      const result = await generateSlides({ prompt: prompt.trim(), kind, baseSlides: useBase ? currentText : undefined }, (p) => setProgress(p))
+      const result = await generateSlides({ prompt: prompt.trim(), kind, baseSlides: useBase ? currentText : undefined, promptIntent }, (p) => setProgress(p))
       // 適用可能な候補（succeeded/exhausted かつ slidesJson 非 null）を差分確認ダイアログへ渡す（①）。
       // 実際の反映は SlideEditor 側の [適用する] で行う。exhausted で残る validationErrors も併せて渡し、
       // 何が問題かを確認できるようにする（#47）
@@ -327,6 +329,19 @@ export function AiGeneratePanel({
               {t('aiGenerate.gateExternalUnavailable', 'Claude Code CLI が見つかりません（インストールと PATH を確認してください）。')}
             </Typography>
           )}
+
+          {/* 入力モード（プロンプトが新規内容か変更指示かを明示・#302） */}
+          <ToggleButtonGroup
+            size="small"
+            exclusive
+            value={promptIntent}
+            onChange={(_, v) => {
+              if (v) setPromptIntent(v as PromptIntent)
+            }}
+          >
+            <ToggleButton value="new-content">{t('aiGenerate.intentNewContent', '新しいスライド内容を記述する')}</ToggleButton>
+            <ToggleButton value="change-instruction">{t('aiGenerate.intentChangeInstruction', '既存スライドへの変更を指示する')}</ToggleButton>
+          </ToggleButtonGroup>
 
           {/* プロンプト入力 */}
           <TextField
