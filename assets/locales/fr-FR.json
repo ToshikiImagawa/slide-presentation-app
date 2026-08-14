@@ -193,6 +193,8 @@
       "claudeCliSaveFailed": "Échec de l'enregistrement des variables d'environnement",
       "claudeCliCleared": "Paramètres des variables d'environnement supprimés",
       "claudeCliClearFailed": "Échec de la suppression des variables d'environnement",
+      "intentNewContent": "Décrire le contenu d'une nouvelle diapositive",
+      "intentChangeInstruction": "Demander une modification des diapositives existantes",
       "promptLabel": "Invite",
       "promptPlaceholder": "Décrivez les diapositives que vous souhaitez créer",
       "useBase": "Se baser sur les diapositives actuelles",

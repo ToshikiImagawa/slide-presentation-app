@@ -221,6 +221,7 @@ mod tests {
       base_slides: base.map(|s| s.to_string()),
       repair_feedback: feedback.map(|s| s.to_string()),
       theme_constraints: None,
+      prompt_intent: None,
     }
   }
 

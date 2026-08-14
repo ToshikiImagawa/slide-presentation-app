@@ -21,6 +21,13 @@ import { getRegisteredComponents } from './components/ComponentRegistry'
 export type GeneratorKind = 'builtin-vertex' | 'external-claude-code'
 
 /**
+ * 入力プロンプトの意味論（#302）。`prompt` が「新規スライドの内容そのもの」なのか
+ * 「既存スライドへの変更依頼（差分指示）」なのかをAIが取り違えやすいため、UI で選択させ
+ * Rust 側 `user_prompt()` に明示ラベルを付与させる。Rust の `PromptIntent` と同一のワイヤー値。
+ */
+export type PromptIntent = 'new-content' | 'change-instruction'
+
+/**
  * 生成リクエスト。Rust の `GenerateRequest`（camelCase）とワイヤーフォーマットを一致させる。
  */
 export interface GenerateRequest {
@@ -32,6 +39,8 @@ export interface GenerateRequest {
   baseSlides?: string
   /** 自動修正の再試行時に JS オーケストレータが積む検証エラー要約（初回は省略。FR-005） */
   repairFeedback?: string
+  /** `prompt` が新規内容か変更指示かの明示（#302） */
+  promptIntent?: PromptIntent
 }
 
 /** 生成結果の最終状態（FR-005）。 */

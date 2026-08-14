@@ -193,6 +193,8 @@
       "claudeCliSaveFailed": "環境変数設定の保存に失敗しました",
       "claudeCliCleared": "環境変数設定を削除しました",
       "claudeCliClearFailed": "環境変数設定の削除に失敗しました",
+      "intentNewContent": "新しいスライド内容を記述する",
+      "intentChangeInstruction": "既存スライドへの変更を指示する",
       "promptLabel": "プロンプト",
       "promptPlaceholder": "作りたいスライドの内容を説明してください",
       "useBase": "現在のスライドを土台にする",

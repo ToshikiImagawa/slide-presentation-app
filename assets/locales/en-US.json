@@ -193,6 +193,8 @@
       "claudeCliSaveFailed": "Failed to save environment variable settings",
       "claudeCliCleared": "Environment variable settings cleared",
       "claudeCliClearFailed": "Failed to clear environment variable settings",
+      "intentNewContent": "Describe new slide content",
+      "intentChangeInstruction": "Instruct changes to existing slides",
       "promptLabel": "Prompt",
       "promptPlaceholder": "Describe the slides you want to create",
       "useBase": "Base on the current slides",

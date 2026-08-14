@@ -38,6 +38,17 @@ pub enum SlideGeneratorKind {
   ExternalClaudeCode,
 }
 
+/// 入力プロンプトの意味論（#302）。`req.prompt` が「新規スライドの内容そのもの」なのか
+/// 「既存スライドへの変更依頼（差分指示）」なのかをAIが取り違えやすいため、UI で選択させ
+/// `user_prompt()` が明示ラベルを付与する。TS 側は同一のワイヤー値（kebab-case）を
+/// `PromptIntent` として持つ。
+#[derive(serde::Serialize, serde::Deserialize, Clone, Copy, PartialEq, Debug)]
+#[serde(rename_all = "kebab-case")]
+pub enum PromptIntent {
+  NewContent,
+  ChangeInstruction,
+}
+
 /// 生成リクエスト（`generate_slides` コマンドの invoke 引数）。
 ///
 /// struct は camelCase で serde 変換し TS の `GenerateRequest` とワイヤーフォーマットを一致させる。
@@ -59,6 +70,8 @@ pub struct GenerateRequest {
   /// `buildThemeConstraintsPrompt` が単一ソース）。レイアウト種別・情報密度上限は
   /// `SLIDE_CONTENT_SCHEMA_JSON` 側にすでに同梱されているためここには含めない。
   pub theme_constraints: Option<String>,
+  /// `prompt` の意味論（新規内容 / 変更指示）。UI で未選択・旧クライアント由来は `None`（#302）。
+  pub prompt_intent: Option<PromptIntent>,
 }
 
 /// 生成の中断トークン（FR-010）。`cancel_generation` コマンドが立て、生成器は境界で参照する。
@@ -232,11 +245,24 @@ pub(crate) fn system_prompt(theme_constraints: Option<&str>) -> String {
 ///
 /// 送出はプロンプト・（編集起点時の）`base_slides`・自動修正の `repair_feedback` のみ。
 /// キー本体・任意ローカルファイル・他パッケージの内容は **引数に存在しない**ため構造的に混入し得ない。
+///
+/// `prompt_intent` が指定されていれば、`req.prompt` が「新規内容」なのか「変更指示」なのかを
+/// 明示するラベルを先頭に付与する（#302）。未指定（`None`）はラベルなし（後方互換）。
 pub(crate) fn user_prompt(req: &GenerateRequest) -> String {
-  let mut parts = vec![format!(
+  let mut parts = Vec::new();
+  if let Some(intent) = req.prompt_intent {
+    let label = match intent {
+      PromptIntent::NewContent => "以下はスライドの内容そのものです（変更依頼ではありません）。",
+      PromptIntent::ChangeInstruction => {
+        "以下は既存スライドへの変更指示です（スライドの内容そのものではありません）。"
+      }
+    };
+    parts.push(label.to_string());
+  }
+  parts.push(format!(
     "次の依頼に沿ってスライドを生成してください:\n{}",
     req.prompt
-  )];
+  ));
   if let Some(base) = &req.base_slides {
     parts.push(format!(
       "\n現在のスライド（これを土台に更新してください）:\n{base}"
@@ -292,6 +318,7 @@ mod tests {
       base_slides: None,
       repair_feedback: None,
       theme_constraints: None,
+      prompt_intent: None,
     }
   }
 
@@ -318,10 +345,11 @@ mod tests {
     assert!(req.base_slides.is_none());
     assert!(req.repair_feedback.is_none());
     assert!(req.theme_constraints.is_none());
+    assert!(req.prompt_intent.is_none());
 
-    // camelCase のキーで往復する（themeConstraints も含む・#211）
+    // camelCase のキーで往復する（themeConstraints も含む・#211／promptIntent も含む・#302）
     let req2: GenerateRequest = serde_json::from_str(
-      r#"{"prompt":"p","kind":"external-claude-code","baseSlides":"{}","repairFeedback":"err","themeConstraints":"色トークン名: primary"}"#,
+      r#"{"prompt":"p","kind":"external-claude-code","baseSlides":"{}","repairFeedback":"err","themeConstraints":"色トークン名: primary","promptIntent":"change-instruction"}"#,
     )
     .unwrap();
     assert_eq!(req2.base_slides.as_deref(), Some("{}"));
@@ -329,6 +357,20 @@ mod tests {
     assert_eq!(
       req2.theme_constraints.as_deref(),
       Some("色トークン名: primary")
+    );
+    assert_eq!(req2.prompt_intent, Some(PromptIntent::ChangeInstruction));
+  }
+
+  #[test]
+  fn prompt_intent_serializes_to_kebab_case() {
+    // TS 契約（'new-content' / 'change-instruction'）と一致するワイヤー値を検証（#302）
+    assert_eq!(
+      serde_json::to_string(&PromptIntent::NewContent).unwrap(),
+      "\"new-content\""
+    );
+    assert_eq!(
+      serde_json::to_string(&PromptIntent::ChangeInstruction).unwrap(),
+      "\"change-instruction\""
     );
   }
 
@@ -403,6 +445,36 @@ mod tests {
     assert!(p.contains("現在のスライド"));
     assert!(p.contains("{\"meta\":{\"title\":\"t\"}}"));
     assert!(p.contains("meta.title が空です"));
+  }
+
+  #[test]
+  fn user_prompt_labels_new_content_intent() {
+    // モード「新しいスライド内容を記述する」選択時は内容そのものである旨を明示する（#302）
+    let mut req = sample_request(SlideGeneratorKind::BuiltinVertex);
+    req.prompt_intent = Some(PromptIntent::NewContent);
+    let p = user_prompt(&req);
+    assert!(p.contains("以下はスライドの内容そのものです"));
+    assert!(!p.contains("既存スライドへの変更指示です"));
+  }
+
+  #[test]
+  fn user_prompt_labels_change_instruction_intent() {
+    // モード「既存スライドへの変更を指示する」選択時は変更依頼である旨を明示する（#302）
+    let mut req = sample_request(SlideGeneratorKind::BuiltinVertex);
+    req.prompt_intent = Some(PromptIntent::ChangeInstruction);
+    let p = user_prompt(&req);
+    assert!(p.contains("以下は既存スライドへの変更指示です"));
+    assert!(!p.contains("スライドの内容そのものです"));
+  }
+
+  #[test]
+  fn user_prompt_omits_intent_label_when_none() {
+    // 未指定（旧クライアント・#302 導入前の呼び出し）はラベルを付与しない（後方互換）
+    let req = sample_request(SlideGeneratorKind::BuiltinVertex);
+    assert!(req.prompt_intent.is_none());
+    let p = user_prompt(&req);
+    assert!(!p.contains("スライドの内容そのものです"));
+    assert!(!p.contains("既存スライドへの変更指示です"));
   }
 
   #[test]
