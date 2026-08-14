@@ -144,14 +144,25 @@ impl std::fmt::Display for GenerateError {
 
 impl std::error::Error for GenerateError {}
 
-/// 生成器の単一契約: 「プロンプト → slides.json 候補 1 件」（生成器単位で抽象化・design §9.1）。
+/// 生成器が返す候補（テキスト＋トークン上限による途中切断の判定）。
+/// TS 側の `GenerateCandidate` と camelCase で一致する（`generate_slides` の戻り値）。
+/// `truncated` は Anthropic レスポンスの `stop_reason == "max_tokens"` から判定する（内蔵 Vertex のみ検出可能。
+/// 外部 Claude Code CLI は相当する情報を返さないため常に `false`・design 追補）。
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct GenerateCandidate {
+  pub text: String,
+  pub truncated: bool,
+}
+
+/// 生成器の単一契約: 「プロンプト → slides.json 候補 1 件（＋途中切断の判定）」（生成器単位で抽象化・design §9.1）。
 #[async_trait::async_trait]
 pub trait SlideGenerator: Send + Sync {
   async fn generate(
     &self,
     req: &GenerateRequest,
     cancel: &CancelToken,
-  ) -> Result<String, GenerateError>;
+  ) -> Result<GenerateCandidate, GenerateError>;
 }
 
 /// 生成種別を解決する純関数（dev override（env・untyped）→ UI/設定の型付き選択 fallback）。副作用なし。
@@ -508,14 +519,17 @@ mod tests {
       &self,
       _req: &GenerateRequest,
       cancel: &CancelToken,
-    ) -> Result<String, GenerateError> {
+    ) -> Result<GenerateCandidate, GenerateError> {
       if cancel.is_cancelled() {
         return Err(GenerateError::Cancelled);
       }
       if self.fail {
         return Err(GenerateError::Network("mock failure".to_string()));
       }
-      Ok(self.response.clone())
+      Ok(GenerateCandidate {
+        text: self.response.clone(),
+        truncated: false,
+      })
     }
   }
 
@@ -530,7 +544,8 @@ mod tests {
     // 通常は候補文字列を返す
     let cancel = CancelToken::new();
     let out = gen.generate(&req, &cancel).await.unwrap();
-    assert!(out.contains("\"title\":\"t\""));
+    assert!(out.text.contains("\"title\":\"t\""));
+    assert!(!out.truncated);
 
     // 中断済みトークンでは Cancelled
     cancel.cancel();

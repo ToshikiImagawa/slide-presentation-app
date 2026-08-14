@@ -28,6 +28,15 @@ export type GeneratorKind = 'builtin-vertex' | 'external-claude-code'
 export type PromptIntent = 'new-content' | 'change-instruction'
 
 /**
+ * 生成器が返す候補。Rust の `GenerateCandidate`（camelCase）とワイヤーフォーマットを一致させる。
+ * `truncated` はトークン上限による途中切断の判定（内蔵 Vertex のみ検出可能。外部 Claude Code CLI は常に false）。
+ */
+export interface GenerateCandidate {
+  text: string
+  truncated: boolean
+}
+
+/**
  * 生成リクエスト。Rust の `GenerateRequest`（camelCase）とワイヤーフォーマットを一致させる。
  */
 export interface GenerateRequest {
@@ -232,10 +241,18 @@ export function buildThemeConstraintsPrompt(): string {
  * 検証エラーを次試行の `repairFeedback` に載せる要約へ整形する（自動修正の再投入・FR-005）。
  * path が空（ルート／JSON 構文エラー）は `(root)` と表示する。
  * `theme` の警告（`getThemeWarnings`）も併記し、描画は継続するが反映されない設定も AI に修正させる。
+ * `truncated`（トークン上限による途中切断・#310）が true の場合、JSON 構文エラーの主因を明示し、
+ * 内容を簡潔にして再試行するよう指示を追記する。
  */
-function summarizeValidationErrors(errors: ValidationError[], themeWarnings: string[]): string {
+function summarizeValidationErrors(errors: ValidationError[], themeWarnings: string[], truncated: boolean): string {
   const lines = errors.map((e) => `- ${e.path || '(root)'}: ${e.message}（期待: ${e.expected}, 実際: ${e.actual}）`)
-  return [...lines, ...themeWarnings.map((w) => `- ${w}`)].join('\n')
+  const all = [...lines, ...themeWarnings.map((w) => `- ${w}`)]
+  if (truncated) {
+    all.push(
+      '- 出力がトークン上限に達し、途中で切断されました（JSON構文エラーの主因）。内容を簡潔にする（説明文を短くする、スライド枚数を減らす、各スライドのテキスト量を減らす等）ことで、出力全体がトークン上限内に収まるようにして再試行してください。',
+    )
+  }
+  return all.join('\n')
 }
 
 /**
@@ -260,8 +277,10 @@ function cancelledResult(attempts: number): GenerateResult {
  */
 export async function generateSlides(request: GenerateRequest, onProgress?: (p: GenerateProgress) => void): Promise<GenerateResult> {
   cancelRequested = false
-  // 検証エラー最小の候補を退避する（上限到達＝exhausted 時に返す・FR-005）
-  let best: { slidesJson: string; errors: ValidationError[] } | null = null
+  // 検証エラー最小の候補を退避する（上限到達＝exhausted 時に返す・FR-005）。
+  // truncated（トークン上限による途中切断・#310）な候補は effectiveErrors に大きな加算をして、
+  // 構文的に妥当だが検証エラーが残る非 truncated 候補より優先されないようにする。
+  let best: { slidesJson: string; errors: ValidationError[]; effectiveErrors: number } | null = null
   let repairFeedback = request.repairFeedback
   // 適用中テーマ・登録済みコンポーネント/アイコンは試行中に変わらないため一度だけ組み立てる（#211）
   const themeConstraints = buildThemeConstraintsPrompt()
@@ -271,9 +290,9 @@ export async function generateSlides(request: GenerateRequest, onProgress?: (p: 
 
     onProgress?.({ attempt, maxAttempts: MAX_GENERATE_ATTEMPTS, phase: 'generating' })
 
-    let candidate: string
+    let candidate: GenerateCandidate
     try {
-      candidate = await invoke<string>('generate_slides', { request: { ...request, repairFeedback, themeConstraints } })
+      candidate = await invoke<GenerateCandidate>('generate_slides', { request: { ...request, repairFeedback, themeConstraints } })
     } catch (e) {
       // ゲート拒否・タイムアウト・HTTP エラー・中断はいずれも Rust 側で Err になる。
       // 中断要求済みなら cancelled、それ以外は failed に分類する（Rust はキー等を漏らさず整形済み・NFR-004）。
@@ -288,23 +307,24 @@ export async function generateSlides(request: GenerateRequest, onProgress?: (p: 
     if (cancelRequested) return cancelledResult(attempt)
 
     onProgress?.({ attempt, maxAttempts: MAX_GENERATE_ATTEMPTS, phase: 'validating' })
-    const { data, errors: structuralErrors } = parseSlides(candidate)
+    const { data, errors: structuralErrors } = parseSlides(candidate.text)
     // 構造的バリデーション（getValidationErrors）＋生成専用のスキーマ適合チェック（schema/slide-content-schema.json）
     const errors = [...structuralErrors, ...getSchemaConformanceErrors(data)]
 
     if (errors.length === 0) {
-      return { outcome: 'succeeded', slidesJson: candidate, validationErrors: [], attempts: attempt, errorMessage: null }
+      return { outcome: 'succeeded', slidesJson: candidate.text, validationErrors: [], attempts: attempt, errorMessage: null }
     }
 
-    // 最良候補（検証エラー最小）を更新
-    if (best === null || errors.length < best.errors.length) {
-      best = { slidesJson: candidate, errors }
+    // 最良候補（実効エラー数最小）を更新
+    const effectiveErrors = candidate.truncated ? errors.length + 1000 : errors.length
+    if (best === null || effectiveErrors < best.effectiveErrors) {
+      best = { slidesJson: candidate.text, errors, effectiveErrors }
     }
 
     // 次試行があるなら検証エラー要約を repairFeedback に載せて再投入する
     if (attempt < MAX_GENERATE_ATTEMPTS) {
       onProgress?.({ attempt, maxAttempts: MAX_GENERATE_ATTEMPTS, phase: 'repairing' })
-      repairFeedback = summarizeValidationErrors(errors, getThemeWarnings(data.theme, data.slides))
+      repairFeedback = summarizeValidationErrors(errors, getThemeWarnings(data.theme, data.slides), candidate.truncated)
     }
   }
 

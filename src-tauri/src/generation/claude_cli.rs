@@ -7,7 +7,7 @@
 //! GUI 起動は login shell の環境変数を継承しないことがあるため、`claude_cli_config`（plugin-store）に
 //! 保存された環境変数（`CLAUDE_CONFIG_DIR` 等）をサブプロセスへ明示的に注入できる（#152）。
 
-use super::{CancelToken, GenerateError, GenerateRequest, SlideGenerator};
+use super::{CancelToken, GenerateCandidate, GenerateError, GenerateRequest, SlideGenerator};
 use serde_json::Value;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
@@ -45,7 +45,7 @@ impl SlideGenerator for ClaudeCodeGenerator {
     &self,
     req: &GenerateRequest,
     cancel: &CancelToken,
-  ) -> Result<String, GenerateError> {
+  ) -> Result<GenerateCandidate, GenerateError> {
     if cancel.is_cancelled() {
       return Err(GenerateError::Cancelled);
     }
@@ -73,7 +73,7 @@ async fn run_cli(
   args: &[String],
   prompt: &str,
   env_vars: &[(String, String)],
-) -> Result<String, GenerateError> {
+) -> Result<GenerateCandidate, GenerateError> {
   let mut command = tokio::process::Command::new(binary);
   command
     .args(args)
@@ -139,7 +139,12 @@ async fn run_cli(
     )));
   }
 
-  parse_result_json(&out)
+  // Anthropic の stop_reason に相当する情報を CLI の result JSON は返さないため、
+  // 途中切断の判定はできず truncated は常に false（GenerateCandidate ドキュメント参照）
+  Ok(GenerateCandidate {
+    text: parse_result_json(&out)?,
+    truncated: false,
+  })
 }
 
 /// 外部生成（Claude Code CLI）が利用可能か判定する（事前ゲート・FR-007）。

@@ -6,7 +6,9 @@
 //! 送出 body はプロンプト構築の純関数（`super::system_prompt` / `super::user_prompt`）に集約し機密最小化（NFR-004）。
 //! `with_retry`（429/529 指数バックオフ）・エラーボディ切詰め・応答タイムアウト 120 秒でコストを境界付ける（NFR-005）。
 
-use super::{gcp_auth, CancelToken, GenerateError, GenerateRequest, SlideGenerator};
+use super::{
+  gcp_auth, CancelToken, GenerateCandidate, GenerateError, GenerateRequest, SlideGenerator,
+};
 use serde_json::Value;
 use std::time::Duration;
 
@@ -57,8 +59,8 @@ impl VertexGenerator {
     }
   }
 
-  /// 1 回の rawPredict を実行し、成功なら候補 JSON 文字列（フェンス除去済み）を返す。
-  async fn send_once(&self, token: &str, body: &Value) -> Result<String, GenerateError> {
+  /// 1 回の rawPredict を実行し、成功なら候補（フェンス除去済み JSON 文字列＋途中切断の判定）を返す。
+  async fn send_once(&self, token: &str, body: &Value) -> Result<GenerateCandidate, GenerateError> {
     let url = build_url(&self.region, &self.project_id, &self.model);
     let response = self
       .client
@@ -104,8 +106,11 @@ impl VertexGenerator {
       .json()
       .await
       .map_err(|e| GenerateError::InvalidResponse(e.to_string()))?;
-    let text = extract_text_from_response(&value)?;
-    Ok(super::strip_code_fences(&text))
+    let (text, truncated) = extract_text_from_response(&value)?;
+    Ok(GenerateCandidate {
+      text: super::strip_code_fences(&text),
+      truncated,
+    })
   }
 }
 
@@ -115,7 +120,7 @@ impl SlideGenerator for VertexGenerator {
     &self,
     req: &GenerateRequest,
     cancel: &CancelToken,
-  ) -> Result<String, GenerateError> {
+  ) -> Result<GenerateCandidate, GenerateError> {
     if cancel.is_cancelled() {
       return Err(GenerateError::Cancelled);
     }
@@ -171,9 +176,10 @@ pub(crate) fn build_request_body(req: &GenerateRequest, max_tokens: u32) -> Valu
   })
 }
 
-/// レスポンスの `content[].text`（type=="text"）を連結して取り出す。空・欠落は不正応答。
+/// レスポンスの `content[].text`（type=="text"）を連結して取り出し、`stop_reason` から途中切断
+/// （`"max_tokens"` でトークン上限に達した）かどうかを判定する。空・欠落は不正応答。
 /// Vertex の Anthropic モデルは Messages API と同一のレスポンス形状を返す。
-pub(crate) fn extract_text_from_response(value: &Value) -> Result<String, GenerateError> {
+pub(crate) fn extract_text_from_response(value: &Value) -> Result<(String, bool), GenerateError> {
   let content = value
     .get("content")
     .and_then(|c| c.as_array())
@@ -191,7 +197,8 @@ pub(crate) fn extract_text_from_response(value: &Value) -> Result<String, Genera
       "text ブロックが空です".to_string(),
     ));
   }
-  Ok(text)
+  let truncated = value.get("stop_reason").and_then(|s| s.as_str()) == Some("max_tokens");
+  Ok((text, truncated))
 }
 
 /// リトライ対象か（429 レート制限 / 529 過負荷のみ・NFR-005）。
@@ -328,7 +335,7 @@ mod tests {
     });
     assert_eq!(
       extract_text_from_response(&value).unwrap(),
-      "{\"meta\":{\"title\":\"t\"}}"
+      ("{\"meta\":{\"title\":\"t\"}}".to_string(), false)
     );
 
     let empty = serde_json::json!({ "content": [ { "type": "text", "text": "   " } ] });
@@ -342,5 +349,31 @@ mod tests {
       extract_text_from_response(&missing),
       Err(GenerateError::InvalidResponse(_))
     ));
+  }
+
+  #[test]
+  fn extract_text_from_response_detects_truncation_via_stop_reason() {
+    // stop_reason == "max_tokens" はトークン上限で途中切断されたことを示す
+    let truncated = serde_json::json!({
+      "content": [ { "type": "text", "text": "{\"meta\":{\"title\":\"t" } ],
+      "stop_reason": "max_tokens"
+    });
+    let (_, is_truncated) = extract_text_from_response(&truncated).unwrap();
+    assert!(is_truncated);
+
+    // 正常終了（end_turn）は途中切断ではない
+    let complete = serde_json::json!({
+      "content": [ { "type": "text", "text": "{\"meta\":{}}" } ],
+      "stop_reason": "end_turn"
+    });
+    let (_, is_truncated) = extract_text_from_response(&complete).unwrap();
+    assert!(!is_truncated);
+
+    // stop_reason 欠落も途中切断とは判定しない
+    let missing_stop_reason = serde_json::json!({
+      "content": [ { "type": "text", "text": "{\"meta\":{}}" } ]
+    });
+    let (_, is_truncated) = extract_text_from_response(&missing_stop_reason).unwrap();
+    assert!(!is_truncated);
   }
 }
