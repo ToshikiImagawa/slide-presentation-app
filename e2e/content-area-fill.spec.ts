@@ -81,7 +81,7 @@ async function measureFill(page: Page): Promise<FillMetrics> {
       __VISUAL_CHECK__?: (section: HTMLElement) => string[]
       __VISUAL_CHECK_WAIT_IMAGES__?: (section: HTMLElement) => Promise<{ timedOut: boolean }>
       __VISUAL_CHECK_WAIT_LAYOUT__?: (section: HTMLElement) => Promise<{ timedOut: boolean }>
-      __VISUAL_CHECK_SETTLE_CLASS__?: string
+      __VISUAL_CHECK_FINISH_ANIMATIONS__?: (section: HTMLElement) => void
     }
     // 画像の読み込み確定を待ってから実測する（固定の待ち時間だと環境の速さに依存する）
     if (bridge.__VISUAL_CHECK_WAIT_IMAGES__) await bridge.__VISUAL_CHECK_WAIT_IMAGES__(section)
@@ -89,22 +89,13 @@ async function measureFill(page: Page): Promise<FillMetrics> {
     // CPU 負荷の高い並列実行で発生しうる・#297）
     if (bridge.__VISUAL_CHECK_WAIT_LAYOUT__) await bridge.__VISUAL_CHECK_WAIT_LAYOUT__(section)
 
-    // fadeInUp 等の entrance animation は待たず、visualChecks.ts と同じ共有クラスで最終状態へ強制してから
-    // getBoundingClientRect を読む（待つ実装は実行環境の速さに依存して誤検知するため・#297）。
-    // 読み取り中に例外が起きても解除されるよう try/finally で括る（bridge.__VISUAL_CHECK__ は
-    // 内部で同じクラスを自前に付与・解除するため、ここでは外している）
-    const settleClass = bridge.__VISUAL_CHECK_SETTLE_CLASS__
-    let areaRect: DOMRect
-    let itemRect: DOMRect
-    let imageBottoms: number[]
-    if (settleClass) section.classList.add(settleClass)
-    try {
-      areaRect = area.getBoundingClientRect()
-      itemRect = item.getBoundingClientRect()
-      imageBottoms = Array.from(section.querySelectorAll('img')).map((img) => img.getBoundingClientRect().bottom)
-    } finally {
-      if (settleClass) section.classList.remove(settleClass)
-    }
+    // fadeInUp 等の entrance animation は待たず、visualChecks.ts と同じ共有関数（Animation.finish()）で
+    // 最終状態へ確定してから getBoundingClientRect を読む（待つ実装は実行環境の速さに依存して誤検知するため・#297）。
+    // クラスの付与/解除は解除時に animation-name が再適用され新規アニメーションとして扱われるため使わない（#299/#306）
+    bridge.__VISUAL_CHECK_FINISH_ANIMATIONS__?.(section)
+    const areaRect = area.getBoundingClientRect()
+    const itemRect = item.getBoundingClientRect()
+    const imageBottoms = Array.from(section.querySelectorAll('img')).map((img) => img.getBoundingClientRect().bottom)
     const warnings = bridge.__VISUAL_CHECK__?.(section) ?? []
 
     return {

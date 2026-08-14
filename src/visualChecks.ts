@@ -46,15 +46,6 @@ function describeElement(el: Element): string {
   return text ? `<${tag}>"${text}"` : `<${tag}>`
 }
 
-/**
- * アニメーションを最終状態に固定するクラス（global.css の共有セレクタリストが .pdf-capturing と
- * 同じ無効化ルールを当てる）。PDF書き出し（src/pdfExport.ts）と、`.content-area` 等の実寸を
- * 直接読む箇所（e2e/content-area-fill.spec.ts の getBoundingClientRect 直呼び）が使う。
- * getVisualCheckWarnings は使わない（クラス着脱による entrance animation の二重発火を招くため、
- * Animation.finish() 方式に変更した・#299。screenshot モード限定で window にも公開する）。
- */
-export const ANIMATION_SETTLE_CLASS = 'visual-check-settling'
-
 type ElementRect = readonly [HTMLElement, DOMRect]
 
 /**
@@ -127,16 +118,20 @@ function getSafeBounds(masterBody: HTMLElement): Bounds {
  * section 内で進行中の非無限アニメーション（`.content-area` の fadeInUp 等）を
  * Animation.finish() で最終状態（fill-mode: both の "to" 側）へ確定する。
  *
- * 以前は ANIMATION_SETTLE_CLASS の付与→解除（`animation: none` のトグル）で強制していたが、
- * 解除時に `animation-name` が再適用されるとブラウザは別インスタンスの新規アニメーションとして
+ * 以前はクラスの付与→解除（`animation: none` のトグル）で強制していたが、解除時に
+ * `animation-name` が再適用されるとブラウザは別インスタンスの新規アニメーションとして
  * 扱うため、測定直後に fadeInUp が丸ごと再生され、本番UIでスライド切替の度に二重発火していた
  * （#299）。Animation.finish() は同一の Animation インスタンスを終端まで進めるだけで
  * `animation-name` 自体には触れないため、呼んだあとに何かを "元に戻す" 操作が発生せず、
  * 再生の再トリガーが起きない。既に完了しているアニメーションに対しては no-op。
  * カーソル点滅等の無限アニメーションは終端が無いため対象から除外する
  * （#209/#225 以前の `waitForAnimationsToSettle` と同じ判定基準）。
+ *
+ * getVisualCheckWarnings（ライブアプリ・CI）のほか、entrance animation の最終状態固定を
+ * 必要とする箇所（PDF書き出し: `src/pdfExport.ts`、e2e の直接実測: `e2e/content-area-fill.spec.ts`）
+ * からも同じ関数を呼び、固定手段を1系統に統一する（#306）。
  */
-function finishSettlingAnimations(section: HTMLElement): void {
+export function finishSettlingAnimations(section: HTMLElement): void {
   const animations = typeof section.getAnimations === 'function' ? section.getAnimations({ subtree: true }) : []
   for (const animation of animations) {
     if (animation.effect?.getComputedTiming().iterations === Infinity) continue
@@ -239,8 +234,8 @@ export function waitForImagesToSettle(section: HTMLElement): Promise<ImageSettle
  * 遅延しうるため、負荷が高い環境ほどこの安全弁も長くかかる。これは意図通り: 完了そのものを待つ設計であり、
  * 環境が遅いことを理由に途中の座標へ諦めて落ちることこそ避けたい）。fadeInUp とは無関係に Reveal.js 自身が
  * `.present` 付与後に行う transform:scale() 等の再計算が、CPU 負荷の高い環境（CI・並列実行）で数フレーム
- * 遅れて収束することがある（#297。ANIMATION_SETTLE_CLASS を導入して初めて実測が瞬時になったことで露呈した
- * 別要因）。固定の待ち時間ではなく「連続2フレームで矩形が変化しなくなる」という完了そのものを待ち、
+ * 遅れて収束することがある（#297。entrance animation を瞬時に確定できるようになって初めて実測が
+ * 瞬時になったことで露呈した別要因）。固定の待ち時間ではなく「連続2フレームで矩形が変化しなくなる」という完了そのものを待ち、
  * 収束しない場合の頭打ちとしてのみフレーム数を使う（打ち切りは戻り値の `timedOut` で判別できる） */
 const LAYOUT_SETTLE_MAX_FRAMES = 120
 
@@ -296,10 +291,10 @@ if (import.meta.env.MODE === 'screenshot') {
     __VISUAL_CHECK__?: typeof getVisualCheckWarnings
     __VISUAL_CHECK_WAIT_IMAGES__?: typeof waitForImagesToSettle
     __VISUAL_CHECK_WAIT_LAYOUT__?: typeof waitForLayoutToSettle
-    __VISUAL_CHECK_SETTLE_CLASS__?: typeof ANIMATION_SETTLE_CLASS
+    __VISUAL_CHECK_FINISH_ANIMATIONS__?: typeof finishSettlingAnimations
   }
   bridge.__VISUAL_CHECK__ = getVisualCheckWarnings
   bridge.__VISUAL_CHECK_WAIT_IMAGES__ = waitForImagesToSettle
   bridge.__VISUAL_CHECK_WAIT_LAYOUT__ = waitForLayoutToSettle
-  bridge.__VISUAL_CHECK_SETTLE_CLASS__ = ANIMATION_SETTLE_CLASS
+  bridge.__VISUAL_CHECK_FINISH_ANIMATIONS__ = finishSettlingAnimations
 }

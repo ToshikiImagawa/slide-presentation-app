@@ -2,6 +2,7 @@ import { save } from '@tauri-apps/plugin-dialog'
 import { writeFile } from '@tauri-apps/plugin-fs'
 import type { jsPDF as JsPDF } from 'jspdf'
 import { SLIDE_WIDTH, SLIDE_HEIGHT } from './hooks/useReveal'
+import { finishSettlingAnimations } from './visualChecks'
 
 const CAPTURE_SCALE = 2
 const IMAGE_LOAD_TIMEOUT_MS = 5000
@@ -109,6 +110,10 @@ export async function exportSlidesToPdf(deckEl: HTMLElement, title: string, canv
     sections.forEach((s, i) => {
       s.className = originalClassNames[i]
     })
+    // 上の復元で「元々 present だったスライド」に present クラスが再度付き、entrance animation が
+    // 新規インスタンスとして生成され直す（このループ自体がスライドを一枚ずつ present 化する既存の仕組みの
+    // 副作用）。復元直後に確定させることで、書き出し完了後にユーザーへ再生され直すのを防ぐ（#306）
+    finishSettlingAnimations(deckEl)
     slidesEl.style.left = originalSlidesStyle.left
     slidesEl.style.top = originalSlidesStyle.top
     slidesEl.style.right = originalSlidesStyle.right
@@ -221,9 +226,14 @@ function promoteLazyImages(deckEl: HTMLElement): () => void {
   }
 }
 
-/** present化直後の画像読み込み・タイピングアニメーション開始を待つ */
+/** present化直後の画像読み込み・タイピングアニメーション開始を待ち、entrance animation を最終状態へ確定する */
 async function waitForSlideReady(section: HTMLElement): Promise<void> {
   await waitForNextPaint()
+  // entrance animation（fadeInUp）は Animation.finish() で確定する（visualChecks.ts と共有。#306）。
+  // 以前は .pdf-capturing クラスに対する CSS の animation:none 強制に依存していたが、解除時に
+  // animation-name が再適用され新規アニメーションとして扱われるため、書き出し完了直後に
+  // 直前まで見えていたスライドの entrance animation が再生され直す不具合があった（#299 と同根）
+  finishSettlingAnimations(section)
   const pendingImages = Array.from(section.querySelectorAll('img')).filter((img) => !img.complete)
   await Promise.all(pendingImages.map(waitForImageSettled))
   await new Promise((resolve) => setTimeout(resolve, RENDER_SETTLE_MS))

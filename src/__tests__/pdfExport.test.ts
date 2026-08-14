@@ -96,6 +96,27 @@ describe('exportSlidesToPdf', () => {
     expect(sections[1].classList.contains('present')).toBe(false)
   })
 
+  // #306: .present クラスの復元（上のテスト）は、元々表示されていたスライドへ entrance animation を
+  // 再トリガーする（present 解除→撮影ループ内での再付与→撮影後の future 化→ここでの再復元、と
+  // クラスが何度も着脱されるため）。復元直後に Animation.finish() で確定しないと、書き出し完了後に
+  // ユーザーの目の前で fadeInUp が再生され直してしまう
+  it('.present クラスの復元後、entrance animation を Animation.finish() で確定する（書き出し完了直後の再生を防ぐ）', async () => {
+    h.save.mockResolvedValue('/tmp/my-deck.pdf')
+    const deck = buildDeck(2)
+    const sections = deck.querySelectorAll('section')
+    sections[0].classList.add('present')
+
+    const finish = vi.fn()
+    const finite = { finish, effect: { getComputedTiming: () => ({ iterations: 1 }) } }
+    const infinite = { finish: vi.fn(), effect: { getComputedTiming: () => ({ iterations: Infinity }) } }
+    deck.getAnimations = vi.fn().mockReturnValue([finite, infinite])
+
+    await exportSlidesToPdf(deck, 'my-deck')
+
+    expect(finish).toHaveBeenCalledTimes(1)
+    expect(infinite.finish).not.toHaveBeenCalled()
+  })
+
   it('キャプチャ対象に .past/.future が残っていない状態で html2canvas を呼ぶ（Reveal.jsの隠しCSSを回避）', async () => {
     h.save.mockResolvedValue('/tmp/my-deck.pdf')
     const deck = buildDeck(3)
