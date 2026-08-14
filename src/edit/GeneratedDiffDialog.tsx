@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { diffLines } from 'diff'
 import Dialog from '@mui/material/Dialog'
 import DialogTitle from '@mui/material/DialogTitle'
@@ -6,6 +6,7 @@ import DialogContent from '@mui/material/DialogContent'
 import DialogActions from '@mui/material/DialogActions'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import Checkbox from '@mui/material/Checkbox'
 import Chip from '@mui/material/Chip'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
@@ -13,7 +14,7 @@ import { alpha } from '@mui/material/styles'
 import { useTranslation } from '../i18n'
 import { getContrastRatio, TEXT_COLOR_KEYS, WCAG_AA_THRESHOLD } from '../applyTheme'
 import type { ColorPalette, ThemeData, ValidationError } from '../data/types'
-import { computeSlidesDiff, hasChanges, type FieldChange, type SlideChange } from './slidesDiff'
+import { computeSlidesDiff, hasChanges, selectAllChanges, type DiffSelection, type FieldChange, type SlideChange } from './slidesDiff'
 import { prettyPrintJson } from './slidesSerialize'
 import { ValidationErrorList } from './ValidationErrorList'
 
@@ -23,7 +24,8 @@ import { ValidationErrorList } from './ValidationErrorList'
  * before（現在の器のテキスト）と after（生成候補）の**構造差分**を、スライド単位の
  * 追加/変更/削除とメタ変更のサマリで見せ、各項目は展開して before/after の詳細を確認できる。
  * 構造解析不能（構文不正・id 欠落/重複）のときは「全体置換」のフォールバック表示にする。
- * [適用する] で `onApply`（器のテキストを整形して全体置換）、[キャンセル] で `onCancel`（器に触れない・FR-008）。
+ * テーマ・スライド単位はチェックボックスで選択できる（初期値は全選択）。[適用する] で `onApply`（選択された
+ * DiffSelection を渡す。フォールバック時は null で全体置換）、[キャンセル] で `onCancel`（器に触れない・FR-008）。
  */
 export interface GeneratedDiffDialogProps {
   open: boolean
@@ -33,7 +35,8 @@ export interface GeneratedDiffDialogProps {
   afterText: string
   /** 適用候補に残る検証エラー（自動修正の上限到達＝exhausted で非空になりうる・#47） */
   validationErrors: ValidationError[]
-  onApply: () => void
+  /** 選択された適用範囲。構造解析不能（フォールバック＝全体置換）のときは null */
+  onApply: (selection: DiffSelection | null) => void
   onCancel: () => void
 }
 
@@ -101,6 +104,24 @@ export function GeneratedDiffDialog({ open, beforeText, afterText, validationErr
   // 閉じているときは差分計算をスキップ（開いたときだけ算出）
   const diff = useMemo(() => (open ? computeSlidesDiff(beforeText, afterText) : null), [open, beforeText, afterText])
 
+  // 部分適用の選択状態（②・#301）。テーマ・スライド単位のみ選択可能で、初期値は「全て適用」（既定動作の維持）。
+  // diff.parseable=false のときは選択UI自体を描画しないため中身は使われないが、型を非 null に保つため空の既定値にする。
+  // diff が変わる（開くたび・候補が変わるたび）度にリセットする
+  const [selection, setSelection] = useState<DiffSelection>({ theme: true, slideIds: new Set() })
+  useEffect(() => {
+    if (diff && diff.parseable) setSelection(selectAllChanges(diff))
+  }, [diff])
+
+  const toggleTheme = () => setSelection((prev) => ({ ...prev, theme: !prev.theme }))
+  const toggleSlideSelected = (id: string) => {
+    setSelection((prev) => {
+      const slideIds = new Set(prev.slideIds)
+      if (slideIds.has(id)) slideIds.delete(id)
+      else slideIds.add(id)
+      return { ...prev, slideIds }
+    })
+  }
+
   const kindLabel = (kind: FieldChange['kind']) => (kind === 'added' ? t('diff.added', '追加') : kind === 'removed' ? t('diff.removed', '削除') : t('diff.changed', '変更'))
 
   // theme は otherChanges の他フィールドと違い、色・コントラスト比を専用UIで展開表示する（Chip一覧からは除く）
@@ -143,10 +164,12 @@ export function GeneratedDiffDialog({ open, beforeText, afterText, validationErr
       </Box>
     )
 
-  // 展開カード（Chip + タイトル の summary、本文は details/summary 内）。スライド・テーマ両方の詳細表示で共通
-  const renderDetailCard = (key: string, kind: FieldChange['kind'], title: ReactNode, body: ReactNode) => (
+  // 展開カード（チェックボックス + Chip + タイトル の summary、本文は details/summary 内）。スライド・テーマ両方の詳細表示で共通。
+  // checked/onToggle は部分適用の選択（②・#301）。チェックボックスのクリックは <summary> の開閉トグルへ伝播させない
+  const renderDetailCard = (key: string, kind: FieldChange['kind'], title: ReactNode, body: ReactNode, checked: boolean, onToggle: () => void) => (
     <Box component="details" key={key} sx={{ border: '1px solid var(--fixed-border)', borderRadius: 1, mb: 0.5, overflow: 'hidden' }}>
       <Box component="summary" sx={{ px: 1, py: 0.75, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 1, listStyle: 'none', '&::-webkit-details-marker': { display: 'none' } }}>
+        <Checkbox size="small" checked={checked} onChange={onToggle} onClick={(e) => e.stopPropagation()} sx={{ p: 0 }} />
         <Chip size="small" color={KIND_COLOR[kind]} label={kindLabel(kind)} />
         {title}
       </Box>
@@ -192,6 +215,8 @@ export function GeneratedDiffDialog({ open, beforeText, afterText, validationErr
         {t('diff.themeSection', 'テーマ')}
       </Typography>,
       body,
+      selection.theme,
+      toggleTheme,
     )
   }
 
@@ -203,6 +228,8 @@ export function GeneratedDiffDialog({ open, beforeText, afterText, validationErr
         {c.id}
       </Typography>,
       renderChangeBody(c.kind, c.before, c.after),
+      selection.slideIds.has(c.id),
+      () => toggleSlideSelected(c.id),
     )
 
   return (
@@ -278,7 +305,7 @@ export function GeneratedDiffDialog({ open, beforeText, afterText, validationErr
         <Button onClick={onCancel} color="inherit">
           {t('diff.cancel', 'キャンセル')}
         </Button>
-        <Button onClick={onApply} variant="contained">
+        <Button onClick={() => onApply(diff && diff.parseable ? selection : null)} variant="contained">
           {t('diff.apply', '適用する')}
         </Button>
       </DialogActions>

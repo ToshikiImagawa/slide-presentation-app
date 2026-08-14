@@ -37,22 +37,46 @@ describe('GeneratedDiffDialog（①構造サマリ差分）', () => {
     expect(screen.getByText('s2')).toBeTruthy()
   })
 
-  it('[適用する]/[キャンセル] で各コールバックを呼ぶ', () => {
+  it('[適用する]/[キャンセル] で各コールバックを呼ぶ。既定は全選択で onApply される', () => {
     const onApply = vi.fn()
     const onCancel = vi.fn()
     render(wrap(<GeneratedDiffDialog open beforeText={BEFORE} afterText={AFTER} validationErrors={[]} onApply={onApply} onCancel={onCancel} />))
     fireEvent.click(screen.getByRole('button', { name: '適用する' }))
     expect(onApply).toHaveBeenCalledTimes(1)
+    expect(onApply).toHaveBeenCalledWith({ theme: true, slideIds: new Set(['s1', 's2']) })
     fireEvent.click(screen.getByRole('button', { name: 'キャンセル' }))
     expect(onCancel).toHaveBeenCalledTimes(1)
   })
 
-  it('構造解析不能ならフォールバック（全体置換）表示になり、[適用する] は使える', () => {
+  it('構造解析不能ならフォールバック（全体置換）表示になり、[適用する] は selection=null で呼ばれる', () => {
     const onApply = vi.fn()
     render(wrap(<GeneratedDiffDialog open beforeText={BEFORE} afterText={'{ broken json'} validationErrors={[]} onApply={onApply} onCancel={() => {}} />))
     expect(screen.getByText(/構造を解析できない/)).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: '適用する' }))
     expect(onApply).toHaveBeenCalledTimes(1)
+    expect(onApply).toHaveBeenCalledWith(null)
+  })
+
+  it('スライドのチェックボックスを外すと、そのスライドを除外した selection で onApply される（②・#301）', () => {
+    const onApply = vi.fn()
+    render(wrap(<GeneratedDiffDialog open beforeText={BEFORE} afterText={AFTER} validationErrors={[]} onApply={onApply} onCancel={() => {}} />))
+    // s1（変更）の詳細カード内チェックボックスを外す
+    const s1Checkbox = screen.getByText('s1').closest('summary')!.querySelector('input[type="checkbox"]') as HTMLInputElement
+    fireEvent.click(s1Checkbox)
+    fireEvent.click(screen.getByRole('button', { name: '適用する' }))
+    expect(onApply).toHaveBeenCalledWith({ theme: true, slideIds: new Set(['s2']) })
+  })
+
+  it('テーマのチェックボックスを外すと theme:false で onApply される（②・#301）', () => {
+    const onApply = vi.fn()
+    const beforeWithTheme = JSON.stringify({ meta: { title: 'x' }, theme: { colors: { primary: '#111' } }, slides: [{ id: 's1', layout: 'center', content: {} }] })
+    const afterWithTheme = JSON.stringify({ meta: { title: 'x' }, theme: { colors: { primary: '#222' } }, slides: [{ id: 's1', layout: 'center', content: {} }] })
+    render(wrap(<GeneratedDiffDialog open beforeText={beforeWithTheme} afterText={afterWithTheme} validationErrors={[]} onApply={onApply} onCancel={() => {}} />))
+    const themeCheckbox = screen.getByText('テーマ').closest('summary')!.querySelector('input[type="checkbox"]') as HTMLInputElement
+    fireEvent.click(themeCheckbox)
+    fireEvent.click(screen.getByRole('button', { name: '適用する' }))
+    // s1 の内容は before/after で同一のため slideChanges には含まれない（theme のみが差分）
+    expect(onApply).toHaveBeenCalledWith({ theme: false, slideIds: new Set() })
   })
 
   it('open=false のときは中身をレンダリングしない', () => {

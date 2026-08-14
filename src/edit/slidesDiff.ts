@@ -7,6 +7,9 @@
  * 呼び出し側（`GeneratedDiffDialog`）は「構造解析不可・全体置換」のフォールバック表示に切り替える。
  */
 
+import type { PresentationData } from '../data/types'
+import { serializeSlides } from './slidesSerialize'
+
 /** スライド単位の変更種別。 */
 export type SlideChangeKind = 'added' | 'changed' | 'removed'
 
@@ -162,4 +165,93 @@ export function computeSlidesDiff(beforeText: string, afterText: string): Slides
 /** 差分に実質的な変更があるか（サマリの「変更なし」表示判定用）。 */
 export function hasChanges(diff: SlidesDiff): boolean {
   return diff.metaChanges.length > 0 || diff.otherChanges.length > 0 || diff.slideChanges.length > 0
+}
+
+/**
+ * 部分適用で選ぶ単位（②・#301）。
+ *
+ * 選択可能なのは issue が定めた2軸のみ: テーマ（`theme`）とスライド単位（`slideIds`）。
+ * meta・theme 以外のトップレベル変更は選択の余地なく常に適用する（追加の選択UIは対象外・YAGNI）。
+ */
+export interface DiffSelection {
+  /** otherChanges の `theme` を適用するか（theme 変更が無ければ意味を持たない） */
+  theme: boolean
+  /** 適用する slideChanges の id 集合 */
+  slideIds: Set<string>
+}
+
+/** 全項目を選択した DiffSelection（現状の「全て適用」と等価）。 */
+export function selectAllChanges(diff: SlidesDiff): DiffSelection {
+  return { theme: true, slideIds: new Set(diff.slideChanges.map((c) => c.id)) }
+}
+
+/**
+ * afterIds における afterIndex の直前から遡り、resultSlides に既に存在する id を探して
+ * その直後の位置を返す（追加スライドの挿入位置。前が見つからなければ先頭 0）。
+ */
+function findInsertIndex(afterIds: string[], afterIndex: number, resultSlides: Record<string, unknown>[]): number {
+  for (let i = afterIndex - 1; i >= 0; i--) {
+    const idx = resultSlides.findIndex((s) => s.id === afterIds[i])
+    if (idx !== -1) return idx + 1
+  }
+  return 0
+}
+
+/**
+ * 選択された項目（テーマ・スライド単位）だけを before に反映し、2 スペース整形の JSON テキストを返す（②・#301）。
+ *
+ * - meta と theme 以外のトップレベル変更は選択に関わらず常に反映する（after の値を採用）
+ * - theme は `selection.theme` が true のときだけ after の値を採用する
+ * - スライドは `selection.slideIds` に含まれる id だけ反映する。追加スライドは after での相対順序を保って
+ *   before の並びに挿入し、選択されなかった削除/変更は before のまま残す
+ * - 構造解析不能（`computeSlidesDiff` が `parseable: false`）なら before をそのまま返す
+ *   （呼び出し側は parseable を見て全体置換にフォールバックする想定）
+ */
+export function applySelectedChanges(beforeText: string, afterText: string, selection: DiffSelection): string {
+  const diff = computeSlidesDiff(beforeText, afterText)
+  if (!diff.parseable) return beforeText
+
+  const before = JSON.parse(beforeText) as Record<string, unknown>
+  const after = JSON.parse(afterText) as Record<string, unknown>
+  const result: Record<string, unknown> = { ...before }
+
+  // meta は選択の余地なく常に適用するが、diff.metaChanges（フィールド単位の追加/変更/削除）を反映する。
+  // after.meta を丸ごと差し替えないのは、otherChanges と同じフィールド単位の意味論に揃えるため
+  const beforeMeta = (before.meta && typeof before.meta === 'object' && !Array.isArray(before.meta) ? before.meta : {}) as Record<string, unknown>
+  const mergedMeta: Record<string, unknown> = { ...beforeMeta }
+  for (const m of diff.metaChanges) {
+    if (m.kind === 'removed') delete mergedMeta[m.key]
+    else mergedMeta[m.key] = m.after
+  }
+  result.meta = mergedMeta
+
+  for (const o of diff.otherChanges) {
+    if (o.key === 'theme' && !selection.theme) continue
+    if (o.kind === 'removed') delete result[o.key]
+    else result[o.key] = after[o.key]
+  }
+
+  const beforeSlides = Array.isArray(before.slides) ? (before.slides as Record<string, unknown>[]) : []
+  const afterIds = Array.isArray(after.slides) ? (after.slides as Record<string, unknown>[]).map((s) => s.id as string) : []
+  const changeById = new Map(diff.slideChanges.map((c) => [c.id, c]))
+
+  const resultSlides: Record<string, unknown>[] = []
+  for (const slide of beforeSlides) {
+    const id = slide.id as string
+    const change = changeById.get(id)
+    if (change?.kind === 'removed' && selection.slideIds.has(id)) continue
+    if (change?.kind === 'changed' && selection.slideIds.has(id)) {
+      resultSlides.push(change.after as Record<string, unknown>)
+    } else {
+      resultSlides.push(slide)
+    }
+  }
+  for (const change of diff.slideChanges) {
+    if (change.kind !== 'added' || !selection.slideIds.has(change.id)) continue
+    const insertAt = findInsertIndex(afterIds, afterIds.indexOf(change.id), resultSlides)
+    resultSlides.splice(insertAt, 0, change.after as Record<string, unknown>)
+  }
+  result.slides = resultSlides
+
+  return serializeSlides(result as unknown as PresentationData)
 }
