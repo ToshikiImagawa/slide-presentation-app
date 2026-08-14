@@ -71,8 +71,10 @@ impl ClrMap {
     }
   }
 
-  /// `p:clrMap` の属性を読み込む。欠けている属性は標準写像のままにする
-  fn read_attributes(&mut self, e: &BytesStart) {
+  /// `p:clrMap` の属性を読み込む。欠けている属性は標準写像のままにする。
+  /// `p:clrMapOvr/p:overrideClrMapping`（layout 単位の反転。#300）も同じ12属性の形のため、
+  /// `layout_xml.rs` から `pub(super)` で共有する
+  pub(super) fn read_attributes(&mut self, e: &BytesStart) {
     let apply = |key: &str, target: &mut String| {
       if let Some(value) = attr(e, key).filter(|v| !v.is_empty()) {
         *target = value;

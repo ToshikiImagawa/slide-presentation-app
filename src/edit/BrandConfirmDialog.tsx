@@ -20,7 +20,18 @@ import { useTranslation } from '../i18n'
 import { getContrastRatio, WCAG_AA_THRESHOLD } from '../applyTheme'
 import type { LogoConfig, SlideData, ThemeData } from '../data'
 import { compile, mediaAssetToDataUrl, mergeCompiledBrandTheme } from '../brand/compile'
-import { LAYOUT_ASSIGNMENT_SLOTS, MAPPED_COLOR_KEYS, type BandCandidate, type BrandFieldStatus, type BrandOverrides, type BrandProfile, type CompiledBrandTheme, type LayoutAssignmentSlot, type MappedColorKey } from '../brand/types'
+import {
+  LAYOUT_ASSIGNMENT_SLOTS,
+  MAPPED_COLOR_KEYS,
+  type BandCandidate,
+  type BrandColorScheme,
+  type BrandFieldStatus,
+  type BrandOverrides,
+  type BrandProfile,
+  type CompiledBrandTheme,
+  type LayoutAssignmentSlot,
+  type MappedColorKey,
+} from '../brand/types'
 import { resolveCanvasSize } from '../hooks/useReveal'
 import { ColorSwatch } from './GeneratedDiffDialog'
 import { SlidePreview } from './SlidePreview'
@@ -90,6 +101,14 @@ export function BrandConfirmDialog({ open, profile, initialOverrides, previewSli
     setColorDrafts((prev) => ({ ...prev, [key]: undefined }))
     if (!HEX_PATTERN.test(draft)) return
     setOverrides((prev) => ({ ...prev, colorHex: { ...prev.colorHex, [key]: draft.toLowerCase() } }))
+  }
+
+  const selectMaster = (index: number) => {
+    setOverrides((prev) => ({ ...prev, selectedMasterIndex: index }))
+  }
+
+  const selectColorScheme = (scheme: BrandColorScheme) => {
+    setOverrides((prev) => ({ ...prev, colorScheme: scheme }))
   }
 
   const selectLogo = (index: number | null) => {
@@ -162,6 +181,32 @@ export function BrandConfirmDialog({ open, profile, initialOverrides, previewSli
             </Box>
           </Box>
         </Stack>
+
+        {profile.masters.length > 1 && (
+          <>
+            <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
+              {t('brand.masterSection', '基準にするマスター')}
+            </Typography>
+            <FormControl size="small" sx={{ mb: 2, minWidth: 240 }}>
+              <Select value={String(overrides.selectedMasterIndex ?? 0)} onChange={(e) => selectMaster(Number(e.target.value))} SelectDisplayProps={{ 'aria-label': t('brand.masterSection', '基準にするマスター') }}>
+                {profile.masters.map((master, i) => (
+                  <MenuItem key={master.part} value={String(i)}>
+                    {t('brand.masterLabel', 'マスター')} {i + 1}（{master.part}）
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </>
+        )}
+
+        <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
+          {t('brand.colorSchemeSection', 'ライト/ダーク')}
+        </Typography>
+        <RadioGroup row sx={{ mb: 2 }} value={overrides.colorScheme ?? 'auto'} onChange={(e) => selectColorScheme(e.target.value as BrandColorScheme)}>
+          <FormControlLabel value="auto" control={<Radio size="small" />} label={t('brand.colorSchemeAuto', '自動（テンプレート通り）')} />
+          <FormControlLabel value="light" control={<Radio size="small" />} label={t('brand.colorSchemeLight', 'ライト')} />
+          <FormControlLabel value="dark" control={<Radio size="small" />} label={t('brand.colorSchemeDark', 'ダーク')} />
+        </RadioGroup>
 
         <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
           {t('brand.colorsSection', '色（12キー）')}

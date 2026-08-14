@@ -162,6 +162,10 @@ pub struct SlideLayoutProfile {
 #[serde(rename_all = "camelCase")]
 pub struct MasterProfile {
   pub part: String,
+  /// この master 自身の clrMap を通して確定した 12 キー（#300）。複数 slideMaster を持つテンプレート
+  /// （ライト用/ダーク用が別々に定義されている等）では master ごとに異なり得るため、`BrandProfile.mappedColors`
+  /// （常に1枚目基準）に頼らずここから選べるようにする
+  pub mapped_colors: MappedColors,
   /// 配下の slideLayout（列挙順は `p:sldLayoutIdLst` の記述順）
   pub slide_layouts: Vec<SlideLayoutProfile>,
 }
@@ -247,18 +251,32 @@ fn extract<R: Read + Seek>(mut reader: R) -> Result<BrandProfile, BrandError> {
     _ => (Vec::new(), Vec::new()),
   };
 
-  // 1 枚目の master は上で既にパース済みの `master.color_map` を再利用する（同じ XML を二重にパースしない）
+  // トップレベルの `mapped_colors`（常に1枚目基準）と `masters[0].mapped_colors` は本来同一値でなければならない。
+  // 独立に計算すると「両者が一致する」という不変条件がテストでしか守れなくなるため、1度だけ計算した値を
+  // 1枚目の MasterProfile 側にも clone で渡して構造的に一致を保証する（#300）
+  let mapped_colors = map_colors(&theme.colors, &master.color_map);
+
+  // 1 枚目の master は上で既にパース済みの `master.color_map`/`mapped_colors` を再利用する（同じ XML を二重にパースせず、
+  // map_colors も呼び直さない）
   let masters = parts
     .slide_masters
     .iter()
     .enumerate()
     .map(|(i, master_part)| -> Result<MasterProfile, BrandError> {
-      let color_map = if i == 0 {
-        master.color_map.clone()
+      let (color_map, master_mapped_colors) = if i == 0 {
+        (master.color_map.clone(), mapped_colors.clone())
       } else {
-        master_xml::parse(&package.read_text(master_part)?)?.color_map
+        let color_map = master_xml::parse(&package.read_text(master_part)?)?.color_map;
+        let mapped_colors = map_colors(&theme.colors, &color_map);
+        (color_map, mapped_colors)
       };
-      build_master_profile(&mut package, master_part, &theme.colors, &color_map)
+      build_master_profile(
+        &mut package,
+        master_part,
+        &theme.colors,
+        &color_map,
+        master_mapped_colors,
+      )
     })
     .collect::<Result<Vec<_>, _>>()?;
 
@@ -273,7 +291,7 @@ fn extract<R: Read + Seek>(mut reader: R) -> Result<BrandProfile, BrandError> {
     thumbnail,
     logo_candidates,
     band_candidates,
-    mapped_colors: map_colors(&theme.colors, &master.color_map),
+    mapped_colors,
     text_styles: TextStyles {
       title: resolve_text_style(&master.title, &theme.colors, &master.color_map),
       body: resolve_text_style(&master.body, &theme.colors, &master.color_map),
@@ -288,12 +306,14 @@ fn extract<R: Read + Seek>(mut reader: R) -> Result<BrandProfile, BrandError> {
 
 /// slideMaster 1枚から `MasterProfile`（配下の slideLayout 一覧）を組み立てる。`color_map` は呼び出し側が
 /// 解決済みの値を渡す（「その master 自身の clrMap」で解決する必要があり、他 master の clrMap を当てると
-/// レイアウトの背景色が反転しうるため、master 単位で解決するのが正しい）
+/// レイアウトの背景色が反転しうるため、master 単位で解決するのが正しい）。`mapped_colors` も呼び出し側が
+/// 同じ `color_map` から計算済みの値を渡す（この関数の中で再計算しない）
 fn build_master_profile(
   package: &mut OpcPackage<impl Read + Seek>,
   master_part: &str,
   theme_colors: &ClrScheme,
   color_map: &ClrMap,
+  mapped_colors: MappedColors,
 ) -> Result<MasterProfile, BrandError> {
   let layout_parts = package.resolve_slide_layouts(master_part)?;
   let slide_layouts = layout_parts
@@ -302,11 +322,13 @@ fn build_master_profile(
     .collect::<Result<Vec<_>, _>>()?;
   Ok(MasterProfile {
     part: master_part.to_string(),
+    mapped_colors,
     slide_layouts,
   })
 }
 
-/// slideLayout 1枚から `SlideLayoutProfile` を組み立て、背景色を「所属 master の clrMap」で解決する
+/// slideLayout 1枚から `SlideLayoutProfile` を組み立て、背景色を「そのlayoutが持つclrMapOvr（あれば）、
+/// 無ければ所属masterのclrMap」で解決する（#300。反転レイアウトを master のclrMapで解決すると反転が無視される）
 fn build_slide_layout_profile(
   package: &mut OpcPackage<impl Read + Seek>,
   part: String,
@@ -314,10 +336,11 @@ fn build_slide_layout_profile(
   color_map: &ClrMap,
 ) -> Result<SlideLayoutProfile, BrandError> {
   let info = layout_xml::parse(&package.read_text(&part)?)?;
+  let effective_color_map = info.color_map_override.as_ref().unwrap_or(color_map);
   let background_color_hex = info
     .background
     .as_ref()
-    .and_then(|spec| resolve_color_spec(spec, theme_colors, color_map))
+    .and_then(|spec| resolve_color_spec(spec, theme_colors, effective_color_map))
     .map(Rgb::to_hex);
   Ok(SlideLayoutProfile {
     part,
@@ -1050,9 +1073,15 @@ mod tests {
     <p:spTree/>
   </p:cSld>
 </p:sldLayout>"#;
+    // master1 自身の clrMap は bg1=lt1（明）だが、この layout は clrMapOvr で bg1=dk1（暗）に反転する（#300）。
+    // 反転を無視して master の clrMap を当てると背景が白になってしまう
     const LAYOUT2_CONTENT: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
 <p:sldLayout xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" type="obj">
+  <p:clrMapOvr>
+    <p:overrideClrMapping bg1="dk1" tx1="lt1" bg2="dk2" tx2="lt2" accent1="accent1" accent2="accent2" accent3="accent3" accent4="accent4" accent5="accent5" accent6="accent6" hlink="hlink" folHlink="folHlink"/>
+  </p:clrMapOvr>
   <p:cSld name="Content">
+    <p:bg><p:bgPr><a:solidFill><a:schemeClr val="bg1"/></a:solidFill></p:bgPr></p:bg>
     <p:spTree>
       <p:sp><p:nvSpPr><p:cNvPr id="2" name="Title"/><p:nvPr><p:ph type="title"/></p:nvPr></p:nvSpPr><p:spPr/></p:sp>
       <p:sp><p:nvSpPr><p:cNvPr id="3" name="Body"/><p:nvPr><p:ph type="body" idx="1"/></p:nvPr></p:nvSpPr><p:spPr/></p:sp>
@@ -1191,6 +1220,46 @@ mod tests {
   }
 
   #[test]
+  fn layout_with_clr_map_ovr_resolves_against_its_own_inverted_map_not_the_master() {
+    // master1（bg1=lt1=白）配下の "Content" layout は clrMapOvr で bg1=dk1 に反転しているため、
+    // master の clrMap（白）ではなく反転後（黒）で解決される（#300 の受け入れ基準）
+    let profile = extract_bytes(&pptx_package_with_multiple_masters_and_layouts()).unwrap();
+    let master1_content = &profile.masters[1].slide_layouts[1];
+    assert_eq!(master1_content.name.as_deref(), Some("Content"));
+    assert_eq!(
+      master1_content.background_color_hex.as_deref(),
+      Some("#000000")
+    );
+  }
+
+  #[test]
+  fn each_master_exposes_its_own_mapped_colors() {
+    // master1（bg1=lt1）と master2（bg1=dk1）は同じ theme（clrScheme）を共有するが、clrMap が対照的なため
+    // mapped_colors の bg1/tx1 が反転する。フロントがどの master を基準にするか選ぶための情報（#300）
+    let profile = extract_bytes(&pptx_package_with_multiple_masters_and_layouts()).unwrap();
+    let master1 = &profile.masters[1]; // slideMaster1（bg1=lt1）
+    let master2 = &profile.masters[0]; // slideMaster2（bg1=dk1）
+    assert_eq!(
+      master1.mapped_colors.bg1.map(Rgb::to_hex).as_deref(),
+      Some("#ffffff")
+    );
+    assert_eq!(
+      master1.mapped_colors.tx1.map(Rgb::to_hex).as_deref(),
+      Some("#000000")
+    );
+    assert_eq!(
+      master2.mapped_colors.bg1.map(Rgb::to_hex).as_deref(),
+      Some("#000000")
+    );
+    assert_eq!(
+      master2.mapped_colors.tx1.map(Rgb::to_hex).as_deref(),
+      Some("#ffffff")
+    );
+    // accent 系は clrMap が同じ割当（accent1="accent1" 等）のため両 master で一致する
+    assert_eq!(master1.mapped_colors.accent1, master2.mapped_colors.accent1);
+  }
+
+  #[test]
   fn single_master_template_keeps_legacy_fields_unchanged() {
     // master 1 枚のテンプレートでは、追加した `masters` フィールドが増えるだけで、
     // 既存の単数フィールドの値は従来どおり（#192 の回帰なし基準）
@@ -1201,6 +1270,7 @@ mod tests {
       profile.slide_master_part.clone().unwrap()
     );
     assert_eq!(profile.masters[0].slide_layouts.len(), 0);
+    assert_eq!(profile.masters[0].mapped_colors, profile.mapped_colors);
   }
 
   #[test]

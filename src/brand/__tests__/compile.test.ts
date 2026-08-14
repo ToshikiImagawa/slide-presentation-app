@@ -62,6 +62,87 @@ describe('compile（#168 の並置比較・取り込み確認）', () => {
     expect(serialized).not.toContain(';')
   })
 
+  describe('複数masterの選択（#300）', () => {
+    const darkMappedColors: Record<MappedColorKey, string | null> = {
+      ...profile().mappedColors,
+      bg1: '#000000',
+      tx1: '#ffffff',
+      bg2: '#333333',
+      tx2: '#eeeeee',
+    }
+    const withTwoMasters = () =>
+      profile({
+        masters: [
+          { part: 'ppt/slideMasters/slideMaster1.xml', mappedColors: profile().mappedColors, slideLayouts: [] },
+          { part: 'ppt/slideMasters/slideMaster2.xml', mappedColors: darkMappedColors, slideLayouts: [] },
+        ],
+      })
+
+    it('selectedMasterIndex 未指定なら profile.mappedColors（1枚目基準）を使う', () => {
+      const { theme } = compile(withTwoMasters(), {})
+      expect(theme.colors.bg1).toBe('#ffffff')
+    })
+
+    it('selectedMasterIndex で指定した master の12キーを基準にする', () => {
+      const { theme } = compile(withTwoMasters(), { selectedMasterIndex: 1 })
+      expect(theme.colors.bg1).toBe('#000000')
+      expect(theme.colors.tx1).toBe('#ffffff')
+    })
+
+    it('存在しない masterIndex は profile.mappedColors にフォールバックする', () => {
+      const { theme } = compile(withTwoMasters(), { selectedMasterIndex: 9 })
+      expect(theme.colors.bg1).toBe('#ffffff')
+    })
+
+    it('colorHex による個別上書きは master 選択後も最終的に優先される', () => {
+      const { theme } = compile(withTwoMasters(), { selectedMasterIndex: 1, colorHex: { bg1: '#ff00ff' } })
+      expect(theme.colors.bg1).toBe('#ff00ff')
+    })
+  })
+
+  describe('ライト/ダークの明示指定（#300）', () => {
+    it('auto（既定）はテンプレートの extracted 値をそのまま使う', () => {
+      const { theme } = compile(profile(), { colorScheme: 'auto' })
+      expect(theme.colors.bg1).toBe('#ffffff')
+      expect(theme.colors.tx1).toBe('#000000')
+    })
+
+    it('既にライトなテンプレートに light を指定しても変化しない', () => {
+      const { theme } = compile(profile(), { colorScheme: 'light' })
+      expect(theme.colors.bg1).toBe('#ffffff')
+      expect(theme.colors.tx1).toBe('#000000')
+    })
+
+    it('ライトなテンプレートに dark を指定すると bg1⇄tx1・bg2⇄tx2 が入れ替わる', () => {
+      const { theme } = compile(profile(), { colorScheme: 'dark' })
+      expect(theme.colors.bg1).toBe('#000000')
+      expect(theme.colors.tx1).toBe('#ffffff')
+      expect(theme.colors.bg2).toBe('#44546a')
+      expect(theme.colors.tx2).toBe('#f2f2f2')
+      // 反転対象外のキーは変化しない
+      expect(theme.colors.accent1).toBe('#1f4e79')
+    })
+
+    it('曖昧なケース（slideMaster を持たず既定写像で bg1=lt1 に決め打ちされた抽出結果）でも dark 指定で反転できる', () => {
+      // 標準写像（`ClrMap::default`）は bg1=lt1/tx1=dk1 を機械的に割り当てるだけで、
+      // 実際の意図がダークかどうかは判定できない。bg1/tx1 の実値そのもの（lt1/dk1）は正しく取れているため、
+      // 入れ替えるだけで正しいダーク配色になる（Rust 側の変更なしにフロントだけで解決できる）
+      const p = profile({ mappedColors: { ...profile().mappedColors, bg1: '#ffffff', tx1: '#000000' } })
+      const { theme } = compile(p, { colorScheme: 'dark' })
+      expect(theme.colors.bg1).toBe('#000000')
+      expect(theme.colors.tx1).toBe('#ffffff')
+    })
+
+    it('selectedMasterIndex と併用でき、選択した master に対して反転が適用される', () => {
+      const p = profile({
+        masters: [{ part: 'ppt/slideMasters/slideMaster1.xml', mappedColors: { ...profile().mappedColors, bg1: '#111111', tx1: '#f0f0f0' }, slideLayouts: [] }],
+      })
+      const { theme } = compile(p, { selectedMasterIndex: 0, colorScheme: 'light' })
+      expect(theme.colors.bg1).toBe('#f0f0f0')
+      expect(theme.colors.tx1).toBe('#111111')
+    })
+  })
+
   describe('WCAG コントラスト収束', () => {
     it('AA を満たす組はそのまま変更しない', () => {
       const { theme, report } = compile(profile(), {})
@@ -285,6 +366,7 @@ describe('compile（#168 の並置比較・取り込み確認）', () => {
         masters: [
           {
             part: 'ppt/slideMasters/slideMaster1.xml',
+            mappedColors: profile().mappedColors,
             slideLayouts: [
               { part: 'ppt/slideLayouts/slideLayout1.xml', name: 'Section Divider', layoutType: 'secHead', placeholders: [], backgroundColorHex: '#000000' },
               { part: 'ppt/slideLayouts/slideLayout2.xml', name: 'Content', layoutType: 'obj', placeholders: [], backgroundColorHex: null },
@@ -343,6 +425,7 @@ describe('compile（#168 の並置比較・取り込み確認）', () => {
         masters: [
           {
             part: 'ppt/slideMasters/slideMaster1.xml',
+            mappedColors: profile().mappedColors,
             slideLayouts: [
               { part: 'ppt/slideLayouts/slideLayout1.xml', name: 'Dark Section', layoutType: 'secHead', placeholders: [], backgroundColorHex: '#000000' },
               { part: 'ppt/slideLayouts/slideLayout2.xml', name: 'Closing', layoutType: 'blank', placeholders: [], backgroundColorHex: '#ffffff' },

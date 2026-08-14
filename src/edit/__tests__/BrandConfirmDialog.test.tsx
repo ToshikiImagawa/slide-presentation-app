@@ -144,6 +144,7 @@ describe('BrandConfirmDialog（#168 並置比較・取り込み確認）', () =>
       masters: [
         {
           part: 'ppt/slideMasters/slideMaster1.xml',
+          mappedColors: buildProfile().mappedColors,
           slideLayouts: [{ part: 'ppt/slideLayouts/slideLayout1.xml', name: 'Section Divider', layoutType: 'secHead', placeholders: [], backgroundColorHex: '#000000' }],
         },
       ],
@@ -167,6 +168,7 @@ describe('BrandConfirmDialog（#168 並置比較・取り込み確認）', () =>
       masters: [
         {
           part: 'ppt/slideMasters/slideMaster1.xml',
+          mappedColors: buildProfile().mappedColors,
           slideLayouts: [{ part: 'ppt/slideLayouts/slideLayout1.xml', name: 'Dark Section', layoutType: 'secHead', placeholders: [], backgroundColorHex: '#000000' }],
         },
       ],
@@ -184,6 +186,7 @@ describe('BrandConfirmDialog（#168 並置比較・取り込み確認）', () =>
       masters: [
         {
           part: 'ppt/slideMasters/slideMaster1.xml',
+          mappedColors: buildProfile().mappedColors,
           slideLayouts: [{ part: 'ppt/slideLayouts/slideLayout1.xml', name: 'Dark Section', layoutType: 'secHead', placeholders: [], backgroundColorHex: '#000000' }],
         },
       ],
@@ -200,6 +203,41 @@ describe('BrandConfirmDialog（#168 並置比較・取り込み確認）', () =>
     const masterKey = arg.compiled.masterMap['center/message-inverse']
     // tx1 の既定値 #000000 は背景 #000000 と無コントラストなため、AA を満たす値へ調整されている
     expect(arg.compiled.tokens[masterKey]?.['theme-text-body']).not.toBe('#000000')
+  })
+
+  it('master が1枚のみなら「基準にするマスター」選択は表示しない（#300）', () => {
+    renderDialog()
+    expect(screen.queryByRole('combobox', { name: '基準にするマスター' })).toBeNull()
+  })
+
+  it('masterが複数あれば選択でき、取り込むと selectedMasterIndex が渡る（#300）', () => {
+    const profile = buildProfile({
+      masters: [
+        { part: 'ppt/slideMasters/slideMaster1.xml', mappedColors: buildProfile().mappedColors, slideLayouts: [] },
+        { part: 'ppt/slideMasters/slideMaster2.xml', mappedColors: { ...buildProfile().mappedColors, bg1: '#000000', tx1: '#ffffff' }, slideLayouts: [] },
+      ],
+    })
+    const { onApply } = renderDialog({ profile })
+
+    const masterSelect = screen.getByRole('combobox', { name: '基準にするマスター' })
+    fireEvent.mouseDown(masterSelect)
+    fireEvent.click(screen.getByRole('option', { name: /マスター 2/ }))
+
+    fireEvent.click(screen.getByRole('button', { name: '取り込む' }))
+    const arg = onApply.mock.calls[0][0] as { overrides: BrandOverrides; compiled: CompiledBrandTheme }
+    expect(arg.overrides.selectedMasterIndex).toBe(1)
+    expect(arg.compiled.colors.bg1).toBe('#000000')
+  })
+
+  it('ライト/ダークを明示指定でき、取り込むと colorScheme が渡る（#300）', () => {
+    const { onApply } = renderDialog()
+    fireEvent.click(screen.getByLabelText('ダーク'))
+    fireEvent.click(screen.getByRole('button', { name: '取り込む' }))
+    const arg = onApply.mock.calls[0][0] as { overrides: BrandOverrides; compiled: CompiledBrandTheme }
+    expect(arg.overrides.colorScheme).toBe('dark')
+    // 既定は bg1=#ffffff/tx1=#000000（ライト）なので、dark 指定で反転している
+    expect(arg.compiled.colors.bg1).toBe('#000000')
+    expect(arg.compiled.colors.tx1).toBe('#ffffff')
   })
 
   it('前回保存済みの上書きを初期値として反映する（再取り込みで人手修正が保持される）', () => {

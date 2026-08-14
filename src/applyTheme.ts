@@ -1040,8 +1040,8 @@ function linearizeChannel(value: number): number {
   return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)
 }
 
-/** 6桁hex（#rrggbb）の相対輝度（WCAG 2.x の算出式） */
-function relativeLuminance(hex: string): number {
+/** 6桁hex（#rrggbb）の相対輝度（WCAG 2.x の算出式）。brand/compile.ts のライト/ダーク判定（#300）とも共有する */
+export function relativeLuminance(hex: string): number {
   const [r, g, b] = hexToRgbTuple(hex)
   return 0.2126 * linearizeChannel(r) + 0.7152 * linearizeChannel(g) + 0.0722 * linearizeChannel(b)
 }

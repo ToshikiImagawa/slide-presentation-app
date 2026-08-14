@@ -1,4 +1,4 @@
-import { getContrastRatio, hexToRgbTuple, rgbTupleToHex, THEME_COLOR_TOKENS, WCAG_AA_THRESHOLD } from '../applyTheme'
+import { getContrastRatio, hexToRgbTuple, normalizeHex, relativeLuminance, rgbTupleToHex, THEME_COLOR_TOKENS, WCAG_AA_THRESHOLD } from '../applyTheme'
 import { SLIDE_WIDTH, SLIDE_HEIGHT } from '../hooks/useReveal'
 import { slugify } from '../slugify'
 import type { FontFamilySpec, MasterDecoration, MasterDefinition, ThemeData } from '../data'
@@ -6,6 +6,7 @@ import {
   LAYOUT_ASSIGNMENT_SLOTS,
   MAPPED_COLOR_KEYS,
   type BandCandidate,
+  type BrandColorScheme,
   type BrandFontFace,
   type BrandImportReport,
   type BrandOverrides,
@@ -165,11 +166,50 @@ function layoutMasterKey(key: string, name: string | null): string {
   return `brand-${slugify(name ?? '', 'layout')}-${key.replace(':', '-')}`
 }
 
+/** ライト/ダーク反転で入れ替える bg/tx の組（#300）。全12キーのうち、背景と対になる本文色だけが対象 */
+const BG_TX_SWAP_PAIRS: ReadonlyArray<readonly [MappedColorKey, MappedColorKey]> = [
+  ['bg1', 'tx1'],
+  ['bg2', 'tx2'],
+]
+
+/**
+ * `overrides.selectedMasterIndex` が指すmasterの12キーを基準にする（#300）。複数slideMaster
+ * （ライト用/ダーク用が別々に定義されているテンプレート）では、常に1枚目基準の `profile.mappedColors` では
+ * 他masterの配色を選べないため、`profile.masters[i].mappedColors` を明示的に選べるようにする。
+ * 指す先が存在しない（範囲外・masters が空）場合は `profile.mappedColors` にフォールバックする
+ */
+function selectBaseMappedColors(profile: BrandProfile, overrides: BrandOverrides): Record<MappedColorKey, string | null> {
+  if (overrides.selectedMasterIndex == null) return profile.mappedColors
+  return profile.masters[overrides.selectedMasterIndex]?.mappedColors ?? profile.mappedColors
+}
+
+/**
+ * `overrides.colorScheme`（ライト/ダークの明示指定。#300）が現在の極性と食い違う場合だけ、bg1⇄tx1・bg2⇄tx2 を
+ * 入れ替える。極性は bg1 と tx1 の相対輝度の大小で判定する（背景が文字より明るい＝ライト）。
+ * slideMaster を持たない theme 単体パッケージ（`ClrMap::default()` で常に bg1=lt1 に決め打ちされる曖昧なケース）
+ * でも、bg1/tx1 の実値は lt1/dk1 そのもの（変換なし）なので、この入れ替えだけで正しく反転できる
+ */
+function applyColorSchemeOverride(mapped: Record<MappedColorKey, string | null>, scheme: BrandColorScheme | undefined): Record<MappedColorKey, string | null> {
+  if (!scheme || scheme === 'auto') return mapped
+  const bg1 = mapped.bg1 && normalizeHex(mapped.bg1)
+  const tx1 = mapped.tx1 && normalizeHex(mapped.tx1)
+  if (!bg1 || !tx1) return mapped
+  const isCurrentlyLight = relativeLuminance(bg1) >= relativeLuminance(tx1)
+  if (isCurrentlyLight === (scheme === 'light')) return mapped
+  const swapped = { ...mapped }
+  for (const [bgKey, txKey] of BG_TX_SWAP_PAIRS) {
+    swapped[bgKey] = mapped[txKey]
+    swapped[txKey] = mapped[bgKey]
+  }
+  return swapped
+}
+
 function resolveColors(profile: BrandProfile, overrides: BrandOverrides, report: BrandImportReport): Record<MappedColorKey, string> {
+  const extractedColors = applyColorSchemeOverride(selectBaseMappedColors(profile, overrides), overrides.colorScheme)
   const colors = {} as Record<MappedColorKey, string>
   for (const key of MAPPED_COLOR_KEYS) {
     const override = overrides.colorHex?.[key]
-    const extracted = profile.mappedColors[key]
+    const extracted = extractedColors[key]
     const mechanical = MECHANICALLY_ASSIGNED_KEYS.has(key)
     if (override) {
       colors[key] = override
