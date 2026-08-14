@@ -54,6 +54,9 @@ export interface SlideLayoutProfile {
 /** slideMaster 1枚から抽出した内容（#192）。Rust `brand::MasterProfile` と同じ形 */
 export interface MasterProfile {
   part: string
+  /** この master 自身の clrMap を通して確定した12キー（#300）。ライト用/ダーク用が別々の master に
+   * 定義されているテンプレートで、どの master を基準にするか選ぶための情報 */
+  mappedColors: Record<MappedColorKey, string | null>
   slideLayouts: SlideLayoutProfile[]
 }
 
@@ -100,10 +103,20 @@ export interface BrandProfile {
   masters: MasterProfile[]
 }
 
+/** ライト/ダークの明示指定（#300）。`auto` はテンプレートの clrMap をそのまま採用する（既定）。
+ * 曖昧なケース（theme 単体パッケージ等、slideMaster が無く clrMap の実データが無いテンプレート）で
+ * 白背景+黒文字に決め打ちされるのを人が上書きできるようにする */
+export type BrandColorScheme = 'auto' | 'light' | 'dark'
+
 /** 並置比較ダイアログで人が加える上書き。`BrandProfile` と合わせて `brand-overrides.json`（テンプレハッシュキー）に保存する */
 export interface BrandOverrides {
   /** 12 キーのうち人が上書きした値のみ持つ（未上書きのキーは省略） */
   colorHex?: Partial<Record<MappedColorKey, string>>
+  /** 複数 slideMaster を持つテンプレートで、どの master（`profile.masters` の添字）を配色の基準にするか（#300）。
+   * 未指定時は `profile.mappedColors`（常に1枚目基準）を使う */
+  selectedMasterIndex?: number | null
+  /** ライト/ダークの明示指定（#300）。未指定時は `auto`（テンプレート通り） */
+  colorScheme?: BrandColorScheme
   /** `logoCandidates` から選んだ候補の index。ロゴなしを選んだ場合は `null` */
   selectedLogoIndex?: number | null
   /** 候補に無い画像を人が直接指定した場合。指定時は `selectedLogoIndex` より優先する */
