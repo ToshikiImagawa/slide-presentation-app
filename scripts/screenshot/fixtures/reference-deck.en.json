@@ -31,6 +31,14 @@
           { "type": "text", "anchor": "bottom-center", "content": "{index}/{total}", "fontSize": 16, "offset": { "y": -10 } },
           { "type": "text", "anchor": "bottom-left", "content": "{sectionTitle} {sectionIndex}/{sectionTotal}", "fontSize": 14 }
         ]
+      },
+      "photoBackdrop": {
+        "background": {
+          "type": "image",
+          "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA5NjAgNTQwIiB3aWR0aD0iOTYwIiBoZWlnaHQ9IjU0MCI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJza3kiIHgxPSIwIiB5MT0iMCIgeDI9IjAiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiMxZTNhOGEiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNmOTczMTYiLz48L2xpbmVhckdyYWRpZW50PjxsaW5lYXJHcmFkaWVudCBpZD0ic2NyaW0iIHgxPSIwIiB5MT0iMCIgeDI9IjAiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiMwZjE3MmEiIHN0b3Atb3BhY2l0eT0iMC43NSIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzBmMTcyYSIgc3RvcC1vcGFjaXR5PSIwIi8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHJlY3Qgd2lkdGg9Ijk2MCIgaGVpZ2h0PSI1NDAiIGZpbGw9InVybCgjc2t5KSIvPjxjaXJjbGUgY3g9IjcwMCIgY3k9IjE1MCIgcj0iNzAiIGZpbGw9IiNmZWYzYzciLz48cG9seWdvbiBwb2ludHM9IjAsNDIwIDIyMCwyMjAgMzgwLDM4MCA1MjAsMjQwIDY4MCw0MjAiIGZpbGw9IiMwZjE3MmEiIG9wYWNpdHk9IjAuODUiLz48cG9seWdvbiBwb2ludHM9IjMwMCw0NjAgNTIwLDMwMCA3MjAsNDYwIiBmaWxsPSIjMWUyOTNiIiBvcGFjaXR5PSIwLjkiLz48cmVjdCB5PSI0NjAiIHdpZHRoPSI5NjAiIGhlaWdodD0iODAiIGZpbGw9IiMwYjExMjAiLz48cmVjdCB3aWR0aD0iOTYwIiBoZWlnaHQ9IjI2MCIgZmlsbD0idXJsKCNzY3JpbSkiLz48L3N2Zz4K",
+          "fit": "cover"
+        },
+        "decorations": []
       }
     },
     "masterMap": { "center/message-inverse": "messageInverse", "center/closing": "closing", "center/section": "sectionDivider" },
@@ -38,7 +46,8 @@
       "gridNote": { "theme-background-grid": "#27314f" },
       "messageInverse": { "theme-text-body": "#0f172a", "theme-text-muted": "#475569" },
       "closing": { "theme-text-body": "#0f172a", "theme-text-muted": "#475569", "theme-primary": "#0f766e" },
-      "sectionDivider": { "theme-text-body": "#f8fafc", "theme-text-muted": "#cbd5e1" }
+      "sectionDivider": { "theme-text-body": "#f8fafc", "theme-text-muted": "#cbd5e1" },
+      "photoBackdrop": { "theme-text-body": "#f8fafc", "theme-text-muted": "#e2e8f0" }
     }
   },
   "slides": [
@@ -749,6 +758,15 @@
           ],
           "activations": [{ "lifeline": "api", "from": 0, "to": 4 }]
         }
+      }
+    },
+    {
+      "id": "master-background-image",
+      "layout": "content",
+      "meta": { "master": "photoBackdrop" },
+      "content": {
+        "title": "master background: image",
+        "body": "Setting type: \"image\" on theme.masters[].background covers the full canvas with an image (fit: cover/contain, opacity supported)"
       }
     }
   ]
