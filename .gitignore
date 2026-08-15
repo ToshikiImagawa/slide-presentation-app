@@ -7,6 +7,11 @@ dist/
 .env.local
 .env.*.local
 
+# 作業用に置いた Office ファイル
+*.pptx
+*.potx
+*.thmx
+
 # contents
 public/
 addons/src/
