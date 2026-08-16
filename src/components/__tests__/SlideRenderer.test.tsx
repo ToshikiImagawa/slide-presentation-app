@@ -13,6 +13,7 @@ vi.mock('mermaid', () => ({ default: mermaidMock }))
 import { CENTER_VARIANT_NAMES, SlideRenderer } from '../SlideRenderer'
 import schemaJson from '../../../schema/slide-content-schema.json'
 import { registerDefaultComponents } from '../registerDefaults'
+import { getSchemaConformanceErrors } from '../../data/slideContentSchema'
 import type { SlideData, ThemeData } from '../../data'
 import { theme } from '../../theme'
 import { expectRuntimeMatchesSchemaEnum } from '../../schemaEnumTestUtils'
@@ -457,6 +458,126 @@ describe('SlideRenderer', () => {
     it('images以外の子（tiles）では fill 変種にならない', () => {
       const { container } = renderContent({ tiles: [{ icon: 'Description', title: 'タイル', description: '説明' }] })
       expect(container.querySelector('.content-area')!.classList.contains('content-area-fill')).toBe(false)
+    })
+  })
+
+  // #324: プロフィール（自己紹介）スライド（content.profile → Profile）。1人ぶんに限定した種別
+  describe('contentスライド(profile)', () => {
+    function renderContent(content: SlideData['content']) {
+      return renderWithTheme(<SlideRenderer slides={[{ id: 'test-profile', layout: 'content', content: { title: 'タイトル', ...content } }]} />)
+    }
+
+    const fullProfile = {
+      image: '/avatar.png',
+      name: '今川 敏樹',
+      nameSub: 'Toshiki Imagawa',
+      role: 'ソフトウェアエンジニア',
+      org: '開発部 プラットフォームチーム',
+      body: '登壇資料の作成ツールを作っています。\n発表は年に数回。',
+      links: [
+        { icon: 'Description', label: 'example@example.com' },
+        { icon: 'Search', label: '@example' },
+      ],
+    }
+
+    it('写真・氏名・併記・肩書き・所属・本文・連絡先がすべて描画される', () => {
+      const { container, getByTestId } = renderContent({ profile: fullProfile })
+      expect(getByTestId('profile')).not.toBeNull()
+      expect(container.querySelectorAll('img').length).toBe(1)
+      expect(container.textContent).toContain('今川 敏樹')
+      expect(container.textContent).toContain('Toshiki Imagawa')
+      expect(container.textContent).toContain('ソフトウェアエンジニア')
+      expect(container.textContent).toContain('開発部 プラットフォームチーム')
+      expect(container.textContent).toContain('登壇資料の作成ツールを作っています。')
+      expect(container.querySelectorAll('li').length).toBe(2)
+      expect(container.textContent).toContain('example@example.com')
+    })
+
+    it('本文の改行（\\n）は他の種別と同じく br に展開される', () => {
+      const { getByTestId } = renderContent({ profile: fullProfile })
+      expect(getByTestId('profile').querySelector('br')).not.toBeNull()
+    })
+
+    // 写真は ImageFigureGrid（#198）と同じ FallbackImage 経路に載せる（Reveal.js の遅延読み込みでは
+    // data-src で出て、読み込み状態が data-state に公開される）。読み込み失敗時の破線プレースホルダも
+    // この経路が担うので、経路に乗っていることをテストで固定する
+    it('写真は FallbackImage 経路で描画される（遅延読み込みの data-src と読み込み状態の data-state を持つ）', () => {
+      const { container } = renderContent({ profile: fullProfile })
+      const img = container.querySelector('img')!
+      expect(img.getAttribute('data-src')).toBe('/avatar.png')
+      expect(img.getAttribute('data-state')).toBe('loading')
+      expect(img.getAttribute('alt')).toBe('今川 敏樹')
+    })
+
+    it('写真が無い場合は写真の区画を描かず、テキストだけで崩れない（埋める要素は残る）', () => {
+      const { image: _image, ...withoutImage } = fullProfile
+      const { container, getByTestId } = renderContent({ profile: withoutImage })
+      expect(container.querySelector('img')).toBeNull()
+      expect(container.textContent).toContain('今川 敏樹')
+      // fill ホストと埋める要素の対応は写真の有無で変わらない（高さ 0 の埋める要素を作らない）
+      expect(container.querySelector('.content-area')!.classList.contains('content-area-fill')).toBe(true)
+      expect(getByTestId('profile').classList.contains('content-area-fill-item')).toBe(true)
+    })
+
+    it('氏名だけでも描画できる（併記・肩書き・所属・本文・連絡先は省略可）', () => {
+      const { container } = renderContent({ profile: { name: '氏名だけ' } })
+      expect(container.textContent).toContain('氏名だけ')
+      expect(container.querySelector('ul')).toBeNull()
+      expect(container.querySelector('img')).toBeNull()
+    })
+
+    it('links が空配列の場合は連絡先のリストを描画しない', () => {
+      const { container } = renderContent({ profile: { name: '氏名', links: [] } })
+      expect(container.querySelector('ul')).toBeNull()
+    })
+
+    it('links[].icon は tiles[].icon と同じ ComponentRegistry 経路で解決される（未登録名はフォールバック表示になる）', () => {
+      const { container } = renderContent({ profile: { name: '氏名', links: [{ icon: 'NotRegisteredIcon', label: 'ラベル' }] } })
+      expect(container.querySelector('li')).not.toBeNull()
+      expect(container.textContent).toContain('ラベル')
+    })
+
+    it('profile指定時はimagesを描画しない（profileはimagesより優先される）', () => {
+      const { container, getByTestId } = renderContent({ profile: fullProfile, images: [{ src: '/a.png' }] })
+      expect(getByTestId('profile')).not.toBeNull()
+      expect(container.querySelector('figure')).toBeNull()
+    })
+
+    it('tilesが指定されている場合はtiles描画が優先される（既存の優先順位の維持）', () => {
+      const { container, queryByTestId } = renderContent({ tiles: [{ icon: 'Description', title: 'タイル', description: '説明' }], profile: fullProfile })
+      expect(container.textContent).toContain('タイル')
+      expect(queryByTestId('profile')).toBeNull()
+    })
+
+    it('profile指定時はbody/itemsを描画しない（プロフィールはbody/itemsより優先される）', () => {
+      const { container, getByTestId } = renderContent({ profile: fullProfile, body: '描画されない本文' })
+      expect(getByTestId('profile')).not.toBeNull()
+      expect(container.textContent).not.toContain('描画されない本文')
+    })
+
+    // アイコン名の制約は schema 側（links[].icon の stringConstraint: iconName）が持つので、描画分岐と
+    // 同じ場所で AI 生成の入力契約との対応を固定する（tiles[].icon の同等テストは
+    // src/data/__tests__/slideContentSchema.test.ts にある）
+    describe('AI生成の入力契約（schema）', () => {
+      function conformanceErrors(profile: Record<string, unknown>) {
+        return getSchemaConformanceErrors({ meta: { title: 't' }, slides: [{ id: 's1', layout: 'content', content: { title: 'x', profile } }] })
+      }
+
+      it('登録済みのアイコン名はエラーにしない', () => {
+        expect(conformanceErrors(fullProfile)).toEqual([])
+      })
+
+      it('未登録のアイコン名をエラーにする（tiles[].iconと同じ扱い）', () => {
+        const errors = conformanceErrors({ name: '氏名', links: [{ icon: 'NotRegisteredIcon', label: 'ラベル' }] })
+        expect(errors).toHaveLength(1)
+        expect(errors[0].path).toBe('slides[0].content.profile.links[0].icon')
+      })
+
+      it('既知フィールドの型不一致をエラーにする（links が配列でない）', () => {
+        const errors = conformanceErrors({ name: '氏名', links: '文字列は不正' })
+        expect(errors).toHaveLength(1)
+        expect(errors[0].path).toBe('slides[0].content.profile.links')
+      })
     })
   })
 
@@ -1031,6 +1152,7 @@ describe('SlideRenderer', () => {
       { name: 'checklist', content: { checklist: [{ title: '項目' }] }, fill: false },
       { name: 'toc', content: { toc: { items: [{ title: '章1', page: 1 }] } }, fill: false },
       { name: 'tiles', content: { tiles: [{ icon: 'Description', title: 'タイル', description: '説明' }] }, fill: false },
+      { name: 'profile', content: { profile: { name: '氏名', image: '/avatar.png' } }, fill: true },
       { name: 'images', content: { images: [{ src: '/a.png' }] }, fill: true },
       { name: 'svg', content: { svg: { markup: '<svg viewBox="0 0 10 10"><rect width="10" height="10" /></svg>' } }, fill: true },
       { name: 'textDiagram', content: { textDiagram: { source: 'flowchart LR\n  A --> B' } }, fill: true },

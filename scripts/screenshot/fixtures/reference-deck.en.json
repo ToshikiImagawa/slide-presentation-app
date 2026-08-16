@@ -4,6 +4,10 @@
     "description": "A development/verification deck listing one slide per layout type (separate from distribution samples; used to detect regressions when swapping themes)"
   },
   "theme": {
+    "icons": {
+      "mail": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0Ij48ZyBmaWxsPSJub25lIiBzdHJva2U9IiMyZGQ0YmYiIHN0cm9rZS13aWR0aD0iMiI+PHJlY3QgeD0iMiIgeT0iNSIgd2lkdGg9IjIwIiBoZWlnaHQ9IjE0IiByeD0iMiIvPjxwYXRoIGQ9Ik0zIDdsOSA2IDktNiIvPjwvZz48L3N2Zz4=",
+      "account": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0Ij48ZyBmaWxsPSJub25lIiBzdHJva2U9IiMyZGQ0YmYiIHN0cm9rZS13aWR0aD0iMiI+PGNpcmNsZSBjeD0iMTIiIGN5PSI4IiByPSI0Ii8+PHBhdGggZD0iTTQgMjFjMC00LjQgMy42LTggOC04czggMy42IDggOCIvPjwvZz48L3N2Zz4="
+    },
     "masters": {
       "messageInverse": { "background": { "type": "fill", "color": "#f8fafc" }, "decorations": [] },
       "closing": {
@@ -767,6 +771,25 @@
       "content": {
         "title": "master background: image",
         "body": "Setting type: \"image\" on theme.masters[].background covers the full canvas with an image (fit: cover/contain, opacity supported)"
+      }
+    },
+    {
+      "id": "layout-content-profile",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (profile)",
+        "profile": {
+          "image": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMDAgMzYwIiB3aWR0aD0iMzAwIiBoZWlnaHQ9IjM2MCI+PHJlY3Qgd2lkdGg9IjMwMCIgaGVpZ2h0PSIzNjAiIGZpbGw9IiMxZjI0MzAiLz48Y2lyY2xlIGN4PSIxNTAiIGN5PSIxMzIiIHI9IjU4IiBmaWxsPSIjMmRkNGJmIiBvcGFjaXR5PSIwLjkiLz48cGF0aCBkPSJNNDYgMzUyYzAtNTcgNDctMTAzIDEwNC0xMDNzMTA0IDQ2IDEwNCAxMDN6IiBmaWxsPSIjMmRkNGJmIiBvcGFjaXR5PSIwLjkiLz48cmVjdCB4PSI5IiB5PSI5IiB3aWR0aD0iMjgyIiBoZWlnaHQ9IjM0MiIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMmRkNGJmIiBzdHJva2Utd2lkdGg9IjMiLz48L3N2Zz4=",
+          "name": "Taro Yamada",
+          "nameSub": "山田 太郎",
+          "role": "Software Engineer",
+          "org": "Platform Development Dept.",
+          "body": "Building a tool for authoring presentation decks.\nInterested in software design and test automation.",
+          "links": [
+            { "icon": "mail", "label": "taro.yamada@example.com" },
+            { "icon": "account", "label": "@taro_yamada" }
+          ]
+        }
       }
     }
   ]
