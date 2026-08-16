@@ -1,8 +1,12 @@
 //! slideLayout part（`p:sldLayout` = slideLayout1.xml）のパーサ（#192）。
 //!
-//! 取るのは名前・種別・プレースホルダ構成・背景・clrMap反転（#300）の5項目のみ。ロゴ・帯のヒューリスティクスは
-//! slideMaster の spTree に対してのみ行う設計（#168）を変えないため、layout 側では再実行しない
-//! （`shapes.rs`/`heuristics.rs` は slideMaster 専用のまま）。
+//! 取るのは名前・種別・プレースホルダ構成（既定文字プロパティ込み。#316）・背景・clrMap反転（#300）のみ。
+//! ロゴ・帯のヒューリスティクスは slideMaster の spTree に対してのみ行う設計（#168）を変えないため、
+//! layout 側では再実行しない（`shapes.rs`/`heuristics.rs` は slideMaster 専用のまま）。
+//!
+//! プレースホルダの既定文字プロパティは `p:txBody/a:lstStyle/a:lvl1pPr/a:defRPr`（#316）から読む。
+//! 同名の `a:defRPr` は 1 枚の layout に何度も現れるため、**直近に見つけた `p:ph` と同じシェイプ配下のもの
+//! だけ**を結びつける（シェイプ境界を無視すると、プレースホルダでない図形の書式が混ざる）。
 //!
 //! 背景は `p:cSld/p:bg/p:bgPr/a:solidFill`（単色）のみを対象にする。グラデーション/パターン/
 //! `p:bgRef`（テーマの fmtScheme 参照）は対象外で、その場合は `None` のまま人が並置比較で確認する。
@@ -14,17 +18,20 @@
 
 use quick_xml::events::BytesStart;
 
-use super::color::{ColorSpec, ColorTransform};
+use super::color::ColorSpec;
 use super::master_xml::ClrMap;
-use super::xml::{attr, base_color_ref, child_of, rel, walk_elements};
+use super::text_props::RawTextProps;
+use super::xml::{attr, read_solid_fill, rel, strip_path, walk_elements};
 use super::BrandError;
 
 /// `p:ph`（プレースホルダ）の生データ
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct PlaceholderInfo {
   /// `p:ph@type`（"title"/"body"/"pic" 等）。省略時は `None`（値を作らない）
   pub ph_type: Option<String>,
   pub idx: Option<u32>,
+  /// `p:txBody/a:lstStyle/a:lvl1pPr/a:defRPr` の実測値（#316）。継承の解決は呼び出し側に委ねる
+  pub text: RawTextProps,
 }
 
 /// slideLayout から抽出した内容
@@ -45,12 +52,16 @@ pub struct SlideLayoutInfo {
 /// slideLayout XML をパースする
 pub fn parse(xml: &str) -> Result<SlideLayoutInfo, BrandError> {
   let mut info = SlideLayoutInfo::default();
+  // 直近に見つけた `p:ph` が属するシェイプ（`p:sp` 等）の深さ。同じシェイプの `a:lstStyle` の
+  // `a:defRPr` だけを、そのプレースホルダの既定文字プロパティとして結びつけるための目印（#316）。
+  // 兄弟シェイプの開始で必ずリセットするため、同定にはパス全体ではなく深さで足りる
+  let mut placeholder_shape: Option<usize> = None;
   walk_elements(xml, |stack, name, e| {
     if stack.is_empty() {
       info.layout_type = attr(e, "type");
       return;
     }
-    visit(&mut info, stack, name, e);
+    visit(&mut info, &mut placeholder_shape, stack, name, e);
   })?;
   Ok(info)
 }
@@ -58,7 +69,13 @@ pub fn parse(xml: &str) -> Result<SlideLayoutInfo, BrandError> {
 const BG_SOLID_FILL_PATH: [&str; 4] = ["cSld", "bg", "bgPr", "solidFill"];
 const CLR_MAP_OVR_PATH: [&str; 1] = ["clrMapOvr"];
 
-fn visit(info: &mut SlideLayoutInfo, stack: &[String], name: &str, e: &BytesStart) {
+fn visit(
+  info: &mut SlideLayoutInfo,
+  placeholder_shape: &mut Option<usize>,
+  stack: &[String],
+  name: &str,
+  e: &BytesStart,
+) {
   let parent = rel(stack);
 
   if parent.is_empty() && name == "cSld" {
@@ -66,27 +83,39 @@ fn visit(info: &mut SlideLayoutInfo, stack: &[String], name: &str, e: &BytesStar
     return;
   }
 
+  // シェイプの開始（`p:spTree` / `p:grpSp` の直下）で目印を落とす。パスは要素名だけで構成されるため
+  // 兄弟シェイプのパスは同一になり、ここでリセットしないと隣のシェイプ（プレースホルダでない図形）の
+  // `a:lstStyle` を直前のプレースホルダの値として取り込んでしまう（#316）
+  if matches!(
+    parent.last().map(String::as_str),
+    Some("spTree") | Some("grpSp")
+  ) {
+    *placeholder_shape = None;
+  }
+
   // p:nvSpPr/p:nvPicPr/p:nvGraphicFramePr 等、コンテナの種類を問わず `nvPr` 直下の `ph` だけを拾う
   if name == "ph" && parent.last().map(String::as_str) == Some("nvPr") {
     info.placeholders.push(PlaceholderInfo {
       ph_type: attr(e, "type"),
       idx: attr(e, "idx").and_then(|v| v.trim().parse::<u32>().ok()),
+      text: RawTextProps::default(),
     });
+    // `p:ph` のパスは `<シェイプ>/nvSpPr/nvPr` なので、末尾 2 段を落とせばシェイプ自身の深さになる
+    *placeholder_shape = Some(parent.len() - 2);
     return;
   }
 
-  if parent == BG_SOLID_FILL_PATH {
-    if let Some(base) = base_color_ref(name, e) {
-      info.background = Some(ColorSpec::new(base));
-    }
+  // 直近の `p:ph` と同じシェイプの `a:lstStyle/a:lvl1pPr` 配下＝そのプレースホルダの既定文字プロパティ
+  if let (Some(inner), Some(placeholder)) = (
+    lvl1_style_path(*placeholder_shape, parent),
+    info.placeholders.last_mut(),
+  ) {
+    placeholder.text.visit(inner, name, e);
     return;
   }
-  if child_of(parent, &BG_SOLID_FILL_PATH).is_some() {
-    // 基準色要素の子＝色変換（lumMod/lumOff/tint/shade）
-    let transform = attr(e, "val").and_then(|v| ColorTransform::from_element(name, &v));
-    if let (Some(transform), Some(spec)) = (transform, info.background.as_mut()) {
-      spec.transforms.push(transform);
-    }
+
+  if let Some(inner) = strip_path(parent, &BG_SOLID_FILL_PATH) {
+    read_solid_fill(&mut info.background, inner, name, e);
     return;
   }
 
@@ -99,10 +128,20 @@ fn visit(info: &mut SlideLayoutInfo, stack: &[String], name: &str, e: &BytesStar
   }
 }
 
+/// 親要素のパスが「深さ `shape_depth` のシェイプ配下の `p:txBody/a:lstStyle/a:lvl1pPr`」なら、
+/// `a:lvl1pPr` 起点の相対パスを返す（#316）。`a:lvl2pPr` 以降は受け皿に対応する概念がないため対象外
+/// （`master_xml::split_lvl1_path` と同じ扱い）
+fn lvl1_style_path(shape_depth: Option<usize>, parent: &[String]) -> Option<&[String]> {
+  let [tx_body, lst_style, lvl, inner @ ..] = parent.get(shape_depth?..)? else {
+    return None;
+  };
+  (tx_body == "txBody" && lst_style == "lstStyle" && lvl == "lvl1pPr").then_some(inner)
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::brand::color::{ColorRef, Rgb};
+  use crate::brand::color::{ColorRef, ColorTransform, Rgb};
 
   /// 実物の slideLayout1.xml と同じ入れ子（プレースホルダ複数種・単色背景）を最小構成で再現する
   const LAYOUT_XML: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
@@ -226,6 +265,91 @@ mod tests {
     let xml = r#"<p:sldLayout xmlns:p="p"><p:cSld name=""><p:spTree/></p:cSld></p:sldLayout>"#;
     let info = parse(xml).unwrap();
     assert_eq!(info.name, None);
+  }
+
+  /// プレースホルダに既定文字プロパティ（`a:lstStyle/a:lvl1pPr/a:defRPr`）を持ち、
+  /// プレースホルダでない図形にも同じ形の書式が入っている layout（#316）
+  const LAYOUT_WITH_DEF_RPR: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
+<p:sldLayout xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" type="title">
+  <p:cSld name="Title Slide">
+    <p:spTree>
+      <p:nvGrpSpPr/>
+      <p:sp>
+        <p:nvSpPr><p:cNvPr id="2" name="Title 1"/><p:nvPr><p:ph type="ctrTitle"/></p:nvPr></p:nvSpPr>
+        <p:txBody>
+          <a:bodyPr/>
+          <a:lstStyle>
+            <a:lvl1pPr>
+              <a:defRPr sz="4000" b="1">
+                <a:solidFill><a:schemeClr val="tx1"/></a:solidFill>
+                <a:latin typeface="Corporate Display"/>
+                <a:ea typeface="コーポレート見出し"/>
+              </a:defRPr>
+            </a:lvl1pPr>
+            <a:lvl2pPr><a:defRPr sz="9999"/></a:lvl2pPr>
+          </a:lstStyle>
+          <a:p><a:r><a:rPr lang="ja-JP"/><a:t>タイトル</a:t></a:r></a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr><p:cNvPr id="3" name="Subtitle 2"/><p:nvPr><p:ph type="subTitle" idx="1"/></p:nvPr></p:nvSpPr>
+        <p:txBody>
+          <a:lstStyle><a:lvl1pPr><a:defRPr sz="2000"><a:latin typeface="+mn-lt"/></a:defRPr></a:lvl1pPr></a:lstStyle>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr><p:cNvPr id="4" name="Decoration"/><p:nvPr/></p:nvSpPr>
+        <p:txBody>
+          <a:lstStyle><a:lvl1pPr><a:defRPr sz="800"><a:latin typeface="Decoration Only"/></a:defRPr></a:lvl1pPr></a:lstStyle>
+        </p:txBody>
+      </p:sp>
+    </p:spTree>
+  </p:cSld>
+</p:sldLayout>"#;
+
+  #[test]
+  fn parses_placeholder_default_text_properties() {
+    let info = parse(LAYOUT_WITH_DEF_RPR).unwrap();
+    let title = &info.placeholders[0].text;
+    // sz は 1/100pt なので 4000 → 40pt。lvl2pPr の 9999 に上書きされない
+    assert_eq!(title.size_pt, Some(40.0));
+    assert_eq!(title.bold, Some(true));
+    assert_eq!(title.fonts.latin.as_deref(), Some("Corporate Display"));
+    assert_eq!(title.fonts.ea.as_deref(), Some("コーポレート見出し"));
+    assert_eq!(
+      title.color.as_ref().map(|c| c.base.clone()),
+      Some(ColorRef::Scheme("tx1".to_string()))
+    );
+  }
+
+  #[test]
+  fn theme_reference_typeface_is_not_taken_as_a_measured_font() {
+    let info = parse(LAYOUT_WITH_DEF_RPR).unwrap();
+    let subtitle = &info.placeholders[1].text;
+    assert_eq!(subtitle.size_pt, Some(20.0));
+    // `+mn-lt` はテーマ参照なので書体名として取り込まない
+    assert_eq!(subtitle.fonts.latin, None);
+  }
+
+  #[test]
+  fn text_properties_of_non_placeholder_shapes_are_not_attributed_to_placeholders() {
+    // 兄弟シェイプのパスは同一（cSld/spTree/sp）なので、シェイプ境界を無視すると
+    // "Decoration Only"（プレースホルダでない図形）が直前のプレースホルダの値になってしまう
+    let info = parse(LAYOUT_WITH_DEF_RPR).unwrap();
+    assert_eq!(info.placeholders.len(), 2);
+    for placeholder in &info.placeholders {
+      assert_ne!(
+        placeholder.text.fonts.latin.as_deref(),
+        Some("Decoration Only")
+      );
+      assert_ne!(placeholder.text.size_pt, Some(8.0));
+    }
+  }
+
+  #[test]
+  fn placeholders_without_text_body_have_no_measured_text_properties() {
+    let info = parse(LAYOUT_XML).unwrap();
+    assert_eq!(info.placeholders[0].text, RawTextProps::default());
   }
 
   #[test]

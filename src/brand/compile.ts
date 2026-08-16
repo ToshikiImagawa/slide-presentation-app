@@ -1,4 +1,4 @@
-import { getContrastRatio, hexToRgbTuple, normalizeHex, relativeLuminance, rgbTupleToHex, THEME_COLOR_TOKENS, WCAG_AA_THRESHOLD } from '../applyTheme'
+import { getContrastRatio, hexToRgbTuple, mergeRecord, normalizeHex, relativeLuminance, rgbTupleToHex, THEME_COLOR_TOKENS, WCAG_AA_THRESHOLD } from '../applyTheme'
 import { SLIDE_WIDTH, SLIDE_HEIGHT } from '../hooks/useReveal'
 import { slugify } from '../slugify'
 import type { FontFamilySpec, MasterDecoration, MasterDefinition, ThemeData } from '../data'
@@ -7,14 +7,19 @@ import {
   MAPPED_COLOR_KEYS,
   type BandCandidate,
   type BrandColorScheme,
+  type BrandFieldStatus,
   type BrandFontFace,
+  type BrandFontOrigin,
   type BrandImportReport,
   type BrandOverrides,
   type BrandProfile,
   type CompiledBrandTheme,
   type LayoutAssignmentSlot,
   type MappedColorKey,
+  type BrandPlaceholderKind,
   type MediaAsset,
+  type PlaceholderProfile,
+  type PlaceholderTextProps,
 } from './types'
 
 /** 並置比較ダイアログが合成した master を割り当てる先。既存のレイアウト種別（`SlideData.layout`）をすべて対象にする */
@@ -77,7 +82,10 @@ export function compile(profile: BrandProfile, overrides: BrandOverrides): { the
   const colors = resolveColors(profile, overrides, report)
   convergeContrast(colors, report)
 
-  const fonts = resolveFonts(profile, overrides, report)
+  // 書体・型階層は割り当て済みレイアウトのプレースホルダ（`a:defRPr`）を抽出元にするため、
+  // 割り当ての解決を先に行う（#316）
+  const assignedLayouts = resolveAssignedLayouts(profile, overrides)
+  const fonts = resolveFonts(profile, overrides, assignedLayouts, report)
   const logo = resolveLogo(profile, overrides)
   report.fields.logo = { status: logo ? 'ok' : 'missing', detail: logo ? undefined : 'ロゴ候補が無いか、人が未選択' }
 
@@ -87,7 +95,6 @@ export function compile(profile: BrandProfile, overrides: BrandOverrides): { the
   const canvas = profile.slideSize ? { width: SLIDE_WIDTH, height: canvasHeight } : undefined
 
   const decorations = buildDecorations(profile, overrides, logo, canvasHeight, report)
-  const assignedLayouts = resolveAssignedLayouts(profile, overrides)
   const masters = { [BRAND_MASTER_KEY]: { decorations }, ...buildLayoutMasters(assignedLayouts) }
   const masterMap = { ...Object.fromEntries(LAYOUT_KINDS.map((layout) => [layout, BRAND_MASTER_KEY])), ...buildLayoutMasterMap(assignedLayouts) }
   const tokens = { [BRAND_MASTER_KEY]: buildTokens(colors), ...buildLayoutTokens(assignedLayouts, colors) }
@@ -103,6 +110,8 @@ interface AssignedLayout {
   name: string | null
   /** その slideLayout（PPTX/Google スライド側）が持つ背景色。抽出できなければ null（#235） */
   backgroundColorHex: string | null
+  /** その slideLayout のプレースホルダ構成。書体・型階層の抽出元（#316） */
+  placeholders: PlaceholderProfile[]
 }
 
 /** `overrides.layoutAssignments` のうち、①`LAYOUT_ASSIGNMENT_SLOTS` に実在する枠を指し、②実在する layout
@@ -114,7 +123,7 @@ function resolveAssignedLayouts(profile: BrandProfile, overrides: BrandOverrides
       if (!LAYOUT_ASSIGNMENT_SLOTS.includes(slot)) return undefined
       const [masterIndex, layoutIndex] = key.split(':').map(Number)
       const layout = profile.masters[masterIndex]?.slideLayouts[layoutIndex]
-      return layout ? { key, slot, name: layout.name, backgroundColorHex: layout.backgroundColorHex } : undefined
+      return layout ? { key, slot, name: layout.name, backgroundColorHex: layout.backgroundColorHex, placeholders: layout.placeholders } : undefined
     })
     .filter((entry): entry is AssignedLayout => entry !== undefined)
 }
@@ -291,23 +300,159 @@ function colorDistance(a: string, b: string): number {
   return Math.sqrt((ar - br) ** 2 + (ag - bg) ** 2 + (ab - bb) ** 2)
 }
 
-/** OOXML の書体組（major/minor）1つから FontFamilySpec を組み立てる（#187）。
- * latin/ea を潰さずに両方写し、和文は script 固有の jpan（Japanese script override）が
- * 定義されていれば ea より優先する（PowerPoint 自体の書体解決順に合わせる）。
- * manualOverride（確認ダイアログで人が上書きした文字列。既存の fontOverrides は string のみ）は latin 側に反映する */
-function resolveFontFace(face: BrandFontFace, manualOverride?: string): FontFamilySpec | undefined {
-  const latin = manualOverride ?? face.latin ?? undefined
-  const ea = face.jpan ?? face.ea ?? undefined
-  if (!latin && !ea) return undefined
-  return { ...(latin ? { latin } : {}), ...(ea ? { ea } : {}) }
+/** 枠 → 型階層の段（`fontSizeRatios` のキー）の対応（#316）。その枠のタイトルプレースホルダの実サイズを
+ * どの段として採るかを表し、`null` は段として採らない枠。**全枠を網羅する型**にしているのは、枠を追加した
+ * ときに「その枠は型階層のどの段か」を型が書かせるため（無言で新枠が無視されるのを防ぐ）。
+ * 抽出元を slideLayout のプレースホルダに限るのは、slideMaster の `p:txStyles` が Office 既定値のまま
+ * ＝全段同一サイズで手がかりにならない場合があるため */
+const SLOT_TO_FONT_SIZE_STEP: Record<LayoutAssignmentSlot, string | null> = {
+  center: 'h1', // 表紙タイトル
+  'center/section': 'h2', // 章タイトル
+  'center/message-inverse': null,
+  'center/closing': null,
+  content: 'h3', // 本文スライドの見出し
+  'two-column': null,
+  bleed: null,
 }
 
-function resolveFonts(profile: BrandProfile, overrides: BrandOverrides, report: BrandImportReport): { heading?: FontFamilySpec; body?: FontFamilySpec } {
-  const heading = resolveFontFace(profile.fonts.major, overrides.fontOverrides?.heading)
-  const body = resolveFontFace(profile.fonts.minor, overrides.fontOverrides?.body)
-  report.fields['fonts.heading'] = { status: heading ? 'ok' : 'fallback', detail: heading ? undefined : 'テンプレートから見出し書体を抽出できず既定フォントを使用' }
-  report.fields['fonts.body'] = { status: body ? 'ok' : 'fallback', detail: body ? undefined : 'テンプレートから本文書体を抽出できず既定フォントを使用' }
-  return { heading, body }
+/** 基準サイズ（比率 1.0 = 本文）を採る枠。本文系の枠だけを見るのは、center 系の body プレースホルダが
+ * サブタイトルであって本文の段ではないため（別の段のサイズを基準にすると型階層全体が狂う） */
+const BASE_SIZE_SLOTS: ReadonlyArray<LayoutAssignmentSlot> = ['content', 'two-column', 'bleed']
+
+/** `preferred` を先頭に、残りの枠を `LAYOUT_ASSIGNMENT_SLOTS` の順で並べた探索順を作る。
+ * 枠を追加しても自動的に末尾に含まれるため、探索対象から無言で漏れない */
+function slotSearchOrder(preferred: ReadonlyArray<LayoutAssignmentSlot>): LayoutAssignmentSlot[] {
+  return [...preferred, ...LAYOUT_ASSIGNMENT_SLOTS.filter((slot) => !preferred.includes(slot))]
+}
+
+/** 見出し書体を探す枠の優先順。表紙 → 章の順に見るのは、作者が最も明示的に書体を設定する場所だから
+ * （UI の表示順に依存させないため `LAYOUT_ASSIGNMENT_SLOTS` をそのまま流用しない） */
+const HEADING_FONT_SLOTS = slotSearchOrder(['center', 'center/section'])
+
+/** 本文書体を探す枠の優先順。本文系の枠を先に見る。サイズ（`BASE_SIZE_SLOTS`）と違い書体は他の枠へ
+ * フォールバックしてよい: サブタイトルも本文と同じ minorFont 系列の書体で、段が違っても書体名としては妥当 */
+const BODY_FONT_SLOTS = slotSearchOrder(BASE_SIZE_SLOTS)
+
+/** EMU/インチ（OOXML の長さ単位）と 1 インチあたりの pt */
+const EMU_PER_INCH = 914_400
+const PT_PER_INCH = 72
+/** `slideSize` が無いテンプレートで仮定するスライド幅（EMU）。96dpi で 1280px 幅に相当し、
+ * 16:9 既定の PPTX（12192000 EMU）と同じ換算になる */
+const FALLBACK_SLIDE_WIDTH_EMU = (SLIDE_WIDTH / 96) * EMU_PER_INCH
+
+/** 割り当て済みレイアウトを枠で引ける形にする（同じ枠に複数の割り当てがある場合は先着を優先する） */
+function indexBySlot(assignedLayouts: AssignedLayout[]): Map<LayoutAssignmentSlot, AssignedLayout> {
+  const bySlot = new Map<LayoutAssignmentSlot, AssignedLayout>()
+  for (const layout of assignedLayouts) {
+    if (!bySlot.has(layout.slot)) bySlot.set(layout.slot, layout)
+  }
+  return bySlot
+}
+
+/** 枠の優先順で走査し、種別が一致する最初のプレースホルダの既定文字プロパティを返す。
+ * 同じ枠に同種が複数ある場合は XML の記述順で先頭を採る（走査順が固定なので決定的） */
+function findPlaceholderText(bySlot: Map<LayoutAssignmentSlot, AssignedLayout>, slots: ReadonlyArray<LayoutAssignmentSlot>, kind: BrandPlaceholderKind): PlaceholderTextProps | undefined {
+  for (const slot of slots) {
+    const text = bySlot.get(slot)?.placeholders.find((placeholder) => placeholder.kind === kind)?.text
+    if (text) return text
+  }
+  return undefined
+}
+
+/** 書体スロットの解決に必要な値だけを持つ形（プレースホルダの解決済み値と、その代わりに使う fontScheme を
+ * 同じ形で扱うための最小の型） */
+type ResolvedFont = Pick<PlaceholderTextProps, 'latin' | 'ea' | 'bold' | 'fontOrigin'>
+
+/** `a:fontScheme` の書体組を `ResolvedFont` の形に直す。和文は script 固有の jpan（Japanese script
+ * override）があれば ea より優先する（PowerPoint 自体の書体解決順に合わせる） */
+function fontSchemeAsResolved(scheme: BrandFontFace): ResolvedFont {
+  const ea = scheme.jpan ?? scheme.ea
+  return { latin: scheme.latin, ea, bold: null, fontOrigin: scheme.latin || ea ? 'fontScheme' : 'none' }
+}
+
+/**
+ * 書体スロット 1 つ（見出し / 本文）を決める（#187 / #316）。
+ * 継承順（プレースホルダの `a:defRPr` → slideMaster の `p:txStyles` → theme の `a:fontScheme`）は
+ * Rust 側（`brand::text_props::resolve`）が解決済みなので、ここでは優先順位を再実装しない。
+ * 割り当て済みレイアウトに該当プレースホルダが無いときだけ、生の `fontScheme` を代わりに使う。
+ * latin/ea は潰さず両方写し、人の上書き（確認ダイアログ）はそれぞれで最優先にする。
+ */
+function resolveFontSlot(scheme: BrandFontFace, placeholder: PlaceholderTextProps | undefined, override: { latin?: string; ea?: string }): { spec?: FontFamilySpec; origin: BrandFontOrigin } {
+  const resolved: ResolvedFont = placeholder ?? fontSchemeAsResolved(scheme)
+  const latin = override.latin ?? resolved.latin ?? undefined
+  const ea = override.ea ?? resolved.ea ?? undefined
+  // 太字は実測値がある場合のみ写す（無い場合はスロット既定のウェイトに委ねる）
+  const weight = resolved.bold == null ? undefined : resolved.bold ? '700' : '400'
+  if (!latin && !ea) return { origin: 'none' }
+  return { spec: { ...(latin ? { latin } : {}), ...(ea ? { ea } : {}), ...(weight ? { weight } : {}) }, origin: resolved.fontOrigin }
+}
+
+/** 書体の決定根拠を report の 1 項目に落とす。`defRPr` 由来は「テーマの宣言ではなく実測値から決めた」ため
+ * `derived` として報告する（#316 の受け入れ基準） */
+function fontFieldReport(spec: FontFamilySpec | undefined, origin: BrandFontOrigin, overridden: boolean, label: string): { status: BrandFieldStatus; detail?: string } {
+  if (!spec) return { status: 'fallback', detail: `テンプレートから${label}書体を抽出できず既定フォントを使用` }
+  if (overridden) return { status: 'ok', detail: '人が上書き' }
+  return origin === 'defRPr' ? { status: 'derived', detail: 'プレースホルダ / slideMaster の defRPr 由来（fontScheme より優先）' } : { status: 'ok', detail: 'テーマの fontScheme 由来' }
+}
+
+function resolveFonts(profile: BrandProfile, overrides: BrandOverrides, assignedLayouts: AssignedLayout[], report: BrandImportReport): CompiledBrandTheme['fonts'] {
+  const fontOverrides = overrides.fontOverrides
+  const bySlot = indexBySlot(assignedLayouts)
+  const heading = resolveFontSlot(profile.fonts.major, findPlaceholderText(bySlot, HEADING_FONT_SLOTS, 'title'), { latin: fontOverrides?.heading, ea: fontOverrides?.headingEa })
+  const body = resolveFontSlot(profile.fonts.minor, findPlaceholderText(bySlot, BODY_FONT_SLOTS, 'body'), { latin: fontOverrides?.body, ea: fontOverrides?.bodyEa })
+  report.fields['fonts.heading'] = fontFieldReport(heading.spec, heading.origin, Boolean(fontOverrides?.heading || fontOverrides?.headingEa), '見出し')
+  report.fields['fonts.body'] = fontFieldReport(body.spec, body.origin, Boolean(fontOverrides?.body || fontOverrides?.bodyEa), '本文')
+  return {
+    ...(heading.spec ? { heading: heading.spec } : {}),
+    ...(body.spec ? { body: body.spec } : {}),
+    ...resolveFontHierarchy(profile, overrides, bySlot, report),
+  }
+}
+
+/** OOXML の pt を描画基準の px へ換算する。pt を EMU（1pt = 1/72 インチ）へ直し、EMU→px の換算は
+ * 装飾と同じ `emuToPx`（キャンバス幅 `SLIDE_WIDTH` 基準）に委ねる。`slideSize` が無い・不正な
+ * テンプレートは 96dpi 相当のスライド幅を仮定する（16:9 既定の PPTX と同じ 1pt ≒ 1.333px になる） */
+function ptToPx(pt: number, slideSize: BrandProfile['slideSize']): number {
+  const widthEmu = slideSize && slideSize.widthEmu > 0 ? slideSize.widthEmu : FALLBACK_SLIDE_WIDTH_EMU
+  return emuToPx((pt * EMU_PER_INCH) / PT_PER_INCH, widthEmu, SLIDE_WIDTH)
+}
+
+/**
+ * 型階層（`baseFontSize` と `fontSizeRatios`。#187 の受け皿）を、割り当て済みレイアウトのプレースホルダの
+ * 実サイズ（`a:defRPr@sz`）から導出する（#316）。基準（1.0）は本文枠の body プレースホルダのサイズで、
+ * これが取れないと比率を出せないため段は空になる。比率は無次元なので pt のまま計算し、`baseFontSize` だけ
+ * px へ換算する（pt をそのまま px として使うと 1/1.33 に縮む）
+ */
+function resolveFontHierarchy(profile: BrandProfile, overrides: BrandOverrides, bySlot: Map<LayoutAssignmentSlot, AssignedLayout>, report: BrandImportReport): { baseFontSize?: number; fontSizeRatios?: Record<string, number> } {
+  const basePt = findPlaceholderText(bySlot, BASE_SIZE_SLOTS, 'body')?.sizePt
+  const extractedRatios: Record<string, number> = {}
+  if (basePt != null && basePt > 0) {
+    for (const [slot, step] of Object.entries(SLOT_TO_FONT_SIZE_STEP)) {
+      const sizePt = step ? findPlaceholderText(bySlot, [slot as LayoutAssignmentSlot], 'title')?.sizePt : undefined
+      // 比率は 3 桁で丸めて JSON を安定させる（同じ入力から必ず同じ値になる）
+      if (step && sizePt != null && sizePt > 0) extractedRatios[step] = Math.round((sizePt / basePt) * 1000) / 1000
+    }
+  }
+
+  const overriddenBase = overrides.fontOverrides?.baseFontSize
+  const extractedBase = basePt != null && basePt > 0 ? ptToPx(basePt, profile.slideSize) : undefined
+  const baseFontSize = overriddenBase ?? extractedBase
+  const merged = { ...extractedRatios, ...overrides.fontOverrides?.fontSizeRatios }
+  const ratioKeys = Object.keys(merged)
+  const fontSizeRatios = ratioKeys.length > 0 ? merged : undefined
+
+  if (baseFontSize == null) {
+    report.fields['fonts.baseFontSize'] = { status: 'missing', detail: '本文プレースホルダ（defRPr）の文字サイズを抽出できず既定サイズを使用' }
+  } else if (overriddenBase != null) {
+    report.fields['fonts.baseFontSize'] = { status: 'ok', detail: '人が上書き' }
+  } else {
+    report.fields['fonts.baseFontSize'] = { status: 'derived', detail: `本文プレースホルダの ${basePt}pt から px へ換算` }
+  }
+  report.fields['fonts.fontSizeRatios'] = fontSizeRatios
+    ? { status: 'derived', detail: `slideLayout のプレースホルダから ${ratioKeys.join(' / ')} を導出` }
+    : { status: 'missing', detail: '型階層の段（タイトルの文字サイズ）を抽出できなかった' }
+
+  return { ...(baseFontSize != null ? { baseFontSize } : {}), ...(fontSizeRatios ? { fontSizeRatios } : {}) }
 }
 
 /** `manualLogo` は明示指定（`null` も「ロゴなし」という明示選択として優先する）。未指定時のみ候補選択にフォールバックする */
@@ -379,7 +524,15 @@ function buildTokens(colors: Record<MappedColorKey, string>): Record<string, str
 export function mergeCompiledBrandTheme(base: ThemeData | undefined, compiled: CompiledBrandTheme): ThemeData {
   return {
     ...base,
-    fonts: { ...base?.fonts, ...(compiled.fonts.heading ? { heading: compiled.fonts.heading } : {}), ...(compiled.fonts.body ? { body: compiled.fonts.body } : {}) },
+    fonts: {
+      ...base?.fonts,
+      ...(compiled.fonts.heading ? { heading: compiled.fonts.heading } : {}),
+      ...(compiled.fonts.body ? { body: compiled.fonts.body } : {}),
+      ...(compiled.fonts.baseFontSize != null ? { baseFontSize: compiled.fonts.baseFontSize } : {}),
+      // 型階層はキー単位でマージする（既存テーマが持つ段を消さない）。合成規則は `mergeThemeData` と
+      // 同じ `mergeRecord` を使い、ブランド取り込み経路だけ規則がずれないようにする
+      ...(compiled.fonts.fontSizeRatios ? { fontSizeRatios: mergeRecord(base?.fonts?.fontSizeRatios, compiled.fonts.fontSizeRatios) } : {}),
+    },
     masters: { ...base?.masters, ...compiled.masters },
     masterMap: { ...base?.masterMap, ...compiled.masterMap },
     tokens: { ...base?.tokens, ...compiled.tokens },

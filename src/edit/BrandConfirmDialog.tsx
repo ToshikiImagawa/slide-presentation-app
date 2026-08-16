@@ -40,6 +40,28 @@ import { SlidePreview } from './SlidePreview'
 const TEXT_KEY_TO_BACKGROUND_KEY: Partial<Record<MappedColorKey, MappedColorKey>> = { tx1: 'bg1', tx2: 'bg2' }
 const HEX_PATTERN = /^#[0-9a-f]{6}$/i
 
+/** 型階層の段（`fonts.fontSizeRatios` のキー）の表示ラベル（#316。`compile.ts` の
+ * `SLOT_TO_FONT_SIZE_STEP` と対応）。既定比率にしかないキー（subtitle1 等）を人が上書きした場合は
+ * キー名をそのまま見せる */
+const FONT_SIZE_STEP_LABELS: Record<string, string> = { h1: '表紙タイトル', h2: '章タイトル', h3: '本文見出し' }
+
+/** 書体名の上書きキー（`BrandOverrides.fontOverrides` のうち文字列のスロット。#316） */
+type FontNameOverrideKey = 'heading' | 'headingEa' | 'body' | 'bodyEa'
+
+/** 書体スロットの行定義（見出し / 本文）。値は `compile` の決定結果から読むため、キーだけを持つ静的な表 */
+const FONT_SLOT_ROWS = [
+  { slot: 'heading', labelFallback: '見出し', latinKey: 'heading', eaKey: 'headingEa' },
+  { slot: 'body', labelFallback: '本文', latinKey: 'body', eaKey: 'bodyEa' },
+] as const satisfies ReadonlyArray<{ slot: 'heading' | 'body'; labelFallback: string; latinKey: FontNameOverrideKey; eaKey: FontNameOverrideKey }>
+
+/** 数値入力の検証（型階層の基準サイズ・段の比率で共有）。
+ * 空欄は「上書きを解除する」意図として `null`、0 以下や数値でない入力は「コミットしない」意図として `undefined` */
+function parsePositiveNumber(draft: string): number | null | undefined {
+  if (draft.trim() === '') return null
+  const value = Number.parseFloat(draft)
+  return Number.isFinite(value) && value > 0 ? value : undefined
+}
+
 /** 割り当て可能な7枠の表示ラベル（`LAYOUT_ASSIGNMENT_SLOTS` の並び順。#185/#192 で5枠固定、#262 で反転面/締めの2枠を追加） */
 const LAYOUT_SLOT_LABELS: Record<LayoutAssignmentSlot, string> = {
   center: 'タイトル',
@@ -90,6 +112,11 @@ export function BrandConfirmDialog({ open, profile, initialOverrides, previewSli
   const { t } = useTranslation()
   const [overrides, setOverrides] = useState<BrandOverrides>(initialOverrides)
   const [colorDrafts, setColorDrafts] = useState<Partial<Record<MappedColorKey, string>>>({})
+  /** 書体名の編集途中の文字列。確定は blur（1 文字ごとに `compile` とプレビューを作り直さないため。色と同じ扱い） */
+  const [fontDrafts, setFontDrafts] = useState<Record<string, string | undefined>>({})
+  /** 基準サイズと段の比率の編集途中の文字列。確定は blur（不正値はコミットしない） */
+  const [baseFontSizeDraft, setBaseFontSizeDraft] = useState<string | undefined>(undefined)
+  const [ratioDrafts, setRatioDrafts] = useState<Record<string, string | undefined>>({})
 
   const { theme: compiled, report } = useMemo(() => compile(profile, overrides), [profile, overrides])
 
@@ -101,6 +128,33 @@ export function BrandConfirmDialog({ open, profile, initialOverrides, previewSli
     setColorDrafts((prev) => ({ ...prev, [key]: undefined }))
     if (!HEX_PATTERN.test(draft)) return
     setOverrides((prev) => ({ ...prev, colorHex: { ...prev.colorHex, [key]: draft.toLowerCase() } }))
+  }
+
+  const setFontOverride = (patch: Partial<NonNullable<BrandOverrides['fontOverrides']>>) => {
+    setOverrides((prev) => ({ ...prev, fontOverrides: { ...prev.fontOverrides, ...patch } }))
+  }
+
+  const commitFontName = (key: FontNameOverrideKey, draft: string) => {
+    setFontDrafts((prev) => ({ ...prev, [key]: undefined }))
+    setFontOverride({ [key]: draft.trim() || undefined })
+  }
+
+  const commitBaseFontSize = (draft: string) => {
+    setBaseFontSizeDraft(undefined)
+    const value = parsePositiveNumber(draft)
+    if (value !== undefined) setFontOverride({ baseFontSize: value ?? undefined })
+  }
+
+  const commitFontSizeRatio = (key: string, draft: string) => {
+    setRatioDrafts((prev) => ({ ...prev, [key]: undefined }))
+    const value = parsePositiveNumber(draft)
+    if (value === undefined) return
+    setOverrides((prev) => {
+      const ratios = { ...prev.fontOverrides?.fontSizeRatios }
+      if (value === null) delete ratios[key]
+      else ratios[key] = value
+      return { ...prev, fontOverrides: { ...prev.fontOverrides, fontSizeRatios: ratios } }
+    })
   }
 
   const selectMaster = (index: number) => {
@@ -135,6 +189,9 @@ export function BrandConfirmDialog({ open, profile, initialOverrides, previewSli
   }
 
   const handleApply = () => onApply({ overrides, compiled })
+
+  /** 表示する型階層の段。`compiled.fonts.fontSizeRatios` は抽出値と人の上書きを合成済み */
+  const fontSizeStepKeys = Object.keys(compiled.fonts.fontSizeRatios ?? {}).sort()
 
   return (
     <Dialog open={open} onClose={onCancel} maxWidth="lg" fullWidth aria-labelledby="brand-confirm-title">
@@ -243,6 +300,85 @@ export function BrandConfirmDialog({ open, profile, initialOverrides, previewSli
               </Stack>
             )
           })}
+        </Stack>
+
+        <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
+          {t('brand.fontsSection', '書体と型階層')}
+        </Typography>
+        <Stack spacing={0.5} sx={{ mb: 2 }}>
+          {FONT_SLOT_ROWS.map(({ slot, labelFallback, latinKey, eaKey }) => {
+            const label = t(`brand.font${capitalize(slot)}`, labelFallback)
+            const field = report.fields[`fonts.${slot}`]
+            const spec = compiled.fonts[slot]
+            return (
+              <Stack key={slot} direction="row" spacing={1} alignItems="center" sx={{ flexWrap: 'wrap' }}>
+                <Typography component="span" sx={{ width: 90, flexShrink: 0, fontSize: 12 }}>
+                  {label}
+                </Typography>
+                <TextField
+                  size="small"
+                  value={fontDrafts[latinKey] ?? spec?.latin ?? ''}
+                  onChange={(e) => setFontDrafts((prev) => ({ ...prev, [latinKey]: e.target.value }))}
+                  onBlur={(e) => commitFontName(latinKey, e.target.value)}
+                  placeholder={t('brand.fontLatin', '欧文')}
+                  inputProps={{ 'aria-label': `${label}${t('brand.fontLatinSuffix', '書体（欧文）')}`, style: { fontSize: 12, padding: '4px 8px' } }}
+                  sx={{ width: 160 }}
+                />
+                <TextField
+                  size="small"
+                  value={fontDrafts[eaKey] ?? spec?.ea ?? ''}
+                  onChange={(e) => setFontDrafts((prev) => ({ ...prev, [eaKey]: e.target.value }))}
+                  onBlur={(e) => commitFontName(eaKey, e.target.value)}
+                  placeholder={t('brand.fontEa', '和文')}
+                  inputProps={{ 'aria-label': `${label}${t('brand.fontEaSuffix', '書体（和文）')}`, style: { fontSize: 12, padding: '4px 8px' } }}
+                  sx={{ width: 160 }}
+                />
+                {field && <Chip size="small" color={statusChipColor(field.status)} label={t(`brand.status${capitalize(field.status)}`, field.status)} />}
+                {field?.detail && (
+                  <Typography component="span" sx={{ color: 'var(--fixed-text-muted)', fontSize: 12 }}>
+                    {field.detail}
+                  </Typography>
+                )}
+              </Stack>
+            )
+          })}
+          <Stack direction="row" spacing={1} alignItems="center" sx={{ flexWrap: 'wrap' }}>
+            <Typography component="span" sx={{ width: 90, flexShrink: 0, fontSize: 12 }}>
+              {t('brand.fontBaseSize', '基準サイズ')}
+            </Typography>
+            <TextField
+              size="small"
+              value={baseFontSizeDraft ?? String(compiled.fonts.baseFontSize ?? '')}
+              onChange={(e) => setBaseFontSizeDraft(e.target.value)}
+              onBlur={(e) => commitBaseFontSize(e.target.value)}
+              inputProps={{ 'aria-label': t('brand.fontBaseSizeLabel', '基準サイズ（px）'), style: { fontFamily: 'var(--fixed-font-code)', fontSize: 12, padding: '4px 8px' } }}
+              sx={{ width: 80 }}
+            />
+            <Typography component="span" sx={{ color: 'var(--fixed-text-muted)', fontSize: 12 }}>
+              px
+            </Typography>
+            {fontSizeStepKeys.length === 0 ? (
+              <Typography component="span" sx={{ color: 'var(--fixed-text-muted)', fontSize: 12 }}>
+                {t('brand.noFontSizeSteps', '型階層は検出されませんでした')}
+              </Typography>
+            ) : (
+              fontSizeStepKeys.map((key) => (
+                <Stack key={key} direction="row" spacing={0.5} alignItems="center">
+                  <Typography component="span" sx={{ fontSize: 12 }}>
+                    {FONT_SIZE_STEP_LABELS[key] ?? key}
+                  </Typography>
+                  <TextField
+                    size="small"
+                    value={ratioDrafts[key] ?? String(compiled.fonts.fontSizeRatios?.[key] ?? '')}
+                    onChange={(e) => setRatioDrafts((prev) => ({ ...prev, [key]: e.target.value }))}
+                    onBlur={(e) => commitFontSizeRatio(key, e.target.value)}
+                    inputProps={{ 'aria-label': `${t('brand.fontSizeStep', '型階層')} ${key}`, style: { fontFamily: 'var(--fixed-font-code)', fontSize: 12, padding: '4px 8px' } }}
+                    sx={{ width: 70 }}
+                  />
+                </Stack>
+              ))
+            )}
+          </Stack>
         </Stack>
 
         <Typography variant="subtitle2" sx={{ mb: 0.5 }}>

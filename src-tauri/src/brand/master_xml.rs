@@ -5,11 +5,13 @@
 //! - `p:clrMap` は `bg1`/`tx1`/`bg2`/`tx2` が clrScheme のどのスロットを指すかの写像で、
 //!   テンプレートによって `bg1="lt1"` と `bg1="dk1"` が入れ替わる（ダークテーマ）。写像を飛ばすと背景と文字色が反転する。
 //! - `p:txStyles/…/a:lvl1pPr/a:defRPr@sz` は 1/100pt 単位の実サイズ。目視では比率しか分からない情報。
+//! - 同じ `a:defRPr` の書体・太字・文字色も読む（#316）。slideLayout のプレースホルダが省略した項目の
+//!   継承元になる（`text_props::resolve`）。`+mj-lt` 等のテーマ参照は書体名として取り込まない。
 
 use quick_xml::events::BytesStart;
 
-use super::color::{ColorSpec, ColorTransform};
-use super::xml::{attr, base_color_ref, child_of, rel, walk_elements};
+use super::text_props::RawTextProps;
+use super::xml::{attr, rel, walk_elements};
 use super::BrandError;
 
 /// `p:clrMap` の 12 キー。値は clrScheme のスロット名（`lt1` / `dk1` / `accent1` …）
@@ -95,25 +97,18 @@ impl ClrMap {
   }
 }
 
-/// `p:txStyles` の第 1 レベル既定（`a:lvl1pPr/a:defRPr`）。色は clrScheme を当てるまで未解決のまま持つ
-#[derive(Debug, Clone, Default, PartialEq)]
-pub struct RawTextStyle {
-  /// `a:defRPr@sz`（1/100pt）を実 pt へ直した値
-  pub size_pt: Option<f64>,
-  /// `a:defRPr/a:solidFill` の色指定
-  pub color: Option<ColorSpec>,
-}
-
-/// slideMaster から抽出した内容
+/// slideMaster から抽出した内容。`p:txStyles` の第 1 レベル既定（`a:lvl1pPr/a:defRPr`）は
+/// slideLayout のプレースホルダと同じ `RawTextProps`（#316）で持つ: 継承の解決（プレースホルダ →
+/// `p:txStyles` → `a:fontScheme`）で両者を同じ形として扱えるようにする
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct MasterInfo {
   pub color_map: ClrMap,
   /// `p:titleStyle`
-  pub title: RawTextStyle,
+  pub title: RawTextProps,
   /// `p:bodyStyle`
-  pub body: RawTextStyle,
+  pub body: RawTextProps,
   /// `p:otherStyle`
-  pub other: RawTextStyle,
+  pub other: RawTextProps,
 }
 
 /// slideMaster XML をパースする。`p:cSld` 配下のプレースホルダ書式には同名要素が大量に現れるため、
@@ -143,23 +138,7 @@ fn visit(info: &mut MasterInfo, stack: &[String], name: &str, e: &BytesStart) {
     _ => return,
   };
 
-  if inner.is_empty() && name == "defRPr" {
-    // sz は 1/100pt。0 以下は不正値として捨てる
-    style.size_pt = attr(e, "sz")
-      .and_then(|v| v.trim().parse::<f64>().ok())
-      .filter(|v| *v > 0.0)
-      .map(|v| v / 100.0);
-  } else if inner == ["defRPr", "solidFill"] {
-    if let Some(base) = base_color_ref(name, e) {
-      style.color = Some(ColorSpec::new(base));
-    }
-  } else if child_of(inner, &["defRPr", "solidFill"]).is_some() {
-    // 基準色要素の子＝色変換（lumMod/lumOff/tint/shade）
-    let transform = attr(e, "val").and_then(|v| ColorTransform::from_element(name, &v));
-    if let (Some(transform), Some(spec)) = (transform, style.color.as_mut()) {
-      spec.transforms.push(transform);
-    }
-  }
+  style.visit(inner, name, e);
 }
 
 /// パスが `txStyles / <スタイル名> / lvl1pPr / <残り…>` の形なら、スタイル名と残りのパスを返す
@@ -173,7 +152,7 @@ fn split_lvl1_path(path: &[String]) -> Option<(&str, &[String])> {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::brand::color::{ColorRef, Rgb};
+  use crate::brand::color::{ColorRef, ColorTransform, Rgb};
 
   /// 実物の slideMaster1.xml と同じ入れ子（cSld 配下のノイズ入り）を最小構成で再現する
   const MASTER_XML: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
