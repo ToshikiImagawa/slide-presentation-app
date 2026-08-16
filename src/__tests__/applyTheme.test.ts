@@ -1,7 +1,22 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { applyTheme, applyPresentationTheme, applyThemeData, applyBaseFontSize, loadFontSources, resetThemeOverrides, normalizeHex, getThemeWarnings, getContrastRatio, mergeThemeData, fetchThemeData } from '../applyTheme'
+import {
+  applyTheme,
+  applyPresentationTheme,
+  applyThemeData,
+  applyBaseFontSize,
+  loadFontSources,
+  resetThemeOverrides,
+  normalizeHex,
+  getThemeWarnings,
+  getContrastRatio,
+  mergeThemeData,
+  fetchThemeData,
+  buildSectionAccentCss,
+  resolveSectionAccent,
+} from '../applyTheme'
 import { hasComponent } from '../components/ComponentRegistry'
-import type { ThemeData } from '../data'
+import { buildSections } from '../sections'
+import type { SlideData, ThemeData } from '../data'
 
 describe('applyTheme', () => {
   beforeEach(() => {
@@ -126,6 +141,23 @@ describe('applyPresentationTheme', () => {
     expect(css).toContain('--theme-radius-lg: 4px;')
     expect(css).toContain('--theme-border-width: 3px;')
     expect(css).not.toContain('2px')
+  })
+
+  it('章色（sectionAccents）は masterKey スコープと同じ <style> の後ろに出力され、詳細度が同じ意匠トークンより勝つ（#319）', async () => {
+    const theme: ThemeData = { masters: { corp: { decorations: [] } }, tokens: { corp: { 'theme-primary': '#ff0000' } }, sectionAccents: ['series3'] }
+
+    await applyPresentationTheme(undefined, theme)
+
+    const css = document.getElementById('sdd-master-tokens-css')?.textContent ?? ''
+    expect(css).toContain('section[data-master="corp"]')
+    expect(css).toContain('section[data-section-accent="series3"]')
+    expect(css.indexOf('data-section-accent')).toBeGreaterThan(css.indexOf('data-master'))
+  })
+
+  it('sectionAccents 未指定なら章スコープの CSS を出力しない（現行と完全同一）', async () => {
+    await applyPresentationTheme(undefined, { colors: { primary: '#123456' } })
+
+    expect(document.getElementById('sdd-master-tokens-css')).toBeNull()
   })
 })
 
@@ -325,6 +357,11 @@ describe('mergeThemeData（brand→deck の合成・#170）', () => {
     const merged = mergeThemeData(brand, theme)
 
     expect(merged?.canvas?.safeArea).toEqual({ top: 80, left: 40 })
+  })
+
+  it('sectionAccents は並び順自体が意味を持つため要素単位ではマージせず、deck 側があればブランド側を丸ごと置き換える（#319）', () => {
+    expect(mergeThemeData({ sectionAccents: ['primary', 'series3', 'series4'] }, { sectionAccents: ['series5'] })?.sectionAccents).toEqual(['series5'])
+    expect(mergeThemeData({ sectionAccents: ['primary', 'series3'] }, { colors: { primary: '#000000' } })?.sectionAccents).toEqual(['primary', 'series3'])
   })
 
   it('両方 canvas 未指定なら canvas は undefined', () => {
@@ -1352,6 +1389,124 @@ describe('getThemeWarnings', () => {
       const warnings = getThemeWarnings(theme)
       expect(warnings.some((w) => w.includes('theme.masters.promo.background'))).toBe(false)
     })
+
+    // #319: 章スコープ（sectionAccents）の上書き後の色でも検証する
+    it('章色（sectionAccents）が背景色と AA 未達なら該当する要素の位置を添えて警告する', () => {
+      const warnings = getThemeWarnings({ colors: { background: '#ffffff', series3: '#f0f0f0' }, sectionAccents: ['primary', 'series3'] })
+
+      expect(warnings.some((w) => w.includes('theme.sectionAccents[1]') && w.includes('series3') && w.includes('background') && w.includes('WCAG AA'))).toBe(true)
+    })
+
+    it('章色が AA を満たす組は警告しない', () => {
+      expect(getThemeWarnings({ colors: { background: '#ffffff', series3: '#1a5fb4' }, sectionAccents: ['series3'] })).toEqual([])
+    })
+
+    it('章色・背景色のどちらか一方しか明示されていない場合は検証しない（既定値の複製を避ける）', () => {
+      expect(getThemeWarnings({ colors: { series3: '#f0f0f0' }, sectionAccents: ['series3'] })).toEqual([])
+      expect(getThemeWarnings({ colors: { background: '#ffffff' }, sectionAccents: ['series3'] })).toEqual([])
+    })
+  })
+
+  // #319: 章色の巡回リストの値検証
+  describe('theme.sectionAccents（章色・#319）', () => {
+    it('解決できないカラートークン名を指定すると警告する', () => {
+      const warnings = getThemeWarnings({ sectionAccents: ['primary', 'seriez3'] })
+
+      expect(warnings).toEqual([expect.stringContaining('theme.sectionAccents[1]')])
+      expect(warnings[0]).toContain('seriez3')
+    })
+
+    it('解決できるカラートークン名のみなら警告しない', () => {
+      expect(getThemeWarnings({ sectionAccents: ['primary', 'series3', 'success'] })).toEqual([])
+    })
+
+    it('未指定・空配列なら検証しない', () => {
+      expect(getThemeWarnings({})).toEqual([])
+      expect(getThemeWarnings({ sectionAccents: [] })).toEqual([])
+    })
+  })
+})
+
+describe('resolveSectionAccent（章色の巡回・#319）', () => {
+  /** meta.section だけを持つ最小スライドを並べる（章の導出は layout/content に依存しない） */
+  const deck = (...sections: (string | undefined)[]): SlideData[] => sections.map((section, i) => ({ id: `s${i}`, layout: 'content', content: {}, meta: section ? { section } : undefined }))
+
+  it('未指定・空配列では undefined を返す（章による色替えを行わない）', () => {
+    expect(resolveSectionAccent(undefined, 1)).toBeUndefined()
+    expect(resolveSectionAccent([], 1)).toBeUndefined()
+  })
+
+  it('色数が章数より多い場合は先頭から順に使い、余った色は使わない', () => {
+    const accents = ['primary', 'series3', 'series4', 'series5']
+    expect([1, 2, 3].map((n) => resolveSectionAccent(accents, n))).toEqual(['primary', 'series3', 'series4'])
+  })
+
+  it('色数が章数より少ない場合は先頭に戻って巡回する', () => {
+    const accents = ['primary', 'series3', 'series4']
+    expect([1, 2, 3, 4, 5, 6, 7].map((n) => resolveSectionAccent(accents, n))).toEqual(['primary', 'series3', 'series4', 'primary', 'series3', 'series4', 'primary'])
+  })
+
+  it('1色のみの場合は全章が同じ色になる', () => {
+    expect([1, 2, 3].map((n) => resolveSectionAccent(['series3'], n))).toEqual(['series3', 'series3', 'series3'])
+  })
+
+  it('章の途中にスライドを挿入しても章番号ベースなので割り当てが変わらない', () => {
+    const accents = ['primary', 'series3']
+    const before = buildSections(deck(undefined, '導入', '設計'))
+    // 章「導入」の途中に1枚挿入する（後続の章の startIndex はずれるが章番号は変わらない）
+    const after = buildSections(deck(undefined, '導入', '導入', '設計'))
+
+    const assign = (list: ReturnType<typeof buildSections>) => list.map((section) => [section.title, resolveSectionAccent(accents, section.number)])
+    expect(assign(before)).toEqual([
+      ['導入', 'primary'],
+      ['設計', 'series3'],
+    ])
+    expect(assign(after)).toEqual(assign(before))
+  })
+})
+
+describe('buildSectionAccentCss（章色の CSS 生成・#319）', () => {
+  it('未指定・空配列では何も出力しない（現行と完全同一）', () => {
+    expect(buildSectionAccentCss(undefined)).toBe('')
+    expect(buildSectionAccentCss([])).toBe('')
+  })
+
+  it('カラートークン名スコープで primary / series-1 とその -rgb companion だけを上書きする', () => {
+    const css = buildSectionAccentCss(['series3'])
+
+    expect(css).toContain('section[data-section-accent="series3"]')
+    expect(css).toContain('--theme-primary: var(--theme-series-3);')
+    expect(css).toContain('--theme-primary-rgb: var(--theme-series-3-rgb);')
+    expect(css).toContain('--theme-series-1: var(--theme-series-3);')
+    expect(css).toContain('--theme-series-1-rgb: var(--theme-series-3-rgb);')
+  })
+
+  it('accent / series2〜series6 は上書きしない（系列色はデータ系列の識別に使うため章とは直交する）', () => {
+    const css = buildSectionAccentCss(['series3'])
+
+    expect(css).not.toContain('--theme-accent:')
+    for (const n of [2, 3, 4, 5, 6]) {
+      expect(css).not.toContain(`--theme-series-${n}:`)
+    }
+  })
+
+  it('章数ぶんではなく色数ぶんの規則を出力する（同じ色の重複指定は1規則にまとめる）', () => {
+    expect(buildSectionAccentCss(['series3', 'series4', 'series3']).split('\n')).toHaveLength(2)
+  })
+
+  it('参照元と上書き先が同じ変数になる指定は自己参照（CSS 変数の循環）になるため宣言しない', () => {
+    // 'primary' は --theme-primary 自身なので上書きせず、そこから導出される series-1 だけを揃える
+    const primaryCss = buildSectionAccentCss(['primary'])
+    expect(primaryCss).not.toContain('--theme-primary: var(--theme-primary)')
+    expect(primaryCss).toContain('--theme-series-1: var(--theme-primary);')
+
+    const series1Css = buildSectionAccentCss(['series1'])
+    expect(series1Css).not.toContain('--theme-series-1: var(--theme-series-1)')
+    expect(series1Css).toContain('--theme-primary: var(--theme-series-1);')
+  })
+
+  it('解決できないトークン名は出力しない（警告は getThemeWarnings が担う）', () => {
+    expect(buildSectionAccentCss(['seriez3'])).toBe('')
   })
 })
 

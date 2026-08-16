@@ -167,6 +167,13 @@ export interface ThemeData {
    * section[data-master="key"] スコープで出力する）または "*"（全体スコープ = :root。#190 の意匠トークンを
    * マスターに紐付けずデッキ全体へ指定する用途）。両方に同じ変数があれば masterKey 側が勝つ */
   tokens?: Record<string, Record<string, string>>
+  /** 章（slides[].meta.section から導出・#191）ごとに巡回させるアクセント色のカラートークン名の配列（#319）。
+   * 章番号から色への巡回規則は resolveSectionAccent（applyTheme.ts）が単一の真実源。
+   * 要素はカラートークン名（THEME_COLOR_TOKENS のキー。primary / series1〜series6 等）で、生の色（hex）は受けない
+   * （テーマ追従を壊さないため）。上書きするのは章内の `--theme-primary` と `--theme-series-1`（および -rgb companion）
+   * だけで、accent / series2〜series6 は変えない（系列色はデータ系列の識別に使うもので章とは直交する概念だから）。
+   * 未指定・空配列なら章による色替えを行わない（現行と完全同一） */
+  sectionAccents?: string[]
   /** キャンバスサイズ・セーフエリア（#188）。未指定時は現行と完全同一（1280x720 / 各辺60px） */
   canvas?: CanvasData
 }
