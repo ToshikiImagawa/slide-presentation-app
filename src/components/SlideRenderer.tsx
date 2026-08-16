@@ -20,6 +20,7 @@ import { Timeline } from './Timeline'
 import { TimelineNode } from './TimelineNode'
 import { FeatureTileGrid } from './FeatureTileGrid'
 import { ImageFigureGrid } from './ImageFigureGrid'
+import { Profile } from './Profile'
 import { InlineSvg, type SvgSpec } from './InlineSvg'
 import { TextDiagram, type TextDiagramSpec } from './TextDiagram'
 import { Chart, type ChartSpec } from './chart'
@@ -386,6 +387,26 @@ function renderTiles(content: SlideContent): ReactNode {
   )
 }
 
+/**
+ * profileをProfileとしてレンダリング（プロフィール（自己紹介）スライド・#324）。1人ぶんに限定した種別で、
+ * 複数人（チーム紹介）は扱わない。links[].icon は tiles[].icon と同じ ComponentRegistry の
+ * 'Icon:<name>' 経路（renderIcon）で解決するので、独自のアイコン enum を持たない
+ */
+function renderProfile(content: SlideContent): ReactNode {
+  const profile = content.profile as { image?: string; name: string; nameSub?: string; role?: string; org?: string; body?: string; links?: Array<{ icon: string; label: string }> }
+  return (
+    <Profile
+      image={profile.image}
+      name={profile.name}
+      nameSub={profile.nameSub}
+      role={profile.role}
+      org={profile.org}
+      body={profile.body ? renderWithLineBreaks(profile.body) : undefined}
+      links={profile.links?.map((link) => ({ icon: renderIcon(link.icon), label: link.label }))}
+    />
+  )
+}
+
 /** imagesをImageFigureGridとしてレンダリング（画像スライド・#198） */
 function renderImages(content: SlideContent): ReactNode {
   const images = content.images as Array<{ src: string; alt?: string; caption?: string }>
@@ -437,6 +458,8 @@ const CONTENT_BRANCHES: ContentBranch[] = [
   { match: (content) => Boolean(content.checklist), fill: () => componentFillsContentArea('Checklist'), render: renderChecklist },
   { match: (content) => Boolean(content.toc) && typeof content.toc === 'object', fill: false, render: renderToc },
   { match: (content) => Boolean(content.tiles), fill: false, render: renderTiles },
+  // プロフィール（自己紹介）スライド（#324）。写真を本文領域の残り高さに収めるため images と同じく埋める
+  { match: (content) => Boolean(content.profile) && typeof content.profile === 'object', fill: true, render: renderProfile },
   { match: (content) => Boolean(content.images), fill: true, render: renderImages },
   // インラインSVG（#203）。<img>参照ではなくマークアップをそのまま挿入するのでテーマ色（currentColor/var(--theme-*)）に追従する
   { match: (content) => Boolean(content.svg) && typeof content.svg === 'object', fill: () => componentFillsContentArea('InlineSvg'), render: (content) => <InlineSvg {...(content.svg as SvgSpec)} /> },

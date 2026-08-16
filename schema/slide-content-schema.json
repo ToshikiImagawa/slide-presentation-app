@@ -20,7 +20,7 @@
       }
     },
     "content": {
-      "description": "コンテンツ表示用レイアウト。子要素のフィールドで描画が決まる。優先順位: steps→Timeline / dateTimeline→日付付きマイルストーンタイムライン / checklist→チェックリスト / toc→目次 / tiles→FeatureTileGrid / images→画像スライド / svg→インラインSVG / textDiagram→テキスト図法（Mermaid） / chart→チャート / table→表 / compare→比較 / flow→横フロー / hierarchyDiagram→階層構成図 / serverDiagram→サーバ/クラウド構成図 / orgChart→組織図 / classDiagram→UMLクラス図 / sequenceDiagram→UMLシーケンス図 / flowchart→フローチャート / swimlane→スイムレーン / gantt→ガント / twoByTwo→2×2マトリクス / funnel→ファネル / swot→SWOT / heatmap→ヒートマップ / component→カスタム。いずれも無指定の場合に限り body/items（プレーン本文）を描画する（#193・#200・#199・#195・#205・#206・#207・#203・#269）",
+      "description": "コンテンツ表示用レイアウト。子要素のフィールドで描画が決まる。優先順位: steps→Timeline / dateTimeline→日付付きマイルストーンタイムライン / checklist→チェックリスト / toc→目次 / tiles→FeatureTileGrid / profile→プロフィール（自己紹介）/ images→画像スライド / svg→インラインSVG / textDiagram→テキスト図法（Mermaid） / chart→チャート / table→表 / compare→比較 / flow→横フロー / hierarchyDiagram→階層構成図 / serverDiagram→サーバ/クラウド構成図 / orgChart→組織図 / classDiagram→UMLクラス図 / sequenceDiagram→UMLシーケンス図 / flowchart→フローチャート / swimlane→スイムレーン / gantt→ガント / twoByTwo→2×2マトリクス / funnel→ファネル / swot→SWOT / heatmap→ヒートマップ / component→カスタム。いずれも無指定の場合に限り body/items（プレーン本文）を描画する（#193・#200・#199・#195・#205・#206・#207・#203・#269・#324）",
       "contentFields": {
         "title": { "type": "string" },
         "steps": {
@@ -102,6 +102,31 @@
           }
         },
         "tileColumns": { "type": "number", "description": "tilesの列数。省略時はタイル数と同数の列（現行と同一の1行表示）。6枚以上のtilesを読める大きさで折返し表示したい場合に指定する" },
+        "profile": {
+          "type": "object",
+          "description": "プロフィール（自己紹介）スライド（#324）。1人ぶんの写真・氏名・併記・肩書き・所属・自己紹介文・連絡先を、写真とテキストの2区画で見せる。複数人（チーム紹介）は扱わない。QRコードは重複するのでここには持たず、必要なら center の qrCode / githubRepo を使う",
+          "fields": {
+            "image": { "type": "string", "description": "顔写真・アバターの画像パス（パッケージ内 image/ 配下の相対パス）・外部URL・data URI。省略時は写真の区画を描かずテキストだけの1カラムになる" },
+            "name": { "type": "string", "description": "氏名（必須）" },
+            "nameSub": { "type": "string", "description": "氏名の併記（ローマ字表記・読み等）" },
+            "role": { "type": "string", "description": "役割・肩書き" },
+            "org": { "type": "string", "description": "所属" },
+            "body": { "type": "string", "description": "自己紹介文（改行は \\n）" },
+            "links": {
+              "type": "array",
+              "maxItems": 5,
+              "description": "連絡先・アカウント。表示文字列そのままを並べ、リンク（<a>）にはしない（発表資料は投影が主でクリックできる必要がない）。推奨上限5件",
+              "itemFields": {
+                "icon": {
+                  "type": "string",
+                  "stringConstraint": "iconName",
+                  "description": "ComponentRegistryに'Icon:<name>'で登録済みの任意アイコン名（builtinIcons一覧、アドオン/ブランドテーマ提供分を含む）。未登録名はエラーになる（tiles[].iconと同じ制約）"
+                },
+                "label": { "type": "string", "description": "表示文字列（メールアドレス・アカウント名等）" }
+              }
+            }
+          }
+        },
         "images": {
           "type": "array",
           "description": "画像スライド（タイトル＋画像＋キャプション）。1枚指定で本文領域いっぱい、2〜3枚で横並びグリッド（4枚以上は3列で折返し）。画像は縦横比を保ってセーフエリア内に自動フィットし、枠・角丸・影はテーマトークンに追従する。寸法指定は不要（componentのImageと違い手動調整しない）",
@@ -141,13 +166,13 @@
         "footer": { "type": "string" },
         "body": {
           "type": "string",
-          "description": "プレーン本文の段落（改行は\\n）。steps/dateTimeline/checklist/toc/tiles/images/svg/textDiagram/chart/table/compare/flow/hierarchyDiagram/serverDiagram/orgChart/classDiagram/sequenceDiagram/flowchart/swimlane/gantt/twoByTwo/funnel/swot/heatmap/componentのいずれも無指定の場合のみ描画される。itemsと併用可。段落配列が必要な場合はtwo-columnのparagraphsを使う（1カラム全幅の自由記述文はbody、カラム構成用の複数ブロックはparagraphsという役割分担）"
+          "description": "プレーン本文の段落（改行は\\n）。steps/dateTimeline/checklist/toc/tiles/profile/images/svg/textDiagram/chart/table/compare/flow/hierarchyDiagram/serverDiagram/orgChart/classDiagram/sequenceDiagram/flowchart/swimlane/gantt/twoByTwo/funnel/swot/heatmap/componentのいずれも無指定の場合のみ描画される。itemsと併用可。段落配列が必要な場合はtwo-columnのparagraphsを使う（1カラム全幅の自由記述文はbody、カラム構成用の複数ブロックはparagraphsという役割分担）"
         },
         "items": {
           "type": "array",
           "ref": "contentItem",
           "maxItems": 7,
-          "description": "箇条書き（ネスト可）。steps/dateTimeline/checklist/toc/tiles/images/svg/textDiagram/chart/table/compare/flow/hierarchyDiagram/serverDiagram/orgChart/classDiagram/sequenceDiagram/flowchart/swimlane/gantt/twoByTwo/funnel/swot/heatmap/componentのいずれも無指定の場合のみ描画される。bodyと併用可。推奨上限7件（超えると密度過多として自動修正対象になる）"
+          "description": "箇条書き（ネスト可）。steps/dateTimeline/checklist/toc/tiles/profile/images/svg/textDiagram/chart/table/compare/flow/hierarchyDiagram/serverDiagram/orgChart/classDiagram/sequenceDiagram/flowchart/swimlane/gantt/twoByTwo/funnel/swot/heatmap/componentのいずれも無指定の場合のみ描画される。bodyと併用可。推奨上限7件（超えると密度過多として自動修正対象になる）"
         }
       }
     },
