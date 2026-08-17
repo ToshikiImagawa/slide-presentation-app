@@ -42,6 +42,8 @@ function buildProfile(overrides: Partial<BrandProfile> = {}): BrandProfile {
     thumbnail: null,
     logoCandidates: [],
     bandCandidates: [],
+    textCandidates: [],
+    embeddedFonts: [],
     mappedColors,
     fonts: { major: { latin: 'Trebuchet MS', ea: null, cs: null, jpan: null }, minor: { latin: 'Calibri', ea: null, cs: null, jpan: null } },
     masters: [],
@@ -202,6 +204,65 @@ describe('BrandConfirmDialog（#168 並置比較・取り込み確認）', () =>
     fireEvent.click(screen.getByRole('button', { name: '取り込む' }))
     const arg = onApply.mock.calls[0][0] as { overrides: BrandOverrides }
     expect(arg.overrides.selectedBandIndices).toEqual([0])
+  })
+
+  it('固定テキスト候補が無ければ検出されなかった旨を表示する（#318）', () => {
+    renderDialog()
+    expect(screen.getByText('固定テキストは検出されませんでした')).toBeTruthy()
+  })
+
+  it('固定テキスト候補をチェックして取り込むと selectedTextIndices が渡る（#318）', () => {
+    const profile = buildProfile({
+      textCandidates: [{ content: '© 2026 Acme Corp', xEmu: 457_200, yEmu: 6_400_800, widthEmu: 5_000_000, heightEmu: 300_000, sizePt: 10, colorHex: '#808080' }],
+    })
+    const { onApply } = renderDialog({ profile })
+    fireEvent.click(screen.getByRole('checkbox'))
+    fireEvent.click(screen.getByRole('button', { name: '取り込む' }))
+    const arg = onApply.mock.calls[0][0] as { overrides: BrandOverrides }
+    expect(arg.overrides.selectedTextIndices).toEqual([0])
+  })
+
+  it('`{index}` を含む候補をチェックすると表示形式が選べ、indexTotal を選ぶと textIndexFormats が渡る（#318）', () => {
+    const profile = buildProfile({
+      textCandidates: [{ content: 'Acme Corp — {index}', xEmu: 457_200, yEmu: 6_400_800, widthEmu: 5_000_000, heightEmu: 300_000, sizePt: null, colorHex: null }],
+    })
+    const { onApply } = renderDialog({ profile })
+    fireEvent.click(screen.getByRole('checkbox'))
+
+    const formatSelect = screen.getByRole('combobox', { name: /Acme Corp/ })
+    fireEvent.mouseDown(formatSelect)
+    fireEvent.click(screen.getByRole('option', { name: '{index}/{total}' }))
+
+    fireEvent.click(screen.getByRole('button', { name: '取り込む' }))
+    const arg = onApply.mock.calls[0][0] as { overrides: BrandOverrides }
+    expect(arg.overrides.selectedTextIndices).toEqual([0])
+    expect(arg.overrides.textIndexFormats).toEqual({ '0': 'indexTotal' })
+  })
+
+  it('`{index}` を含まない候補は表示形式のセレクトを出さない（#318）', () => {
+    const profile = buildProfile({
+      textCandidates: [{ content: '固定テキスト', xEmu: 0, yEmu: 0, widthEmu: 500_000, heightEmu: 200_000, sizePt: null, colorHex: null }],
+    })
+    renderDialog({ profile })
+    fireEvent.click(screen.getByRole('checkbox'))
+    expect(screen.queryByRole('combobox', { name: /固定テキスト/ })).toBeNull()
+  })
+
+  it('埋め込みフォントが無ければ検出されなかった旨を表示する（#318）', () => {
+    renderDialog()
+    expect(screen.getByText('埋め込みフォントは検出されませんでした')).toBeTruthy()
+  })
+
+  it('埋め込みフォント名を表示する。Bold を持つ書体は Bold 表記を付ける（#318）', () => {
+    const profile = buildProfile({
+      embeddedFonts: [
+        { typeface: 'Corporate Sans', hasRegular: true, hasBold: true },
+        { typeface: 'Corporate Sans Light', hasRegular: true, hasBold: false },
+      ],
+    })
+    renderDialog({ profile })
+    expect(screen.getByText('Corporate Sans（Bold）')).toBeTruthy()
+    expect(screen.getByText('Corporate Sans Light')).toBeTruthy()
   })
 
   it('slideLayout が無ければ検出されなかった旨を表示する（#192）', () => {

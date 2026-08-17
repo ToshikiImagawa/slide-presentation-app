@@ -15,6 +15,7 @@ use super::theme_xml::ClrScheme;
 /// UI に出す候補数の上限（多数のプレースホルダを持つマスターでも応答サイズを抑える）
 const MAX_LOGO_CANDIDATES: usize = 8;
 const MAX_BAND_CANDIDATES: usize = 8;
+const MAX_TEXT_CANDIDATES: usize = 8;
 
 /// 帯の端とスライド境界のずれの許容比（実物のテンプレートは数 EMU〜数万 EMU 単位でぴったり 0 にならない）
 const EDGE_TOLERANCE: f64 = 0.06;
@@ -231,6 +232,57 @@ fn edge_anchor(
   None
 }
 
+/// 固定テキスト/ページ番号候補の幾何・文字プロパティ（#318）。`anchor`/`offset` への変換は
+/// フロント（`compile()`）が `bandToDecoration` と同じ EMU→px 換算を使って行うため、
+/// ここでは EMU の矩形のまま渡す
+#[derive(Debug, Clone, PartialEq)]
+pub struct TextGeometry {
+  pub content: String,
+  pub x_emu: i64,
+  pub y_emu: i64,
+  pub width_emu: i64,
+  pub height_emu: i64,
+  pub size_pt: Option<f64>,
+  pub color: Option<Rgb>,
+}
+
+/// `p:sp` の生データから、固定テキスト/ページ番号の装飾候補を列挙する（#318）。
+/// プレースホルダ（`is_placeholder`）・空文字・矩形不明（`off`/`ext` のいずれか欠け・非正の寸法）の
+/// 形状は対象外にする（位置が無い候補は装飾として描けず、候補にする意味がないため）。
+/// 帯・ロゴのような角度付きスコアリングは行わない（誤爆しうるヒューリスティクスではなく、
+/// 「非プレースホルダかつテキストを持つ」という決定的な条件だけで候補にする）
+pub fn list_text_candidates(
+  shapes: &[RawShape],
+  scheme: &ClrScheme,
+  map: &ClrMap,
+) -> Vec<TextGeometry> {
+  shapes
+    .iter()
+    .filter(|shape| !shape.is_placeholder)
+    .filter_map(|shape| {
+      let content = shape.text.content.trim();
+      if content.is_empty() {
+        return None;
+      }
+      let (x_emu, y_emu) = shape.xfrm.off?;
+      let (width_emu, height_emu) = shape.xfrm.ext?;
+      if width_emu <= 0 || height_emu <= 0 {
+        return None;
+      }
+      Some(TextGeometry {
+        content: content.to_string(),
+        x_emu,
+        y_emu,
+        width_emu,
+        height_emu,
+        size_pt: shape.text.props.size_pt,
+        color: shape.text.props.resolve_color(scheme, map),
+      })
+    })
+    .take(MAX_TEXT_CANDIDATES)
+    .collect()
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
@@ -309,6 +361,7 @@ mod tests {
         off: Some(off),
         ext: Some(ext),
       },
+      ..RawShape::default()
     }
   }
 
@@ -450,6 +503,128 @@ mod tests {
     let first = classify_bands(&shapes, &scheme, &map, SLIDE);
     for _ in 0..5 {
       assert_eq!(classify_bands(&shapes, &scheme, &map, SLIDE), first);
+    }
+  }
+
+  fn text_shape(
+    name: &str,
+    content: &str,
+    off: (i64, i64),
+    ext: (i64, i64),
+    is_placeholder: bool,
+  ) -> RawShape {
+    RawShape {
+      name: Some(name.to_string()),
+      xfrm: RawXfrm {
+        off: Some(off),
+        ext: Some(ext),
+      },
+      is_placeholder,
+      text: crate::brand::shapes::RawShapeText {
+        content: content.to_string(),
+        props: crate::brand::text_props::RawTextProps::default(),
+      },
+      ..RawShape::default()
+    }
+  }
+
+  #[test]
+  fn lists_non_placeholder_text_shape_as_candidate() {
+    let shapes = vec![text_shape(
+      "Footer",
+      "© 2026 Acme Corp",
+      (457_200, 6_400_800),
+      (5_000_000, 300_000),
+      false,
+    )];
+    let candidates = list_text_candidates(&shapes, &ClrScheme::default(), &ClrMap::default());
+    assert_eq!(candidates.len(), 1);
+    assert_eq!(candidates[0].content, "© 2026 Acme Corp");
+    assert_eq!(candidates[0].x_emu, 457_200);
+    assert_eq!(candidates[0].y_emu, 6_400_800);
+    assert_eq!(candidates[0].width_emu, 5_000_000);
+    assert_eq!(candidates[0].height_emu, 300_000);
+  }
+
+  #[test]
+  fn excludes_placeholder_text_shapes() {
+    let shapes = vec![text_shape(
+      "Title Placeholder",
+      "タイトル",
+      (0, 0),
+      (1_000_000, 1_000_000),
+      true,
+    )];
+    let candidates = list_text_candidates(&shapes, &ClrScheme::default(), &ClrMap::default());
+    assert_eq!(candidates.len(), 0);
+  }
+
+  #[test]
+  fn excludes_shapes_without_text_or_geometry() {
+    let mut empty_text = text_shape("Empty", "   ", (0, 0), (1_000_000, 1_000_000), false);
+    empty_text.text.content = "   ".to_string();
+    let mut missing_xfrm = text_shape(
+      "NoRect",
+      "固定テキスト",
+      (0, 0),
+      (1_000_000, 1_000_000),
+      false,
+    );
+    missing_xfrm.xfrm.ext = None;
+    let candidates = list_text_candidates(
+      &[empty_text, missing_xfrm],
+      &ClrScheme::default(),
+      &ClrMap::default(),
+    );
+    assert_eq!(candidates.len(), 0);
+  }
+
+  #[test]
+  fn resolves_scheme_color_and_size_for_text_candidate() {
+    let mut shape = text_shape(
+      "Footer",
+      "固定テキスト",
+      (0, 6_400_800),
+      (5_000_000, 300_000),
+      false,
+    );
+    shape.text.props.size_pt = Some(10.0);
+    shape.text.props.color = Some(ColorSpec::new(ColorRef::Scheme("accent1".to_string())));
+    let scheme = ClrScheme {
+      accent1: Some(Rgb {
+        r: 0x44,
+        g: 0x54,
+        b: 0x6a,
+      }),
+      ..ClrScheme::default()
+    };
+    let candidates = list_text_candidates(&[shape], &scheme, &ClrMap::default());
+    assert_eq!(candidates[0].size_pt, Some(10.0));
+    assert_eq!(
+      candidates[0].color,
+      Some(Rgb {
+        r: 0x44,
+        g: 0x54,
+        b: 0x6a
+      })
+    );
+  }
+
+  #[test]
+  fn text_candidate_listing_is_deterministic() {
+    let shapes = vec![text_shape(
+      "Footer",
+      "固定テキスト",
+      (0, 6_400_800),
+      (5_000_000, 300_000),
+      false,
+    )];
+    let first = list_text_candidates(&shapes, &ClrScheme::default(), &ClrMap::default());
+    for _ in 0..5 {
+      assert_eq!(
+        list_text_candidates(&shapes, &ClrScheme::default(), &ClrMap::default()),
+        first
+      );
     }
   }
 }

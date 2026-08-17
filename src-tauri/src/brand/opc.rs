@@ -368,6 +368,71 @@ pub fn parse_slide_size(xml: &str) -> Result<Option<SlideSize>, BrandError> {
   Ok(size)
 }
 
+/// 埋め込みフォント（#318）。`p:embeddedFont/p:font@typeface` と `p:regular`/`p:bold` 子要素の有無だけを持つ。
+/// フォント実体（`p:regular@r:id` が指す `ppt/fonts/*.fntdata`）の展開は対象外（#321のスコープ）
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EmbeddedFont {
+  pub typeface: String,
+  pub has_regular: bool,
+  pub has_bold: bool,
+}
+
+/// presentation XML の `p:embeddedFontLst/p:embeddedFont` を読む（#318）。
+/// `typeface` が読めなかった `p:embeddedFont` は登録しない（書体名の無い候補は提示できないため）
+pub fn parse_embedded_fonts(xml: &str) -> Result<Vec<EmbeddedFont>, BrandError> {
+  let mut out = Vec::new();
+  let mut reader = Reader::from_str(xml);
+  reader.config_mut().trim_text(true);
+  let mut in_list = false;
+  let mut current: Option<EmbeddedFont> = None;
+  loop {
+    match reader.read_event() {
+      Ok(Event::Eof) => break,
+      Ok(Event::Start(e)) | Ok(Event::Empty(e)) => {
+        let name = local_name(e.name());
+        if name == "embeddedFontLst" {
+          in_list = true;
+        } else if in_list && name == "embeddedFont" {
+          current = Some(EmbeddedFont {
+            typeface: String::new(),
+            has_regular: false,
+            has_bold: false,
+          });
+        } else if in_list && name == "font" {
+          if let (Some(font), Some(typeface)) = (current.as_mut(), attr(&e, "typeface")) {
+            font.typeface = typeface;
+          }
+        } else if in_list && name == "regular" {
+          if let Some(font) = current.as_mut() {
+            font.has_regular = true;
+          }
+        } else if in_list && name == "bold" {
+          if let Some(font) = current.as_mut() {
+            font.has_bold = true;
+          }
+        }
+      }
+      Ok(Event::End(e)) => {
+        let name = local_name(e.name());
+        if name == "embeddedFontLst" {
+          break;
+        }
+        if name == "embeddedFont" {
+          if let Some(font) = current.take() {
+            if !font.typeface.is_empty() {
+              out.push(font);
+            }
+          }
+        }
+      }
+      Ok(_) => {}
+      Err(e) => return Err(BrandError::Xml(e.to_string())),
+    }
+  }
+  Ok(out)
+}
+
 /// `_rels` の 1 エントリ
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Relationship {
@@ -789,5 +854,62 @@ mod tests {
       ordered_rel_ids(xml, "sldLayoutIdLst", "sldLayoutId").unwrap(),
       vec!["rId3".to_string(), "rId2".to_string()]
     );
+  }
+
+  const PRESENTATION_WITH_EMBEDDED_FONTS: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
+<p:presentation xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" embedTrueTypeFonts="1">
+  <p:sldMasterIdLst><p:sldMasterId id="2147483696" r:id="rId1"/></p:sldMasterIdLst>
+  <p:embeddedFontLst>
+    <p:embeddedFont>
+      <p:font typeface="Corporate Sans" pitchFamily="34" charset="0"/>
+      <p:regular r:id="rId5"/>
+      <p:bold r:id="rId6"/>
+    </p:embeddedFont>
+    <p:embeddedFont>
+      <p:font typeface="Corporate Sans Light"/>
+      <p:regular r:id="rId7"/>
+    </p:embeddedFont>
+  </p:embeddedFontLst>
+</p:presentation>"#;
+
+  #[test]
+  fn parses_embedded_fonts_with_typeface_and_style_flags() {
+    let fonts = parse_embedded_fonts(PRESENTATION_WITH_EMBEDDED_FONTS).unwrap();
+    assert_eq!(fonts.len(), 2);
+    assert_eq!(fonts[0].typeface, "Corporate Sans");
+    assert!(fonts[0].has_regular);
+    assert!(fonts[0].has_bold);
+    assert_eq!(fonts[1].typeface, "Corporate Sans Light");
+    assert!(fonts[1].has_regular);
+    assert!(!fonts[1].has_bold);
+  }
+
+  #[test]
+  fn embedded_font_without_typeface_is_not_registered() {
+    let xml = r#"<p:presentation xmlns:p="p" xmlns:r="r">
+      <p:embeddedFontLst>
+        <p:embeddedFont><p:regular r:id="rId5"/></p:embeddedFont>
+      </p:embeddedFontLst>
+    </p:presentation>"#;
+    assert_eq!(parse_embedded_fonts(xml).unwrap(), Vec::new());
+  }
+
+  #[test]
+  fn presentation_without_embedded_fonts_is_empty() {
+    let xml = r#"<p:presentation xmlns:p="p" xmlns:r="r">
+      <p:sldMasterIdLst><p:sldMasterId id="2147483696" r:id="rId1"/></p:sldMasterIdLst>
+    </p:presentation>"#;
+    assert_eq!(parse_embedded_fonts(xml).unwrap(), Vec::new());
+  }
+
+  #[test]
+  fn embedded_fonts_parsing_is_deterministic() {
+    let first = parse_embedded_fonts(PRESENTATION_WITH_EMBEDDED_FONTS).unwrap();
+    for _ in 0..5 {
+      assert_eq!(
+        parse_embedded_fonts(PRESENTATION_WITH_EMBEDDED_FONTS).unwrap(),
+        first
+      );
+    }
   }
 }

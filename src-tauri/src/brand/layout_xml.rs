@@ -23,8 +23,8 @@ use super::master_xml::ClrMap;
 use super::shapes::{read_xfrm_child, RawXfrm};
 use super::text_props::RawTextProps;
 use super::xml::{
-  attr, read_placeholder_marker, read_solid_fill, rel, strip_path, walk_elements, ShapeCursor,
-  ShapeEvent, PLACEHOLDER_SHAPE_CONTAINERS,
+  attr, lvl1_style_rest, read_placeholder_marker, read_solid_fill, rel, strip_path, walk_elements,
+  ShapeCursor, ShapeEvent, PLACEHOLDER_SHAPE_CONTAINERS,
 };
 use super::BrandError;
 
@@ -142,16 +142,6 @@ fn visit(
     map.read_attributes(e);
     info.color_map_override = Some(map);
   }
-}
-
-/// `inner`（シェイプ境界からの相対パス）が `p:txBody/a:lstStyle/a:lvl1pPr` 配下なら、
-/// `a:lvl1pPr` 起点の相対パスを返す（#316）。`a:lvl2pPr` 以降は受け皿に対応する概念がないため対象外
-/// （`master_xml::split_lvl1_path` と同じ扱い）
-fn lvl1_style_rest(inner: &[String]) -> Option<&[String]> {
-  let [tx_body, lst_style, lvl, rest @ ..] = inner else {
-    return None;
-  };
-  (tx_body == "txBody" && lst_style == "lstStyle" && lvl == "lvl1pPr").then_some(rest)
 }
 
 #[cfg(test)]

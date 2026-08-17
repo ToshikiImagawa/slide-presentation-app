@@ -706,6 +706,8 @@ describe('SlideEditor ブランドテーマの取り込み（#168）', () => {
     thumbnail: null,
     logoCandidates: [],
     bandCandidates: [],
+    textCandidates: [],
+    embeddedFonts: [],
     mappedColors: { bg1: '#ffffff', tx1: '#000000', bg2: null, tx2: null, accent1: '#1f4e79', accent2: null, accent3: null, accent4: null, accent5: null, accent6: null, hlink: null, folHlink: null },
     fonts: { major: { latin: 'Trebuchet MS', ea: null, cs: null, jpan: null }, minor: { latin: null, ea: null, cs: null, jpan: null } },
     masters: [],
