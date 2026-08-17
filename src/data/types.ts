@@ -165,7 +165,10 @@ export interface ThemeData {
   masterMap?: Record<string, string>
   /** CSS 変数トークン（キーは `--` を除いた変数名）。スコープキーは masterKey（buildMasterCss が
    * section[data-master="key"] スコープで出力する）または "*"（全体スコープ = :root。#190 の意匠トークンを
-   * マスターに紐付けずデッキ全体へ指定する用途）。両方に同じ変数があれば masterKey 側が勝つ */
+   * マスターに紐付けずデッキ全体へ指定する用途）。両方に同じ変数があれば masterKey 側が勝つ。
+   * `<系列色var>-shade-1`〜`-shade-3`（例: `theme-series-1-shade-2`。primary/accent/series1〜6 に同じ規則。
+   * #323）は系列色の明示の濃淡ランプで、colors.ts の shadeStep が読む。未指定色は shadeSeries の
+   * alpha 合成にフォールバックする */
   tokens?: Record<string, Record<string, string>>
   /** 章（slides[].meta.section から導出・#191）ごとに巡回させるアクセント色のカラートークン名の配列（#319）。
    * 章番号から色への巡回規則は resolveSectionAccent（applyTheme.ts）が単一の真実源。

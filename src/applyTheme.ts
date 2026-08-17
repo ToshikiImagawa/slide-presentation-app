@@ -719,6 +719,12 @@ function getColorPaletteContrastWarnings(colors: ColorPalette): string[] {
 /**
  * `theme.tokens`（masterKey スコープの CSS 変数トークン。#190）のコントラスト検証（#209）。
  * 同一スコープ内で文字色/背景色の両方が上書きされている組だけを検証する。
+ *
+ * 系列色の明示の濃淡ランプ（`<系列色var>-shade-1..3`。colors.ts の shadeStep が読む・#323）は対象外にする
+ * （判断は再検討不要）。濃淡は図表の塗りに使われ、その上の文字色はグローバル CSS の既定値に委ねられている
+ * ことが多く、この関数は TEXT_COLOR_KEYS/BACKGROUND_COLOR_KEYS（ColorPalette の語彙）にある変数名しか
+ * 検証対象にしないため、濃淡ランプの変数名はそもそも extractColorEntries に一致せず自然に除外される。
+ * #303 で image 型マスター背景を対象外にしたのと同じ整理（既定値を複製すると二重管理になるため対象外）。
  */
 function getTokenContrastWarnings(tokens: Record<string, Record<string, string>>): string[] {
   const warnings: string[] = []
