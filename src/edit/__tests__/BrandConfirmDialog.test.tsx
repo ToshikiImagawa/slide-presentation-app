@@ -49,9 +49,20 @@ function buildProfile(overrides: Partial<BrandProfile> = {}): BrandProfile {
   }
 }
 
-/** slideLayout の1プレースホルダ（既定文字プロパティは Rust 側で継承解決済みの形。#316） */
-function placeholder(kind: BrandPlaceholderKind, phType: string | null, text: Partial<PlaceholderTextProps> = {}): PlaceholderProfile {
-  return { phType, idx: null, kind, text: { latin: null, ea: null, cs: null, sizePt: null, bold: null, colorHex: null, fontOrigin: 'none', ...text } }
+/** slideLayout の1プレースホルダ（既定文字プロパティは Rust 側で継承解決済みの形。#316）。
+ * 矩形（#317）は既定 `null`（未指定）で、必要なテストだけ `rect` で明示する */
+function placeholder(kind: BrandPlaceholderKind, phType: string | null, text: Partial<PlaceholderTextProps> = {}, rect: Partial<Pick<PlaceholderProfile, 'xEmu' | 'yEmu' | 'cxEmu' | 'cyEmu'>> = {}): PlaceholderProfile {
+  return {
+    phType,
+    idx: null,
+    kind,
+    text: { latin: null, ea: null, cs: null, sizePt: null, bold: null, colorHex: null, fontOrigin: 'none', ...text },
+    xEmu: null,
+    yEmu: null,
+    cxEmu: null,
+    cyEmu: null,
+    ...rect,
+  }
 }
 
 /** 表紙・本文の2枠ぶんの layout を持ち、実書体と文字サイズが `a:defRPr` にしかないテンプレート（#316） */
@@ -84,6 +95,29 @@ function profileWithDefRprLayouts(): BrandProfile {
 }
 
 const DEF_RPR_ASSIGNMENTS: BrandOverrides = { layoutAssignments: { '0:0': 'center', '0:1': 'content' } }
+
+/** `content` 枠に割り当てる、非対称な矩形の本文プレースホルダを1つだけ持つテンプレート（#317） */
+function profileWithContentBodyRect(): BrandProfile {
+  return buildProfile({
+    masters: [
+      {
+        part: 'ppt/slideMasters/slideMaster1.xml',
+        mappedColors: buildProfile().mappedColors,
+        slideLayouts: [
+          {
+            part: 'ppt/slideLayouts/slideLayout1.xml',
+            name: 'Content',
+            layoutType: 'obj',
+            backgroundColorHex: null,
+            placeholders: [placeholder('body', 'body', {}, { xEmu: 609_600, yEmu: 1_143_000, cxEmu: 10_363_200, cyEmu: 5_029_200 })],
+          },
+        ],
+      },
+    ],
+  })
+}
+
+const CONTENT_ASSIGNMENT: BrandOverrides = { layoutAssignments: { '0:0': 'content' } }
 
 function renderDialog(props: { profile?: BrandProfile; initialOverrides?: BrandOverrides } = {}) {
   const onApply = vi.fn()
@@ -304,6 +338,33 @@ describe('BrandConfirmDialog（#168 並置比較・取り込み確認）', () =>
     it('型階層が検出されなければその旨を表示する（レイアウト未割当のテンプレート）', () => {
       renderDialog()
       expect(screen.getByText('型階層は検出されませんでした')).toBeTruthy()
+    })
+  })
+
+  describe('セーフエリア（#317）', () => {
+    it('content 枠の本文プレースホルダ矩形から導出した値を4辺の入力欄に表示する', () => {
+      renderDialog({ profile: profileWithContentBodyRect(), initialOverrides: CONTENT_ASSIGNMENT })
+      // left=64 / top=120 / right=128 / bottom=72（compile.test.ts の導出テストと同じ入力）
+      expect((screen.getByLabelText('セーフエリア 上') as HTMLInputElement).value).toBe('120')
+      expect((screen.getByLabelText('セーフエリア 右') as HTMLInputElement).value).toBe('128')
+      expect((screen.getByLabelText('セーフエリア 下') as HTMLInputElement).value).toBe('72')
+      expect((screen.getByLabelText('セーフエリア 左') as HTMLInputElement).value).toBe('64')
+    })
+
+    it('辺を編集して blur すると safeAreaOverrides として渡り、他の辺は導出値のまま残る', () => {
+      const { onApply } = renderDialog({ profile: profileWithContentBodyRect(), initialOverrides: CONTENT_ASSIGNMENT })
+      const top = screen.getByLabelText('セーフエリア 上')
+      fireEvent.change(top, { target: { value: '10' } })
+      fireEvent.blur(top)
+      fireEvent.click(screen.getByRole('button', { name: '取り込む' }))
+      const arg = onApply.mock.calls[0][0] as { overrides: BrandOverrides; compiled: CompiledBrandTheme }
+      expect(arg.overrides.safeAreaOverrides).toEqual({ top: 10 })
+      expect(arg.compiled.canvas?.safeArea).toEqual({ top: 10, left: 64, right: 128, bottom: 72 })
+    })
+
+    it('body プレースホルダが無く導出できない場合は空欄（既定60pxのプレースホルダ）で表示する', () => {
+      renderDialog()
+      expect((screen.getByLabelText('セーフエリア 上') as HTMLInputElement).value).toBe('')
     })
   })
 

@@ -18,7 +18,7 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { useTranslation } from '../i18n'
 import { getContrastRatio, WCAG_AA_THRESHOLD } from '../applyTheme'
-import type { LogoConfig, SlideData, ThemeData } from '../data'
+import type { LogoConfig, SafeArea, SlideData, ThemeData } from '../data'
 import { compile, mediaAssetToDataUrl, mergeCompiledBrandTheme } from '../brand/compile'
 import {
   LAYOUT_ASSIGNMENT_SLOTS,
@@ -61,6 +61,22 @@ function parsePositiveNumber(draft: string): number | null | undefined {
   const value = Number.parseFloat(draft)
   return Number.isFinite(value) && value > 0 ? value : undefined
 }
+
+/** セーフエリア（#317）の数値入力の検証。余白は 0（本文をキャンバス端まで広げる）を許すため
+ * `parsePositiveNumber` と異なり 0 以上を有効値とする */
+function parseNonNegativeNumber(draft: string): number | null | undefined {
+  if (draft.trim() === '') return null
+  const value = Number.parseFloat(draft)
+  return Number.isFinite(value) && value >= 0 ? value : undefined
+}
+
+/** セーフエリア4辺の表示順とラベル（#317） */
+const SAFE_AREA_ROWS: ReadonlyArray<{ key: keyof SafeArea; labelFallback: string }> = [
+  { key: 'top', labelFallback: '上' },
+  { key: 'right', labelFallback: '右' },
+  { key: 'bottom', labelFallback: '下' },
+  { key: 'left', labelFallback: '左' },
+]
 
 /** 割り当て可能な7枠の表示ラベル（`LAYOUT_ASSIGNMENT_SLOTS` の並び順。#185/#192 で5枠固定、#262 で反転面/締めの2枠を追加） */
 const LAYOUT_SLOT_LABELS: Record<LayoutAssignmentSlot, string> = {
@@ -117,6 +133,8 @@ export function BrandConfirmDialog({ open, profile, initialOverrides, previewSli
   /** 基準サイズと段の比率の編集途中の文字列。確定は blur（不正値はコミットしない） */
   const [baseFontSizeDraft, setBaseFontSizeDraft] = useState<string | undefined>(undefined)
   const [ratioDrafts, setRatioDrafts] = useState<Record<string, string | undefined>>({})
+  /** セーフエリア4辺の編集途中の文字列（#317。確定は blur） */
+  const [safeAreaDrafts, setSafeAreaDrafts] = useState<Partial<Record<keyof SafeArea, string>>>({})
 
   const { theme: compiled, report } = useMemo(() => compile(profile, overrides), [profile, overrides])
 
@@ -154,6 +172,18 @@ export function BrandConfirmDialog({ open, profile, initialOverrides, previewSli
       if (value === null) delete ratios[key]
       else ratios[key] = value
       return { ...prev, fontOverrides: { ...prev.fontOverrides, fontSizeRatios: ratios } }
+    })
+  }
+
+  const commitSafeArea = (key: keyof SafeArea, draft: string) => {
+    setSafeAreaDrafts((prev) => ({ ...prev, [key]: undefined }))
+    const value = parseNonNegativeNumber(draft)
+    if (value === undefined) return
+    setOverrides((prev) => {
+      const next = { ...prev.safeAreaOverrides }
+      if (value === null) delete next[key]
+      else next[key] = value
+      return { ...prev, safeAreaOverrides: next }
     })
   }
 
@@ -485,6 +515,39 @@ export function BrandConfirmDialog({ open, profile, initialOverrides, previewSli
             )}
           </Stack>
         )}
+
+        <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
+          {t('brand.safeAreaSection', 'セーフエリア（本文の余白）')}
+        </Typography>
+        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2, flexWrap: 'wrap' }}>
+          {SAFE_AREA_ROWS.map(({ key, labelFallback }) => (
+            <Stack key={key} direction="row" spacing={0.5} alignItems="center">
+              <Typography component="span" sx={{ fontSize: 12 }}>
+                {t(`brand.safeArea${capitalize(key)}`, labelFallback)}
+              </Typography>
+              <TextField
+                size="small"
+                value={safeAreaDrafts[key] ?? String(compiled.canvas?.safeArea?.[key] ?? '')}
+                onChange={(e) => setSafeAreaDrafts((prev) => ({ ...prev, [key]: e.target.value }))}
+                onBlur={(e) => commitSafeArea(key, e.target.value)}
+                placeholder="60"
+                inputProps={{ 'aria-label': t(`brand.safeArea${capitalize(key)}Label`, `セーフエリア ${labelFallback}`), style: { fontFamily: 'var(--fixed-font-code)', fontSize: 12, padding: '4px 8px' } }}
+                sx={{ width: 70 }}
+              />
+            </Stack>
+          ))}
+          <Typography component="span" sx={{ color: 'var(--fixed-text-muted)', fontSize: 12 }}>
+            px
+          </Typography>
+          {report.fields['canvas.safeArea'] && (
+            <Chip size="small" color={statusChipColor(report.fields['canvas.safeArea'].status)} label={t(`brand.status${capitalize(report.fields['canvas.safeArea'].status)}`, report.fields['canvas.safeArea'].status)} />
+          )}
+          {report.fields['canvas.safeArea']?.detail && (
+            <Typography component="span" sx={{ color: 'var(--fixed-text-muted)', fontSize: 12 }}>
+              {report.fields['canvas.safeArea'].detail}
+            </Typography>
+          )}
+        </Stack>
       </DialogContent>
       <DialogActions>
         <Button onClick={onCancel} color="inherit">

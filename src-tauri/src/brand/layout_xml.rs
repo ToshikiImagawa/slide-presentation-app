@@ -20,6 +20,7 @@ use quick_xml::events::BytesStart;
 
 use super::color::ColorSpec;
 use super::master_xml::ClrMap;
+use super::shapes::{is_xfrm_path, read_xfrm_child, PlaceholderShapeTracker, RawXfrm};
 use super::text_props::RawTextProps;
 use super::xml::{attr, read_solid_fill, rel, strip_path, walk_elements};
 use super::BrandError;
@@ -32,6 +33,9 @@ pub struct PlaceholderInfo {
   pub idx: Option<u32>,
   /// `p:txBody/a:lstStyle/a:lvl1pPr/a:defRPr` の実測値（#316）。継承の解決は呼び出し側に委ねる
   pub text: RawTextProps,
+  /// `p:spPr/a:xfrm/a:off|a:ext` の実測値（#317）。layout 側に無ければ所属 slideMaster の
+  /// 同じプレースホルダから継承する（継承の解決は呼び出し側に委ねる）
+  pub xfrm: RawXfrm,
 }
 
 /// slideLayout から抽出した内容
@@ -52,16 +56,14 @@ pub struct SlideLayoutInfo {
 /// slideLayout XML をパースする
 pub fn parse(xml: &str) -> Result<SlideLayoutInfo, BrandError> {
   let mut info = SlideLayoutInfo::default();
-  // 直近に見つけた `p:ph` が属するシェイプ（`p:sp` 等）の深さ。同じシェイプの `a:lstStyle` の
-  // `a:defRPr` だけを、そのプレースホルダの既定文字プロパティとして結びつけるための目印（#316）。
-  // 兄弟シェイプの開始で必ずリセットするため、同定にはパス全体ではなく深さで足りる
-  let mut placeholder_shape: Option<usize> = None;
+  // 直近に見つけた `p:ph` が属するシェイプの追跡（#316/#317）。master_xml と同じ状態機械を共有する
+  let mut tracker = PlaceholderShapeTracker::new();
   walk_elements(xml, |stack, name, e| {
     if stack.is_empty() {
       info.layout_type = attr(e, "type");
       return;
     }
-    visit(&mut info, &mut placeholder_shape, stack, name, e);
+    visit(&mut info, &mut tracker, stack, name, e);
   })?;
   Ok(info)
 }
@@ -71,7 +73,7 @@ const CLR_MAP_OVR_PATH: [&str; 1] = ["clrMapOvr"];
 
 fn visit(
   info: &mut SlideLayoutInfo,
-  placeholder_shape: &mut Option<usize>,
+  tracker: &mut PlaceholderShapeTracker,
   stack: &[String],
   name: &str,
   e: &BytesStart,
@@ -83,34 +85,31 @@ fn visit(
     return;
   }
 
-  // シェイプの開始（`p:spTree` / `p:grpSp` の直下）で目印を落とす。パスは要素名だけで構成されるため
-  // 兄弟シェイプのパスは同一になり、ここでリセットしないと隣のシェイプ（プレースホルダでない図形）の
-  // `a:lstStyle` を直前のプレースホルダの値として取り込んでしまう（#316）
-  if matches!(
-    parent.last().map(String::as_str),
-    Some("spTree") | Some("grpSp")
-  ) {
-    *placeholder_shape = None;
-  }
-
   // p:nvSpPr/p:nvPicPr/p:nvGraphicFramePr 等、コンテナの種類を問わず `nvPr` 直下の `ph` だけを拾う
-  if name == "ph" && parent.last().map(String::as_str) == Some("nvPr") {
+  if let Some((ph_type, idx)) = tracker.observe(parent, name, e) {
     info.placeholders.push(PlaceholderInfo {
-      ph_type: attr(e, "type"),
-      idx: attr(e, "idx").and_then(|v| v.trim().parse::<u32>().ok()),
+      ph_type,
+      idx,
       text: RawTextProps::default(),
+      xfrm: RawXfrm::default(),
     });
-    // `p:ph` のパスは `<シェイプ>/nvSpPr/nvPr` なので、末尾 2 段を落とせばシェイプ自身の深さになる
-    *placeholder_shape = Some(parent.len() - 2);
     return;
   }
 
   // 直近の `p:ph` と同じシェイプの `a:lstStyle/a:lvl1pPr` 配下＝そのプレースホルダの既定文字プロパティ
   if let (Some(inner), Some(placeholder)) = (
-    lvl1_style_path(*placeholder_shape, parent),
+    lvl1_style_path(tracker.shape_depth(), parent),
     info.placeholders.last_mut(),
   ) {
     placeholder.text.visit(inner, name, e);
+    return;
+  }
+
+  // 直近の `p:ph` と同じシェイプの `p:spPr/a:xfrm` 配下＝そのプレースホルダの矩形（#317）
+  if is_xfrm_path(tracker.shape_depth(), parent) {
+    if let Some(placeholder) = info.placeholders.last_mut() {
+      read_xfrm_child(&mut placeholder.xfrm, name, e);
+    }
     return;
   }
 
@@ -350,6 +349,55 @@ mod tests {
   fn placeholders_without_text_body_have_no_measured_text_properties() {
     let info = parse(LAYOUT_XML).unwrap();
     assert_eq!(info.placeholders[0].text, RawTextProps::default());
+  }
+
+  /// 非対称な余白を持つ本文プレースホルダ（左右上下で異なる矩形）と、`a:xfrm` を持たないタイトルの2枚（#317）
+  const LAYOUT_WITH_XFRM: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
+<p:sldLayout xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" type="obj">
+  <p:cSld name="Content">
+    <p:spTree>
+      <p:nvGrpSpPr/>
+      <p:sp>
+        <p:nvSpPr><p:cNvPr id="2" name="Title 1"/><p:nvPr><p:ph type="title"/></p:nvPr></p:nvSpPr>
+        <p:spPr/>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr><p:cNvPr id="3" name="Text Placeholder 2"/><p:nvPr><p:ph type="body" idx="1"/></p:nvPr></p:nvSpPr>
+        <p:spPr>
+          <a:xfrm><a:off x="609600" y="1143000"/><a:ext cx="10972800" cy="5257800"/></a:xfrm>
+        </p:spPr>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr><p:cNvPr id="4" name="Decoration"/><p:nvPr/></p:nvSpPr>
+        <p:spPr>
+          <a:xfrm><a:off x="0" y="0"/><a:ext cx="99" cy="99"/></a:xfrm>
+        </p:spPr>
+      </p:sp>
+    </p:spTree>
+  </p:cSld>
+</p:sldLayout>"#;
+
+  #[test]
+  fn parses_placeholder_rectangle_from_xfrm() {
+    let info = parse(LAYOUT_WITH_XFRM).unwrap();
+    let body = &info.placeholders[1].xfrm;
+    assert_eq!(body.off, Some((609_600, 1_143_000)));
+    assert_eq!(body.ext, Some((10_972_800, 5_257_800)));
+  }
+
+  #[test]
+  fn placeholder_without_xfrm_has_no_rectangle() {
+    let info = parse(LAYOUT_WITH_XFRM).unwrap();
+    assert_eq!(info.placeholders[0].xfrm, RawXfrm::default());
+  }
+
+  #[test]
+  fn rectangle_of_non_placeholder_shapes_is_not_attributed_to_placeholders() {
+    // 兄弟シェイプの境界を無視すると "Decoration" の矩形が直前のプレースホルダの値になってしまう
+    let info = parse(LAYOUT_WITH_XFRM).unwrap();
+    for placeholder in &info.placeholders {
+      assert_ne!(placeholder.xfrm.ext, Some((99, 99)));
+    }
   }
 
   #[test]

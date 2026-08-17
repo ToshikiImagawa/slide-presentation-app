@@ -28,6 +28,7 @@ mod xml;
 use color::{apply_transforms, ColorRef, ColorSpec, Rgb};
 use master_xml::{ClrMap, MasterInfo};
 use opc::{OpcPackage, SlideSize};
+use shapes::RawXfrm;
 use text_props::{PlaceholderKind, PlaceholderTextProps, RawTextProps};
 use theme_xml::{ClrScheme, FontScheme, ThemeInfo};
 
@@ -149,6 +150,14 @@ pub struct PlaceholderProfile {
   /// 継承解決済みの既定文字プロパティ（#316）。書体は `a:defRPr` の実測値を `a:fontScheme` より優先する。
   /// 文字サイズはレイアウト種別ごとの型階層（表紙タイトル / 章タイトル / 本文）の抽出元になる
   pub text: PlaceholderTextProps,
+  /// `p:spPr/a:xfrm/a:off@x`（EMU）。layout 側に無ければ所属 slideMaster の同じプレースホルダから
+  /// 継承する（#317）。`off`/`ext` のどちらかが欠けている場合は 4 フィールドすべて `None`（部分的な
+  /// 矩形は本文領域の計算に使えないため、`compile()` 側の判断を単純にする）
+  pub x_emu: Option<i64>,
+  pub y_emu: Option<i64>,
+  /// `p:spPr/a:xfrm/a:ext@cx`（EMU）
+  pub cx_emu: Option<i64>,
+  pub cy_emu: Option<i64>,
 }
 
 /// slideLayout から抽出した内容（#192）。ロゴ・帯のヒューリスティクスは slideMaster 側のみで行う設計
@@ -367,16 +376,58 @@ fn build_slide_layout_profile(
       .into_iter()
       .map(|p| {
         let kind = PlaceholderKind::of(p.ph_type.as_deref());
+        let (x_emu, y_emu, cx_emu, cy_emu) = resolve_placeholder_xfrm(&p.xfrm, p.idx, kind, master);
         PlaceholderProfile {
           text: text_props::resolve(&p.text, kind, master, theme, effective_color_map),
           kind,
           ph_type: p.ph_type,
           idx: p.idx,
+          x_emu,
+          y_emu,
+          cx_emu,
+          cy_emu,
         }
       })
       .collect(),
     background_color_hex,
   })
+}
+
+/// layout のプレースホルダ矩形を継承込みで解決する（#317）。`off`（位置）と `ext`（サイズ）は
+/// `text_props::resolve` と同じ「項目ごとに独立して解決する」考え方で個別に継承元へフォールバックする。
+/// 最終的に両方が揃わなければ 4 フィールドすべて `None` にする（片方だけの矩形は本文領域の計算に使えない）
+fn resolve_placeholder_xfrm(
+  layout_xfrm: &RawXfrm,
+  idx: Option<u32>,
+  kind: PlaceholderKind,
+  master: &MasterInfo,
+) -> (Option<i64>, Option<i64>, Option<i64>, Option<i64>) {
+  let master_xfrm = find_master_placeholder_xfrm(master, idx, kind);
+  let off = layout_xfrm.off.or_else(|| master_xfrm.and_then(|x| x.off));
+  let ext = layout_xfrm.ext.or_else(|| master_xfrm.and_then(|x| x.ext));
+  match (off, ext) {
+    (Some((x, y)), Some((cx, cy))) => (Some(x), Some(y), Some(cx), Some(cy)),
+    _ => (None, None, None, None),
+  }
+}
+
+/// 所属 slideMaster から継承元のプレースホルダ矩形を選ぶ。`idx` が一致するものを優先し、
+/// 無ければ種別（`kind`）が一致する最初のもの（記述順の先頭）にフォールバックする
+fn find_master_placeholder_xfrm(
+  master: &MasterInfo,
+  idx: Option<u32>,
+  kind: PlaceholderKind,
+) -> Option<&RawXfrm> {
+  if let Some(idx) = idx {
+    if let Some(found) = master.placeholders.iter().find(|p| p.idx == Some(idx)) {
+      return Some(&found.xfrm);
+    }
+  }
+  master
+    .placeholders
+    .iter()
+    .find(|p| PlaceholderKind::of(p.ph_type.as_deref()) == kind)
+    .map(|p| &p.xfrm)
 }
 
 /// テンプレートファイル本体の sha256（hex）。読み終えたら先頭へ戻す（後続の zip オープンに同じ reader を使うため）
@@ -1066,8 +1117,23 @@ mod tests {
   /// 所属 master の clrMap を通して初めて色が確定する（同じ参照でも master が違えば別の色になることを固定する）
   fn pptx_package_with_multiple_masters_and_layouts() -> Vec<u8> {
     // bodyStyle にだけ書体を明示する（layout のプレースホルダが省略した項目の継承元になる。#316）
+    // cSld/spTree に本文プレースホルダ（idx=1）の矩形を持つ。LAYOUT2_CONTENT の body プレースホルダは
+    // `a:xfrm` を持たないため、この矩形が継承元になる（#317）
     const MASTER1: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
 <p:sldMaster xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <p:cSld>
+    <p:spTree>
+      <p:nvGrpSpPr/>
+      <p:sp>
+        <p:nvSpPr><p:cNvPr id="2" name="Title Placeholder 1"/><p:nvPr><p:ph type="title"/></p:nvPr></p:nvSpPr>
+        <p:spPr><a:xfrm><a:off x="457200" y="274638"/><a:ext cx="11277600" cy="1143000"/></a:xfrm></p:spPr>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr><p:cNvPr id="3" name="Text Placeholder 2"/><p:nvPr><p:ph type="body" idx="1"/></p:nvPr></p:nvSpPr>
+        <p:spPr><a:xfrm><a:off x="609600" y="1600200"/><a:ext cx="10972800" cy="4525963"/></a:xfrm></p:spPr>
+      </p:sp>
+    </p:spTree>
+  </p:cSld>
   <p:clrMap bg1="lt1" tx1="dk1" bg2="lt2" tx2="dk2" accent1="accent1" accent2="accent2" accent3="accent3" accent4="accent4" accent5="accent5" accent6="accent6" hlink="hlink" folHlink="folHlink"/>
   <p:sldLayoutIdLst>
     <p:sldLayoutId id="2147483650" r:id="rId10"/>
@@ -1314,6 +1380,39 @@ mod tests {
     assert_eq!(body.latin.as_deref(), Some("Master Body Sans"));
     assert_eq!(body.size_pt, Some(18.0));
     assert_eq!(body.font_origin, text_props::FontOrigin::DefRpr);
+  }
+
+  #[test]
+  fn inherits_placeholder_rectangle_from_master_when_layout_omits_xfrm() {
+    // "Content" layout（slideMaster1 配下）のプレースホルダは `a:xfrm` を持たないため、
+    // 所属 slideMaster の cSld/spTree にある同じプレースホルダの矩形を継承する（#317）。
+    // タイトルは種別一致、本文は idx=1 一致で解決する
+    let profile = extract_bytes(&pptx_package_with_multiple_masters_and_layouts()).unwrap();
+    let content = &profile.masters[1].slide_layouts[1];
+
+    let title = &content.placeholders[0];
+    assert_eq!(title.x_emu, Some(457_200));
+    assert_eq!(title.y_emu, Some(274_638));
+    assert_eq!(title.cx_emu, Some(11_277_600));
+    assert_eq!(title.cy_emu, Some(1_143_000));
+
+    let body = &content.placeholders[1];
+    assert_eq!(body.x_emu, Some(609_600));
+    assert_eq!(body.y_emu, Some(1_600_200));
+    assert_eq!(body.cx_emu, Some(10_972_800));
+    assert_eq!(body.cy_emu, Some(4_525_963));
+  }
+
+  #[test]
+  fn placeholder_rectangle_is_omitted_when_neither_layout_nor_master_has_xfrm() {
+    // slideMaster2 は cSld を持たず（継承元が無い）、配下の "Section Divider" layout の
+    // プレースホルダも `a:xfrm` を持たないため、矩形は4フィールドとも None のままになる（#317）
+    let profile = extract_bytes(&pptx_package_with_multiple_masters_and_layouts()).unwrap();
+    let section = &profile.masters[0].slide_layouts[0].placeholders[0];
+    assert_eq!(section.x_emu, None);
+    assert_eq!(section.y_emu, None);
+    assert_eq!(section.cx_emu, None);
+    assert_eq!(section.cy_emu, None);
   }
 
   #[test]
