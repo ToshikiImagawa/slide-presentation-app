@@ -25,7 +25,7 @@ use quick_xml::Reader;
 use zip::ZipArchive;
 
 use super::xml::{attr, local_name};
-use super::BrandError;
+use super::{BrandError, MediaAsset};
 
 /// アーカイブ自体のサイズ上限。動画入りの配布テンプレートでも数十 MB に収まる
 const MAX_ARCHIVE_SIZE: u64 = 256 * 1024 * 1024;
@@ -368,14 +368,24 @@ pub fn parse_slide_size(xml: &str) -> Result<Option<SlideSize>, BrandError> {
   Ok(size)
 }
 
-/// 埋め込みフォント（#318）。`p:embeddedFont/p:font@typeface` と `p:regular`/`p:bold` 子要素の有無だけを持つ。
-/// フォント実体（`p:regular@r:id` が指す `ppt/fonts/*.fntdata`）の展開は対象外（#321のスコープ）
+/// 埋め込みフォント（#318 の書体名列挙 + #321 の実体解決）。`p:embeddedFont/p:font@typeface` と
+/// `p:regular`/`p:bold` 子要素の有無、および実体解決に使う `r:id` を持つ
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EmbeddedFont {
   pub typeface: String,
   pub has_regular: bool,
   pub has_bold: bool,
+  /// `p:regular@r:id`。フォント実体の解決にのみ使う内部情報でフロントへは渡さない
+  #[serde(skip)]
+  pub regular_rid: Option<String>,
+  /// `p:bold@r:id`
+  #[serde(skip)]
+  pub bold_rid: Option<String>,
+  /// 取り込んだフォント実体（非圧縮 EOT を剥がし sfnt マジックを検証済み。#321 段階1）。
+  /// 圧縮（MicroType Express）・壊れたヘッダ・sfnt マジック不一致・参照未解決のいずれでも `None`
+  /// （例外にせず #318 の書体名のみの挙動へ退避する）
+  pub payload: Option<MediaAsset>,
 }
 
 /// presentation XML の `p:embeddedFontLst/p:embeddedFont` を読む（#318）。
@@ -398,6 +408,9 @@ pub fn parse_embedded_fonts(xml: &str) -> Result<Vec<EmbeddedFont>, BrandError> 
             typeface: String::new(),
             has_regular: false,
             has_bold: false,
+            regular_rid: None,
+            bold_rid: None,
+            payload: None,
           });
         } else if in_list && name == "font" {
           if let (Some(font), Some(typeface)) = (current.as_mut(), attr(&e, "typeface")) {
@@ -406,10 +419,12 @@ pub fn parse_embedded_fonts(xml: &str) -> Result<Vec<EmbeddedFont>, BrandError> 
         } else if in_list && name == "regular" {
           if let Some(font) = current.as_mut() {
             font.has_regular = true;
+            font.regular_rid = attr(&e, "id");
           }
         } else if in_list && name == "bold" {
           if let Some(font) = current.as_mut() {
             font.has_bold = true;
+            font.bold_rid = attr(&e, "id");
           }
         }
       }
@@ -882,6 +897,17 @@ mod tests {
     assert_eq!(fonts[1].typeface, "Corporate Sans Light");
     assert!(fonts[1].has_regular);
     assert!(!fonts[1].has_bold);
+  }
+
+  #[test]
+  fn parses_embedded_font_regular_and_bold_rids_for_payload_resolution() {
+    let fonts = parse_embedded_fonts(PRESENTATION_WITH_EMBEDDED_FONTS).unwrap();
+    assert_eq!(fonts[0].regular_rid.as_deref(), Some("rId5"));
+    assert_eq!(fonts[0].bold_rid.as_deref(), Some("rId6"));
+    assert_eq!(fonts[1].regular_rid.as_deref(), Some("rId7"));
+    assert_eq!(fonts[1].bold_rid, None);
+    // 実体はまだ解決していない（rid の解決には OpcPackage が要るため、この時点では常に None）
+    assert_eq!(fonts[0].payload, None);
   }
 
   #[test]

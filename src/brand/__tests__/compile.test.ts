@@ -338,7 +338,7 @@ describe('compile（#168 の並置比較・取り込み確認）', () => {
     })
 
     it('embeddedFonts を localName のみの FontSource として登録する（src は持たせない）', () => {
-      const p = profile({ embeddedFonts: [{ typeface: 'Corporate Sans', hasRegular: true, hasBold: true }] })
+      const p = profile({ embeddedFonts: [{ typeface: 'Corporate Sans', hasRegular: true, hasBold: true, payload: null }] })
       const { theme, report } = compile(p, {})
       expect(theme.fonts.sources).toEqual([{ family: 'Corporate Sans', localName: 'Corporate Sans' }])
       expect(report.fields['fonts.embedded']?.status).toBe('derived')
@@ -347,12 +347,65 @@ describe('compile（#168 の並置比較・取り込み確認）', () => {
     it('同じ typeface が重複しても sources には1件だけ登録する', () => {
       const p = profile({
         embeddedFonts: [
-          { typeface: 'Corporate Sans', hasRegular: true, hasBold: false },
-          { typeface: 'Corporate Sans', hasRegular: true, hasBold: true },
+          { typeface: 'Corporate Sans', hasRegular: true, hasBold: false, payload: null },
+          { typeface: 'Corporate Sans', hasRegular: true, hasBold: true, payload: null },
         ],
       })
       const { theme } = compile(p, {})
       expect(theme.fonts.sources).toHaveLength(1)
+    })
+  })
+
+  describe('埋め込みフォント実体の取り込み（#171/#321）', () => {
+    const payload = { contentType: 'font/otf', base64: 'ZmFrZS1jZmYtb3V0bGluZS1kYXRh' }
+
+    it('実体を取り込めても再配布ライセンス区分が未選択なら src を書かず fallback として報告する', () => {
+      const p = profile({ embeddedFonts: [{ typeface: 'Corporate Sans', hasRegular: true, hasBold: false, payload }] })
+      const { theme, report } = compile(p, {})
+      expect(theme.fonts.sources).toEqual([{ family: 'Corporate Sans', localName: 'Corporate Sans' }])
+      expect(report.fields['fonts.embedded[0].payload']?.status).toBe('fallback')
+    })
+
+    it('既定の再配布ライセンス区分は internal-only で、選択すると data URL の src を書く', () => {
+      const p = profile({ embeddedFonts: [{ typeface: 'Corporate Sans', hasRegular: true, hasBold: false, payload }] })
+      const { theme, report } = compile(p, { embeddedFontRedistribution: { '0': 'internal-only' } })
+      expect(theme.fonts.sources).toEqual([
+        {
+          family: 'Corporate Sans',
+          localName: 'Corporate Sans',
+          src: `data:font/otf;base64,${payload.base64}`,
+          format: 'opentype',
+          redistribution: 'internal-only',
+        },
+      ])
+      expect(report.fields['fonts.embedded[0].payload']?.status).toBe('ok')
+    })
+
+    it('permitted を選ぶと同じく src を書く', () => {
+      const p = profile({ embeddedFonts: [{ typeface: 'Corporate Sans', hasRegular: true, hasBold: false, payload }] })
+      const { theme } = compile(p, { embeddedFontRedistribution: { '0': 'permitted' } })
+      expect(theme.fonts.sources?.[0]?.src).toBe(`data:font/otf;base64,${payload.base64}`)
+    })
+
+    it('prohibited を選ぶと src を自動除外する（#171 の既存挙動）', () => {
+      const p = profile({ embeddedFonts: [{ typeface: 'Corporate Sans', hasRegular: true, hasBold: false, payload }] })
+      const { theme, report } = compile(p, { embeddedFontRedistribution: { '0': 'prohibited' } })
+      expect(theme.fonts.sources).toEqual([{ family: 'Corporate Sans', localName: 'Corporate Sans', redistribution: 'prohibited' }])
+      expect(theme.fonts.sources?.[0]?.src).toBeUndefined()
+      expect(report.fields['fonts.embedded[0].payload']?.status).toBe('fallback')
+    })
+
+    it('圧縮/壊れたヘッダで実体が無い場合は区分を選んでいても書体名のみになる', () => {
+      const p = profile({ embeddedFonts: [{ typeface: 'Corporate Sans', hasRegular: true, hasBold: false, payload: null }] })
+      const { theme, report } = compile(p, { embeddedFontRedistribution: { '0': 'internal-only' } })
+      expect(theme.fonts.sources).toEqual([{ family: 'Corporate Sans', localName: 'Corporate Sans' }])
+      expect(report.fields['fonts.embedded[0].payload']?.status).toBe('fallback')
+    })
+
+    it('参照そのものが無い候補は missing として報告する', () => {
+      const p = profile({ embeddedFonts: [{ typeface: 'Corporate Sans', hasRegular: false, hasBold: false, payload: null }] })
+      const { report } = compile(p, {})
+      expect(report.fields['fonts.embedded[0].payload']?.status).toBe('missing')
     })
   })
 

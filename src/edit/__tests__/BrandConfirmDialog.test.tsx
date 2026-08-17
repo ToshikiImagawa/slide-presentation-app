@@ -256,13 +256,55 @@ describe('BrandConfirmDialog（#168 並置比較・取り込み確認）', () =>
   it('埋め込みフォント名を表示する。Bold を持つ書体は Bold 表記を付ける（#318）', () => {
     const profile = buildProfile({
       embeddedFonts: [
-        { typeface: 'Corporate Sans', hasRegular: true, hasBold: true },
-        { typeface: 'Corporate Sans Light', hasRegular: true, hasBold: false },
+        { typeface: 'Corporate Sans', hasRegular: true, hasBold: true, payload: null },
+        { typeface: 'Corporate Sans Light', hasRegular: true, hasBold: false, payload: null },
       ],
     })
     renderDialog({ profile })
     expect(screen.getByText('Corporate Sans（Bold）')).toBeTruthy()
     expect(screen.getByText('Corporate Sans Light')).toBeTruthy()
+  })
+
+  it('実体を取り込めない書体は「実体を取り込めません」と表示し、チェックボックスを出さない（#321）', () => {
+    const profile = buildProfile({
+      embeddedFonts: [{ typeface: 'Corporate Sans', hasRegular: true, hasBold: false, payload: null }],
+    })
+    renderDialog({ profile })
+    expect(screen.getByText('実体を取り込めません（書体名のみ登録）')).toBeTruthy()
+    expect(screen.queryByRole('checkbox')).toBeNull()
+  })
+
+  it('実体を取り込むチェックを入れると既定区分 internal-only で src を書いた FontSource が渡る（#171/#321）', () => {
+    const payload = { contentType: 'font/otf', base64: 'ZmFrZS1jZmYtb3V0bGluZS1kYXRh' }
+    const profile = buildProfile({
+      embeddedFonts: [{ typeface: 'Corporate Sans', hasRegular: true, hasBold: false, payload }],
+    })
+    const { onApply } = renderDialog({ profile })
+
+    fireEvent.click(screen.getByRole('checkbox'))
+    fireEvent.click(screen.getByRole('button', { name: '取り込む' }))
+
+    const arg = onApply.mock.calls[0][0] as { overrides: BrandOverrides; compiled: CompiledBrandTheme }
+    expect(arg.overrides.embeddedFontRedistribution).toEqual({ '0': 'internal-only' })
+    expect(arg.compiled.fonts.sources).toEqual([{ family: 'Corporate Sans', localName: 'Corporate Sans', src: `data:font/otf;base64,${payload.base64}`, format: 'opentype', redistribution: 'internal-only' }])
+  })
+
+  it('区分を prohibited に変更すると src を含まない FontSource が渡る（#171/#321）', () => {
+    const payload = { contentType: 'font/otf', base64: 'ZmFrZS1jZmYtb3V0bGluZS1kYXRh' }
+    const profile = buildProfile({
+      embeddedFonts: [{ typeface: 'Corporate Sans', hasRegular: true, hasBold: false, payload }],
+    })
+    const { onApply } = renderDialog({ profile })
+
+    fireEvent.click(screen.getByRole('checkbox'))
+    const redistributionSelect = screen.getByRole('combobox', { name: /Corporate Sans の再配布ライセンス区分/ })
+    fireEvent.mouseDown(redistributionSelect)
+    fireEvent.click(screen.getByRole('option', { name: '再配布不可（prohibited）' }))
+
+    fireEvent.click(screen.getByRole('button', { name: '取り込む' }))
+    const arg = onApply.mock.calls[0][0] as { overrides: BrandOverrides; compiled: CompiledBrandTheme }
+    expect(arg.overrides.embeddedFontRedistribution).toEqual({ '0': 'prohibited' })
+    expect(arg.compiled.fonts.sources).toEqual([{ family: 'Corporate Sans', localName: 'Corporate Sans', redistribution: 'prohibited' }])
   })
 
   it('slideLayout が無ければ検出されなかった旨を表示する（#192）', () => {

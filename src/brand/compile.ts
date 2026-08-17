@@ -408,7 +408,7 @@ function resolveFonts(profile: BrandProfile, overrides: BrandOverrides, bySlot: 
   const body = resolveFontSlot(profile.fonts.minor, findPlaceholderText(bySlot, BODY_FONT_SLOTS, 'body'), { latin: fontOverrides?.body, ea: fontOverrides?.bodyEa })
   report.fields['fonts.heading'] = fontFieldReport(heading.spec, heading.origin, Boolean(fontOverrides?.heading || fontOverrides?.headingEa), '見出し')
   report.fields['fonts.body'] = fontFieldReport(body.spec, body.origin, Boolean(fontOverrides?.body || fontOverrides?.bodyEa), '本文')
-  const sources = resolveEmbeddedFontSources(profile, report)
+  const sources = resolveEmbeddedFontSources(profile, overrides, report)
   return {
     ...(heading.spec ? { heading: heading.spec } : {}),
     ...(body.spec ? { body: body.spec } : {}),
@@ -417,23 +417,50 @@ function resolveFonts(profile: BrandProfile, overrides: BrandOverrides, bySlot: 
   }
 }
 
+/** フォント実体の content type から @font-face の format ヒントを決める（#321） */
+function fontFormatForContentType(contentType: string): string | undefined {
+  if (contentType === 'font/otf') return 'opentype'
+  if (contentType === 'font/ttf') return 'truetype'
+  return undefined
+}
+
 /**
- * `profile.embeddedFonts`（#318）を `local()` 参照のみの `FontSource` として登録する。
- * `src`（フォント実体のパス/URL）を持たせないため、#171 の再配布ゲート（`src` を持つ `FontSource` の
- * 除外判定）には触れない。フォント実体（`ppt/fonts/*.fntdata`）の展開自体が #321 のスコープ外であるため、
- * 採否の確認は不要（見た目を書き換える装飾候補と違い、実在しないローカルフォント名を足すだけでは
- * 既存の見た目に影響しない）
+ * `profile.embeddedFonts`（#318/#321）を `FontSource` として登録する。
+ * 実体（`payload`）を取り込めていても、人が確認ダイアログで再配布ライセンス区分（`overrides.embeddedFontRedistribution`）
+ * を明示的に選ぶまでは `src`（フォント実体の data URL）を書かない（#171 の再配布ゲート。区分未選択のまま
+ * 実体を同梱してしまうと再配布可否が確定していないフォントが配布物に混入するため）。区分未選択・
+ * `prohibited` 選択・実体を取り込めなかった（圧縮 / 壊れたヘッダ / 参照未解決）のいずれの場合も、
+ * #318 の挙動どおり `local()` 参照のみの `FontSource` に留める
  */
-function resolveEmbeddedFontSources(profile: BrandProfile, report: BrandImportReport): FontSource[] {
+function resolveEmbeddedFontSources(profile: BrandProfile, overrides: BrandOverrides, report: BrandImportReport): FontSource[] {
   const seen = new Set<string>()
   const sources: FontSource[] = []
-  for (const font of profile.embeddedFonts) {
-    if (seen.has(font.typeface)) continue
+  profile.embeddedFonts.forEach((font, index) => {
+    if (seen.has(font.typeface)) return
     seen.add(font.typeface)
-    sources.push({ family: font.typeface, localName: font.typeface })
-  }
-  report.fields['fonts.embedded'] =
-    sources.length > 0 ? { status: 'derived', detail: `${sources.map((s) => s.family).join(' / ')} をローカルフォントとして登録（フォント実体は同梱しない）` } : { status: 'missing', detail: '埋め込みフォントが検出されなかった' }
+    const reportKey = `fonts.embedded[${index}].payload`
+    const redistribution = overrides.embeddedFontRedistribution?.[String(index)]
+
+    if (!font.payload) {
+      sources.push({ family: font.typeface, localName: font.typeface })
+      report.fields[reportKey] = font.hasRegular || font.hasBold ? { status: 'fallback', detail: '実体を取り込めず書体名のみを登録（圧縮または壊れたヘッダ、または参照未解決）' } : { status: 'missing', detail: 'フォント実体の参照が無い' }
+      return
+    }
+
+    if (redistribution && redistribution !== 'prohibited') {
+      const format = fontFormatForContentType(font.payload.contentType)
+      sources.push({ family: font.typeface, localName: font.typeface, src: mediaAssetToDataUrl(font.payload), ...(format ? { format } : {}), redistribution })
+      report.fields[reportKey] = { status: 'ok', detail: `${font.typeface} の実体を redistribution: '${redistribution}' で同梱` }
+      return
+    }
+
+    // 実体はあるが同梱しない: 区分未選択、または明示的に redistribution: 'prohibited' を選んだ場合。
+    // redistribution は実体があるときだけ記録する（実体が無いのに区分だけ残すと「同梱していないのに
+    // 区分は確定している」という誤解を招くため、上の !font.payload 分岐では記録しない）
+    sources.push({ family: font.typeface, localName: font.typeface, ...(redistribution ? { redistribution } : {}) })
+    report.fields[reportKey] = redistribution ? { status: 'fallback', detail: "redistribution: 'prohibited' のため実体は同梱しない" } : { status: 'fallback', detail: '再配布ライセンス区分が未選択のため実体は同梱しない' }
+  })
+  report.fields['fonts.embedded'] = sources.length > 0 ? { status: 'derived', detail: `${sources.map((s) => s.family).join(' / ')} をローカルフォントとして登録` } : { status: 'missing', detail: '埋め込みフォントが検出されなかった' }
   return sources
 }
 
