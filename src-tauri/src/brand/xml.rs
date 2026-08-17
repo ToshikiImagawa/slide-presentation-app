@@ -73,6 +73,77 @@ pub fn strip_path<'a>(path: &'a [String], prefix: &[&str]) -> Option<&'a [String
   (path.len() >= prefix.len() && path[..prefix.len()] == *prefix).then(|| &path[prefix.len()..])
 }
 
+/// 「`containers` のいずれかの直下 1 段をシェイプ境界とし、境界からの相対パスで子要素を積む」走査を
+/// 1 箇所に集約する（#334）。この形は slideMaster のロゴ・帯検出（`shapes.rs`）、slideLayout/slideMaster の
+/// プレースホルダ書式・矩形抽出（`layout_xml.rs`/`master_xml.rs`）で共通して現れるが、`walk_elements` が
+/// 渡すパスは要素名の並びだけで兄弟を区別できないため、これまで呼び出し側ごとに深さを手で数える
+/// 副次状態（`Current` enum・`shape_depth: Option<usize>`）を書いていた
+#[derive(Debug)]
+pub struct ShapeCursor<'a> {
+  containers: &'a [&'a str],
+  boundary_depth: Option<usize>,
+}
+
+/// `ShapeCursor::observe` の結果
+#[derive(Debug, PartialEq, Eq)]
+pub enum ShapeEvent<'p> {
+  /// `containers` のいずれかの直下 1 段（新しいシェイプの開始）。直前のシェイプの蓄積値は
+  /// ここまでで確定しているため、呼び出し側はここで flush する
+  Boundary,
+  /// 直前の境界より深い位置。`inner` は境界要素自身を起点とした相対パス
+  Inside(&'p [String]),
+  /// まだ境界に到達していない（`containers` 配下に入る前の要素）
+  Outside,
+}
+
+impl<'a> ShapeCursor<'a> {
+  pub fn new(containers: &'a [&'a str]) -> Self {
+    Self {
+      containers,
+      boundary_depth: None,
+    }
+  }
+
+  /// 要素の親パス（`rel` 済み）を1つ観察する
+  pub fn observe<'p>(&mut self, path: &'p [String]) -> ShapeEvent<'p> {
+    if path
+      .last()
+      .is_some_and(|last| self.containers.contains(&last.as_str()))
+    {
+      self.boundary_depth = Some(path.len());
+      return ShapeEvent::Boundary;
+    }
+    match self.boundary_depth {
+      Some(depth) if path.len() > depth => ShapeEvent::Inside(&path[depth + 1..]),
+      _ => ShapeEvent::Outside,
+    }
+  }
+}
+
+/// slideLayout（`layout_xml`）・slideMaster（`master_xml`）でプレースホルダを列挙する際のシェイプ境界。
+/// `p:grpSp` 配下も個別のシェイプとして数える点で、`shapes.rs`（ロゴ・帯検出。`p:spTree` 直下のみ・
+/// グループ非再帰）の境界とは異なる。両ファイルが同じ配列リテラルを書き写すと変更が同期しなくなるため、
+/// この 1 箇所に集約する（#334）
+pub const PLACEHOLDER_SHAPE_CONTAINERS: [&str; 2] = ["spTree", "grpSp"];
+
+/// `p:ph`（プレースホルダ宣言）を検出したら `type`/`idx` を返す。`p:nvSpPr`/`p:nvPicPr`/
+/// `p:nvGraphicFramePr` 等、コンテナの種類を問わず `nvPr` 直下の `ph` だけを拾う（#317）。
+/// `inner` は `ShapeCursor::observe` が返す `ShapeEvent::Inside` の相対パス。
+/// slideLayout・slideMaster で同じ判定を手書きすると変更が同期しなくなるため、ここに1本化する
+pub fn read_placeholder_marker(
+  inner: &[String],
+  name: &str,
+  e: &BytesStart,
+) -> Option<(Option<String>, Option<u32>)> {
+  if name != "ph" || inner.last().map(String::as_str) != Some("nvPr") {
+    return None;
+  }
+  Some((
+    attr(e, "type"),
+    attr(e, "idx").and_then(|v| v.trim().parse::<u32>().ok()),
+  ))
+}
+
 /// `a:solidFill` 配下の色指定を積む。`inner` は `a:solidFill` を起点とした親要素の相対パスで、
 /// `[]` なら基準色要素（`a:srgbClr` / `a:sysClr` / `a:schemeClr`）、1 段深ければ色変換
 /// （`a:lumMod` / `a:lumOff` / `a:tint` / `a:shade`）として扱う。
@@ -191,5 +262,56 @@ mod tests {
     // 空の val・未知の要素は色にならない
     assert_eq!(fixed(r#"<a:schemeClr val=""/>"#), None);
     assert_eq!(fixed(r#"<a:hslClr hue="0"/>"#), None);
+  }
+
+  #[test]
+  fn shape_cursor_reports_outside_before_the_first_boundary() {
+    let mut cursor = ShapeCursor::new(&["spTree"]);
+    assert_eq!(cursor.observe(&path(&["cSld"])), ShapeEvent::Outside);
+  }
+
+  #[test]
+  fn shape_cursor_reports_boundary_then_relative_paths_inside() {
+    let mut cursor = ShapeCursor::new(&["spTree"]);
+    assert_eq!(
+      cursor.observe(&path(&["cSld", "spTree"])),
+      ShapeEvent::Boundary
+    );
+    assert_eq!(
+      cursor.observe(&path(&["cSld", "spTree", "sp", "spPr", "xfrm"])),
+      ShapeEvent::Inside(&path(&["spPr", "xfrm"]))
+    );
+  }
+
+  #[test]
+  fn shape_cursor_does_not_treat_unlisted_containers_as_boundaries() {
+    // "grpSp" を containers に含めない場合、グループ配下の兄弟は境界にならず
+    // 直前の境界（グループ自身）からの相対パスとして扱われる
+    let mut cursor = ShapeCursor::new(&["spTree"]);
+    assert_eq!(
+      cursor.observe(&path(&["cSld", "spTree"])),
+      ShapeEvent::Boundary
+    );
+    assert_eq!(
+      cursor.observe(&path(&["cSld", "spTree", "grpSp"])),
+      ShapeEvent::Inside(&path(&[]))
+    );
+  }
+
+  #[test]
+  fn shape_cursor_treats_every_listed_container_as_a_fresh_boundary() {
+    let mut cursor = ShapeCursor::new(&["spTree", "grpSp"]);
+    assert_eq!(
+      cursor.observe(&path(&["cSld", "spTree"])),
+      ShapeEvent::Boundary
+    );
+    assert_eq!(
+      cursor.observe(&path(&["cSld", "spTree", "grpSp"])),
+      ShapeEvent::Boundary
+    );
+    assert_eq!(
+      cursor.observe(&path(&["cSld", "spTree", "grpSp", "sp", "nvSpPr", "nvPr"])),
+      ShapeEvent::Inside(&path(&["nvSpPr", "nvPr"]))
+    );
   }
 }

@@ -10,9 +10,12 @@
 
 use quick_xml::events::BytesStart;
 
-use super::shapes::{is_xfrm_path, read_xfrm_child, PlaceholderShapeTracker, RawXfrm};
+use super::shapes::{read_xfrm_child, RawXfrm};
 use super::text_props::RawTextProps;
-use super::xml::{attr, rel, walk_elements};
+use super::xml::{
+  attr, read_placeholder_marker, rel, walk_elements, ShapeCursor, ShapeEvent,
+  PLACEHOLDER_SHAPE_CONTAINERS,
+};
 use super::BrandError;
 
 /// `p:clrMap` の 12 キー。値は clrScheme のスロット名（`lt1` / `dk1` / `accent1` …）
@@ -128,17 +131,22 @@ pub struct MasterInfo {
 /// 拾う位置はパスで確定させる
 pub fn parse(xml: &str) -> Result<MasterInfo, BrandError> {
   let mut info = MasterInfo::default();
-  // 直近に見つけた `p:ph` が属するシェイプの追跡（#317）。layout_xml と同じ状態機械を共有する
-  let mut tracker = PlaceholderShapeTracker::new();
+  let mut cursor = ShapeCursor::new(&PLACEHOLDER_SHAPE_CONTAINERS);
+  // 構築中のプレースホルダ矩形（シェイプ境界で確定させ、次の境界で確定済みのものを結果へ積む。#334）
+  let mut current: Option<MasterPlaceholderXfrm> = None;
   walk_elements(xml, |stack, name, e| {
-    visit(&mut info, &mut tracker, stack, name, e)
+    visit(&mut info, &mut cursor, &mut current, stack, name, e)
   })?;
+  if let Some(placeholder) = current {
+    info.placeholders.push(placeholder);
+  }
   Ok(info)
 }
 
 fn visit(
   info: &mut MasterInfo,
-  tracker: &mut PlaceholderShapeTracker,
+  cursor: &mut ShapeCursor,
+  current: &mut Option<MasterPlaceholderXfrm>,
   stack: &[String],
   name: &str,
   e: &BytesStart,
@@ -150,20 +158,32 @@ fn visit(
     return;
   }
 
-  if let Some((ph_type, idx)) = tracker.observe(parent, name, e) {
-    info.placeholders.push(MasterPlaceholderXfrm {
-      ph_type,
-      idx,
-      xfrm: RawXfrm::default(),
-    });
-    return;
-  }
-
-  if is_xfrm_path(tracker.shape_depth(), parent) {
-    if let Some(placeholder) = info.placeholders.last_mut() {
-      read_xfrm_child(&mut placeholder.xfrm, name, e);
+  match cursor.observe(parent) {
+    // シェイプ境界＝直前のプレースホルダ矩形はここまでで確定している
+    ShapeEvent::Boundary => {
+      if let Some(placeholder) = current.take() {
+        info.placeholders.push(placeholder);
+      }
+      return;
     }
-    return;
+    ShapeEvent::Inside(inner) => {
+      if let Some((ph_type, idx)) = read_placeholder_marker(inner, name, e) {
+        *current = Some(MasterPlaceholderXfrm {
+          ph_type,
+          idx,
+          xfrm: RawXfrm::default(),
+        });
+        return;
+      }
+
+      if inner == ["spPr", "xfrm"] {
+        if let Some(placeholder) = current.as_mut() {
+          read_xfrm_child(&mut placeholder.xfrm, name, e);
+        }
+        return;
+      }
+    }
+    ShapeEvent::Outside => {}
   }
 
   // txStyles/<titleStyle|bodyStyle|otherStyle>/lvl1pPr 配下のみ（lvl2 以降は受け皿に対応する概念がない）
