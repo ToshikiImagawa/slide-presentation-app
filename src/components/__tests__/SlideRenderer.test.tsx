@@ -459,6 +459,74 @@ describe('SlideRenderer', () => {
       const { container } = renderContent({ tiles: [{ icon: 'Description', title: 'タイル', description: '説明' }] })
       expect(container.querySelector('.content-area')!.classList.contains('content-area-fill')).toBe(false)
     })
+
+    it('imageColumns指定時、グリッドの列数が画像枚数に関わらずその値になる（#326）', () => {
+      const { container } = renderContent({ images: [{ src: '/a.png' }, { src: '/b.png' }], imageColumns: 5 })
+      expect((container.querySelector('figure')!.parentElement as HTMLElement).style.gridTemplateColumns).toBe('repeat(5, minmax(0, 1fr))')
+    })
+
+    it('imageColumnsが範囲外（0・7）のとき1〜6に丸める（#326）', () => {
+      const { container: zero } = renderContent({ images: [{ src: '/a.png' }, { src: '/b.png' }], imageColumns: 0 })
+      expect((zero.querySelector('figure')!.parentElement as HTMLElement).style.gridTemplateColumns).toBe('repeat(1, minmax(0, 1fr))')
+
+      const { container: seven } = renderContent({ images: [{ src: '/a.png' }, { src: '/b.png' }], imageColumns: 7 })
+      expect((seven.querySelector('figure')!.parentElement as HTMLElement).style.gridTemplateColumns).toBe('repeat(6, minmax(0, 1fr))')
+    })
+  })
+
+  // #326: 分類ごとに見出しを付けるグループ形（要素にimagesキーを持つ配列）
+  describe('contentスライド(images グループ形)', () => {
+    function renderContent(content: SlideData['content']) {
+      return renderWithTheme(<SlideRenderer slides={[{ id: 'test-image-groups', layout: 'content', content: { title: 'タイトル', ...content } }]} />)
+    }
+
+    const groups = [
+      { label: 'グループA', images: [{ src: '/a.png' }, { src: '/b.png' }] },
+      { label: 'グループB', images: [{ src: '/c.png' }] },
+    ]
+
+    it('グループごとに見出しが描画され、画像も枚数分描画される', () => {
+      const { container } = renderContent({ images: groups })
+      const headingTexts = Array.from(container.querySelectorAll('h2')).map((h) => h.textContent)
+      expect(headingTexts).toEqual(expect.arrayContaining(['グループA', 'グループB']))
+      expect(container.querySelectorAll('figure').length).toBe(3)
+    })
+
+    it('見出しはUnderlinedHeadingを流用しており、新しい見出し部品を作っていない（h2+区切り線の組で描画される）', () => {
+      const { container } = renderContent({ images: [{ label: 'グループA', images: [{ src: '/a.png' }] }] })
+      const heading = Array.from(container.querySelectorAll('h2')).find((h) => h.textContent === 'グループA')!
+      const divider = heading.parentElement!.querySelector('hr')
+      expect(divider).not.toBeNull()
+    })
+
+    it('imageColumns未指定時、各グループの列数はそのグループの画像枚数と既定上限(3)から決まる（現行と同じ規則）', () => {
+      const { container } = renderContent({ images: groups })
+      const grids = container.querySelectorAll('.content-area-fill-item')
+      expect(grids.length).toBe(2)
+      expect((grids[0] as HTMLElement).style.gridTemplateColumns).toBe('repeat(2, minmax(0, 1fr))')
+      expect((grids[1] as HTMLElement).style.gridTemplateColumns).toBe('repeat(1, minmax(0, 1fr))')
+    })
+
+    it('imageColumns指定時、グループ形でも全グループ共通の列数になる', () => {
+      const { container } = renderContent({ images: groups, imageColumns: 5 })
+      const grids = container.querySelectorAll('.content-area-fill-item')
+      grids.forEach((grid) => expect((grid as HTMLElement).style.gridTemplateColumns).toBe('repeat(5, minmax(0, 1fr))'))
+    })
+
+    it('グループ内画像のcaption/altもフラット配列と同じ規則で描画される', () => {
+      const { container } = renderContent({ images: [{ label: 'グループA', images: [{ src: '/a.png', alt: '図の説明', caption: '説明<br/>2行目' }] }] })
+      const img = container.querySelector('img')!
+      expect(img.getAttribute('alt')).toBe('図の説明')
+      const figcaption = container.querySelector('figcaption')
+      expect(figcaption?.querySelector('br')).not.toBeNull()
+    })
+
+    it('本文領域を埋める宣言（fill変種）がグループ形でも外側の.content-areaと各グループのグリッドに付く（#259の契約）', () => {
+      const { container } = renderContent({ images: groups })
+      expect(container.querySelector('.content-area')!.classList.contains('content-area-fill')).toBe(true)
+      const figureParents = new Set(Array.from(container.querySelectorAll('figure')).map((f) => f.parentElement))
+      figureParents.forEach((grid) => expect(grid!.classList.contains('content-area-fill-item')).toBe(true))
+    })
   })
 
   // #324: プロフィール（自己紹介）スライド（content.profile → Profile）。1人ぶんに限定した種別
