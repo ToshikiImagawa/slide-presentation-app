@@ -59,6 +59,7 @@ interface SlideContentSchema {
   swot: FieldMap & { description?: string }
   swotPane: FieldMap & { description?: string }
   heatmap: FieldMap & { description?: string }
+  profile: FieldMap & { description?: string }
 }
 
 const SCHEMA = schemaJson as unknown as SlideContentSchema
@@ -94,6 +95,7 @@ const REF_MAPS: Record<string, FieldMap> = {
   swot: stripMetaKeys(SCHEMA.swot),
   swotPane: stripMetaKeys(SCHEMA.swotPane),
   heatmap: stripMetaKeys(SCHEMA.heatmap),
+  profile: stripMetaKeys(SCHEMA.profile),
 }
 
 /** stringConstraint の種類ごとの判定関数とエラーメッセージ用の期待値表記。新しい種類を追加してもここに1行足すだけで済む（#211） */
