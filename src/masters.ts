@@ -216,6 +216,11 @@ function decorationWarnings(decoration: MasterDecoration, path: string): string[
         warnings.push(...gradientWarnings(decoration.gradient, `${path}.gradient`))
       }
       break
+    case 'rule':
+      if (decoration.borderRadius !== undefined && decoration.borderRadius < 0) {
+        warnings.push(`${path}.borderRadius: 0 以上の数値を指定してください（"${decoration.borderRadius}"。0 にクランプして描画します）`)
+      }
+      break
     case 'text':
       for (const name of unknownTextVariables(decoration.content)) {
         warnings.push(`${path}.content: 不明なテンプレート変数 "{${name}}" です（${[...MASTER_TEXT_RESOLVERS.keys()].join('/')} のいずれかを指定してください）`)

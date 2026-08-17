@@ -728,6 +728,10 @@
             },
             "thickness": { "type": "number", "description": "type: band/rule で使用（帯・線の太さ）" },
             "length": { "type": "number", "description": "type: rule で使用（線の長さ）" },
+            "borderRadius": {
+              "type": "number",
+              "description": "type: rule で使用（角丸の半径・px）。省略時は角丸なし。lengthとthicknessを同値にしその半分を指定すると円、省略/0なら正方形になる。負値は0にクランプされる"
+            },
             "orientation": { "type": "string", "enum": ["horizontal", "vertical"], "description": "type: band/rule で使用" },
             "content": {
               "type": "string",

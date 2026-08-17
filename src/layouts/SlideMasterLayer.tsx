@@ -165,7 +165,10 @@ function MasterDecorationElement({ decoration, ctx }: { decoration: MasterDecora
       // 既定色は .master-decoration-rule（global.css）に持たせる（#239）
       const style = decorationStyle(decoration)
       const sizeStyle = stripeSize(decoration.orientation, decoration.thickness ?? 2, decoration.length ?? 200)
-      return <div className="master-decoration-rule" style={{ ...style, ...sizeStyle, ...(decoration.color ? { backgroundColor: decoration.color } : {}) }} />
+      const paint = decoration.color ? { backgroundColor: decoration.color } : {}
+      // 負値は 0 にクランプする（getMasterWarnings が警告・#345）
+      const borderRadius = decoration.borderRadius === undefined ? {} : { borderRadius: Math.max(0, decoration.borderRadius) }
+      return <div className="master-decoration-rule" style={{ ...style, ...sizeStyle, ...paint, ...borderRadius }} />
     }
 
     case 'text':
