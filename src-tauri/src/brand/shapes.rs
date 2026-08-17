@@ -10,8 +10,11 @@
 use quick_xml::events::BytesStart;
 
 use super::color::ColorSpec;
-use super::xml::{attr, read_solid_fill, rel, strip_path};
+use super::xml::{attr, read_solid_fill, rel, strip_path, ShapeCursor, ShapeEvent};
 use super::BrandError;
+
+/// slideMaster の spTree 直下 1 段がシェイプ境界（`p:grpSp` 配下は再帰しない。#168）
+const SHAPE_CONTAINERS: [&str; 1] = ["spTree"];
 
 /// `a:xfrm/a:off` と `a:xfrm/a:ext`（EMU）。どちらか欠けている形状はヒューリスティクスの対象から外す
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -55,8 +58,9 @@ enum Current {
 pub fn parse_shapes(xml: &str) -> Result<RawShapes, BrandError> {
   let mut out = RawShapes::default();
   let mut current = Current::None;
+  let mut cursor = ShapeCursor::new(&SHAPE_CONTAINERS);
   super::xml::walk_elements(xml, |stack, name, e| {
-    visit(&mut out, &mut current, stack, name, e)
+    visit(&mut out, &mut current, &mut cursor, stack, name, e)
   })?;
   flush(&mut current, &mut out);
   Ok(out)
@@ -70,34 +74,34 @@ fn flush(current: &mut Current, out: &mut RawShapes) {
   }
 }
 
-fn visit(out: &mut RawShapes, current: &mut Current, stack: &[String], name: &str, e: &BytesStart) {
+fn visit(
+  out: &mut RawShapes,
+  current: &mut Current,
+  cursor: &mut ShapeCursor,
+  stack: &[String],
+  name: &str,
+  e: &BytesStart,
+) {
   let path = rel(stack);
 
-  // spTree 直下 1 段＝新しい形状の境界（この要素自身が spTree の子。`name` が種別、`path` は祖先）。
-  // 直前の形状はここまでで確定している（XML は木構造で、兄弟要素の開始は前の兄弟の全子要素を
-  // 読み終えた後にしか来ないため、境界ごとに flush してよい）
-  if path == ["cSld", "spTree"] {
-    flush(current, out);
-    *current = match name {
-      "pic" => Current::Pic(RawPic::default()),
-      "sp" => Current::Sp(RawShape::default()),
-      _ => Current::None,
-    };
-    return;
-  }
-
-  // spTree 配下（cSld/spTree/<kind>/…）の、境界要素自身より深い位置に居ないなら何もしない。
-  // `p:grpSp` 配下等（current が None）はここで弾かれるので、内部の同名要素を誤って拾わない
-  if path.len() < 3 || path[0] != "cSld" || path[1] != "spTree" {
-    return;
-  }
-  // 境界要素（`sp`/`pic`/`grpSp` 等 = path[2]）から見た相対パス
-  let inner = &path[3..];
-
-  match current {
-    Current::Pic(pic) => visit_pic(pic, inner, name, e),
-    Current::Sp(sp) => visit_shape(sp, inner, name, e),
-    Current::None => {}
+  match cursor.observe(path) {
+    // spTree 直下 1 段＝新しい形状の境界。直前の形状はここまでで確定している（XML は木構造で、
+    // 兄弟要素の開始は前の兄弟の全子要素を読み終えた後にしか来ないため、境界ごとに flush してよい）
+    ShapeEvent::Boundary => {
+      flush(current, out);
+      *current = match name {
+        "pic" => Current::Pic(RawPic::default()),
+        "sp" => Current::Sp(RawShape::default()),
+        _ => Current::None,
+      };
+    }
+    // `p:grpSp` 配下等（current が None）はここで弾かれるので、内部の同名要素を誤って拾わない
+    ShapeEvent::Inside(inner) => match current {
+      Current::Pic(pic) => visit_pic(pic, inner, name, e),
+      Current::Sp(sp) => visit_shape(sp, inner, name, e),
+      Current::None => {}
+    },
+    ShapeEvent::Outside => {}
   }
 }
 
@@ -149,58 +153,6 @@ pub fn read_xfrm_child(xfrm: &mut RawXfrm, name: &str, e: &BytesStart) {
 
 fn parse_i64(e: &BytesStart, key: &str) -> Option<i64> {
   attr(e, key)?.trim().parse::<i64>().ok()
-}
-
-/// 直近に見つけた `p:ph` と同じシェイプの `p:spPr/a:xfrm` 配下かどうか。`shape_depth` は
-/// `parent.len() - 2`（ph 発見時に確定させる「シェイプ自身の深さ」）で、layout_xml の
-/// `lvl1_style_path` と同じ考え方をプレースホルダ矩形の抽出（#317）にも適用する
-pub fn is_xfrm_path(shape_depth: Option<usize>, parent: &[String]) -> bool {
-  shape_depth
-    .and_then(|d| parent.get(d..))
-    .is_some_and(|p| p == ["spPr", "xfrm"])
-}
-
-/// 「今、直近に見つけた `p:ph` と同じシェイプの配下にいるか」を追跡する状態機械（#317）。
-/// slideLayout（`layout_xml`）・slideMaster（`master_xml`）のいずれも同じ規則で `p:ph` を列挙する:
-/// シェイプの開始（`p:spTree`/`p:grpSp` の直下）で目印をリセットし（兄弟シェイプの矩形・書式を直前の
-/// プレースホルダのものと誤認しないため）、`nvPr` 直下の `p:ph` でシェイプ自身の深さを確定させる。
-/// 2つの呼び出し元で同じ状態機械を手書きすると変更が同期しなくなるため、ここに1本化する
-#[derive(Debug, Default)]
-pub struct PlaceholderShapeTracker(Option<usize>);
-
-impl PlaceholderShapeTracker {
-  pub fn new() -> Self {
-    Self::default()
-  }
-
-  /// 直近に見つけた `p:ph` が属するシェイプの深さ（`is_xfrm_path` 等へそのまま渡す）
-  pub fn shape_depth(&self) -> Option<usize> {
-    self.0
-  }
-
-  /// 巡回中の要素を1つ観察する。シェイプ境界ならリセットし、`p:ph` ならシェイプの深さを記録して
-  /// `type`/`idx` を返す（それ以外の要素では `None`）
-  pub fn observe(
-    &mut self,
-    parent: &[String],
-    name: &str,
-    e: &BytesStart,
-  ) -> Option<(Option<String>, Option<u32>)> {
-    if matches!(
-      parent.last().map(String::as_str),
-      Some("spTree") | Some("grpSp")
-    ) {
-      self.0 = None;
-    }
-    if name != "ph" || parent.last().map(String::as_str) != Some("nvPr") {
-      return None;
-    }
-    self.0 = Some(parent.len() - 2);
-    Some((
-      attr(e, "type"),
-      attr(e, "idx").and_then(|v| v.trim().parse::<u32>().ok()),
-    ))
-  }
 }
 
 #[cfg(test)]
