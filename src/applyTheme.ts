@@ -170,6 +170,57 @@ export const TEXT_COLOR_KEYS: readonly string[] = ['text', 'textHeading', 'textB
  * applyDerivedSeriesColors の導出ループと chart/chartScale.ts の系列色巡回（SERIES_KEYS）が共有する単一の真実源（#186/#204/#240） */
 export const SERIES_COLOR_KEYS: readonly string[] = ['series1', 'series2', 'series3', 'series4', 'series5', 'series6']
 
+/** 章色（theme.sectionAccents・#319）が章スコープで上書きする色の集合（THEME_COLOR_TOKENS のキー側の語彙）。
+ * 見出し・強調・図の主色である primary と、そこから導出される series1 だけに限定する。accent / series2〜series6 は
+ * データ系列の識別に使うもので章とは直交する概念なので変えない（この集合の拡張は別 issue で扱う） */
+const SECTION_ACCENT_TARGET_KEYS: readonly string[] = ['primary', 'series1']
+
+/**
+ * 章番号（SectionInfo.number。1始まり）に対応するアクセント色のカラートークン名を
+ * theme.sectionAccents の巡回リストから解決する（#319）。色数が章数に足りなければ先頭に戻って巡回するため、
+ * 章数と色数が一致していなくてよく（多い / 少ない / 1色のみ）、全章を同じ色にもできる。
+ * 未指定・空配列なら undefined（章による色替えを行わない = 現行と完全同一）。
+ *
+ * 章番号は buildSections（sections.ts）が宣言順から導出し直すため、章の途中にスライドを挿入しても
+ * 割り当ては崩れない（スライド側に色の指定を書き足さない＝書き漏らしが起きないのがこの巡回方式の要点）。
+ * 章色 CSS の生成（buildSectionAccentCss）と、その CSS が効くスコープ属性（data-section-accent・SlideFrame）が
+ * 巡回規則をここで共有する（2箇所に書き写さない）。
+ */
+export function resolveSectionAccent(sectionAccents: string[] | undefined, sectionNumber: number): string | undefined {
+  if (!sectionAccents?.length) return undefined
+  return sectionAccents[(sectionNumber - 1) % sectionAccents.length]
+}
+
+/**
+ * 章色（theme.sectionAccents・#319）の CSS を生成する。SlideFrame が章番号から解決して付与する
+ * `data-section-accent`（カラートークン名）に対して
+ * `section[data-section-accent="series3"] { --theme-primary: var(--theme-series-3); … }` を出力し、
+ * 章ごとの色替えをスライド側の記述なしで効かせる。CSS 変数の参照（var()）で繋ぐため、テーマ側で
+ * その系列色を変えれば章色も追従する。
+ *
+ * スコープを章番号ではなくカラートークン名で切ることで、出力は章数ではなく色数ぶんに収まり、
+ * デッキの章構成に依存しない（章を追加しても CSS の作り直しが不要 = 編集中のライブプレビューでも追従する）。
+ *
+ * 上書き先と参照元が同じ変数になる指定（例: 'primary'）は CSS 変数の自己参照＝循環として無効化されるため
+ * 宣言しない（その色の章は元のままで、意図と一致する）。不明なトークン名は resolveColorToken が primary へ
+ * フォールバックして同じ自己参照になるため出力しない（利用者への報告は getThemeWarnings が担う）。
+ */
+export function buildSectionAccentCss(sectionAccents?: string[]): string {
+  const rules: string[] = []
+  for (const token of new Set(sectionAccents ?? [])) {
+    const sourceVar = THEME_COLOR_TOKENS[token]
+    if (!sourceVar) continue
+
+    const decls = SECTION_ACCENT_TARGET_KEYS.map((key) => THEME_COLOR_TOKENS[key])
+      .filter((targetVar) => targetVar !== sourceVar)
+      .flatMap((targetVar) => [`${targetVar}: var(${sourceVar});`, `${targetVar}-rgb: var(${sourceVar}-rgb);`])
+    if (decls.length > 0) {
+      rules.push(`section[data-section-accent="${token}"] { ${decls.join(' ')} }`)
+    }
+  }
+  return rules.join('\n')
+}
+
 /** ColorPalette のキー → tokens 側の表記（CSS 変数名から先頭の `--` を除いたもの）。tokens を引く箇所で共有する */
 function varNameOf(key: string): string {
   return THEME_COLOR_TOKENS[key].replace(/^--/, '')
@@ -359,6 +410,9 @@ export function mergeThemeData(brand?: ThemeData, theme?: ThemeData): ThemeData 
     masters: mergeRecord(brand?.masters, theme?.masters),
     masterMap: mergeRecord(brand?.masterMap, theme?.masterMap),
     tokens: mergeTokens(brand?.tokens, theme?.tokens),
+    // 章色の巡回リストは並び順そのものが1つの意味を持つため要素単位ではマージせず、
+    // デッキ側が指定していればブランド側の並びを丸ごと置き換える（#319）
+    sectionAccents: theme?.sectionAccents ?? brand?.sectionAccents,
     canvas: mergeCanvas(brand?.canvas, theme?.canvas),
   }
 }
@@ -601,9 +655,11 @@ export function applyThemeData(themeData: ThemeData): void {
     upsertStyleElement('sdd-custom-theme-css', themeData.customCSS)
   }
 
-  const masterCss = buildMasterCss(themeData.tokens)
-  if (masterCss) {
-    upsertStyleElement('sdd-master-tokens-css', masterCss)
+  // 章スコープ（section[data-section-accent="…"]）は masterKey スコープ（section[data-master="…"]）と
+  // 詳細度が同じ（0,1,1）ため、章色が意匠より後から勝つよう master トークンの後ろに並べる（#319）
+  const scopedCss = [buildMasterCss(themeData.tokens), buildSectionAccentCss(themeData.sectionAccents)].filter(Boolean).join('\n')
+  if (scopedCss) {
+    upsertStyleElement('sdd-master-tokens-css', scopedCss)
   }
 }
 
@@ -712,12 +768,43 @@ function getMasterBackgroundContrastWarnings(theme: ThemeData): string[] {
 }
 
 /**
+ * 章色（`theme.sectionAccents`・#319）の検証。要素はカラートークン名なので、解決できない名前は
+ * resolveColorToken が primary にフォールバックし章色が効かない（無言で色が変わらない）ため警告する。
+ *
+ * コントラスト検証（#209 の3経路と同じ WCAG AA の閾値・算出関数）も章スコープの上書きに合わせて行う。
+ * 章色が置き換える primary は強調（`strong`）・見出しアクセント・図の主色として文字や細い線に使われるため、
+ * 明示されている章色 × 明示されている背景色の組を検証する（どちらかがグローバル CSS の既定値に委ねられて
+ * いる組は、既定値を TS 側に複製する二重管理になるため対象外にする。theme.colors 直書きの検証と同じ方針）。
+ */
+function getSectionAccentWarnings(theme: ThemeData): string[] {
+  if (!theme.sectionAccents?.length) return []
+
+  const warnings: string[] = []
+  const colors = (theme.colors ?? {}) as Record<string, string | undefined>
+  const bgEntries = extractColorEntries(colors, BACKGROUND_COLOR_KEYS)
+
+  for (const [index, token] of theme.sectionAccents.entries()) {
+    const scope = `theme.sectionAccents[${index}]`
+    if (!THEME_COLOR_TOKENS[token]) {
+      warnings.push(`${scope}: 不明なカラートークン名 "${token}" です（章色が反映されません）`)
+      continue
+    }
+    const color = colors[token]
+    if (!color) continue
+    warnings.push(...pairwiseContrastWarnings(scope, [[token, color]], bgEntries))
+  }
+
+  return warnings
+}
+
+/**
  * `theme.colors`（ColorPalette）を検査し、反映されない/意図せぬ結果になる設定を警告として返す。
  * 検証エラーではなく警告（描画は継続する）: 通常ロード経路のトースト通知と、
  * AI 生成の自動修正ループの `repairFeedback` の両方に載せて利用者・AI 双方に伝える。
  * slides を渡すと slides[].meta.master（スライド個別指定）の存在しない masterKey 参照も検出する（省略可）。
  * コントラスト検証（WCAG AA・#168 の閾値/算出関数を再利用）は theme.colors 直書き・tokens（masterKey
- * スコープ）・masters の全面塗り背景の3経路すべてに適用する（#209。取り込み時収束は brand/compile.ts が別途担う）。
+ * スコープ）・masters の全面塗り背景・sectionAccents（章スコープ・#319）の4経路すべてに適用する
+ * （#209。取り込み時収束は brand/compile.ts が別途担う）。
  */
 export function getThemeWarnings(theme?: ThemeData, slides?: SlideData[]): string[] {
   const warnings: string[] = []
@@ -739,6 +826,7 @@ export function getThemeWarnings(theme?: ThemeData, slides?: SlideData[]): strin
       warnings.push(...getTokenContrastWarnings(theme.tokens))
     }
     warnings.push(...getMasterBackgroundContrastWarnings(theme))
+    warnings.push(...getSectionAccentWarnings(theme))
 
     for (const source of theme.fonts?.sources ?? []) {
       if (!hasFontSourceContent(source)) {

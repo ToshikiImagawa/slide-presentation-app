@@ -740,6 +740,10 @@
     "tokens": {
       "type": "object",
       "description": "スコープキー → { CSS変数名: 値 } 。masterKey は section[data-master=\"masterKey\"] スコープ、\"*\"（デッキ全体）は :root スコープのCSS変数として出力される。両方に同じCSS変数があればmasterKeyスコープが勝つ"
+    },
+    "sectionAccents": {
+      "type": "array",
+      "description": "章ごとに巡回させるアクセント色のカラートークン名の配列（例: [\"primary\", \"series3\", \"series4\"]）。章番号N（1始まり。slide.meta.sectionから導出）には sectionAccents[(N-1) % 個数] を使うため、章数と色数が一致しなくてよく（全章同じ色でもよい）、章の途中にスライドを挿入しても割り当ては崩れない。要素はカラートークン名（primary/accent/series1〜series6/success等）で、生の色（hex）は受けない。上書きするのはその章の見出し・強調・図の主色（theme-primaryとtheme-series-1）だけで、accentとseries2〜series6は変えない（系列色はデータ系列の識別に使うため）。省略時は章による色替えを行わない。スライド側に色の指定を書き足す必要はない"
     }
   }
 }
