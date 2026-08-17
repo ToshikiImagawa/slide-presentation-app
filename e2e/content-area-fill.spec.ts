@@ -27,6 +27,7 @@ const FILL_SLIDES = [
   { id: 'layout-content-table', hasImages: false },
   { id: 'layout-content-diagram', hasImages: false },
   { id: 'layout-content-flow', hasImages: false },
+  { id: 'layout-content-profile', hasImages: true },
 ]
 
 /** 基準見本デッキ fixture 内での対象スライドの位置（枚数が増えても id で解決するので追随不要） */
