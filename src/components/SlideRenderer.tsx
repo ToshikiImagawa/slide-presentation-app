@@ -295,6 +295,16 @@ function renderContentItems(items: ContentItem[]): ReactNode {
   )
 }
 
+/** Timeline項目の本文。多列時は行数に応じて Timeline.module.css が --timeline-body-size を狭める
+ * （未定義なら body2 の既定サイズ）。renderSteps・renderDateTimeline の両方が使う */
+function renderTimelineBody(children: ReactNode): ReactNode {
+  return (
+    <Typography variant="body2" sx={{ fontSize: 'var(--timeline-body-size, var(--theme-font-size-body2))' }}>
+      {children}
+    </Typography>
+  )
+}
+
 /** stepsをTimelineとしてレンダリング（stepColumns 指定で多列の番号付きリストになる・#199） */
 function renderSteps(content: SlideContent): ReactNode {
   const steps = content.steps as Array<{ number: number; title: string; description: string; command: string }>
@@ -304,16 +314,17 @@ function renderSteps(content: SlideContent): ReactNode {
         columns={content.stepColumns as number | undefined}
         items={steps.map((step) => (
           <TimelineNode key={step.number} badge={step.number} title={step.title}>
-            {/* 多列時は行数に応じて Timeline.module.css が --timeline-body-size を狭める（未定義なら body2 の既定サイズ） */}
-            <Typography variant="body2" sx={{ fontSize: 'var(--timeline-body-size, var(--theme-font-size-body2))' }}>
-              {step.description}
-              {step.command && (
-                <>
-                  <br />
-                  <code>{step.command}</code>
-                </>
-              )}
-            </Typography>
+            {renderTimelineBody(
+              <>
+                {step.description}
+                {step.command && (
+                  <>
+                    <br />
+                    <code>{step.command}</code>
+                  </>
+                )}
+              </>,
+            )}
           </TimelineNode>
         ))}
       />
@@ -329,6 +340,7 @@ function renderSteps(content: SlideContent): ReactNode {
 /**
  * dateTimelineを日付付きマイルストーンタイムラインとしてレンダリング（#206）。既存のsteps（連番）と
  * 見た目の基盤（Timeline/TimelineNode）を共有し、バッジの中身だけ番号ではなく日付文字列にする。
+ * dateTimelineColumns 指定時は stepColumns（#199）と同じ多列描画ロジックを共有する（#325）。
  *
  * 日付の間隔は等間隔配置（実際の日付差には比例させない）。マイルストーンは近接した日付が並ぶことも
  * 多く、間隔に比例させると密集して読めなくなるため、順序だけを保証する離散配置に決めた（設計判断）。
@@ -337,9 +349,10 @@ function renderDateTimeline(content: SlideContent): ReactNode {
   const milestones = content.dateTimeline as Array<{ date: string; title: string; description?: string }>
   return (
     <Timeline
+      columns={content.dateTimelineColumns as number | undefined}
       items={milestones.map((milestone, i) => (
         <TimelineNode key={i} badge={milestone.date} title={milestone.title}>
-          {milestone.description && <Typography variant="body2">{milestone.description}</Typography>}
+          {milestone.description && renderTimelineBody(milestone.description)}
         </TimelineNode>
       ))}
     />

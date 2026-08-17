@@ -1209,6 +1209,45 @@ describe('SlideRenderer', () => {
     })
   })
 
+  // #325: 日付タイムラインの多列配置（content.dateTimelineColumns → Timeline の columns）。
+  // stepColumns（#199）と同じ多列描画ロジックを共有するため、丸め・密度の観点も同じテストにする
+  describe('contentスライド(dateTimeline + dateTimelineColumns)', () => {
+    const milestones = Array.from({ length: 10 }, (_, i) => ({ date: `202${i}`, title: `マイルストーン${i + 1}`, description: `説明${i + 1}` }))
+
+    function renderDateTimeline(content: SlideData['content']) {
+      return renderWithTheme(<SlideRenderer slides={[{ id: 'test-date-timeline-columns', layout: 'content', content: { title: 'タイトル', dateTimeline: milestones, ...content } }]} />)
+    }
+
+    /** 同一テスト内で複数回 render するため、document 全体ではなく各 container を見る */
+    function multiColumnOf(content: SlideData['content']): HTMLElement | null {
+      return renderDateTimeline(content).container.querySelector<HTMLElement>('[data-testid="timeline-multi-column"]')
+    }
+
+    it('dateTimelineColumns省略時は多列にならず、現行どおり全項目を描画する（既存デッキの描画を変えない）', () => {
+      const { queryByTestId, container } = renderDateTimeline({})
+      expect(queryByTestId('timeline-multi-column')).toBeNull()
+      expect(container.querySelectorAll('.MuiAvatar-root').length).toBe(milestones.length)
+      expect(container.textContent).toContain('マイルストーン10')
+    })
+
+    it('dateTimelineColumns指定時は指定列数のグリッドになり、10件超の全項目を描画する', () => {
+      const grid = multiColumnOf({ dateTimelineColumns: 3 })!
+      expect(grid.style.gridTemplateColumns).toBe('repeat(3, minmax(0, 1fr))')
+      expect(grid.querySelectorAll('.MuiAvatar-root').length).toBe(milestones.length)
+    })
+
+    it('列数は1〜3に丸める（範囲外の指定でも1項目あたりの幅を保つ）', () => {
+      expect(multiColumnOf({ dateTimelineColumns: 4 })!.style.gridTemplateColumns).toBe('repeat(3, minmax(0, 1fr))')
+      expect(multiColumnOf({ dateTimelineColumns: 0 })!.style.gridTemplateColumns).toBe('repeat(1, minmax(0, 1fr))')
+    })
+
+    it('行数（項目数÷列数）に応じて密度が上がる', () => {
+      // 10項目: 3列→4行=compact / 2列で4項目のみ→2行=normal
+      expect(multiColumnOf({ dateTimelineColumns: 3 })!.dataset.density).toBe('compact')
+      expect(multiColumnOf({ dateTimelineColumns: 2, dateTimeline: milestones.slice(0, 4) })!.dataset.density).toBe('normal')
+    })
+  })
+
   // #256: 本文領域の fill 変種（.content-area-fill）と「埋める要素」（.content-area-fill-item）の対応。
   // 分岐順と fill の判定は CONTENT_BRANCHES の1か所に集約したので、その表が DOM に現れるかを全分岐で検査する
   // （fill を付けて -item を付け忘れると .content-area の主軸配置が stretch に変わり、静かに崩れる）
