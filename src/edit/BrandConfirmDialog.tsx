@@ -200,13 +200,22 @@ export function BrandConfirmDialog({ open, profile, initialOverrides, previewSli
     setOverrides((prev) => ({ ...prev, selectedLogoIndex: index, manualLogo: undefined }))
   }
 
-  const toggleBand = (index: number, checked: boolean) => {
+  /** 候補（帯・固定テキスト等）の採否 index 一覧（`selectedBandIndices`/`selectedTextIndices` と同じ形）の
+   * チェック状態を切り替える共通ロジック */
+  const toggleSelectedIndex = (key: 'selectedBandIndices' | 'selectedTextIndices', index: number, checked: boolean) => {
     setOverrides((prev) => {
-      const current = new Set(prev.selectedBandIndices ?? [])
+      const current = new Set(prev[key] ?? [])
       if (checked) current.add(index)
       else current.delete(index)
-      return { ...prev, selectedBandIndices: [...current].sort((a, b) => a - b) }
+      return { ...prev, [key]: [...current].sort((a, b) => a - b) }
     })
+  }
+
+  const toggleBand = (index: number, checked: boolean) => toggleSelectedIndex('selectedBandIndices', index, checked)
+  const toggleText = (index: number, checked: boolean) => toggleSelectedIndex('selectedTextIndices', index, checked)
+
+  const setTextIndexFormat = (index: number, format: 'index' | 'indexTotal') => {
+    setOverrides((prev) => ({ ...prev, textIndexFormats: { ...prev.textIndexFormats, [String(index)]: format } }))
   }
 
   /** `key` は `"<masterIndex>:<layoutIndex>"`（`profile.masters` の添字）。空文字は「未割当」への戻しを表す */
@@ -467,6 +476,66 @@ export function BrandConfirmDialog({ open, profile, initialOverrides, previewSli
                   </Stack>
                 }
               />
+            ))}
+          </Stack>
+        )}
+
+        {/* #318 で追加した新規セクション。assets/locales/** は #338 が別 wave で編集するため、
+            このセクションは #332/FONT_SIZE_STEP_LABELS と同じく t() 化の対象外にする */}
+        <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
+          固定テキスト・ページ番号
+        </Typography>
+        {profile.textCandidates.length === 0 ? (
+          <Typography variant="body2" sx={{ color: 'var(--fixed-text-muted)', mb: 2 }}>
+            固定テキストは検出されませんでした
+          </Typography>
+        ) : (
+          <Stack spacing={0.5} sx={{ mb: 2 }}>
+            {profile.textCandidates.map((candidate, i) => {
+              const checked = (overrides.selectedTextIndices ?? []).includes(i)
+              const hasIndex = candidate.content.includes('{index}')
+              return (
+                <Stack key={i} direction="row" spacing={1} alignItems="center" sx={{ flexWrap: 'wrap' }}>
+                  <FormControlLabel
+                    control={<Checkbox size="small" checked={checked} onChange={(e) => toggleText(i, e.target.checked)} />}
+                    label={
+                      <Stack direction="row" spacing={0.5} alignItems="center">
+                        {candidate.colorHex && <ColorSwatch value={candidate.colorHex} />}
+                        <Typography component="span" sx={{ fontSize: 12, fontFamily: 'var(--fixed-font-code)', whiteSpace: 'pre-wrap' }}>
+                          {candidate.content}
+                        </Typography>
+                      </Stack>
+                    }
+                  />
+                  {hasIndex && checked && (
+                    <FormControl size="small" sx={{ minWidth: 160 }}>
+                      <Select
+                        value={overrides.textIndexFormats?.[String(i)] ?? 'index'}
+                        onChange={(e) => setTextIndexFormat(i, e.target.value as 'index' | 'indexTotal')}
+                        SelectDisplayProps={{ 'aria-label': `${candidate.content} の表示形式` }}
+                      >
+                        <MenuItem value="index">{'{index}'}</MenuItem>
+                        <MenuItem value="indexTotal">{'{index}/{total}'}</MenuItem>
+                      </Select>
+                    </FormControl>
+                  )}
+                </Stack>
+              )
+            })}
+          </Stack>
+        )}
+
+        <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
+          埋め込みフォント
+        </Typography>
+        {profile.embeddedFonts.length === 0 ? (
+          <Typography variant="body2" sx={{ color: 'var(--fixed-text-muted)', mb: 2 }}>
+            埋め込みフォントは検出されませんでした
+          </Typography>
+        ) : (
+          <Stack direction="row" spacing={1} sx={{ mb: 2, flexWrap: 'wrap' }}>
+            {profile.embeddedFonts.map((font, i) => (
+              <Chip key={i} size="small" variant="outlined" label={font.hasBold ? `${font.typeface}（Bold）` : font.typeface} />
             ))}
           </Stack>
         )}

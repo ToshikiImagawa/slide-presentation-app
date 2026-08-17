@@ -10,7 +10,11 @@
 use quick_xml::events::BytesStart;
 
 use super::color::ColorSpec;
-use super::xml::{attr, read_solid_fill, rel, strip_path, ShapeCursor, ShapeEvent};
+use super::text_props::RawTextProps;
+use super::xml::{
+  attr, lvl1_style_rest, read_placeholder_marker, read_solid_fill, rel, strip_path,
+  walk_elements_with_text, ShapeCursor, ShapeEvent, WalkNode,
+};
 use super::BrandError;
 
 /// slideMaster の spTree 直下 1 段がシェイプ境界（`p:grpSp` 配下は再帰しない。#168）
@@ -33,13 +37,27 @@ pub struct RawPic {
   pub xfrm: RawXfrm,
 }
 
-/// `p:sp`（塗り付き形状。帯候補の生データ）
+/// `p:sp` のテキスト内容（固定テキスト/ページ番号候補の生データ。#318）。
+/// `a:t` ランの結合文字列と、`a:lstStyle/a:lvl1pPr/a:defRPr` から読む既定文字プロパティを持つ
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct RawShapeText {
+  /// `a:t` ランの結合文字列。`a:fld@type="slidenum"` はここに `{index}` として埋め込む
+  /// （他の `a:fld` 種別 `datetime`/`footer` 等は無視する。#318 の確定方針）。
+  /// 段落（`a:p`）の境切りは `\n` で表す
+  pub content: String,
+  pub props: RawTextProps,
+}
+
+/// `p:sp`（塗り付き形状。帯候補・固定テキスト候補の生データ）
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct RawShape {
   pub name: Option<String>,
   /// `p:spPr/a:solidFill` の色指定（未解決）。塗りが無い形状（多くのプレースホルダ）は `None`
   pub fill: Option<ColorSpec>,
   pub xfrm: RawXfrm,
+  /// `p:nvSpPr/p:nvPr/p:ph` の有無。固定テキスト候補の列挙でプレースホルダを除外する用途（#318）
+  pub is_placeholder: bool,
+  pub text: RawShapeText,
 }
 
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -59,8 +77,14 @@ pub fn parse_shapes(xml: &str) -> Result<RawShapes, BrandError> {
   let mut out = RawShapes::default();
   let mut current = Current::None;
   let mut cursor = ShapeCursor::new(&SHAPE_CONTAINERS);
-  super::xml::walk_elements(xml, |stack, name, e| {
-    visit(&mut out, &mut current, &mut cursor, stack, name, e)
+  walk_elements_with_text(xml, |stack, node| {
+    let path = rel(stack);
+    match node {
+      WalkNode::Element(name, e) => {
+        visit_element(&mut out, &mut current, &mut cursor, path, name, e)
+      }
+      WalkNode::Text(text) => visit_text(&mut current, &mut cursor, path, text),
+    }
   })?;
   flush(&mut current, &mut out);
   Ok(out)
@@ -74,16 +98,14 @@ fn flush(current: &mut Current, out: &mut RawShapes) {
   }
 }
 
-fn visit(
+fn visit_element(
   out: &mut RawShapes,
   current: &mut Current,
   cursor: &mut ShapeCursor,
-  stack: &[String],
+  path: &[String],
   name: &str,
   e: &BytesStart,
 ) {
-  let path = rel(stack);
-
   match cursor.observe(path) {
     // spTree 直下 1 段＝新しい形状の境界。直前の形状はここまでで確定している（XML は木構造で、
     // 兄弟要素の開始は前の兄弟の全子要素を読み終えた後にしか来ないため、境界ごとに flush してよい）
@@ -98,10 +120,25 @@ fn visit(
     // `p:grpSp` 配下等（current が None）はここで弾かれるので、内部の同名要素を誤って拾わない
     ShapeEvent::Inside(inner) => match current {
       Current::Pic(pic) => visit_pic(pic, inner, name, e),
-      Current::Sp(sp) => visit_shape(sp, inner, name, e),
+      Current::Sp(sp) => visit_shape_element(sp, inner, name, e),
       Current::None => {}
     },
     ShapeEvent::Outside => {}
+  }
+}
+
+/// テキストノード（`a:t` の文字データ）を、直前の要素巡回で確定した境界（`cursor`）と結び付ける。
+/// `path` はそのテキストを直接含む要素自身を末尾に持つ（`walk_elements_with_text` の規約）
+fn visit_text(current: &mut Current, cursor: &mut ShapeCursor, path: &[String], text: &str) {
+  let Current::Sp(sp) = current else { return };
+  let ShapeEvent::Inside(inner) = cursor.observe(path) else {
+    return;
+  };
+  // `a:t` が `p:txBody/a:p/a:r` の直下にある（実行テキスト）場合のみ取り込む。
+  // `p:txBody/a:p/a:fld` 配下の `a:t`（フィールドのキャッシュ済み表示文字列）は、
+  // `visit_shape_element` の `a:fld` 処理で別途扱うためここでは取り込まない
+  if strip_path(inner, &["txBody"]).is_some_and(|rest| rest == ["p", "r", "t"]) {
+    sp.text.content.push_str(text);
   }
 }
 
@@ -115,14 +152,41 @@ fn visit_pic(pic: &mut RawPic, inner: &[String], name: &str, e: &BytesStart) {
   }
 }
 
-fn visit_shape(sp: &mut RawShape, inner: &[String], name: &str, e: &BytesStart) {
+fn visit_shape_element(sp: &mut RawShape, inner: &[String], name: &str, e: &BytesStart) {
   if inner == ["nvSpPr"] && name == "cNvPr" {
     sp.name = attr(e, "name");
-  } else if let Some(rest) = strip_path(inner, &["spPr", "solidFill"]) {
-    read_solid_fill(&mut sp.fill, rest, name, e);
-  } else {
-    apply_xfrm(&mut sp.xfrm, inner, name, e);
+    return;
   }
+  if read_placeholder_marker(inner, name, e).is_some() {
+    sp.is_placeholder = true;
+    return;
+  }
+  if let Some(rest) = strip_path(inner, &["spPr", "solidFill"]) {
+    read_solid_fill(&mut sp.fill, rest, name, e);
+    return;
+  }
+  if let Some(rest) = lvl1_style_rest(inner) {
+    sp.text.props.visit(rest, name, e);
+    return;
+  }
+  // 2 段落目以降の開始（`p:txBody/a:p`）＝直前の段落の続きではないことを示す区切り
+  if inner == ["txBody"] && name == "p" {
+    if !sp.text.content.is_empty() {
+      sp.text.content.push('\n');
+    }
+    return;
+  }
+  // `a:fld@type="slidenum"` のみ `{index}` として取り込む（`datetime`/`footer` 等は無視する。
+  // #318 の確定方針）。フィールドのキャッシュ済み表示文字列（`a:fld/a:t`）は取り込まない
+  // （`visit_text` は `a:r/a:t` だけを拾うため、ここで何もしなければ自然に無視される）
+  if name == "fld"
+    && strip_path(inner, &["txBody"]).is_some_and(|rest| rest == ["p"])
+    && attr(e, "type").as_deref() == Some("slidenum")
+  {
+    sp.text.content.push_str("{index}");
+    return;
+  }
+  apply_xfrm(&mut sp.xfrm, inner, name, e);
 }
 
 /// `p:spPr/a:xfrm/a:off|a:ext`（pic・sp で共通）
@@ -263,6 +327,127 @@ mod tests {
     let parsed = parse_shapes(xml).unwrap();
     assert_eq!(parsed.shapes.len(), 0);
     assert_eq!(parsed.pics.len(), 0);
+  }
+
+  #[test]
+  fn flags_placeholder_shapes_and_leaves_others_unflagged() {
+    let parsed = parse_shapes(XML).unwrap();
+    let title = parsed
+      .shapes
+      .iter()
+      .find(|s| s.name.as_deref() == Some("Title Placeholder 1"))
+      .unwrap();
+    assert!(title.is_placeholder);
+    let top = parsed
+      .shapes
+      .iter()
+      .find(|s| s.name.as_deref() == Some("Top Band"))
+      .unwrap();
+    assert!(!top.is_placeholder);
+  }
+
+  /// 固定テキスト（複数ラン・複数段落）とページ番号フィールドを持つ非プレースホルダの図形（#318）
+  const XML_WITH_TEXT: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
+<p:sldMaster xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
+  <p:cSld>
+    <p:spTree>
+      <p:sp>
+        <p:nvSpPr><p:cNvPr id="2" name="Footer"/></p:nvSpPr>
+        <p:spPr><a:xfrm><a:off x="457200" y="6400800"/><a:ext cx="5000000" cy="300000"/></a:xfrm></p:spPr>
+        <p:txBody>
+          <a:lstStyle>
+            <a:lvl1pPr>
+              <a:defRPr sz="1000"><a:solidFill><a:srgbClr val="808080"/></a:solidFill><a:latin typeface="Corporate Sans"/></a:defRPr>
+            </a:lvl1pPr>
+          </a:lstStyle>
+          <a:p><a:r><a:rPr lang="ja-JP"/><a:t>&#169; 2026 </a:t></a:r><a:r><a:t>Acme Corp</a:t></a:r></a:p>
+          <a:p><a:fld id="{GUID}" type="slidenum"><a:rPr lang="ja-JP"/><a:t>1</a:t></a:fld></a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr><p:cNvPr id="3" name="Date"/></p:nvSpPr>
+        <p:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="100" cy="100"/></a:xfrm></p:spPr>
+        <p:txBody>
+          <a:p><a:fld id="{GUID2}" type="datetime1"><a:t>2026/08/17</a:t></a:fld></a:p>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr><p:cNvPr id="4" name="Title Placeholder"/><p:nvPr><p:ph type="title"/></p:nvPr></p:nvSpPr>
+        <p:spPr/>
+        <p:txBody>
+          <a:p><a:r><a:t>タイトルのプレースホルダテキスト</a:t></a:r></a:p>
+        </p:txBody>
+      </p:sp>
+    </p:spTree>
+  </p:cSld>
+</p:sldMaster>"#;
+
+  #[test]
+  fn collects_run_text_across_multiple_runs_and_paragraphs() {
+    let parsed = parse_shapes(XML_WITH_TEXT).unwrap();
+    let footer = parsed
+      .shapes
+      .iter()
+      .find(|s| s.name.as_deref() == Some("Footer"))
+      .unwrap();
+    assert_eq!(footer.text.content, "© 2026 Acme Corp\n{index}");
+  }
+
+  #[test]
+  fn reads_def_rpr_text_properties_for_text_shape() {
+    let parsed = parse_shapes(XML_WITH_TEXT).unwrap();
+    let footer = parsed
+      .shapes
+      .iter()
+      .find(|s| s.name.as_deref() == Some("Footer"))
+      .unwrap();
+    assert_eq!(footer.text.props.size_pt, Some(10.0));
+    assert_eq!(
+      footer.text.props.fonts.latin.as_deref(),
+      Some("Corporate Sans")
+    );
+    assert_eq!(
+      footer.text.props.color.as_ref().map(|c| c.base.clone()),
+      Some(ColorRef::Fixed(Rgb {
+        r: 0x80,
+        g: 0x80,
+        b: 0x80
+      }))
+    );
+  }
+
+  #[test]
+  fn ignores_non_slidenum_fields() {
+    let parsed = parse_shapes(XML_WITH_TEXT).unwrap();
+    let date = parsed
+      .shapes
+      .iter()
+      .find(|s| s.name.as_deref() == Some("Date"))
+      .unwrap();
+    // `datetime` フィールドは無視するので、キャッシュ済み表示文字列も `{index}` も content に現れない
+    assert_eq!(date.text.content, "");
+  }
+
+  #[test]
+  fn placeholder_text_shape_is_flagged_and_still_carries_its_text() {
+    let parsed = parse_shapes(XML_WITH_TEXT).unwrap();
+    let title = parsed
+      .shapes
+      .iter()
+      .find(|s| s.name.as_deref() == Some("Title Placeholder"))
+      .unwrap();
+    assert!(title.is_placeholder);
+    // テキストの取り込み自体はプレースホルダかどうかを問わない。
+    // 候補への採否（除外）は呼び出し側（`heuristics::list_text_candidates`）の責務
+    assert_eq!(title.text.content, "タイトルのプレースホルダテキスト");
+  }
+
+  #[test]
+  fn text_parsing_is_deterministic() {
+    let first = parse_shapes(XML_WITH_TEXT).unwrap();
+    for _ in 0..5 {
+      assert_eq!(parse_shapes(XML_WITH_TEXT).unwrap(), first);
+    }
   }
 
   #[test]

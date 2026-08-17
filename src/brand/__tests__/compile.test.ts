@@ -27,6 +27,8 @@ function profile(overrides: Partial<BrandProfile> = {}): BrandProfile {
     thumbnail: null,
     logoCandidates: [],
     bandCandidates: [],
+    textCandidates: [],
+    embeddedFonts: [],
     mappedColors,
     fonts: { major: { latin: 'Trebuchet MS', ea: null, cs: null, jpan: null }, minor: { latin: 'Calibri', ea: null, cs: null, jpan: null } },
     masters: [],
@@ -266,6 +268,91 @@ describe('compile（#168 の並置比較・取り込み確認）', () => {
       const { report } = compile(profile(), {})
       expect(report.fields.bands?.status).toBe('missing')
       expect(report.fields.bands?.detail).toContain('検出されなかった')
+    })
+  })
+
+  describe('固定テキスト・ページ番号（#318）', () => {
+    const withTexts = () =>
+      profile({
+        textCandidates: [
+          { content: 'Acme Corp — {index}', xEmu: 0, yEmu: 0, widthEmu: 500_000, heightEmu: 200_000, sizePt: 10, colorHex: '#808080' },
+          { content: '固定テキスト（ページ番号なし）', xEmu: 5_000_000, yEmu: 6_558_000, widthEmu: 2_192_000, heightEmu: 300_000, sizePt: null, colorHex: null },
+        ],
+      })
+
+    it('selectedTextIndices が空（既定）なら decorations に含めず missing として報告する（現行と完全同一）', () => {
+      const { theme, report } = compile(withTexts(), {})
+      expect(theme.masters.brand.decorations!).toHaveLength(0)
+      expect(report.fields['decorations.text']?.status).toBe('missing')
+    })
+
+    it('選択した候補だけを text 装飾として含め、矩形をアンカー+オフセットへ換算する', () => {
+      const { theme, report } = compile(withTexts(), { selectedTextIndices: [0] })
+      expect(theme.masters.brand.decorations!).toHaveLength(1)
+      const text = theme.masters.brand.decorations![0]
+      // xEmu=yEmu=0 のスライド左上角に接する矩形なので anchor は top-left・offset は (0,0)
+      expect(text).toMatchObject({ type: 'text', anchor: 'top-left', offset: { x: 0, y: 0 }, color: '#808080' })
+      if (text.type === 'text') {
+        expect(text.fontSize).toBeCloseTo(13, 0) // 10pt → px（96dpi 相当の換算。10 * 96/72 ≈ 13.3）
+      }
+      expect(report.fields['decorations.text']?.status).toBe('ok')
+    })
+
+    it('横位置が中央かつ下端に接する矩形は bottom-center へ、水平オフセットは 0 になる', () => {
+      const { theme } = compile(withTexts(), { selectedTextIndices: [1] })
+      const text = theme.masters.brand.decorations!.find((d) => d.type === 'text')
+      expect(text).toMatchObject({ type: 'text', anchor: 'bottom-center' })
+      if (text?.type === 'text') {
+        expect(text.offset?.x).toBeCloseTo(0, 0)
+        expect(text.color).toBeUndefined()
+        expect(text.fontSize).toBeUndefined()
+      }
+    })
+
+    it('`{index}` を含む候補は既定で `{index}` のまま、`indexTotal` を指定すると `{index}/{total}` に展開する', () => {
+      const asIndex = compile(withTexts(), { selectedTextIndices: [0] }).theme.masters.brand.decorations![0]
+      expect(asIndex.type === 'text' && asIndex.content).toBe('Acme Corp — {index}')
+
+      const asIndexTotal = compile(withTexts(), { selectedTextIndices: [0], textIndexFormats: { '0': 'indexTotal' } }).theme.masters.brand.decorations![0]
+      expect(asIndexTotal.type === 'text' && asIndexTotal.content).toBe('Acme Corp — {index}/{total}')
+    })
+
+    it('`{index}` を含まない候補は `indexTotal` を指定しても内容が変わらない', () => {
+      const { theme } = compile(withTexts(), { selectedTextIndices: [1], textIndexFormats: { '1': 'indexTotal' } })
+      const text = theme.masters.brand.decorations!.find((d) => d.type === 'text')
+      expect(text?.type === 'text' && text.content).toBe('固定テキスト（ページ番号なし）')
+    })
+
+    it('検出されたテキスト候補が無いテンプレートは missing として報告する（未検出と未選択を区別する detail）', () => {
+      const { report } = compile(profile(), {})
+      expect(report.fields['decorations.text']?.status).toBe('missing')
+      expect(report.fields['decorations.text']?.detail).toContain('検出されなかった')
+    })
+  })
+
+  describe('埋め込みフォント（#318）', () => {
+    it('embeddedFonts が無ければ sources を積まず missing として報告する（既定で何も自動適用しない）', () => {
+      const { theme, report } = compile(profile(), {})
+      expect(theme.fonts.sources).toBeUndefined()
+      expect(report.fields['fonts.embedded']?.status).toBe('missing')
+    })
+
+    it('embeddedFonts を localName のみの FontSource として登録する（src は持たせない）', () => {
+      const p = profile({ embeddedFonts: [{ typeface: 'Corporate Sans', hasRegular: true, hasBold: true }] })
+      const { theme, report } = compile(p, {})
+      expect(theme.fonts.sources).toEqual([{ family: 'Corporate Sans', localName: 'Corporate Sans' }])
+      expect(report.fields['fonts.embedded']?.status).toBe('derived')
+    })
+
+    it('同じ typeface が重複しても sources には1件だけ登録する', () => {
+      const p = profile({
+        embeddedFonts: [
+          { typeface: 'Corporate Sans', hasRegular: true, hasBold: false },
+          { typeface: 'Corporate Sans', hasRegular: true, hasBold: true },
+        ],
+      })
+      const { theme } = compile(p, {})
+      expect(theme.fonts.sources).toHaveLength(1)
     })
   })
 
@@ -747,5 +834,18 @@ describe('mergeCompiledBrandTheme のキャンバス合成（#188）', () => {
   it('型階層が取れなかった場合は base.fonts の型階層をそのまま保持する（#316）', () => {
     const merged = mergeCompiledBrandTheme({ fonts: { baseFontSize: 20, fontSizeRatios: { h1: 3.6 } } }, compiledTheme())
     expect(merged.fonts).toEqual({ baseFontSize: 20, fontSizeRatios: { h1: 3.6 } })
+  })
+
+  it('埋め込みフォント（#318）を base.fonts.sources へ追記し、既存の source は保持する', () => {
+    const merged = mergeCompiledBrandTheme({ fonts: { sources: [{ family: 'Menlo', src: 'fonts/menlo.woff2' }] } }, compiledTheme({ fonts: { sources: [{ family: 'Corporate Sans', localName: 'Corporate Sans' }] } }))
+    expect(merged.fonts?.sources).toEqual([
+      { family: 'Menlo', src: 'fonts/menlo.woff2' },
+      { family: 'Corporate Sans', localName: 'Corporate Sans' },
+    ])
+  })
+
+  it('base に同じ family がある場合は base 側（明示的な指定）を優先し、上書きしない', () => {
+    const merged = mergeCompiledBrandTheme({ fonts: { sources: [{ family: 'Corporate Sans', src: 'fonts/corporate.woff2' }] } }, compiledTheme({ fonts: { sources: [{ family: 'Corporate Sans', localName: 'Corporate Sans' }] } }))
+    expect(merged.fonts?.sources).toEqual([{ family: 'Corporate Sans', src: 'fonts/corporate.woff2' }])
   })
 })

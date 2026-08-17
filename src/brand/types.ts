@@ -1,4 +1,4 @@
-import type { FontFamilySpec, MasterAnchor, MasterDefinition, SafeArea } from '../data'
+import type { FontFamilySpec, FontSource, MasterAnchor, MasterDefinition, SafeArea } from '../data'
 
 /** `p:clrMap` 適用後の 12 キー（Rust `brand::MappedColors` と同じ並び・camelCase）。 */
 export const MAPPED_COLOR_KEYS = ['bg1', 'tx1', 'bg2', 'tx2', 'accent1', 'accent2', 'accent3', 'accent4', 'accent5', 'accent6', 'hlink', 'folHlink'] as const
@@ -58,6 +58,28 @@ export interface PlaceholderTextProps {
  * `p:ph@type` の OOXML 分類規則（`ST_PlaceholderType`・属性省略時は "body"）は抽出層（Rust）に置き、
  * フロントは分類済みのこの値だけを見る（同じ分類表を 2 言語で持たない） */
 export type BrandPlaceholderKind = 'title' | 'body' | 'other'
+
+/** 固定テキスト/ページ番号候補（#318 のヒューリスティクス出力）。Rust `brand::TextCandidate` と同じ形。
+ * `BandCandidate` と同じく採否は人が確認ダイアログで決める前提の**候補**。矩形は EMU で、
+ * `anchor`/`offset` への変換（`bandToDecoration` と同じ EMU→px 換算）は `compile()` の責務。
+ * `content` に `{index}` が含まれる場合、`a:fld type="slidenum"` を含んでいたことを示す（Rust 側で置換済み） */
+export interface TextCandidate {
+  content: string
+  xEmu: number
+  yEmu: number
+  widthEmu: number
+  heightEmu: number
+  sizePt: number | null
+  colorHex: string | null
+}
+
+/** 埋め込みフォント（#318 のヒューリスティクス出力）。Rust `brand::opc::EmbeddedFont` と同じ形。
+ * `ppt/fonts/*.fntdata` のフォント実体は対象外（#321）で書体名のみ */
+export interface EmbeddedFont {
+  typeface: string
+  hasRegular: boolean
+  hasBold: boolean
+}
 
 /** slideLayout の1プレースホルダ（Rust `brand::PlaceholderProfile` と同じ形） */
 export interface PlaceholderProfile {
@@ -128,6 +150,10 @@ export interface BrandProfile {
   thumbnail: MediaAsset | null
   logoCandidates: LogoCandidate[]
   bandCandidates: BandCandidate[]
+  /** 検出した固定テキスト/ページ番号候補（#318） */
+  textCandidates: TextCandidate[]
+  /** `p:embeddedFontLst` に列挙された埋め込みフォント（#318） */
+  embeddedFonts: EmbeddedFont[]
   /** clrMap 適用後の 12 キー。値が取れなかったキーは `null`（`compile` がフォールバックする） */
   mappedColors: Record<MappedColorKey, string | null>
   fonts: BrandFontScheme
@@ -156,6 +182,11 @@ export interface BrandOverrides {
   manualLogo?: MediaAsset | null
   /** `bandCandidates` から装飾として採用する index の一覧（既定は空＝何も自動適用しない） */
   selectedBandIndices?: number[]
+  /** `textCandidates` から装飾として採用する index の一覧（既定は空＝何も自動適用しない。#318） */
+  selectedTextIndices?: number[]
+  /** 採用したテキスト候補ごとの表示形式（#318）。key は `textCandidates` の添字（文字列化）。
+   * `indexTotal` は `{index}` を `{index}/{total}` に展開する。未指定の候補は `{index}` のまま */
+  textIndexFormats?: Record<string, 'index' | 'indexTotal'>
   /** 書体と型階層の上書き（#316 で和文・型階層を追加）。`heading`/`body` は欧文（latin）、
    * `headingEa`/`bodyEa` は和文（ea）。`baseFontSize` は px、`fontSizeRatios` はキー単位の比率上書き */
   fontOverrides?: {
@@ -179,8 +210,10 @@ export interface CompiledBrandTheme {
   colors: Record<MappedColorKey, string>
   /** 抽出した latin/ea/major/minor を潰さずに写す（#187）。取得できなかったスロットは省略する。
    * `baseFontSize`/`fontSizeRatios` は slideLayout のプレースホルダの `a:defRPr@sz` から導出した
-   * 型階層（#316）。段が取れなかった場合は省略する（既定の型階層のまま） */
-  fonts: { heading?: FontFamilySpec; body?: FontFamilySpec; baseFontSize?: number; fontSizeRatios?: Record<string, number> }
+   * 型階層（#316）。段が取れなかった場合は省略する（既定の型階層のまま）。
+   * `sources` は埋め込みフォント名を `local()` 参照のみで登録したもの（#318）。`src` を書かないため
+   * フォント実体は同梱しない（#171 の再配布ゲートには触れない） */
+  fonts: { heading?: FontFamilySpec; body?: FontFamilySpec; baseFontSize?: number; fontSizeRatios?: Record<string, number>; sources?: FontSource[] }
   masters: Record<string, MasterDefinition>
   masterMap: Record<string, string>
   tokens: Record<string, Record<string, string>>

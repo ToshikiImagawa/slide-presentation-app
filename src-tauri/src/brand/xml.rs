@@ -4,6 +4,7 @@
 //! 位置の判定は「親要素のパス」で行い、要素名の出現だけでは拾わない（同名要素が `a:fmtScheme` や
 //! `p:cSld` 配下に大量に現れるため）。
 
+use quick_xml::escape::unescape;
 use quick_xml::events::{BytesStart, Event};
 use quick_xml::name::QName;
 use quick_xml::Reader;
@@ -29,24 +30,59 @@ pub fn attr(e: &BytesStart, name: &str) -> Option<String> {
     .map(|value| value.into_owned())
 }
 
-/// 要素の開始（空要素を含む）を「親要素のパス・自要素名・自要素」で前順に巡回する。
-/// `stack[0]` はルート要素名で、`rel` はこの並びを前提にしている
-pub fn walk_elements(
+/// `walk_elements_with_text` が巡回1件ごとに渡すノード。要素（開始・空要素）と文字データ（`a:t` 等）を
+/// 同じ巡回で扱えるようにする（#318）。文字データを使わない既存の読み取り（`walk_elements`）は
+/// `Element` だけを見ればよい
+pub enum WalkNode<'a, 'b> {
+  Element(&'a str, &'a BytesStart<'b>),
+  /// 空白のみのテキストノード（要素間の整形用インデント等）は呼び出し側に渡さない（`trim` 済み）
+  Text(&'a str),
+}
+
+/// 要素の開始（空要素を含む）とテキストノードを「親要素のパス・ノード」で前順に巡回する。
+/// `stack[0]` はルート要素名で、`rel` はこの並びを前提にしている。
+/// テキストノードの `stack` はそのノードを直接含む要素自身を末尾に持つ（要素の開始時点では
+/// まだ自要素名が積まれていないのと対照的。文字データは要素の内容であって兄弟ではないため）
+pub fn walk_elements_with_text(
   xml: &str,
-  mut visit: impl FnMut(&[String], &str, &BytesStart),
+  mut visit: impl FnMut(&[String], WalkNode<'_, '_>),
 ) -> Result<(), BrandError> {
   let mut reader = Reader::from_str(xml);
-  reader.config_mut().trim_text(true);
+  // `trim_text(true)` は使わない: quick-xml は文字参照（`&#169;` 等）を `Event::Text` とは別の
+  // `Event::GeneralRef` に分けて発行するため、実体参照に隣接するテキスト片の前後が「markup に
+  // 隣接している」と判定されてしまい、参照の直後にある本来の空白（例: `&#169; 2026` の間の空白）まで
+  // 削られる。空白のみのテキストノード（整形用インデント等）は下の `text.trim().is_empty()` で
+  // 個別に読み飛ばすので、Reader 側の自動トリムは不要
   let mut stack: Vec<String> = Vec::new();
   loop {
     match reader.read_event() {
       Ok(Event::Eof) => return Ok(()),
       Ok(Event::Start(e)) => {
         let name = local_name(e.name());
-        visit(&stack, &name, &e);
+        visit(&stack, WalkNode::Element(&name, &e));
         stack.push(name);
       }
-      Ok(Event::Empty(e)) => visit(&stack, &local_name(e.name()), &e),
+      Ok(Event::Empty(e)) => {
+        let name = local_name(e.name());
+        visit(&stack, WalkNode::Element(&name, &e));
+      }
+      Ok(Event::Text(t)) => {
+        // `decode()` は文字エンコーディングの変換のみで実体参照（`&amp;` 等）は展開しないため、
+        // `unescape` を別途通す（属性値の `normalized_value` が内部で行っているのと同じ処理）
+        let decoded = t.decode().map_err(|e| BrandError::Xml(e.to_string()))?;
+        let text = unescape(&decoded).map_err(|e| BrandError::Xml(e.to_string()))?;
+        if !text.trim().is_empty() {
+          visit(&stack, WalkNode::Text(&text));
+        }
+      }
+      // 文字参照・実体参照（`&#169;` / `&amp;` 等）。quick-xml は `Event::Text` に混ぜず
+      // 独立したイベントとして発行するため、ここで文字へ解決してテキストの続きとして渡す
+      Ok(Event::GeneralRef(r)) => {
+        let name = r.decode().map_err(|e| BrandError::Xml(e.to_string()))?;
+        let escaped = format!("&{name};");
+        let resolved = unescape(&escaped).map_err(|e| BrandError::Xml(e.to_string()))?;
+        visit(&stack, WalkNode::Text(&resolved));
+      }
       Ok(Event::End(_)) => {
         stack.pop();
       }
@@ -54,6 +90,21 @@ pub fn walk_elements(
       Err(e) => return Err(BrandError::Xml(e.to_string())),
     }
   }
+}
+
+/// 要素の開始（空要素を含む）を「親要素のパス・自要素名・自要素」で前順に巡回する。
+/// `stack[0]` はルート要素名で、`rel` はこの並びを前提にしている。
+/// 文字データを見る必要が無い既存の読み取り（属性のみ）はすべてこちらを使う
+/// （`walk_elements_with_text` の `Element` だけを通す薄いフィルタ）
+pub fn walk_elements(
+  xml: &str,
+  mut visit: impl FnMut(&[String], &str, &BytesStart),
+) -> Result<(), BrandError> {
+  walk_elements_with_text(xml, |stack, node| {
+    if let WalkNode::Element(name, e) = node {
+      visit(stack, name, e);
+    }
+  })
 }
 
 /// ルート要素を除いた相対パス（`a:theme` / `a:themeOverride` のようにルート名が揺れても比較できるようにする）
@@ -125,6 +176,17 @@ impl<'a> ShapeCursor<'a> {
 /// グループ非再帰）の境界とは異なる。両ファイルが同じ配列リテラルを書き写すと変更が同期しなくなるため、
 /// この 1 箇所に集約する（#334）
 pub const PLACEHOLDER_SHAPE_CONTAINERS: [&str; 2] = ["spTree", "grpSp"];
+
+/// `inner`（シェイプ境界からの相対パス）が `p:txBody/a:lstStyle/a:lvl1pPr` 配下なら、
+/// `a:lvl1pPr` 起点の相対パスを返す（#316）。`a:lvl2pPr` 以降は受け皿に対応する概念がないため対象外。
+/// slideLayout のプレースホルダ（`layout_xml`）と slideMaster の固定テキスト図形（`shapes`。#318）が
+/// 同じ形で `text_props::RawTextProps::visit` を呼ぶため、判定をこの1箇所に集約する
+pub fn lvl1_style_rest(inner: &[String]) -> Option<&[String]> {
+  let [tx_body, lst_style, lvl, rest @ ..] = inner else {
+    return None;
+  };
+  (tx_body == "txBody" && lst_style == "lstStyle" && lvl == "lvl1pPr").then_some(rest)
+}
 
 /// `p:ph`（プレースホルダ宣言）を検出したら `type`/`idx` を返す。`p:nvSpPr`/`p:nvPicPr`/
 /// `p:nvGraphicFramePr` 等、コンテナの種類を問わず `nvPr` 直下の `ph` だけを拾う（#317）。

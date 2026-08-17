@@ -27,7 +27,7 @@ mod xml;
 
 use color::{apply_transforms, ColorRef, ColorSpec, Rgb};
 use master_xml::{ClrMap, MasterInfo};
-use opc::{OpcPackage, SlideSize};
+use opc::{EmbeddedFont, OpcPackage, SlideSize};
 use shapes::RawXfrm;
 use text_props::{PlaceholderKind, PlaceholderTextProps, RawTextProps};
 use theme_xml::{ClrScheme, FontScheme, ThemeInfo};
@@ -137,6 +137,22 @@ pub struct BandCandidate {
   pub thickness_emu: i64,
 }
 
+/// 固定テキスト/ページ番号候補（#318）。`BandCandidate` と同じく、採否は人が確認ダイアログで決める前提の
+/// **候補**。`anchor`/`offset` への変換（`bandToDecoration` と同じ EMU→px 換算を使う）はフロント（`compile()`）の責務
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TextCandidate {
+  /// `a:t` ランの結合文字列。`a:fld type="slidenum"` は `{index}` に置き換え済み
+  pub content: String,
+  pub x_emu: i64,
+  pub y_emu: i64,
+  pub width_emu: i64,
+  pub height_emu: i64,
+  /// 文字サイズ（pt）。`a:lstStyle/a:lvl1pPr/a:defRPr@sz` の実測値
+  pub size_pt: Option<f64>,
+  pub color_hex: Option<String>,
+}
+
 /// slideLayout の1プレースホルダ（`p:ph@type`/`@idx`）
 #[derive(Debug, Clone, Default, PartialEq, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -209,6 +225,10 @@ pub struct BrandProfile {
   pub logo_candidates: Vec<LogoCandidate>,
   /// 検出した帯候補
   pub band_candidates: Vec<BandCandidate>,
+  /// 検出した固定テキスト/ページ番号候補（#318）
+  pub text_candidates: Vec<TextCandidate>,
+  /// `p:embeddedFontLst` に列挙された埋め込みフォント（#318）。フォント実体は含まない（#321のスコープ）
+  pub embedded_fonts: Vec<EmbeddedFont>,
   /// `a:clrScheme` の 12 スロット
   pub colors: ClrScheme,
   /// `p:clrMap`（12 キーが clrScheme のどのスロットを指すか）
@@ -248,7 +268,8 @@ fn extract<R: Read + Seek>(mut reader: R) -> Result<BrandProfile, BrandError> {
     None => None,
   };
 
-  let (logo_candidates, band_candidates) = match (&parts.slide_master, slide_size) {
+  let (logo_candidates, band_candidates, text_candidates) = match (&parts.slide_master, slide_size)
+  {
     (Some(master_part), Some(size)) => {
       let raw = shapes::parse_shapes(&package.read_text(master_part)?)?;
       let logos = heuristics::rank_logo_candidates(&raw.pics, size)
@@ -264,9 +285,27 @@ fn extract<R: Read + Seek>(mut reader: R) -> Result<BrandProfile, BrandError> {
           thickness_emu: b.thickness_emu,
         })
         .collect();
-      (logos, bands)
+      let texts = heuristics::list_text_candidates(&raw.shapes, &theme.colors, &master.color_map)
+        .into_iter()
+        .map(|t| TextCandidate {
+          content: t.content,
+          x_emu: t.x_emu,
+          y_emu: t.y_emu,
+          width_emu: t.width_emu,
+          height_emu: t.height_emu,
+          size_pt: t.size_pt,
+          color_hex: t.color.map(Rgb::to_hex),
+        })
+        .collect();
+      (logos, bands, texts)
     }
-    _ => (Vec::new(), Vec::new()),
+    _ => (Vec::new(), Vec::new(), Vec::new()),
+  };
+
+  // フォント実体（`ppt/fonts/*.fntdata`）は展開しない（#321のスコープ）。presentation.xml の宣言だけを読む
+  let embedded_fonts = match &parts.presentation {
+    Some(part) => opc::parse_embedded_fonts(&package.read_text(part)?)?,
+    None => Vec::new(),
   };
 
   // トップレベルの `mapped_colors`（常に1枚目基準）と `masters[0].mapped_colors` は本来同一値でなければならない。
@@ -311,6 +350,8 @@ fn extract<R: Read + Seek>(mut reader: R) -> Result<BrandProfile, BrandError> {
     thumbnail,
     logo_candidates,
     band_candidates,
+    text_candidates,
+    embedded_fonts,
     mapped_colors,
     text_styles: TextStyles {
       title: resolve_text_style(&master.title, &theme.colors, &master.color_map),
@@ -1053,6 +1094,130 @@ mod tests {
   #[test]
   fn shapes_and_thumbnail_extraction_is_deterministic() {
     let bytes = pptx_package_with_shapes_and_thumbnail();
+    let first = serde_json::to_string(&extract_bytes(&bytes).unwrap()).unwrap();
+    for _ in 0..5 {
+      assert_eq!(
+        serde_json::to_string(&extract_bytes(&bytes).unwrap()).unwrap(),
+        first
+      );
+    }
+  }
+
+  /// 固定テキスト・ページ番号・埋め込みフォントを持つパッケージ（#318）。
+  /// - `p:hf ftr="0"`（フッタ非表示指定）が付いていても、フッタは普通の `p:sp` として置かれているため候補に出る
+  /// - タイトルプレースホルダにもテキストがあるが、プレースホルダなので候補から除外される
+  /// - `p:embeddedFontLst` に2書体（bold の有無が異なる）を持ち、`ppt/fonts/font1.fntdata` は
+  ///   実際の圧縮フォントを模した非 sfnt のダミーバイト列（実体は展開しないので中身は無関係）
+  fn pptx_package_with_text_candidates_and_embedded_fonts() -> Vec<u8> {
+    const PRESENTATION_WITH_FONTS: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
+<p:presentation xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" embedTrueTypeFonts="1">
+  <p:sldMasterIdLst><p:sldMasterId id="2147483696" r:id="rId1"/></p:sldMasterIdLst>
+  <p:sldSz cx="12192000" cy="6858000"/>
+  <p:embeddedFontLst>
+    <p:embeddedFont>
+      <p:font typeface="Corporate Sans" pitchFamily="34" charset="0"/>
+      <p:regular r:id="rId5"/>
+      <p:bold r:id="rId6"/>
+    </p:embeddedFont>
+    <p:embeddedFont>
+      <p:font typeface="Corporate Sans Light"/>
+      <p:regular r:id="rId7"/>
+    </p:embeddedFont>
+  </p:embeddedFontLst>
+</p:presentation>"#;
+    const MASTER_WITH_TEXT: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
+<p:sldMaster xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
+  <p:cSld>
+    <p:spTree>
+      <p:sp>
+        <p:nvSpPr><p:cNvPr id="2" name="Title Placeholder 1"/><p:nvPr><p:ph type="title"/></p:nvPr></p:nvSpPr>
+        <p:spPr/>
+        <p:txBody><a:p><a:r><a:t>タイトルのプレースホルダテキスト</a:t></a:r></a:p></p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr><p:cNvPr id="3" name="Footer"/></p:nvSpPr>
+        <p:spPr><a:xfrm><a:off x="457200" y="6400800"/><a:ext cx="5000000" cy="300000"/></a:xfrm></p:spPr>
+        <p:txBody>
+          <a:lstStyle><a:lvl1pPr><a:defRPr sz="1000"><a:solidFill><a:srgbClr val="808080"/></a:solidFill></a:defRPr></a:lvl1pPr></a:lstStyle>
+          <a:p><a:r><a:t>Acme Corp — </a:t></a:r><a:fld id="{GUID}" type="slidenum"><a:t>1</a:t></a:fld></a:p>
+        </p:txBody>
+      </p:sp>
+    </p:spTree>
+  </p:cSld>
+  <p:clrMap bg1="lt1" tx1="dk1" bg2="lt2" tx2="dk2" accent1="accent1" accent2="accent2" accent3="accent3" accent4="accent4" accent5="accent5" accent6="accent6" hlink="hlink" folHlink="folHlink"/>
+  <p:hf ftr="0"/>
+</p:sldMaster>"#;
+
+    let types = content_types(&[
+      ("/ppt/presentation.xml", CT_PRESENTATION),
+      ("/ppt/slideMasters/slideMaster1.xml", CT_SLIDE_MASTER),
+      ("/ppt/theme/theme1.xml", CT_THEME),
+      ("/ppt/fonts/font1.fntdata", "application/x-font-ttf"),
+    ]);
+    let root_rels = relationships(&[("rId1", "officeDocument", "ppt/presentation.xml")]);
+    let pres_rels = relationships(&[
+      ("rId1", "slideMaster", "slideMasters/slideMaster1.xml"),
+      ("rId5", "font", "fonts/font1.fntdata"),
+    ]);
+    let master_rels = relationships(&[("rId12", "theme", "../theme/theme1.xml")]);
+    let theme = theme_part("Corporate", "1F4E79");
+    build_zip(&[
+      ("[Content_Types].xml", &types),
+      ("_rels/.rels", &root_rels),
+      ("ppt/presentation.xml", PRESENTATION_WITH_FONTS),
+      ("ppt/_rels/presentation.xml.rels", &pres_rels),
+      ("ppt/slideMasters/slideMaster1.xml", MASTER_WITH_TEXT),
+      ("ppt/slideMasters/_rels/slideMaster1.xml.rels", &master_rels),
+      ("ppt/theme/theme1.xml", &theme),
+      // MicroType Express 圧縮の EOT を模した、sfnt マジックを持たないダミーバイト列（#321 の対象。展開はしない）
+      (
+        "ppt/fonts/font1.fntdata",
+        "\u{0}\u{1}not-a-real-font-EOT-payload",
+      ),
+    ])
+  }
+
+  #[test]
+  fn lists_fixed_text_candidate_excluding_placeholder_text() {
+    let profile = extract_bytes(&pptx_package_with_text_candidates_and_embedded_fonts()).unwrap();
+    assert_eq!(profile.text_candidates.len(), 1);
+    let footer = &profile.text_candidates[0];
+    assert_eq!(footer.content, "Acme Corp — {index}");
+    assert_eq!(footer.x_emu, 457_200);
+    assert_eq!(footer.y_emu, 6_400_800);
+    assert_eq!(footer.width_emu, 5_000_000);
+    assert_eq!(footer.height_emu, 300_000);
+    assert_eq!(footer.size_pt, Some(10.0));
+    assert_eq!(footer.color_hex.as_deref(), Some("#808080"));
+    // タイトルプレースホルダのテキストは候補に混入しない
+    assert!(!profile
+      .text_candidates
+      .iter()
+      .any(|c| c.content.contains("プレースホルダ")));
+  }
+
+  #[test]
+  fn text_candidate_appears_even_when_master_hf_hides_the_footer_placeholder() {
+    // `p:hf ftr="0"`（フッタプレースホルダ非表示）があっても、固定テキストは普通の p:sp として
+    // 置かれているため候補に出る（ftr の値では判定しないという #318 の確定方針）
+    let profile = extract_bytes(&pptx_package_with_text_candidates_and_embedded_fonts()).unwrap();
+    assert_eq!(profile.text_candidates.len(), 1);
+  }
+
+  #[test]
+  fn lists_embedded_fonts_with_style_flags_without_touching_font_bytes() {
+    let profile = extract_bytes(&pptx_package_with_text_candidates_and_embedded_fonts()).unwrap();
+    assert_eq!(profile.embedded_fonts.len(), 2);
+    assert_eq!(profile.embedded_fonts[0].typeface, "Corporate Sans");
+    assert!(profile.embedded_fonts[0].has_regular);
+    assert!(profile.embedded_fonts[0].has_bold);
+    assert_eq!(profile.embedded_fonts[1].typeface, "Corporate Sans Light");
+    assert!(!profile.embedded_fonts[1].has_bold);
+  }
+
+  #[test]
+  fn text_and_embedded_font_extraction_is_deterministic() {
+    let bytes = pptx_package_with_text_candidates_and_embedded_fonts();
     let first = serde_json::to_string(&extract_bytes(&bytes).unwrap()).unwrap();
     for _ in 0..5 {
       assert_eq!(

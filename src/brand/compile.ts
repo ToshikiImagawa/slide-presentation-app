@@ -1,7 +1,7 @@
 import { getContrastRatio, hexToRgbTuple, mergeRecord, normalizeHex, relativeLuminance, rgbTupleToHex, THEME_COLOR_TOKENS, WCAG_AA_THRESHOLD } from '../applyTheme'
 import { SLIDE_WIDTH, SLIDE_HEIGHT } from '../hooks/useReveal'
 import { slugify } from '../slugify'
-import type { FontFamilySpec, MasterDecoration, MasterDefinition, SafeArea, ThemeData } from '../data'
+import type { FontFamilySpec, FontSource, MasterAnchor, MasterDecoration, MasterDefinition, SafeArea, ThemeData } from '../data'
 import {
   LAYOUT_ASSIGNMENT_SLOTS,
   MAPPED_COLOR_KEYS,
@@ -20,6 +20,7 @@ import {
   type MediaAsset,
   type PlaceholderProfile,
   type PlaceholderTextProps,
+  type TextCandidate,
 } from './types'
 
 /** 並置比較ダイアログが合成した master を割り当てる先。既存のレイアウト種別（`SlideData.layout`）をすべて対象にする */
@@ -342,6 +343,9 @@ const PT_PER_INCH = 72
 /** `slideSize` が無いテンプレートで仮定するスライド幅（EMU）。96dpi で 1280px 幅に相当し、
  * 16:9 既定の PPTX（12192000 EMU）と同じ換算になる */
 const FALLBACK_SLIDE_WIDTH_EMU = (SLIDE_WIDTH / 96) * EMU_PER_INCH
+/** `slideSize` が無いテンプレートで仮定するスライド高さ（EMU）。`FALLBACK_SLIDE_WIDTH_EMU` と同じ 96dpi 換算
+ * （テキスト候補の anchor/offset 算出でスライド全体の比率が必要なため、幅と対にして持つ） */
+const FALLBACK_SLIDE_HEIGHT_EMU = (SLIDE_HEIGHT / 96) * EMU_PER_INCH
 
 /** 割り当て済みレイアウトを枠で引ける形にする（同じ枠に複数の割り当てがある場合は先着を優先する） */
 function indexBySlot(assignedLayouts: AssignedLayout[]): Map<LayoutAssignmentSlot, AssignedLayout> {
@@ -404,11 +408,33 @@ function resolveFonts(profile: BrandProfile, overrides: BrandOverrides, bySlot: 
   const body = resolveFontSlot(profile.fonts.minor, findPlaceholderText(bySlot, BODY_FONT_SLOTS, 'body'), { latin: fontOverrides?.body, ea: fontOverrides?.bodyEa })
   report.fields['fonts.heading'] = fontFieldReport(heading.spec, heading.origin, Boolean(fontOverrides?.heading || fontOverrides?.headingEa), '見出し')
   report.fields['fonts.body'] = fontFieldReport(body.spec, body.origin, Boolean(fontOverrides?.body || fontOverrides?.bodyEa), '本文')
+  const sources = resolveEmbeddedFontSources(profile, report)
   return {
     ...(heading.spec ? { heading: heading.spec } : {}),
     ...(body.spec ? { body: body.spec } : {}),
     ...resolveFontHierarchy(profile, overrides, bySlot, report),
+    ...(sources.length > 0 ? { sources } : {}),
   }
+}
+
+/**
+ * `profile.embeddedFonts`（#318）を `local()` 参照のみの `FontSource` として登録する。
+ * `src`（フォント実体のパス/URL）を持たせないため、#171 の再配布ゲート（`src` を持つ `FontSource` の
+ * 除外判定）には触れない。フォント実体（`ppt/fonts/*.fntdata`）の展開自体が #321 のスコープ外であるため、
+ * 採否の確認は不要（見た目を書き換える装飾候補と違い、実在しないローカルフォント名を足すだけでは
+ * 既存の見た目に影響しない）
+ */
+function resolveEmbeddedFontSources(profile: BrandProfile, report: BrandImportReport): FontSource[] {
+  const seen = new Set<string>()
+  const sources: FontSource[] = []
+  for (const font of profile.embeddedFonts) {
+    if (seen.has(font.typeface)) continue
+    seen.add(font.typeface)
+    sources.push({ family: font.typeface, localName: font.typeface })
+  }
+  report.fields['fonts.embedded'] =
+    sources.length > 0 ? { status: 'derived', detail: `${sources.map((s) => s.family).join(' / ')} をローカルフォントとして登録（フォント実体は同梱しない）` } : { status: 'missing', detail: '埋め込みフォントが検出されなかった' }
+  return sources
 }
 
 /** OOXML の pt を描画基準の px へ換算する。pt を EMU（1pt = 1/72 インチ）へ直し、EMU→px の換算は
@@ -492,6 +518,15 @@ function buildDecorations(profile: BrandProfile, overrides: BrandOverrides, logo
   for (const band of selectedBands) {
     decorations.push(bandToDecoration(band, profile.slideSize, canvasHeight))
   }
+
+  const selectedTexts = (overrides.selectedTextIndices ?? []).map((index) => ({ index, candidate: profile.textCandidates[index] })).filter((t): t is { index: number; candidate: TextCandidate } => t.candidate !== undefined)
+  report.fields['decorations.text'] = {
+    status: selectedTexts.length > 0 ? 'ok' : 'missing',
+    detail: selectedTexts.length > 0 ? undefined : profile.textCandidates.length > 0 ? '固定テキスト候補は検出済みだが人が未選択' : '固定テキスト候補が検出されなかった',
+  }
+  for (const { index, candidate } of selectedTexts) {
+    decorations.push(textCandidateToDecoration(candidate, overrides.textIndexFormats?.[String(index)], profile.slideSize, canvasHeight))
+  }
   return decorations
 }
 
@@ -541,6 +576,53 @@ function bandToDecoration(band: BandCandidate, slideSize: BrandProfile['slideSiz
   return { type: 'band', anchor: band.anchor, orientation: band.orientation, color: band.colorHex, thickness }
 }
 
+/**
+ * 矩形（EMU）から近い9アンカーと、そのアンカー基準からの残差オフセット（px）を求める（#318）。
+ * 帯（`bandToDecoration`）と同じ `emuToPx` を使い、EMU→px 換算を複製しない。
+ * 判定はスライドを縦横 3 分割し、矩形の中心がどのゾーンに入るかで決める（帯のような「辺いっぱいに
+ * 伸びている」前提が無い、任意位置の固定テキストにも対応するため）。
+ * オフセットは `SlideMasterLayer.decorationStyle` の配置規則（top/bottom/left/right は `0` 基準、
+ * center 系は自身の寸法の半分だけ引いた `50%` 基準）に合わせて逆算する
+ */
+function anchorAndOffsetForRect(rect: { xEmu: number; yEmu: number; widthEmu: number; heightEmu: number }, slideSize: BrandProfile['slideSize'], canvasHeight: number): { anchor: MasterAnchor; offset: { x: number; y: number } } {
+  const slideWidthEmu = slideSize && slideSize.widthEmu > 0 ? slideSize.widthEmu : FALLBACK_SLIDE_WIDTH_EMU
+  const slideHeightEmu = slideSize && slideSize.heightEmu > 0 ? slideSize.heightEmu : FALLBACK_SLIDE_HEIGHT_EMU
+  const xPx = emuToPx(rect.xEmu, slideWidthEmu, SLIDE_WIDTH)
+  const yPx = emuToPx(rect.yEmu, slideHeightEmu, canvasHeight)
+  const widthPx = emuToPx(rect.widthEmu, slideWidthEmu, SLIDE_WIDTH)
+  const heightPx = emuToPx(rect.heightEmu, slideHeightEmu, canvasHeight)
+  const centerXPx = xPx + widthPx / 2
+  const centerYPx = yPx + heightPx / 2
+
+  const horizontal = centerXPx < SLIDE_WIDTH / 3 ? 'left' : centerXPx > (SLIDE_WIDTH * 2) / 3 ? 'right' : 'center'
+  const vertical = centerYPx < canvasHeight / 3 ? 'top' : centerYPx > (canvasHeight * 2) / 3 ? 'bottom' : 'middle'
+
+  const offsetX = horizontal === 'left' ? xPx : horizontal === 'right' ? xPx + widthPx - SLIDE_WIDTH : centerXPx - SLIDE_WIDTH / 2
+  const offsetY = vertical === 'top' ? yPx : vertical === 'bottom' ? yPx + heightPx - canvasHeight : centerYPx - canvasHeight / 2
+
+  return { anchor: `${vertical}-${horizontal}` as MasterAnchor, offset: { x: Math.round(offsetX), y: Math.round(offsetY) } }
+}
+
+/** `{index}` を含む候補の表示形式（#318）。`indexTotal` は `{index}/{total}` へ展開する。候補に `{index}`
+ * が無い（`a:fld type="slidenum"` を含まない固定テキスト）場合は形式指定を無視してそのまま返す */
+function formatTextCandidateContent(content: string, format: 'index' | 'indexTotal' | undefined): string {
+  if (format !== 'indexTotal' || !content.includes('{index}')) return content
+  return content.replace('{index}', '{index}/{total}')
+}
+
+function textCandidateToDecoration(candidate: TextCandidate, format: 'index' | 'indexTotal' | undefined, slideSize: BrandProfile['slideSize'], canvasHeight: number): MasterDecoration {
+  const { anchor, offset } = anchorAndOffsetForRect(candidate, slideSize, canvasHeight)
+  const fontSize = candidate.sizePt != null ? ptToPx(candidate.sizePt, slideSize) : undefined
+  return {
+    type: 'text',
+    anchor,
+    offset,
+    content: formatTextCandidateContent(candidate.content, format),
+    ...(fontSize != null ? { fontSize } : {}),
+    ...(candidate.colorHex ? { color: candidate.colorHex } : {}),
+  }
+}
+
 /** `MediaAsset` を `<img src>` に直接渡せる data URL へ変換する（サムネイル・ロゴ候補の表示で共有する） */
 export function mediaAssetToDataUrl(asset: MediaAsset): string {
   return `data:${asset.contentType};base64,${asset.base64}`
@@ -564,6 +646,13 @@ function buildTokens(colors: Record<MappedColorKey, string>): Record<string, str
  * `theme.colors`（ColorPalette）には書き込まない: 12 キーは `compiled.colors` 側で別に保持し、
  * 生成 CSS ではなく masters/decorations 経由で見た目に反映する（Epic #173 の方針）
  */
+/** `additional`（#318 の埋め込みフォント由来）のうち `base` に無い `family` だけを末尾へ追記する。
+ * 既存の明示的な `FontSource`（`src` 付きの本物のフォント配布等）を上書きしない */
+function mergeFontSources(base: FontSource[] | undefined, additional: FontSource[]): FontSource[] {
+  const existingFamilies = new Set((base ?? []).map((source) => source.family))
+  return [...(base ?? []), ...additional.filter((source) => !existingFamilies.has(source.family))]
+}
+
 export function mergeCompiledBrandTheme(base: ThemeData | undefined, compiled: CompiledBrandTheme): ThemeData {
   return {
     ...base,
@@ -575,6 +664,8 @@ export function mergeCompiledBrandTheme(base: ThemeData | undefined, compiled: C
       // 型階層はキー単位でマージする（既存テーマが持つ段を消さない）。合成規則は `mergeThemeData` と
       // 同じ `mergeRecord` を使い、ブランド取り込み経路だけ規則がずれないようにする
       ...(compiled.fonts.fontSizeRatios ? { fontSizeRatios: mergeRecord(base?.fonts?.fontSizeRatios, compiled.fonts.fontSizeRatios) } : {}),
+      // 埋め込みフォント名（#318）は既存の sources を保持したまま、family が重複しないものだけ追記する
+      ...(compiled.fonts.sources && compiled.fonts.sources.length > 0 ? { sources: mergeFontSources(base?.fonts?.sources, compiled.fonts.sources) } : {}),
     },
     masters: { ...base?.masters, ...compiled.masters },
     masterMap: { ...base?.masterMap, ...compiled.masterMap },
