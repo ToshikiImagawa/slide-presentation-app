@@ -19,7 +19,7 @@ import { Toc, type TocItemData } from './Toc'
 import { Timeline } from './Timeline'
 import { TimelineNode } from './TimelineNode'
 import { FeatureTileGrid } from './FeatureTileGrid'
-import { ImageFigureGrid } from './ImageFigureGrid'
+import { ImageFigureGrid, isGroupedImages } from './ImageFigureGrid'
 import { Profile } from './Profile'
 import { InlineSvg, type SvgSpec } from './InlineSvg'
 import { TextDiagram, type TextDiagramSpec } from './TextDiagram'
@@ -407,10 +407,20 @@ function renderProfile(content: SlideContent): ReactNode {
   )
 }
 
-/** imagesをImageFigureGridとしてレンダリング（画像スライド・#198） */
+type ImageFigureInput = { src: string; alt?: string; caption?: string }
+type ImageGroupInput = { label: string; images: ImageFigureInput[] }
+
+function renderImageFigure(image: ImageFigureInput) {
+  return { src: image.src, alt: image.alt, caption: image.caption ? renderHtml(image.caption) : undefined }
+}
+
+/** imagesをImageFigureGridとしてレンダリング（画像スライド・#198）。
+ * 要素に images キーがあれば分類ごとのグループ形（#326）として渡す（type判別フィールドは持たない。
+ * 判別式はImageFigureGridのisGroupedImagesを再利用し、2箇所に同じ式を書かない） */
 function renderImages(content: SlideContent): ReactNode {
-  const images = content.images as Array<{ src: string; alt?: string; caption?: string }>
-  return <ImageFigureGrid images={images.map((image) => ({ src: image.src, alt: image.alt, caption: image.caption ? renderHtml(image.caption) : undefined }))} />
+  const images = content.images as ImageFigureInput[] | ImageGroupInput[]
+  const mapped = isGroupedImages(images) ? images.map((group) => ({ label: group.label, images: group.images.map(renderImageFigure) })) : images.map(renderImageFigure)
+  return <ImageFigureGrid images={mapped} imageColumns={content.imageColumns as number | undefined} />
 }
 
 /** プレーン本文（body/items）をレンダリング（#193） */

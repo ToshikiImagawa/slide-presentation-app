@@ -34,3 +34,55 @@
   border-radius: var(--theme-radius-md, 8px);
   box-shadow: 0 6px 20px rgba(0, 0, 0, calc(0.3 * var(--theme-shadow-strength, 1)));
 }
+
+/* グループ形（#326）。各グループ（見出し+グリッド）を縦に積む。flex:1・min-height:0 は
+   global.css の .content-area-fill :has(.content-area-fill-item) 規則が深さを問わず自動で付与するため
+   （グリッドが .content-area-fill-item を名乗っている限り、この祖先にも伝播する）、ここで私的に宣言しない。
+   display/flex-direction/gap はレイアウトの見た目そのものなので、ここで宣言する（他モジュールの .grid と同じ扱い） */
+.groups {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: 40px;
+}
+
+.groups[data-density='dense'] {
+  gap: 28px;
+}
+
+.groups[data-density='compact'] {
+  gap: 20px;
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.groups[data-density='dense'] .group {
+  gap: 12px;
+}
+
+.groups[data-density='compact'] .group {
+  gap: 8px;
+}
+
+/* グループ見出しの文字サイズ・下線の余白を密度に応じて詰める。UnderlinedHeading（読み取り専用で流用・変更しない）の
+   内部実装には踏み込まず、UnderlinedHeadingが生成するh2/hr要素をこちら側のセレクタで直接指定する
+   （Checklist.module.cssのdata-densityによる.title/.description指定と同じ作法） */
+.groups[data-density='dense'] .group h2 {
+  font-size: var(--theme-font-size-h3);
+}
+
+.groups[data-density='dense'] .group hr {
+  margin-top: 16px;
+}
+
+.groups[data-density='compact'] .group h2 {
+  font-size: var(--theme-font-size-h4);
+}
+
+.groups[data-density='compact'] .group hr {
+  margin-top: 10px;
+}
