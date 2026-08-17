@@ -575,6 +575,26 @@
       }
     },
     {
+      "id": "layout-content-date-timeline-columns",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (dateTimeline + dateTimelineColumns)",
+        "dateTimelineColumns": 3,
+        "dateTimeline": [
+          { "date": "2020", "title": "Founded", "description": "Start small" },
+          { "date": "2021", "title": "First release" },
+          { "date": "2022", "title": "Global expansion", "description": "Added localization" },
+          { "date": "2022/06", "title": "Series A" },
+          { "date": "2023", "title": "Org grows", "description": "Split into 3 teams" },
+          { "date": "2023/09", "title": "Major contract" },
+          { "date": "2024", "title": "Platformization" },
+          { "date": "2024/11", "title": "Certification" },
+          { "date": "2025", "title": "Next-gen platform migration", "description": "Legacy phased out" },
+          { "date": "2026", "title": "Today" }
+        ]
+      }
+    },
+    {
       "id": "layout-content-flowchart",
       "layout": "content",
       "content": {

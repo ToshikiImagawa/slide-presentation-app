@@ -576,6 +576,26 @@
       }
     },
     {
+      "id": "layout-content-date-timeline-columns",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (dateTimeline + dateTimelineColumns)",
+        "dateTimelineColumns": 3,
+        "dateTimeline": [
+          { "date": "2020", "title": "創業", "description": "小さく始める" },
+          { "date": "2021", "title": "初期リリース" },
+          { "date": "2022", "title": "海外展開", "description": "多言語対応" },
+          { "date": "2022/06", "title": "資金調達" },
+          { "date": "2023", "title": "組織拡大", "description": "3チーム制へ" },
+          { "date": "2023/09", "title": "大型契約" },
+          { "date": "2024", "title": "プラットフォーム化" },
+          { "date": "2024/11", "title": "認証取得" },
+          { "date": "2025", "title": "次世代基盤へ移行", "description": "旧基盤は段階的に廃止" },
+          { "date": "2026", "title": "現在" }
+        ]
+      }
+    },
+    {
       "id": "layout-content-flowchart",
       "layout": "content",
       "content": {
