@@ -1,7 +1,7 @@
 import { getContrastRatio, hexToRgbTuple, mergeRecord, normalizeHex, relativeLuminance, rgbTupleToHex, THEME_COLOR_TOKENS, WCAG_AA_THRESHOLD } from '../applyTheme'
 import { SLIDE_WIDTH, SLIDE_HEIGHT } from '../hooks/useReveal'
 import { slugify } from '../slugify'
-import type { FontFamilySpec, MasterDecoration, MasterDefinition, ThemeData } from '../data'
+import type { FontFamilySpec, MasterDecoration, MasterDefinition, SafeArea, ThemeData } from '../data'
 import {
   LAYOUT_ASSIGNMENT_SLOTS,
   MAPPED_COLOR_KEYS,
@@ -83,16 +83,19 @@ export function compile(profile: BrandProfile, overrides: BrandOverrides): { the
   convergeContrast(colors, report)
 
   // 書体・型階層は割り当て済みレイアウトのプレースホルダ（`a:defRPr`）を抽出元にするため、
-  // 割り当ての解決を先に行う（#316）
+  // 割り当ての解決を先に行う（#316）。枠単位のルックアップ（`bySlot`）は書体と safeArea（#317）が
+  // 共有し、レイアウト割り当てが変わっても走査を2回行わない
   const assignedLayouts = resolveAssignedLayouts(profile, overrides)
-  const fonts = resolveFonts(profile, overrides, assignedLayouts, report)
+  const bySlot = indexBySlot(assignedLayouts)
+  const fonts = resolveFonts(profile, overrides, bySlot, report)
   const logo = resolveLogo(profile, overrides)
   report.fields.logo = { status: logo ? 'ok' : 'missing', detail: logo ? undefined : 'ロゴ候補が無いか、人が未選択' }
 
   // キャンバス幅は SLIDE_WIDTH（1280）に固定し、高さだけ slideSize の実比率から算出する（#188）。
   // 4:3 等の非16:9テンプレートでも、装飾の EMU→px 換算基準（canvasHeight）が実際の比率と一致するようにする
   const canvasHeight = profile.slideSize ? Math.round((SLIDE_WIDTH * profile.slideSize.heightEmu) / profile.slideSize.widthEmu) : SLIDE_HEIGHT
-  const canvas = profile.slideSize ? { width: SLIDE_WIDTH, height: canvasHeight } : undefined
+  const safeArea = resolveSafeArea(profile, overrides, bySlot, canvasHeight, report)
+  const canvas = profile.slideSize ? { width: SLIDE_WIDTH, height: canvasHeight, ...(safeArea ? { safeArea } : {}) } : undefined
 
   const decorations = buildDecorations(profile, overrides, logo, canvasHeight, report)
   const masters = { [BRAND_MASTER_KEY]: { decorations }, ...buildLayoutMasters(assignedLayouts) }
@@ -395,9 +398,8 @@ function fontFieldReport(spec: FontFamilySpec | undefined, origin: BrandFontOrig
   return origin === 'defRPr' ? { status: 'derived', detail: 'プレースホルダ / slideMaster の defRPr 由来（fontScheme より優先）' } : { status: 'ok', detail: 'テーマの fontScheme 由来' }
 }
 
-function resolveFonts(profile: BrandProfile, overrides: BrandOverrides, assignedLayouts: AssignedLayout[], report: BrandImportReport): CompiledBrandTheme['fonts'] {
+function resolveFonts(profile: BrandProfile, overrides: BrandOverrides, bySlot: Map<LayoutAssignmentSlot, AssignedLayout>, report: BrandImportReport): CompiledBrandTheme['fonts'] {
   const fontOverrides = overrides.fontOverrides
-  const bySlot = indexBySlot(assignedLayouts)
   const heading = resolveFontSlot(profile.fonts.major, findPlaceholderText(bySlot, HEADING_FONT_SLOTS, 'title'), { latin: fontOverrides?.heading, ea: fontOverrides?.headingEa })
   const body = resolveFontSlot(profile.fonts.minor, findPlaceholderText(bySlot, BODY_FONT_SLOTS, 'body'), { latin: fontOverrides?.body, ea: fontOverrides?.bodyEa })
   report.fields['fonts.heading'] = fontFieldReport(heading.spec, heading.origin, Boolean(fontOverrides?.heading || fontOverrides?.headingEa), '見出し')
@@ -491,6 +493,47 @@ function buildDecorations(profile: BrandProfile, overrides: BrandOverrides, logo
     decorations.push(bandToDecoration(band, profile.slideSize, canvasHeight))
   }
   return decorations
+}
+
+/**
+ * `content` 枠に割り当てたレイアウトの body プレースホルダ矩形から `canvas.safeArea`（#188）を導出する（#317）。
+ * `content` 枠に body プレースホルダを持たないレイアウトが割り当てられている場合（または未割当の場合）は
+ * 導出せず、CSS 側の既定（全辺60px）に委ねる。人の上書き（`safeAreaOverrides`）は辺単位で最優先する
+ */
+function resolveSafeArea(profile: BrandProfile, overrides: BrandOverrides, bySlot: Map<LayoutAssignmentSlot, AssignedLayout>, canvasHeight: number, report: BrandImportReport): SafeArea | undefined {
+  const derived = deriveSafeArea(profile, bySlot, canvasHeight)
+  const override = overrides.safeAreaOverrides
+  const hasOverride = override != null && Object.keys(override).length > 0
+  const merged = derived || hasOverride ? { ...derived, ...override } : undefined
+
+  if (hasOverride) {
+    report.fields['canvas.safeArea'] = { status: 'ok', detail: '人が上書き' }
+  } else if (derived) {
+    report.fields['canvas.safeArea'] = { status: 'derived', detail: '本文プレースホルダの矩形から算出' }
+  } else {
+    report.fields['canvas.safeArea'] = { status: 'missing', detail: '本文プレースホルダの矩形を抽出できず既定値（60px）を使用' }
+  }
+  return merged
+}
+
+/** `content` 枠の body プレースホルダ矩形（EMU）から4辺の余白を算出する。矩形が無い（body プレースホルダ
+ * が無い、または `xEmu`/`yEmu`/`cxEmu`/`cyEmu` のいずれかが欠けている）場合は `undefined` */
+function deriveSafeArea(profile: BrandProfile, bySlot: Map<LayoutAssignmentSlot, AssignedLayout>, canvasHeight: number): SafeArea | undefined {
+  const slideSize = profile.slideSize
+  if (!slideSize) return undefined
+  const body = bySlot.get('content')?.placeholders.find((p) => p.kind === 'body')
+  if (!body || body.xEmu == null || body.yEmu == null || body.cxEmu == null || body.cyEmu == null) return undefined
+  return {
+    top: clampToCanvas(emuToPx(body.yEmu, slideSize.heightEmu, canvasHeight)),
+    left: clampToCanvas(emuToPx(body.xEmu, slideSize.widthEmu, SLIDE_WIDTH)),
+    right: clampToCanvas(emuToPx(slideSize.widthEmu - (body.xEmu + body.cxEmu), slideSize.widthEmu, SLIDE_WIDTH)),
+    bottom: clampToCanvas(emuToPx(slideSize.heightEmu - (body.yEmu + body.cyEmu), slideSize.heightEmu, canvasHeight)),
+  }
+}
+
+/** 負値（壊れたテンプレートで矩形がスライド境界の外にある場合）を 0 にクランプする */
+function clampToCanvas(value: number): number {
+  return Math.max(0, value)
 }
 
 function bandToDecoration(band: BandCandidate, slideSize: BrandProfile['slideSize'], canvasHeight: number): MasterDecoration {

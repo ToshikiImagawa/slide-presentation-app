@@ -1,4 +1,4 @@
-import type { FontFamilySpec, MasterAnchor, MasterDefinition } from '../data'
+import type { FontFamilySpec, MasterAnchor, MasterDefinition, SafeArea } from '../data'
 
 /** `p:clrMap` 適用後の 12 キー（Rust `brand::MappedColors` と同じ並び・camelCase）。 */
 export const MAPPED_COLOR_KEYS = ['bg1', 'tx1', 'bg2', 'tx2', 'accent1', 'accent2', 'accent3', 'accent4', 'accent5', 'accent6', 'hlink', 'folHlink'] as const
@@ -66,6 +66,12 @@ export interface PlaceholderProfile {
   kind: BrandPlaceholderKind
   /** `a:defRPr` 由来の既定文字プロパティ（#316）。書体は `fonts`（fontScheme）より優先する */
   text: PlaceholderTextProps
+  /** `a:off`/`a:ext`（EMU）由来の矩形（#317）。layout 側に無ければ所属 slideMaster の同じプレースホルダ
+   * から継承済み（Rust 側で解決）。`off`/`ext` のどちらかが欠けている場合は4フィールドすべて `null` */
+  xEmu: number | null
+  yEmu: number | null
+  cxEmu: number | null
+  cyEmu: number | null
 }
 
 /** slideLayout から抽出した内容（#192）。Rust `brand::SlideLayoutProfile` と同じ形。
@@ -163,6 +169,8 @@ export interface BrandOverrides {
   /** 抽出した slideLayout を `LAYOUT_ASSIGNMENT_SLOTS` の枠へ割り当てた結果（#192）。
    * key は `"<masterIndex>:<layoutIndex>"`（`BrandProfile.masters` の添字）。未割当のレイアウトは省略する */
   layoutAssignments?: Record<string, LayoutAssignmentSlot>
+  /** `canvas.safeArea`（#188/#317）の辺単位の上書き。未指定の辺は導出値（無ければ CSS 側の既定 60px）のまま */
+  safeAreaOverrides?: Partial<SafeArea>
 }
 
 /** `compile` の出力。生成 CSS 文字列は含めない（Epic #173 の方針）。フォント/masters/decorations は
@@ -177,8 +185,10 @@ export interface CompiledBrandTheme {
   masterMap: Record<string, string>
   tokens: Record<string, Record<string, string>>
   logo: MediaAsset | null
-  /** `profile.slideSize` から生成したキャンバスサイズ（#188）。`slideSize` が無い場合は undefined（既定の 1280x720 のまま） */
-  canvas?: { width: number; height: number }
+  /** `profile.slideSize` から生成したキャンバスサイズ（#188）。`slideSize` が無い場合は undefined（既定の 1280x720 のまま）。
+   * `safeArea` は `content` 枠のレイアウトの body プレースホルダ矩形から導出する（#317）。導出できない
+   * （body プレースホルダが無い等）場合は省略し、CSS 側の既定（全辺60px）に委ねる */
+  canvas?: { width: number; height: number; safeArea?: SafeArea }
 }
 
 export type BrandFieldStatus = 'ok' | 'derived' | 'fallback' | 'missing'

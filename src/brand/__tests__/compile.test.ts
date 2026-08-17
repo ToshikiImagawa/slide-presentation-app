@@ -35,9 +35,20 @@ function profile(overrides: Partial<BrandProfile> = {}): BrandProfile {
 }
 
 /** slideLayout の1プレースホルダ（`kind` と既定文字プロパティは Rust 側で解決済みの形。#316）。
- * `kind` を `phType` から導出せず明示するのは、Rust の分類結果をそのまま受け取る契約を写すため */
-function placeholder(kind: BrandPlaceholderKind, phType: string | null, text: Partial<PlaceholderTextProps> = {}): PlaceholderProfile {
-  return { phType, idx: null, kind, text: { latin: null, ea: null, cs: null, sizePt: null, bold: null, colorHex: null, fontOrigin: 'none', ...text } }
+ * `kind` を `phType` から導出せず明示するのは、Rust の分類結果をそのまま受け取る契約を写すため。
+ * 矩形（#317）は既定 `null`（未指定）で、必要なテストだけ `rect` で明示する */
+function placeholder(kind: BrandPlaceholderKind, phType: string | null, text: Partial<PlaceholderTextProps> = {}, rect: Partial<Pick<PlaceholderProfile, 'xEmu' | 'yEmu' | 'cxEmu' | 'cyEmu'>> = {}): PlaceholderProfile {
+  return {
+    phType,
+    idx: null,
+    kind,
+    text: { latin: null, ea: null, cs: null, sizePt: null, bold: null, colorHex: null, fontOrigin: 'none', ...text },
+    xEmu: null,
+    yEmu: null,
+    cxEmu: null,
+    cyEmu: null,
+    ...rect,
+  }
 }
 
 describe('compile（#168 の並置比較・取り込み確認）', () => {
@@ -618,6 +629,91 @@ describe('compile（#168 の並置比較・取り込み確認）', () => {
       const first = compile(withLayouts(), overrides).theme.tokens['brand-dark-section-0-0']['theme-text-body']
       for (let i = 0; i < 5; i++) {
         expect(compile(withLayouts(), overrides).theme.tokens['brand-dark-section-0-0']['theme-text-body']).toBe(first)
+      }
+    })
+  })
+
+  describe('canvas.safeArea の導出（#317）', () => {
+    /** `content` 枠に割り当てる1レイアウト。プレースホルダは1つだけ持たせる */
+    function profileWithContentPlaceholder(kind: BrandPlaceholderKind, rect: Partial<Pick<PlaceholderProfile, 'xEmu' | 'yEmu' | 'cxEmu' | 'cyEmu'>>): BrandProfile {
+      return profile({
+        masters: [
+          {
+            part: 'ppt/slideMasters/slideMaster1.xml',
+            mappedColors: profile().mappedColors,
+            slideLayouts: [
+              {
+                part: 'ppt/slideLayouts/slideLayout1.xml',
+                name: 'Content',
+                layoutType: 'obj',
+                backgroundColorHex: null,
+                placeholders: [placeholder(kind, kind === 'title' ? 'title' : 'body', {}, rect)],
+              },
+            ],
+          },
+        ],
+      })
+    }
+
+    const assignedToContent: BrandOverrides = { layoutAssignments: { '0:0': 'content' } }
+
+    it('非対称な余白を持つ本文プレースホルダの矩形から4辺を導出する（bandToDecoration と同じ EMU→px 換算）', () => {
+      // slideSize は 12,192,000 x 6,858,000 EMU（16:9）。canvasHeight は SLIDE_WIDTH(1280) 基準で 720
+      const p = profileWithContentPlaceholder('body', { xEmu: 609_600, yEmu: 1_143_000, cxEmu: 10_363_200, cyEmu: 5_029_200 })
+      const { theme, report } = compile(p, assignedToContent)
+      // left=609600/12192000*1280=64 / top=1143000/6858000*720=120
+      // right=(12192000-10972800)/12192000*1280=128 / bottom=(6858000-6172200)/6858000*720=72
+      expect(theme.canvas?.safeArea).toEqual({ top: 120, left: 64, right: 128, bottom: 72 })
+      expect(report.fields['canvas.safeArea']).toEqual({ status: 'derived', detail: '本文プレースホルダの矩形から算出' })
+    })
+
+    it('body プレースホルダを持たないレイアウトが content 枠に割り当てられた場合、safeArea を省略する（現行の CSS 既定 60px のまま）', () => {
+      const p = profileWithContentPlaceholder('title', { xEmu: 609_600, yEmu: 1_143_000, cxEmu: 10_363_200, cyEmu: 5_029_200 })
+      const { theme, report } = compile(p, assignedToContent)
+      expect(theme.canvas?.safeArea).toBeUndefined()
+      expect(report.fields['canvas.safeArea']?.status).toBe('missing')
+    })
+
+    it('content 枠が未割当の場合も safeArea を省略する', () => {
+      const p = profileWithContentPlaceholder('body', { xEmu: 609_600, yEmu: 1_143_000, cxEmu: 10_363_200, cyEmu: 5_029_200 })
+      const { theme, report } = compile(p, {})
+      expect(theme.canvas?.safeArea).toBeUndefined()
+      expect(report.fields['canvas.safeArea']?.status).toBe('missing')
+    })
+
+    it('矩形の一部（cxEmu）が欠けている場合は導出しない（片方だけの矩形は使えない）', () => {
+      const p = profileWithContentPlaceholder('body', { xEmu: 609_600, yEmu: 1_143_000, cyEmu: 5_029_200 })
+      const { theme, report } = compile(p, assignedToContent)
+      expect(theme.canvas?.safeArea).toBeUndefined()
+      expect(report.fields['canvas.safeArea']?.status).toBe('missing')
+    })
+
+    it('負値・キャンバス超過（壊れたテンプレートで矩形がスライド境界の外にある）は0にクランプする', () => {
+      // off.x が負値、かつ x+cx がスライド幅を超える（右端の余白が負値になる）矩形
+      const p = profileWithContentPlaceholder('body', { xEmu: -609_600, yEmu: 0, cxEmu: 13_000_000, cyEmu: 6_858_000 })
+      const { theme } = compile(p, assignedToContent)
+      expect(theme.canvas?.safeArea).toEqual({ top: 0, left: 0, right: 0, bottom: 0 })
+    })
+
+    it('safeAreaOverrides は辺単位で導出値より優先し、ステータスを ok として報告する', () => {
+      const p = profileWithContentPlaceholder('body', { xEmu: 609_600, yEmu: 1_143_000, cxEmu: 10_363_200, cyEmu: 5_029_200 })
+      const { theme, report } = compile(p, { ...assignedToContent, safeAreaOverrides: { top: 10 } })
+      expect(theme.canvas?.safeArea).toEqual({ top: 10, left: 64, right: 128, bottom: 72 })
+      expect(report.fields['canvas.safeArea']).toEqual({ status: 'ok', detail: '人が上書き' })
+    })
+
+    it('導出できない場合でも safeAreaOverrides だけで safeArea を組み立てられる', () => {
+      const p = profileWithContentPlaceholder('title', {})
+      const { theme, report } = compile(p, { ...assignedToContent, safeAreaOverrides: { top: 10, left: 20 } })
+      expect(theme.canvas?.safeArea).toEqual({ top: 10, left: 20 })
+      expect(report.fields['canvas.safeArea']?.status).toBe('ok')
+    })
+
+    it('同じ入力から必ず同じ導出結果になる（決定的）', () => {
+      const p = profileWithContentPlaceholder('body', { xEmu: 609_600, yEmu: 1_143_000, cxEmu: 10_363_200, cyEmu: 5_029_200 })
+      const first = compile(p, assignedToContent).theme.canvas?.safeArea
+      for (let i = 0; i < 5; i++) {
+        expect(compile(p, assignedToContent).theme.canvas?.safeArea).toEqual(first)
       }
     })
   })

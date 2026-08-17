@@ -10,6 +10,7 @@
 
 use quick_xml::events::BytesStart;
 
+use super::shapes::{is_xfrm_path, read_xfrm_child, PlaceholderShapeTracker, RawXfrm};
 use super::text_props::RawTextProps;
 use super::xml::{attr, rel, walk_elements};
 use super::BrandError;
@@ -97,6 +98,16 @@ impl ClrMap {
   }
 }
 
+/// slideMaster 自身の `p:cSld/p:spTree` にあるプレースホルダの矩形（#317）。layout のプレースホルダが
+/// `a:xfrm` を持たない場合の継承元になる。`ph_type`/`idx` は layout 側の値と対応付けるための手がかりで、
+/// 継承先の選定（idx 優先・無ければ種別）は呼び出し側（`mod.rs`）に委ねる
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct MasterPlaceholderXfrm {
+  pub ph_type: Option<String>,
+  pub idx: Option<u32>,
+  pub xfrm: RawXfrm,
+}
+
 /// slideMaster から抽出した内容。`p:txStyles` の第 1 レベル既定（`a:lvl1pPr/a:defRPr`）は
 /// slideLayout のプレースホルダと同じ `RawTextProps`（#316）で持つ: 継承の解決（プレースホルダ →
 /// `p:txStyles` → `a:fontScheme`）で両者を同じ形として扱えるようにする
@@ -109,21 +120,49 @@ pub struct MasterInfo {
   pub body: RawTextProps,
   /// `p:otherStyle`
   pub other: RawTextProps,
+  /// `p:cSld/p:spTree` 配下のプレースホルダの矩形（#317。列挙順は XML の記述順）
+  pub placeholders: Vec<MasterPlaceholderXfrm>,
 }
 
 /// slideMaster XML をパースする。`p:cSld` 配下のプレースホルダ書式には同名要素が大量に現れるため、
 /// 拾う位置はパスで確定させる
 pub fn parse(xml: &str) -> Result<MasterInfo, BrandError> {
   let mut info = MasterInfo::default();
-  walk_elements(xml, |stack, name, e| visit(&mut info, stack, name, e))?;
+  // 直近に見つけた `p:ph` が属するシェイプの追跡（#317）。layout_xml と同じ状態機械を共有する
+  let mut tracker = PlaceholderShapeTracker::new();
+  walk_elements(xml, |stack, name, e| {
+    visit(&mut info, &mut tracker, stack, name, e)
+  })?;
   Ok(info)
 }
 
-fn visit(info: &mut MasterInfo, stack: &[String], name: &str, e: &BytesStart) {
+fn visit(
+  info: &mut MasterInfo,
+  tracker: &mut PlaceholderShapeTracker,
+  stack: &[String],
+  name: &str,
+  e: &BytesStart,
+) {
   let parent = rel(stack);
 
   if parent.is_empty() && name == "clrMap" {
     info.color_map.read_attributes(e);
+    return;
+  }
+
+  if let Some((ph_type, idx)) = tracker.observe(parent, name, e) {
+    info.placeholders.push(MasterPlaceholderXfrm {
+      ph_type,
+      idx,
+      xfrm: RawXfrm::default(),
+    });
+    return;
+  }
+
+  if is_xfrm_path(tracker.shape_depth(), parent) {
+    if let Some(placeholder) = info.placeholders.last_mut() {
+      read_xfrm_child(&mut placeholder.xfrm, name, e);
+    }
     return;
   }
 
@@ -277,6 +316,50 @@ mod tests {
     let first = parse(MASTER_XML).unwrap();
     for _ in 0..5 {
       assert_eq!(parse(MASTER_XML).unwrap(), first);
+    }
+  }
+
+  /// slideMaster 自身が持つプレースホルダ（タイトル・本文）の矩形（#317）。layout 側が `a:xfrm` を
+  /// 持たない場合の継承元になる
+  const MASTER_WITH_PLACEHOLDER_XFRM: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
+<p:sldMaster xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
+  <p:cSld>
+    <p:spTree>
+      <p:nvGrpSpPr/>
+      <p:sp>
+        <p:nvSpPr><p:cNvPr id="2" name="Title Placeholder 1"/><p:nvPr><p:ph type="title"/></p:nvPr></p:nvSpPr>
+        <p:spPr><a:xfrm><a:off x="457200" y="274638"/><a:ext cx="11277600" cy="1143000"/></a:xfrm></p:spPr>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr><p:cNvPr id="3" name="Text Placeholder 2"/><p:nvPr><p:ph type="body" idx="1"/></p:nvPr></p:nvSpPr>
+        <p:spPr><a:xfrm><a:off x="609600" y="1600200"/><a:ext cx="10972800" cy="4525963"/></a:xfrm></p:spPr>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr><p:cNvPr id="4" name="Decoration"/><p:nvPr/></p:nvSpPr>
+        <p:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="99" cy="99"/></a:xfrm></p:spPr>
+      </p:sp>
+    </p:spTree>
+  </p:cSld>
+  <p:clrMap bg1="lt1" tx1="dk1" bg2="lt2" tx2="dk2" accent1="accent1" accent2="accent2" accent3="accent3" accent4="accent4" accent5="accent5" accent6="accent6" hlink="hlink" folHlink="folHlink"/>
+</p:sldMaster>"#;
+
+  #[test]
+  fn parses_own_placeholder_rectangles_from_shape_tree() {
+    let info = parse(MASTER_WITH_PLACEHOLDER_XFRM).unwrap();
+    assert_eq!(info.placeholders.len(), 2);
+    assert_eq!(info.placeholders[0].ph_type.as_deref(), Some("title"));
+    assert_eq!(info.placeholders[0].xfrm.off, Some((457_200, 274_638)));
+    assert_eq!(info.placeholders[0].xfrm.ext, Some((11_277_600, 1_143_000)));
+    assert_eq!(info.placeholders[1].ph_type.as_deref(), Some("body"));
+    assert_eq!(info.placeholders[1].idx, Some(1));
+    assert_eq!(info.placeholders[1].xfrm.off, Some((609_600, 1_600_200)));
+  }
+
+  #[test]
+  fn rectangle_of_non_placeholder_shapes_is_not_attributed_to_placeholders() {
+    let info = parse(MASTER_WITH_PLACEHOLDER_XFRM).unwrap();
+    for placeholder in &info.placeholders {
+      assert_ne!(placeholder.xfrm.ext, Some((99, 99)));
     }
   }
 }
