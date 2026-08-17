@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { getContrastRatio } from '../../applyTheme'
 import { compile, mergeCompiledBrandTheme } from '../compile'
-import type { BrandOverrides, BrandProfile, CompiledBrandTheme, MappedColorKey } from '../types'
+import type { BrandOverrides, BrandPlaceholderKind, BrandProfile, CompiledBrandTheme, MappedColorKey, PlaceholderProfile, PlaceholderTextProps } from '../types'
 
 function profile(overrides: Partial<BrandProfile> = {}): BrandProfile {
   const mappedColors: Record<MappedColorKey, string | null> = {
@@ -32,6 +32,12 @@ function profile(overrides: Partial<BrandProfile> = {}): BrandProfile {
     masters: [],
     ...overrides,
   }
+}
+
+/** slideLayout の1プレースホルダ（`kind` と既定文字プロパティは Rust 側で解決済みの形。#316）。
+ * `kind` を `phType` から導出せず明示するのは、Rust の分類結果をそのまま受け取る契約を写すため */
+function placeholder(kind: BrandPlaceholderKind, phType: string | null, text: Partial<PlaceholderTextProps> = {}): PlaceholderProfile {
+  return { phType, idx: null, kind, text: { latin: null, ea: null, cs: null, sizePt: null, bold: null, colorHex: null, fontOrigin: 'none', ...text } }
 }
 
 describe('compile（#168 の並置比較・取り込み確認）', () => {
@@ -360,6 +366,148 @@ describe('compile（#168 の並置比較・取り込み確認）', () => {
     })
   })
 
+  describe('defRPr 由来の書体と型階層（#316）', () => {
+    /** `a:fontScheme` は Office 既定のまま（欧文が汎用書体・和文が Office 既定の書体）で、実書体は
+     * slideLayout のプレースホルダの `a:defRPr` にしか書かれていないテンプレート */
+    const officeDefaultFontScheme = {
+      major: { latin: 'Calibri Light', ea: null, cs: null, jpan: '游ゴシック Light' },
+      minor: { latin: 'Calibri', ea: null, cs: null, jpan: '游ゴシック' },
+    }
+
+    /** 表紙 / 章 / 本文の3枠ぶんの layout を持つテンプレート。プレースホルダの既定文字プロパティが
+     * `defRPr` 由来（実測値）であることを `fontOrigin` で表す */
+    const withDefRprLayouts = () =>
+      profile({
+        fonts: officeDefaultFontScheme,
+        masters: [
+          {
+            part: 'ppt/slideMasters/slideMaster1.xml',
+            mappedColors: profile().mappedColors,
+            slideLayouts: [
+              {
+                part: 'ppt/slideLayouts/slideLayout1.xml',
+                name: 'Title Slide',
+                layoutType: 'title',
+                backgroundColorHex: null,
+                placeholders: [
+                  placeholder('title', 'ctrTitle', { latin: 'Corporate Display', ea: 'コーポレート見出し', sizePt: 40, bold: true, fontOrigin: 'defRPr' }),
+                  placeholder('body', 'subTitle', { latin: 'Corporate Text', sizePt: 20, fontOrigin: 'defRPr' }),
+                ],
+              },
+              {
+                part: 'ppt/slideLayouts/slideLayout2.xml',
+                name: 'Section Divider',
+                layoutType: 'secHead',
+                backgroundColorHex: null,
+                placeholders: [placeholder('title', 'title', { latin: 'Corporate Display', sizePt: 32, fontOrigin: 'defRPr' })],
+              },
+              {
+                part: 'ppt/slideLayouts/slideLayout3.xml',
+                name: 'Content',
+                layoutType: 'obj',
+                backgroundColorHex: null,
+                placeholders: [
+                  placeholder('title', 'title', { latin: 'Corporate Display', sizePt: 24, fontOrigin: 'defRPr' }),
+                  // 属性省略（phType が null）は OOXML の既定値 "body" として扱う
+                  placeholder('body', null, { latin: 'Corporate Text', ea: 'コーポレート本文', sizePt: 18, fontOrigin: 'defRPr' }),
+                ],
+              },
+            ],
+          },
+        ],
+      })
+
+    const allAssigned: BrandOverrides = { layoutAssignments: { '0:0': 'center', '0:1': 'center/section', '0:2': 'content' } }
+
+    it('fontScheme が Office 既定のままでも defRPr の実書体を fonts.heading / fonts.body に採る', () => {
+      const { theme } = compile(withDefRprLayouts(), allAssigned)
+      expect(theme.fonts.heading).toEqual({ latin: 'Corporate Display', ea: 'コーポレート見出し', weight: '700' })
+      expect(theme.fonts.body).toEqual({ latin: 'Corporate Text', ea: 'コーポレート本文' })
+    })
+
+    it('書体の決定根拠を report に出す（defRPr 由来は derived）', () => {
+      const { report } = compile(withDefRprLayouts(), allAssigned)
+      expect(report.fields['fonts.heading']?.status).toBe('derived')
+      expect(report.fields['fonts.heading']?.detail).toContain('defRPr')
+      expect(report.fields['fonts.body']?.status).toBe('derived')
+    })
+
+    it('fontScheme に実書体が書かれているテンプレート（defRPr 無し）は fontScheme 由来のまま ok として報告する', () => {
+      // defRPr が無いプレースホルダについて、Rust 側は fontScheme へフォールバック済みの値を
+      // fontOrigin: 'fontScheme' として返す（major = Trebuchet MS / minor = Calibri）
+      const p = withDefRprLayouts()
+      p.fonts = profile().fonts
+      p.masters[0].slideLayouts = p.masters[0].slideLayouts.map((layout) => ({
+        ...layout,
+        placeholders: layout.placeholders.map((ph) => placeholder(ph.kind, ph.phType, { latin: ph.kind === 'title' ? 'Trebuchet MS' : 'Calibri', sizePt: ph.text.sizePt, fontOrigin: 'fontScheme' })),
+      }))
+      const { theme, report } = compile(p, allAssigned)
+      expect(theme.fonts.heading).toEqual({ latin: 'Trebuchet MS' })
+      expect(theme.fonts.body).toEqual({ latin: 'Calibri' })
+      expect(report.fields['fonts.heading']?.status).toBe('ok')
+      expect(report.fields['fonts.heading']?.detail).toContain('fontScheme')
+    })
+
+    it('割り当て済みレイアウトの文字サイズから baseFontSize と fontSizeRatios を導出する', () => {
+      const { theme, report } = compile(withDefRprLayouts(), allAssigned)
+      // 本文（content 枠の body）18pt を基準にし、スライド実寸から px へ換算する（16:9 既定は 1pt ≒ 1.333px）
+      expect(theme.fonts.baseFontSize).toBe(24)
+      // 表紙タイトル40pt / 章タイトル32pt / 本文見出し24pt を 18pt に対する比率で写す
+      expect(theme.fonts.fontSizeRatios).toEqual({ h1: 2.222, h2: 1.778, h3: 1.333 })
+      expect(report.fields['fonts.fontSizeRatios']?.status).toBe('derived')
+      expect(report.fields['fonts.baseFontSize']?.status).toBe('derived')
+    })
+
+    it('本文枠だけを割り当てた場合も、その枠のタイトルから段（h3）が取れる', () => {
+      const { theme } = compile(withDefRprLayouts(), { layoutAssignments: { '0:2': 'content' } })
+      expect(theme.fonts.fontSizeRatios).toEqual({ h3: 1.333 })
+    })
+
+    it('本文の段しか取れない（型階層が1段）場合は fontSizeRatios を出さず missing として報告する', () => {
+      const p = withDefRprLayouts()
+      // 本文プレースホルダだけの layout（タイトルの段が無い）
+      p.masters[0].slideLayouts = [{ ...p.masters[0].slideLayouts[2], placeholders: [placeholder('body', null, { latin: 'Corporate Text', sizePt: 18, fontOrigin: 'defRPr' })] }]
+      const { theme, report } = compile(p, { layoutAssignments: { '0:0': 'content' } })
+      expect(theme.fonts.fontSizeRatios).toBeUndefined()
+      expect(theme.fonts.baseFontSize).toBe(24)
+      expect(report.fields['fonts.fontSizeRatios']?.status).toBe('missing')
+    })
+
+    it('未割当のレイアウトのプレースホルダは無視する（書体・型階層とも fontScheme と既定のまま）', () => {
+      const { theme, report } = compile(withDefRprLayouts(), {})
+      expect(theme.fonts.heading).toEqual({ latin: 'Calibri Light', ea: '游ゴシック Light' })
+      expect(theme.fonts.baseFontSize).toBeUndefined()
+      expect(theme.fonts.fontSizeRatios).toBeUndefined()
+      expect(report.fields['fonts.baseFontSize']?.status).toBe('missing')
+    })
+
+    it('本文枠（content/two-column/bleed）以外の body プレースホルダは基準サイズに採らない', () => {
+      // center 枠の body はサブタイトル（20pt）であって本文の段ではない
+      const { theme } = compile(withDefRprLayouts(), { layoutAssignments: { '0:0': 'center' } })
+      expect(theme.fonts.baseFontSize).toBeUndefined()
+    })
+
+    it('人の上書きは defRPr 由来の値より優先する（欧文・和文・基準サイズ・段の比率）', () => {
+      const overrides: BrandOverrides = {
+        ...allAssigned,
+        fontOverrides: { heading: 'Custom Sans', headingEa: 'カスタム見出し', baseFontSize: 20, fontSizeRatios: { h1: 3 } },
+      }
+      const { theme, report } = compile(withDefRprLayouts(), overrides)
+      expect(theme.fonts.heading).toMatchObject({ latin: 'Custom Sans', ea: 'カスタム見出し' })
+      expect(theme.fonts.baseFontSize).toBe(20)
+      expect(theme.fonts.fontSizeRatios).toEqual({ h1: 3, h2: 1.778, h3: 1.333 })
+      expect(report.fields['fonts.heading']?.detail).toContain('人が上書き')
+      expect(report.fields['fonts.baseFontSize']?.detail).toContain('人が上書き')
+    })
+
+    it('同じ入力から必ず同じ書体・型階層になる（決定的）', () => {
+      const first = JSON.stringify(compile(withDefRprLayouts(), allAssigned).theme.fonts)
+      for (let i = 0; i < 5; i++) {
+        expect(JSON.stringify(compile(withDefRprLayouts(), allAssigned).theme.fonts)).toBe(first)
+      }
+    })
+  })
+
   describe('レイアウト割り当て（#192）', () => {
     const withLayouts = () =>
       profile({
@@ -493,5 +641,15 @@ describe('mergeCompiledBrandTheme のキャンバス合成（#188）', () => {
   it('compiled.canvas が無い（slideSize 未検出）場合は base.canvas をそのまま保持する', () => {
     const merged = mergeCompiledBrandTheme({ canvas: { width: 1280, height: 720 } }, compiledTheme())
     expect(merged.canvas).toEqual({ width: 1280, height: 720 })
+  })
+
+  it('型階層（baseFontSize / fontSizeRatios）を base.fonts へ合成し、base だけが持つ段は消さない（#316）', () => {
+    const merged = mergeCompiledBrandTheme({ fonts: { code: 'Menlo', fontSizeRatios: { caption: 0.6, h1: 3.6 } } }, compiledTheme({ fonts: { baseFontSize: 24, fontSizeRatios: { h1: 2.222 } } }))
+    expect(merged.fonts).toEqual({ code: 'Menlo', baseFontSize: 24, fontSizeRatios: { caption: 0.6, h1: 2.222 } })
+  })
+
+  it('型階層が取れなかった場合は base.fonts の型階層をそのまま保持する（#316）', () => {
+    const merged = mergeCompiledBrandTheme({ fonts: { baseFontSize: 20, fontSizeRatios: { h1: 3.6 } } }, compiledTheme())
+    expect(merged.fonts).toEqual({ baseFontSize: 20, fontSizeRatios: { h1: 3.6 } })
   })
 })

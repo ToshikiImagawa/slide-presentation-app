@@ -9,8 +9,8 @@
 
 use quick_xml::events::BytesStart;
 
-use super::color::{ColorSpec, ColorTransform};
-use super::xml::{attr, base_color_ref, child_of, rel};
+use super::color::ColorSpec;
+use super::xml::{attr, read_solid_fill, rel, strip_path};
 use super::BrandError;
 
 /// `a:xfrm/a:off` と `a:xfrm/a:ext`（EMU）。どちらか欠けている形状はヒューリスティクスの対象から外す
@@ -114,15 +114,8 @@ fn visit_pic(pic: &mut RawPic, inner: &[String], name: &str, e: &BytesStart) {
 fn visit_shape(sp: &mut RawShape, inner: &[String], name: &str, e: &BytesStart) {
   if inner == ["nvSpPr"] && name == "cNvPr" {
     sp.name = attr(e, "name");
-  } else if inner == ["spPr", "solidFill"] {
-    if let Some(base) = base_color_ref(name, e) {
-      sp.fill = Some(ColorSpec::new(base));
-    }
-  } else if child_of(inner, &["spPr", "solidFill"]).is_some() {
-    let transform = attr(e, "val").and_then(|v| ColorTransform::from_element(name, &v));
-    if let (Some(transform), Some(fill)) = (transform, sp.fill.as_mut()) {
-      fill.transforms.push(transform);
-    }
+  } else if let Some(rest) = strip_path(inner, &["spPr", "solidFill"]) {
+    read_solid_fill(&mut sp.fill, rest, name, e);
   } else {
     apply_xfrm(&mut sp.xfrm, inner, name, e);
   }
@@ -155,7 +148,7 @@ fn parse_i64(e: &BytesStart, key: &str) -> Option<i64> {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::brand::color::{ColorRef, Rgb};
+  use crate::brand::color::{ColorRef, ColorTransform, Rgb};
 
   /// 実物の slideMaster を模した spTree（ロゴ画像 1 個・上帯/左帯の矩形 2 個・塗り無しのプレースホルダ 1 個）
   const XML: &str = r#"<?xml version="1.0" encoding="UTF-8"?>

@@ -21,13 +21,15 @@ mod layout_xml;
 mod master_xml;
 mod opc;
 mod shapes;
+mod text_props;
 mod theme_xml;
 mod xml;
 
 use color::{apply_transforms, ColorRef, ColorSpec, Rgb};
 use master_xml::{ClrMap, MasterInfo};
 use opc::{OpcPackage, SlideSize};
-use theme_xml::{ClrScheme, FontScheme};
+use text_props::{PlaceholderKind, PlaceholderTextProps, RawTextProps};
+use theme_xml::{ClrScheme, FontScheme, ThemeInfo};
 
 /// 抽出エラー。UI へは `to_string()` で返すため、内部パス等を含めない
 #[derive(Debug)]
@@ -135,11 +137,18 @@ pub struct BandCandidate {
 }
 
 /// slideLayout の1プレースホルダ（`p:ph@type`/`@idx`）
-#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize)]
+#[derive(Debug, Clone, Default, PartialEq, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PlaceholderProfile {
   pub ph_type: Option<String>,
   pub idx: Option<u32>,
+  /// `ph_type` を OOXML の分類規則（`ST_PlaceholderType`・属性省略時は "body"）で表題系/本文系/その他へ
+  /// 寄せた種別（#316）。抽出側が継承元の選択に使った値をそのまま公開することで、フロントが同じ分類表を
+  /// 持たずに済む（2 言語で二重管理しない）
+  pub kind: PlaceholderKind,
+  /// 継承解決済みの既定文字プロパティ（#316）。書体は `a:defRPr` の実測値を `a:fontScheme` より優先する。
+  /// 文字サイズはレイアウト種別ごとの型階層（表紙タイトル / 章タイトル / 本文）の抽出元になる
+  pub text: PlaceholderTextProps,
 }
 
 /// slideLayout から抽出した内容（#192）。ロゴ・帯のヒューリスティクスは slideMaster 側のみで行う設計
@@ -256,25 +265,27 @@ fn extract<R: Read + Seek>(mut reader: R) -> Result<BrandProfile, BrandError> {
   // 1枚目の MasterProfile 側にも clone で渡して構造的に一致を保証する（#300）
   let mapped_colors = map_colors(&theme.colors, &master.color_map);
 
-  // 1 枚目の master は上で既にパース済みの `master.color_map`/`mapped_colors` を再利用する（同じ XML を二重にパースせず、
-  // map_colors も呼び直さない）
+  // 1 枚目の master は上で既にパース済みの `master`（clrMap と txStyles）と `mapped_colors` を再利用する
+  // （同じ XML を二重にパースせず、map_colors も呼び直さない）
   let masters = parts
     .slide_masters
     .iter()
     .enumerate()
     .map(|(i, master_part)| -> Result<MasterProfile, BrandError> {
-      let (color_map, master_mapped_colors) = if i == 0 {
-        (master.color_map.clone(), mapped_colors.clone())
+      let parsed = if i == 0 {
+        None
       } else {
-        let color_map = master_xml::parse(&package.read_text(master_part)?)?.color_map;
-        let mapped_colors = map_colors(&theme.colors, &color_map);
-        (color_map, mapped_colors)
+        Some(master_xml::parse(&package.read_text(master_part)?)?)
+      };
+      let master_mapped_colors = match &parsed {
+        Some(info) => map_colors(&theme.colors, &info.color_map),
+        None => mapped_colors.clone(),
       };
       build_master_profile(
         &mut package,
         master_part,
-        &theme.colors,
-        &color_map,
+        &theme,
+        parsed.as_ref().unwrap_or(&master),
         master_mapped_colors,
       )
     })
@@ -304,21 +315,21 @@ fn extract<R: Read + Seek>(mut reader: R) -> Result<BrandProfile, BrandError> {
   })
 }
 
-/// slideMaster 1枚から `MasterProfile`（配下の slideLayout 一覧）を組み立てる。`color_map` は呼び出し側が
-/// 解決済みの値を渡す（「その master 自身の clrMap」で解決する必要があり、他 master の clrMap を当てると
-/// レイアウトの背景色が反転しうるため、master 単位で解決するのが正しい）。`mapped_colors` も呼び出し側が
-/// 同じ `color_map` から計算済みの値を渡す（この関数の中で再計算しない）
+/// slideMaster 1枚から `MasterProfile`（配下の slideLayout 一覧）を組み立てる。`master` は呼び出し側が
+/// パース済みの「その master 自身」の内容を渡す（clrMap は master ごとに異なり得るため、他 master の
+/// clrMap を当てるとレイアウトの背景色や文字色が反転しうる）。`mapped_colors` も呼び出し側が同じ
+/// `master.color_map` から計算済みの値を渡す（この関数の中で再計算しない）
 fn build_master_profile(
   package: &mut OpcPackage<impl Read + Seek>,
   master_part: &str,
-  theme_colors: &ClrScheme,
-  color_map: &ClrMap,
+  theme: &ThemeInfo,
+  master: &MasterInfo,
   mapped_colors: MappedColors,
 ) -> Result<MasterProfile, BrandError> {
   let layout_parts = package.resolve_slide_layouts(master_part)?;
   let slide_layouts = layout_parts
     .into_iter()
-    .map(|part| build_slide_layout_profile(&mut *package, part, theme_colors, color_map))
+    .map(|part| build_slide_layout_profile(&mut *package, part, theme, master))
     .collect::<Result<Vec<_>, _>>()?;
   Ok(MasterProfile {
     part: master_part.to_string(),
@@ -327,20 +338,25 @@ fn build_master_profile(
   })
 }
 
-/// slideLayout 1枚から `SlideLayoutProfile` を組み立て、背景色を「そのlayoutが持つclrMapOvr（あれば）、
-/// 無ければ所属masterのclrMap」で解決する（#300。反転レイアウトを master のclrMapで解決すると反転が無視される）
+/// slideLayout 1枚から `SlideLayoutProfile` を組み立て、背景色とプレースホルダの文字色を「そのlayoutが持つ
+/// clrMapOvr（あれば）、無ければ所属masterのclrMap」で解決する（#300。反転レイアウトを master のclrMapで
+/// 解決すると反転が無視される）。プレースホルダの既定文字プロパティは所属 master の `p:txStyles` と
+/// theme の `a:fontScheme` を継承元にして解決する（#316）
 fn build_slide_layout_profile(
   package: &mut OpcPackage<impl Read + Seek>,
   part: String,
-  theme_colors: &ClrScheme,
-  color_map: &ClrMap,
+  theme: &ThemeInfo,
+  master: &MasterInfo,
 ) -> Result<SlideLayoutProfile, BrandError> {
   let info = layout_xml::parse(&package.read_text(&part)?)?;
-  let effective_color_map = info.color_map_override.as_ref().unwrap_or(color_map);
+  let effective_color_map = info
+    .color_map_override
+    .as_ref()
+    .unwrap_or(&master.color_map);
   let background_color_hex = info
     .background
     .as_ref()
-    .and_then(|spec| resolve_color_spec(spec, theme_colors, effective_color_map))
+    .and_then(|spec| resolve_color_spec(spec, &theme.colors, effective_color_map))
     .map(Rgb::to_hex);
   Ok(SlideLayoutProfile {
     part,
@@ -349,9 +365,14 @@ fn build_slide_layout_profile(
     placeholders: info
       .placeholders
       .into_iter()
-      .map(|p| PlaceholderProfile {
-        ph_type: p.ph_type,
-        idx: p.idx,
+      .map(|p| {
+        let kind = PlaceholderKind::of(p.ph_type.as_deref());
+        PlaceholderProfile {
+          text: text_props::resolve(&p.text, kind, master, theme, effective_color_map),
+          kind,
+          ph_type: p.ph_type,
+          idx: p.idx,
+        }
       })
       .collect(),
     background_color_hex,
@@ -446,17 +467,10 @@ fn map_colors(scheme: &ClrScheme, map: &ClrMap) -> MappedColors {
   }
 }
 
-fn resolve_text_style(
-  raw: &master_xml::RawTextStyle,
-  scheme: &ClrScheme,
-  map: &ClrMap,
-) -> TextStyle {
+fn resolve_text_style(raw: &RawTextProps, scheme: &ClrScheme, map: &ClrMap) -> TextStyle {
   TextStyle {
     size_pt: raw.size_pt,
-    color: raw
-      .color
-      .as_ref()
-      .and_then(|spec| resolve_color_spec(spec, scheme, map)),
+    color: raw.resolve_color(scheme, map),
   }
 }
 
@@ -1051,13 +1065,18 @@ mod tests {
   /// slideLayout2 枚（master1 配下）と slideLayout1 枚（master2 配下）の背景はいずれも `schemeClr val="bg1"` で、
   /// 所属 master の clrMap を通して初めて色が確定する（同じ参照でも master が違えば別の色になることを固定する）
   fn pptx_package_with_multiple_masters_and_layouts() -> Vec<u8> {
+    // bodyStyle にだけ書体を明示する（layout のプレースホルダが省略した項目の継承元になる。#316）
     const MASTER1: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
-<p:sldMaster xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+<p:sldMaster xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
   <p:clrMap bg1="lt1" tx1="dk1" bg2="lt2" tx2="dk2" accent1="accent1" accent2="accent2" accent3="accent3" accent4="accent4" accent5="accent5" accent6="accent6" hlink="hlink" folHlink="folHlink"/>
   <p:sldLayoutIdLst>
     <p:sldLayoutId id="2147483650" r:id="rId10"/>
     <p:sldLayoutId id="2147483651" r:id="rId11"/>
   </p:sldLayoutIdLst>
+  <p:txStyles>
+    <p:titleStyle><a:lvl1pPr><a:defRPr sz="4400"><a:latin typeface="+mj-lt"/></a:defRPr></a:lvl1pPr></p:titleStyle>
+    <p:bodyStyle><a:lvl1pPr><a:defRPr sz="2400"><a:latin typeface="Master Body Sans"/></a:defRPr></a:lvl1pPr></p:bodyStyle>
+  </p:txStyles>
 </p:sldMaster>"#;
     const MASTER2: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
 <p:sldMaster xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
@@ -1083,16 +1102,33 @@ mod tests {
   <p:cSld name="Content">
     <p:bg><p:bgPr><a:solidFill><a:schemeClr val="bg1"/></a:solidFill></p:bgPr></p:bg>
     <p:spTree>
-      <p:sp><p:nvSpPr><p:cNvPr id="2" name="Title"/><p:nvPr><p:ph type="title"/></p:nvPr></p:nvSpPr><p:spPr/></p:sp>
-      <p:sp><p:nvSpPr><p:cNvPr id="3" name="Body"/><p:nvPr><p:ph type="body" idx="1"/></p:nvPr></p:nvSpPr><p:spPr/></p:sp>
+      <p:sp>
+        <p:nvSpPr><p:cNvPr id="2" name="Title"/><p:nvPr><p:ph type="title"/></p:nvPr></p:nvSpPr><p:spPr/>
+        <p:txBody>
+          <a:lstStyle><a:lvl1pPr><a:defRPr sz="4000" b="1">
+            <a:solidFill><a:schemeClr val="tx1"/></a:solidFill>
+            <a:latin typeface="Corporate Display"/><a:ea typeface="コーポレート見出し"/>
+          </a:defRPr></a:lvl1pPr></a:lstStyle>
+        </p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr><p:cNvPr id="3" name="Body"/><p:nvPr><p:ph type="body" idx="1"/></p:nvPr></p:nvSpPr><p:spPr/>
+        <p:txBody>
+          <a:lstStyle><a:lvl1pPr><a:defRPr sz="1800"><a:latin typeface="+mn-lt"/></a:defRPr></a:lvl1pPr></a:lstStyle>
+        </p:txBody>
+      </p:sp>
     </p:spTree>
   </p:cSld>
 </p:sldLayout>"#;
+    // master2 は p:txStyles を持たず、この layout のプレースホルダも defRPr を持たない
+    // （書体が theme の fontScheme 由来になる「既定値のみ」のケース。#316）
     const LAYOUT3_SECTION: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
 <p:sldLayout xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" type="secHead">
   <p:cSld name="Section Divider">
     <p:bg><p:bgPr><a:solidFill><a:schemeClr val="bg1"/></a:solidFill></p:bgPr></p:bg>
-    <p:spTree/>
+    <p:spTree>
+      <p:sp><p:nvSpPr><p:cNvPr id="2" name="Title"/><p:nvPr><p:ph type="title"/></p:nvPr></p:nvSpPr><p:spPr/></p:sp>
+    </p:spTree>
   </p:cSld>
 </p:sldLayout>"#;
 
@@ -1257,6 +1293,69 @@ mod tests {
     );
     // accent 系は clrMap が同じ割当（accent1="accent1" 等）のため両 master で一致する
     assert_eq!(master1.mapped_colors.accent1, master2.mapped_colors.accent1);
+  }
+
+  #[test]
+  fn resolves_placeholder_default_text_properties_through_the_inheritance_chain() {
+    // プレースホルダ（layout）→ slideMaster の p:txStyles → theme の a:fontScheme の順に解決する（#316）
+    let profile = extract_bytes(&pptx_package_with_multiple_masters_and_layouts()).unwrap();
+    let content = &profile.masters[1].slide_layouts[1]; // slideMaster1 配下の "Content"
+
+    let title = &content.placeholders[0].text;
+    assert_eq!(title.latin.as_deref(), Some("Corporate Display"));
+    assert_eq!(title.ea.as_deref(), Some("コーポレート見出し"));
+    assert_eq!(title.size_pt, Some(40.0));
+    assert_eq!(title.bold, Some(true));
+    assert_eq!(title.font_origin, text_props::FontOrigin::DefRpr);
+
+    let body = &content.placeholders[1].text;
+    // layout 側は `+mn-lt`（テーマ参照）なので書体は slideMaster の bodyStyle から継承し、
+    // サイズは layout 側の実測値（18pt）が master（24pt）に勝つ
+    assert_eq!(body.latin.as_deref(), Some("Master Body Sans"));
+    assert_eq!(body.size_pt, Some(18.0));
+    assert_eq!(body.font_origin, text_props::FontOrigin::DefRpr);
+  }
+
+  #[test]
+  fn placeholder_text_color_uses_the_layouts_own_clr_map_override() {
+    // "Content" layout は clrMapOvr で tx1=lt1 に反転している（#300）。プレースホルダの
+    // `schemeClr val="tx1"` も背景と同じ写像で解決しなければ文字色が反転する（#316）
+    let profile = extract_bytes(&pptx_package_with_multiple_masters_and_layouts()).unwrap();
+    let title = &profile.masters[1].slide_layouts[1].placeholders[0].text;
+    assert_eq!(title.color_hex.as_deref(), Some("#ffffff"));
+  }
+
+  #[test]
+  fn placeholder_without_def_rpr_falls_back_to_the_font_scheme() {
+    // master2（p:txStyles なし）配下の layout で、プレースホルダも defRPr を持たない場合は
+    // theme の fontScheme 由来になり、根拠がそう報告される（#316）
+    let profile = extract_bytes(&pptx_package_with_multiple_masters_and_layouts()).unwrap();
+    let title = &profile.masters[0].slide_layouts[0].placeholders[0].text;
+    assert_eq!(title.latin.as_deref(), Some("Yu Gothic UI"));
+    // ea が空でも script="Jpan" から和文書体を拾う
+    assert_eq!(title.ea.as_deref(), Some("游ゴシック Light"));
+    assert_eq!(title.size_pt, None);
+    assert_eq!(title.font_origin, text_props::FontOrigin::FontScheme);
+  }
+
+  #[test]
+  fn serialized_placeholder_uses_camel_case_keys_and_kind() {
+    // 値そのものは上の 2 テストで固定済みなので、ここでは JSON のキー名と enum の表記だけを見る
+    let profile = extract_bytes(&pptx_package_with_multiple_masters_and_layouts()).unwrap();
+    let json = serde_json::to_value(&profile).unwrap();
+    let placeholder = &json["masters"][1]["slideLayouts"][1]["placeholders"][0];
+    // 分類は Rust 側の結果をそのまま公開する（フロントが ph@type から再分類しない。#316）
+    assert_eq!(placeholder["kind"], "title");
+    assert_eq!(placeholder["phType"], "title");
+    for key in ["latin", "ea", "sizePt", "bold", "colorHex", "fontOrigin"] {
+      assert!(
+        !placeholder["text"][key].is_null(),
+        "text.{key} が JSON に出ていません"
+      );
+    }
+    assert_eq!(placeholder["text"]["fontOrigin"], "defRPr");
+    let section = &json["masters"][0]["slideLayouts"][0]["placeholders"][0];
+    assert_eq!(section["text"]["fontOrigin"], "fontScheme");
   }
 
   #[test]

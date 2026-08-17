@@ -9,7 +9,7 @@ use quick_xml::name::QName;
 use quick_xml::Reader;
 use quick_xml::XmlVersion;
 
-use super::color::{parse_hex, ColorRef};
+use super::color::{parse_hex, ColorRef, ColorSpec, ColorTransform};
 use super::BrandError;
 
 /// OOXML の part はすべて `<?xml version="1.0"?>` を宣言する。属性値の正規化規則はこのバージョンに従う
@@ -66,6 +66,32 @@ pub fn rel(stack: &[String]) -> &[String] {
 pub fn child_of<'a>(path: &'a [String], expected: &[&str]) -> Option<&'a str> {
   (path.len() == expected.len() + 1 && path[..expected.len()] == *expected)
     .then(|| path[expected.len()].as_str())
+}
+
+/// パスが `prefix` から始まるなら、その後ろの相対パスを返す（`child_of` の「深さを問わない」版）
+pub fn strip_path<'a>(path: &'a [String], prefix: &[&str]) -> Option<&'a [String]> {
+  (path.len() >= prefix.len() && path[..prefix.len()] == *prefix).then(|| &path[prefix.len()..])
+}
+
+/// `a:solidFill` 配下の色指定を積む。`inner` は `a:solidFill` を起点とした親要素の相対パスで、
+/// `[]` なら基準色要素（`a:srgbClr` / `a:sysClr` / `a:schemeClr`）、1 段深ければ色変換
+/// （`a:lumMod` / `a:lumOff` / `a:tint` / `a:shade`）として扱う。
+///
+/// 「単色塗り＝基準色＋変換の列」という OOXML の形の知識をこの 1 箇所に閉じる。背景（`layout_xml`）・
+/// 図形の塗り（`shapes`）・文字色（`text_props`）で同じ構造が現れるため、読み取りを共有する
+pub fn read_solid_fill(spec: &mut Option<ColorSpec>, inner: &[String], name: &str, e: &BytesStart) {
+  if inner.is_empty() {
+    if let Some(base) = base_color_ref(name, e) {
+      *spec = Some(ColorSpec::new(base));
+    }
+    return;
+  }
+  if inner.len() == 1 {
+    let transform = attr(e, "val").and_then(|v| ColorTransform::from_element(name, &v));
+    if let (Some(transform), Some(spec)) = (transform, spec.as_mut()) {
+      spec.transforms.push(transform);
+    }
+  }
 }
 
 /// 色要素から基準色の参照を読む。

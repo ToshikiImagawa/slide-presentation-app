@@ -35,10 +35,37 @@ export interface BandCandidate {
   thicknessEmu: number
 }
 
+/** 書体の決定根拠（#316）。Rust `brand::text_props::FontOrigin` と同じ値。
+ * `fontScheme` は Office 既定値のままである可能性があり（作者が触っていない）、`defRPr` は
+ * テンプレート作者がプレースホルダ / slideMaster に明示した実測値であることを表す */
+export type BrandFontOrigin = 'none' | 'fontScheme' | 'defRPr'
+
+/** プレースホルダ1件の既定文字プロパティ（継承解決済み。Rust `brand::PlaceholderTextProps` と同じ形。#316）。
+ * 継承の解決順は OOXML 準拠で、プレースホルダの `a:defRPr` → slideMaster の `p:txStyles` → theme の
+ * `a:fontScheme`（Rust 側で解決済み） */
+export interface PlaceholderTextProps {
+  latin: string | null
+  ea: string | null
+  cs: string | null
+  /** 文字サイズ（pt）。型階層（表紙タイトル / 章タイトル / 本文）の抽出元 */
+  sizePt: number | null
+  bold: boolean | null
+  colorHex: string | null
+  fontOrigin: BrandFontOrigin
+}
+
+/** プレースホルダ種別の分類（#316）。Rust `brand::text_props::PlaceholderKind` と同じ値。
+ * `p:ph@type` の OOXML 分類規則（`ST_PlaceholderType`・属性省略時は "body"）は抽出層（Rust）に置き、
+ * フロントは分類済みのこの値だけを見る（同じ分類表を 2 言語で持たない） */
+export type BrandPlaceholderKind = 'title' | 'body' | 'other'
+
 /** slideLayout の1プレースホルダ（Rust `brand::PlaceholderProfile` と同じ形） */
 export interface PlaceholderProfile {
   phType: string | null
   idx: number | null
+  kind: BrandPlaceholderKind
+  /** `a:defRPr` 由来の既定文字プロパティ（#316）。書体は `fonts`（fontScheme）より優先する */
+  text: PlaceholderTextProps
 }
 
 /** slideLayout から抽出した内容（#192）。Rust `brand::SlideLayoutProfile` と同じ形。
@@ -123,7 +150,16 @@ export interface BrandOverrides {
   manualLogo?: MediaAsset | null
   /** `bandCandidates` から装飾として採用する index の一覧（既定は空＝何も自動適用しない） */
   selectedBandIndices?: number[]
-  fontOverrides?: { heading?: string; body?: string }
+  /** 書体と型階層の上書き（#316 で和文・型階層を追加）。`heading`/`body` は欧文（latin）、
+   * `headingEa`/`bodyEa` は和文（ea）。`baseFontSize` は px、`fontSizeRatios` はキー単位の比率上書き */
+  fontOverrides?: {
+    heading?: string
+    body?: string
+    headingEa?: string
+    bodyEa?: string
+    baseFontSize?: number
+    fontSizeRatios?: Record<string, number>
+  }
   /** 抽出した slideLayout を `LAYOUT_ASSIGNMENT_SLOTS` の枠へ割り当てた結果（#192）。
    * key は `"<masterIndex>:<layoutIndex>"`（`BrandProfile.masters` の添字）。未割当のレイアウトは省略する */
   layoutAssignments?: Record<string, LayoutAssignmentSlot>
@@ -133,8 +169,10 @@ export interface BrandOverrides {
  * `ThemeData` へそのまま合成でき、`colors` は theme/<slug>.json 相当の 12 キーをそのまま保持する */
 export interface CompiledBrandTheme {
   colors: Record<MappedColorKey, string>
-  /** 抽出した latin/ea/major/minor を潰さずに写す（#187）。取得できなかったスロットは省略する */
-  fonts: { heading?: FontFamilySpec; body?: FontFamilySpec }
+  /** 抽出した latin/ea/major/minor を潰さずに写す（#187）。取得できなかったスロットは省略する。
+   * `baseFontSize`/`fontSizeRatios` は slideLayout のプレースホルダの `a:defRPr@sz` から導出した
+   * 型階層（#316）。段が取れなかった場合は省略する（既定の型階層のまま） */
+  fonts: { heading?: FontFamilySpec; body?: FontFamilySpec; baseFontSize?: number; fontSizeRatios?: Record<string, number> }
   masters: Record<string, MasterDefinition>
   masterMap: Record<string, string>
   tokens: Record<string, Record<string, string>>

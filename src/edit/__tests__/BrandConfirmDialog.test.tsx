@@ -4,7 +4,7 @@ import type { ReactNode } from 'react'
 import { BrandConfirmDialog } from '../BrandConfirmDialog'
 import { I18nProvider } from '../../i18n'
 import type { LocaleResource } from '../../i18n'
-import type { BrandOverrides, BrandProfile, CompiledBrandTheme, MappedColorKey } from '../../brand/types'
+import type { BrandOverrides, BrandPlaceholderKind, BrandProfile, CompiledBrandTheme, MappedColorKey, PlaceholderProfile, PlaceholderTextProps } from '../../brand/types'
 import type { SlideData } from '../../data'
 
 const locales: LocaleResource[] = [{ languageCode: 'ja-JP', languageName: '日本語', ui: {} }]
@@ -48,6 +48,42 @@ function buildProfile(overrides: Partial<BrandProfile> = {}): BrandProfile {
     ...overrides,
   }
 }
+
+/** slideLayout の1プレースホルダ（既定文字プロパティは Rust 側で継承解決済みの形。#316） */
+function placeholder(kind: BrandPlaceholderKind, phType: string | null, text: Partial<PlaceholderTextProps> = {}): PlaceholderProfile {
+  return { phType, idx: null, kind, text: { latin: null, ea: null, cs: null, sizePt: null, bold: null, colorHex: null, fontOrigin: 'none', ...text } }
+}
+
+/** 表紙・本文の2枠ぶんの layout を持ち、実書体と文字サイズが `a:defRPr` にしかないテンプレート（#316） */
+function profileWithDefRprLayouts(): BrandProfile {
+  return buildProfile({
+    fonts: { major: { latin: 'Calibri Light', ea: null, cs: null, jpan: '游ゴシック Light' }, minor: { latin: 'Calibri', ea: null, cs: null, jpan: '游ゴシック' } },
+    masters: [
+      {
+        part: 'ppt/slideMasters/slideMaster1.xml',
+        mappedColors: buildProfile().mappedColors,
+        slideLayouts: [
+          {
+            part: 'ppt/slideLayouts/slideLayout1.xml',
+            name: 'Title Slide',
+            layoutType: 'title',
+            backgroundColorHex: null,
+            placeholders: [placeholder('title', 'ctrTitle', { latin: 'Corporate Display', ea: 'コーポレート見出し', sizePt: 40, fontOrigin: 'defRPr' })],
+          },
+          {
+            part: 'ppt/slideLayouts/slideLayout2.xml',
+            name: 'Content',
+            layoutType: 'obj',
+            backgroundColorHex: null,
+            placeholders: [placeholder('title', 'title', { latin: 'Corporate Display', sizePt: 24, fontOrigin: 'defRPr' }), placeholder('body', 'body', { latin: 'Corporate Text', ea: 'コーポレート本文', sizePt: 18, fontOrigin: 'defRPr' })],
+          },
+        ],
+      },
+    ],
+  })
+}
+
+const DEF_RPR_ASSIGNMENTS: BrandOverrides = { layoutAssignments: { '0:0': 'center', '0:1': 'content' } }
 
 function renderDialog(props: { profile?: BrandProfile; initialOverrides?: BrandOverrides } = {}) {
   const onApply = vi.fn()
@@ -203,6 +239,72 @@ describe('BrandConfirmDialog（#168 並置比較・取り込み確認）', () =>
     const masterKey = arg.compiled.masterMap['center/message-inverse']
     // tx1 の既定値 #000000 は背景 #000000 と無コントラストなため、AA を満たす値へ調整されている
     expect(arg.compiled.tokens[masterKey]?.['theme-text-body']).not.toBe('#000000')
+  })
+
+  describe('書体と型階層（#316）', () => {
+    it('決定された書体（defRPr 由来）と決定根拠を表示する', () => {
+      renderDialog({ profile: profileWithDefRprLayouts(), initialOverrides: DEF_RPR_ASSIGNMENTS })
+      expect((screen.getByLabelText('見出し書体（欧文）') as HTMLInputElement).value).toBe('Corporate Display')
+      expect((screen.getByLabelText('見出し書体（和文）') as HTMLInputElement).value).toBe('コーポレート見出し')
+      expect((screen.getByLabelText('本文書体（欧文）') as HTMLInputElement).value).toBe('Corporate Text')
+      // 決定根拠（defRPr 由来）が report の detail として出る
+      expect(screen.getAllByText(/defRPr 由来/).length).toBeGreaterThan(0)
+    })
+
+    it('決定された型階層（基準サイズと段）を表示する', () => {
+      renderDialog({ profile: profileWithDefRprLayouts(), initialOverrides: DEF_RPR_ASSIGNMENTS })
+      // 本文 18pt を px 換算した 24px が基準サイズ、表紙タイトル 40pt / 本文見出し 24pt が段の比率になる
+      expect((screen.getByLabelText('基準サイズ（px）') as HTMLInputElement).value).toBe('24')
+      expect((screen.getByLabelText('型階層 h1') as HTMLInputElement).value).toBe('2.222')
+      expect((screen.getByLabelText('型階層 h3') as HTMLInputElement).value).toBe('1.333')
+    })
+
+    it('書体を上書きして取り込むと fontOverrides（欧文・和文）が渡る', () => {
+      const { onApply } = renderDialog({ profile: profileWithDefRprLayouts(), initialOverrides: DEF_RPR_ASSIGNMENTS })
+      const headingLatin = screen.getByLabelText('見出し書体（欧文）')
+      fireEvent.change(headingLatin, { target: { value: 'Custom Sans' } })
+      fireEvent.blur(headingLatin)
+      const bodyEa = screen.getByLabelText('本文書体（和文）')
+      fireEvent.change(bodyEa, { target: { value: 'カスタム本文' } })
+      fireEvent.blur(bodyEa)
+      fireEvent.click(screen.getByRole('button', { name: '取り込む' }))
+      const arg = onApply.mock.calls[0][0] as { overrides: BrandOverrides; compiled: CompiledBrandTheme }
+      expect(arg.overrides.fontOverrides).toMatchObject({ heading: 'Custom Sans', bodyEa: 'カスタム本文' })
+      expect(arg.compiled.fonts.heading).toMatchObject({ latin: 'Custom Sans' })
+      expect(arg.compiled.fonts.body).toMatchObject({ ea: 'カスタム本文' })
+    })
+
+    it('型階層（基準サイズ・段の比率）を上書きして取り込むと fontOverrides が渡る', () => {
+      const { onApply } = renderDialog({ profile: profileWithDefRprLayouts(), initialOverrides: DEF_RPR_ASSIGNMENTS })
+      const base = screen.getByLabelText('基準サイズ（px）')
+      fireEvent.change(base, { target: { value: '20' } })
+      fireEvent.blur(base)
+      const h1 = screen.getByLabelText('型階層 h1')
+      fireEvent.change(h1, { target: { value: '3' } })
+      fireEvent.blur(h1)
+      fireEvent.click(screen.getByRole('button', { name: '取り込む' }))
+      const arg = onApply.mock.calls[0][0] as { overrides: BrandOverrides; compiled: CompiledBrandTheme }
+      expect(arg.overrides.fontOverrides?.baseFontSize).toBe(20)
+      expect(arg.overrides.fontOverrides?.fontSizeRatios).toEqual({ h1: 3 })
+      expect(arg.compiled.fonts.baseFontSize).toBe(20)
+      expect(arg.compiled.fonts.fontSizeRatios).toMatchObject({ h1: 3 })
+    })
+
+    it('不正な基準サイズを入れて blur してもコミットしない', () => {
+      const { onApply } = renderDialog({ profile: profileWithDefRprLayouts(), initialOverrides: DEF_RPR_ASSIGNMENTS })
+      const base = screen.getByLabelText('基準サイズ（px）')
+      fireEvent.change(base, { target: { value: '0' } })
+      fireEvent.blur(base)
+      fireEvent.click(screen.getByRole('button', { name: '取り込む' }))
+      const arg = onApply.mock.calls[0][0] as { overrides: BrandOverrides; compiled: CompiledBrandTheme }
+      expect(arg.overrides.fontOverrides?.baseFontSize).toBeUndefined()
+      expect(arg.compiled.fonts.baseFontSize).toBe(24)
+    })
+
+    it('型階層が検出されなければその旨を表示する（レイアウト未割当のテンプレート）', () => {
+      renderDialog()
+      expect(screen.getByText('型階層は検出されませんでした')).toBeTruthy()
+    })
   })
 
   it('master が1枚のみなら「基準にするマスター」選択は表示しない（#300）', () => {
