@@ -42,7 +42,7 @@ const HEX_PATTERN = /^#[0-9a-f]{6}$/i
 
 /** 型階層の段（`fonts.fontSizeRatios` のキー）の表示ラベル（#316。`compile.ts` の
  * `SLOT_TO_FONT_SIZE_STEP` と対応）。既定比率にしかないキー（subtitle1 等）を人が上書きした場合は
- * キー名をそのまま見せる */
+ * キー名をそのまま見せる。#332 では `t()` 化の対象外とし、locale 化は #338 へ切り出した */
 const FONT_SIZE_STEP_LABELS: Record<string, string> = { h1: '表紙タイトル', h2: '章タイトル', h3: '本文見出し' }
 
 /** 書体名の上書きキー（`BrandOverrides.fontOverrides` のうち文字列のスロット。#316） */
@@ -78,7 +78,8 @@ const SAFE_AREA_ROWS: ReadonlyArray<{ key: keyof SafeArea; labelFallback: string
   { key: 'left', labelFallback: '左' },
 ]
 
-/** 割り当て可能な7枠の表示ラベル（`LAYOUT_ASSIGNMENT_SLOTS` の並び順。#185/#192 で5枠固定、#262 で反転面/締めの2枠を追加） */
+/** 割り当て可能な7枠の表示ラベル（`LAYOUT_ASSIGNMENT_SLOTS` の並び順。#185/#192 で5枠固定、#262 で反転面/締めの2枠を追加）。
+ * #332 では `t()` 化の対象外とし、locale 化は #338 へ切り出した */
 const LAYOUT_SLOT_LABELS: Record<LayoutAssignmentSlot, string> = {
   center: 'タイトル',
   'center/section': 'タイトル（セクション）',
