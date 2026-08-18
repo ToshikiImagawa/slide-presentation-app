@@ -403,7 +403,10 @@ code {
 }
 
 /* Slide Title */
-.slide-title {
+/* .master-body を挟んだセレクタで詳細度(0,2,0)を確保する。MUI Typography が生成する
+   .MuiTypography-root（emotion により動的挿入・詳細度 0,1,0）が margin-bottom: 0 を宣言しており、
+   単純な .slide-title（詳細度 0,1,0）では CSSOM 上の挿入順で負けて margin-bottom が実質 0px になる */
+.master-body .slide-title {
   font-size: var(--theme-font-size-h2);
   margin-bottom: 40px;
   width: 100%;
