@@ -769,7 +769,7 @@ switching between packages unloads the previous package's add-ons and prevents n
 > - You can turn off embedded add-ons entirely from **Settings → “Always disable embedded add-ons”**, and reset all
     > remembered allow/deny decisions with **“Reset add-on trust history.”**
 >
-> Only add-ons declared in the package's `addons/manifest.json` and located under `addons/` are ever loaded.
+> Only add-ons declared in the package's `addons/manifest.json` and located under `addons/` are ever loaded. <!-- doc-check-ignore -->
 
 ## Development
 

@@ -19,7 +19,7 @@ category: addon-system
 
 ## 概要
 
-`src/visuals/` 配下のビジュアルコンポーネント（VibeCodingDemo, HierarchyFlowVisual,
+`src/visuals/` 配下のビジュアルコンポーネント（VibeCodingDemo, HierarchyFlowVisual, <!-- doc-check-ignore -->
 PersistenceVisual）を「アドオン」として本体コードから分離し、独立したモジュールとして管理可能にする。これにより、プレゼンテーション本体の変更なしにビジュアル要素の追加・削除が可能となり、拡張性と保守性を向上させる。
 
 なお、本 PRD が対象とする組み込みアドオン（層A）は**開発補助として dev 環境限定**で用い、release ビルドではロードも同梱もしない。エンドユーザーへのアドオン配布は層B（`.spkg` 同梱）へ委譲する（[slide-edit-mode.md](./slide-edit-mode.md) / [package-embedded-addon.md](./package-embedded-addon.md)）。
@@ -28,7 +28,7 @@ PersistenceVisual）を「アドオン」として本体コードから分離し
 
 ### 現状の課題
 
-ビジュアルコンポーネントは `src/visuals/` に配置され、`registerDefaults.tsx` で本体のデフォルトコンポーネントとして登録されている。これらは
+ビジュアルコンポーネントは `src/visuals/` に配置され、`registerDefaults.tsx` で本体のデフォルトコンポーネントとして登録されている。これらは <!-- doc-check-ignore -->
 AI-SDD デモ用の特化コンポーネントであり、本体の汎用コンポーネント（TerminalAnimation、MUI
 アイコン等）とは性質が異なるが、同じ登録経路で管理されている。この結合により、特定のビジュアル要素の追加・削除が本体コードの変更を伴う。
 
@@ -217,7 +217,7 @@ requirementDiagram
 
 **優先度**: Must
 
-以下の3つのビジュアルコンポーネントを `src/visuals/` から `addons/src/ai-sdd-visuals/` に移動し、独立バンドルとして再構成する：
+以下の3つのビジュアルコンポーネントを `src/visuals/` から `addons/src/ai-sdd-visuals/` に移動し、独立バンドルとして再構成する： <!-- doc-check-ignore -->
 
 - VibeCodingDemo
 - HierarchyFlowVisual

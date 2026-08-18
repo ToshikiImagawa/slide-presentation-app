@@ -58,7 +58,7 @@ category: addon-system
 | FR-002 | `ComponentRegistry` に owner 単位の登録・アンロード API を追加する（解決順は不変）                   | 必須  | FR-002 / DC-001 |
 | FR-003 | パッケージ切替時に「旧 owner 破棄 → `await` ロード → 再マウント」の順序を守る                        | 必須  | FR-003  |
 | FR-004 | 同一バンドルの `<script>` の二重注入を防止する（冪等。CSS は現行アドオン非出力のため将来対応）           | 必須  | FR-004  |
-| FR-005 | `allow_asset_dir` 完了後に `addons/manifest.json` を読み、bundle を asset URL 化して owner とともに返す | 必須  | FR-005  |
+| FR-005 | `allow_asset_dir` 完了後に `addons/manifest.json` を読み、bundle を asset URL 化して owner とともに返す <!-- doc-check-ignore --> | 必須  | FR-005  |
 | FR-006 | 発表者ビューへアドオン変更を伝搬し、描画前にロード・登録、切替時にアンロードする                            | 必須  | FR-006  |
 | FR-007 | `export-slides` でアドオンを同梱し、manifest の bundle をパッケージ相対パスへ書き換える                  | 必須  | FR-007  |
 | FR-008 | 同梱アドオンありパッケージの初回オープン時に確認ダイアログを出し、**既定拒否**で判断を path 単位に永続化する    | 必須  | FR-008  |

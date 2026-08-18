@@ -497,7 +497,7 @@ src/
 - D-002: バリデーション駆動型データ処理（新規）— 構造化バリデーションパターン
 - T-003: React-外部ライブラリのライフサイクル統合（新規）— useEffect + destroy() パターン
 - 技術スタック制約: スタイリングに CSS Modules, MUI sx prop を追加
-- モジュール構成: 現在のディレクトリ構造に更新（`src/slides/` を廃止、`components/`, `layouts/`, `data/`, `hooks/` 等を追加）
+- モジュール構成: 現在のディレクトリ構造に更新（`src/slides/` を廃止、`components/`, `layouts/`, `data/`, `hooks/` 等を追加） <!-- doc-check-ignore -->
 
 ### v1.0.0 (2026-01-28)
 

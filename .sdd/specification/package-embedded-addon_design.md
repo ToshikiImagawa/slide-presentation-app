@@ -121,7 +121,7 @@ graph TD
 | `ComponentRegistry` | owner を記録する登録・owner 単位アンロード | なし | `src/components/ComponentRegistry.tsx`（改修） |
 | `addonLoader` | manifest 解決済み bundle の冪等 `<script>` 注入、組み込みロード集約 | `addon-bridge` | `src/addonLoader.ts`（新規） |
 | `addon-bridge` | `__ADDON_REGISTER__` に owner を伝搬 | `ComponentRegistry` | `src/addon-bridge.ts`（改修） |
-| `localSlideLoader` | `addons/manifest.json` 読取・asset URL 化、`owner`/`addonScripts` 返却、信頼判定 | Rust コマンド, `plugin-store`, `plugin-dialog` | `src/localSlideLoader.ts`（改修） |
+| `localSlideLoader` | `addons/manifest.json` 読取・asset URL 化、`owner`/`addonScripts` 返却、信頼判定 <!-- doc-check-ignore --> | Rust コマンド, `plugin-store`, `plugin-dialog` | `src/localSlideLoader.ts`（改修） |
 | `main.tsx`（`RootContent`） | 切替順序制御（破棄→await→再マウント）、`owner`/`addonScripts` 受領。設定・ショートカットのダイアログ開閉 state（`settingsOpen`/`shortcutsOpen`）とダイアログ本体を保持し、`useAddonSettings` の返り値を `SettingsWindow` へ渡す | `addonLoader`, `ComponentRegistry`, `localSlideLoader`, `useAddonSettings`, `SettingsWindow` | `src/main.tsx`（改修） |
 | `useAddonSettings` | アドオン信頼設定の state・復元・永続化（一律無効化フラグ／層C の個別付け外し／失効）。`{ active, recentPackages }` を受け取り、`active` が true になるたび `getAddonTrustMap()` 基点で信頼一覧を再構築（title は `recentPackages` から補完・store 再読なし）し、更新は楽観更新＋失敗時ロールバック。`AddonTrustEntry` 型もこのファイルが定義する | `localSlideLoader` | `src/hooks/useAddonSettings.ts`（新規） |
 | `usePresenterView` | 切替時・ready 受信時に `addonsChanged` を emit | `types` | `src/hooks/usePresenterView.ts`（改修） |

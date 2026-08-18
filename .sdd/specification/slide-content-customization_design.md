@@ -159,7 +159,7 @@ src/
     └── global.css              # テーマCSS変数・レイアウト・Reveal.jsオーバーライド
 ```
 
-> レイアウトは4つのラッパー（Title/Content/Section/Bleed）で構成し、`two-column` / `custom` は `SlideRenderer` 内の描画分岐で処理する（専用の `TwoColumnLayout` / `CustomLayout` ファイルは存在しない）。既存スライドは完全にデータ駆動化されており、`src/slides/` ディレクトリは存在しない。
+> レイアウトは4つのラッパー（Title/Content/Section/Bleed）で構成し、`two-column` / `custom` は `SlideRenderer` 内の描画分岐で処理する（専用の `TwoColumnLayout` / `CustomLayout` ファイルは存在しない）。既存スライドは完全にデータ駆動化されており、`src/slides/` ディレクトリは存在しない。 <!-- doc-check-ignore -->
 
 > **デモ用スライドは `src/` の外にある**。テンプレートガイドは `samples/template-guide/slides.{ja,en,fr}.json` に置き、アプリには同梱せず `.spkg` として配布する。`src/data/` にあるのはコード生成の最小フォールバック（1枚）のみで、デモ用スライドの JSON ファイルは存在しない（[slide-package-distribution_design.md](./slide-package-distribution_design.md)）。
 
@@ -484,7 +484,7 @@ function getVoicePath(slide: SlideData): string | undefined {
 
 | 課題                                   | 影響度 | 対応方針                                                                | 状況 |
 |--------------------------------------|-----|---------------------------------------------------------------------|------|
-| 既存デモ用スライドの忠実なJSON化                   | 高   | 各スライドコンポーネントの内容を分析し、レイアウト種別を特定した上でJSON化する                           | ✅ 解決済み。`samples/template-guide/slides.{ja,en,fr}.json` にJSON化（当初は `src/data/default-slides-{ja,en}.json` に置いていたが、配布サンプルとして `samples/` へ移設した） |
+| 既存デモ用スライドの忠実なJSON化                   | 高   | 各スライドコンポーネントの内容を分析し、レイアウト種別を特定した上でJSON化する                           | ✅ 解決済み。`samples/template-guide/slides.{ja,en,fr}.json` にJSON化（当初は `src/data/default-slides-{ja,en}.json` に置いていたが、配布サンプルとして `samples/` へ移設した） <!-- doc-check-ignore --> |
 | 複雑なスライド（アニメーション付き）のデータ表現             | 中   | TerminalAnimation等の複雑なコンポーネントはカスタムコンポーネントとして登録し、componentフィールドで参照する | ✅ 解決済み。registerDefaults.tsxでデフォルト登録 |
 | SlideMeta対応                          | 低   | Reveal.jsのdata-transition等の属性をsection要素に設定する                         | ✅ 解決済み。全レイアウトが `data-transition` / `data-background-image` / `data-background-color` を設定 |
 | JSONスキーマ（NFR-002）による入力補完             | 低   | TypeScript型定義からのJSON Schema（`$schema`）自動生成でVSCode補完を有効化する            | ❌ 未実装（将来課題）。現状は型定義を手動参照して編集 |
@@ -501,7 +501,7 @@ function getVoicePath(slide: SlideData): string | undefined {
 
 **変更内容:**
 
-- デモ用スライドを `src/data/default-slides-{ja,en}.json` から `samples/template-guide/slides.{ja,en,fr}.json` へ移設し、アプリへの同梱を廃止（`.spkg` として配布）。フランス語を追加
+- デモ用スライドを `src/data/default-slides-{ja,en}.json` から `samples/template-guide/slides.{ja,en,fr}.json` へ移設し、アプリへの同梱を廃止（`.spkg` として配布）。フランス語を追加 <!-- doc-check-ignore -->
 - `getDefaultPresentationData(locale)` を廃止し、用途別の最小フォールバック（`getFallbackPresentationData` / `getSampleUnavailablePresentationData`）へ置き換え。`src/data/` にデモ用スライドの JSON は存在しない
 - 「デフォルトテンプレート」の用語を「テンプレートガイド」（配布サンプル）と「最小フォールバック」（コード生成の1枚）に分離
 - 配布と取得の設計は [slide-package-distribution_design.md](./slide-package-distribution_design.md) が所有する。本書はスライドデータの構造・バリデーション・描画に責務を絞る
@@ -527,7 +527,7 @@ const defaultData = getFallbackPresentationData(locale)
 - `getDefaultPresentationData(locale)` とロケール別デフォルト（`default-slides-ja/en.json`）を反映
 - `ComponentRegistry` のAPI（`RegisteredComponent` 型、owner 引数、`registerDefaultComponent` / `unregisterOwner` / `clearRegistry`、null を返さない解決）を実装に合わせて修正
 - `SlideRendererProps` から未実装の `registry?` を削除し、`SlideRenderer.Slide` を記載
-- ディレクトリ構造を実態に修正（`TwoColumnLayout` / `CustomLayout` / `src/slides/` の削除、`SectionLayout` / `BleedLayout` の追記、`style.css` → `global.css`）
+- ディレクトリ構造を実態に修正（`TwoColumnLayout` / `CustomLayout` / `src/slides/` の削除、`SectionLayout` / `BleedLayout` の追記、`style.css` → `global.css`） <!-- doc-check-ignore -->
 - `applyTheme` 群・`noteHelpers` 群のインターフェースを追記。ローカル読込（別機能）へのリンク参照を追加
 - NFR-002（JSON Schema/`$schema`）未実装、FR-014 部分実装を未解決の課題に正確化。SlideMeta対応を解決済みに更新
 
