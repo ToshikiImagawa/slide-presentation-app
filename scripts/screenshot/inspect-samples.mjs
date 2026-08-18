@@ -19,6 +19,7 @@ import { readdirSync, readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { webkit } from 'playwright'
+import { validateManifest } from '../export-samples.mjs'
 import { startScreenshotVite, stopScreenshotVite, waitForServer } from './vite-runtime.mjs'
 import { contentViewport } from './viewports.mjs'
 
@@ -26,28 +27,32 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const URL = 'http://localhost:1420'
 const VIEWPORT_KEY = 'samples'
 
-/** samples/manifest.json（source・packages）を読む。ロケール一覧・配信元パスの単一真実源 */
+/** samples/manifest.json を読む。妥当性は export-samples.mjs の validateManifest と共有する */
 function loadManifest() {
   const manifestPath = resolve(ROOT, 'samples/manifest.json')
-  const manifest = JSON.parse(readFileSync(manifestPath, 'utf-8'))
-  return { ...manifest, sourceDir: resolve(ROOT, manifest.source) }
+  return JSON.parse(readFileSync(manifestPath, 'utf-8'))
 }
 
-/** assets/locales/<lang>-<COUNTRY>.json のファイル名から Playwright context locale を導出する */
-function localeCode(lang) {
+/** assets/locales/<lang>-<COUNTRY>.json のファイル名一覧から Playwright context locale を導出する（1回だけ読む） */
+function loadLocaleCodes() {
   const localesDir = resolve(ROOT, 'assets/locales')
-  const file = readdirSync(localesDir).find((f) => f.startsWith(`${lang}-`))
-  if (!file) throw new Error(`assets/locales に ${lang} のロケールファイルが見つかりません`)
-  return file.replace(/\.json$/, '')
+  const codes = new Map()
+  for (const file of readdirSync(localesDir)) {
+    const match = /^([a-z]+)-[A-Z]+\.json$/.exec(file)
+    if (match) codes.set(match[1], file.replace(/\.json$/, ''))
+  }
+  return codes
 }
 
 /** manifest の packages から検査対象ロケール一覧を組み立てる（fr を含む・#113） */
 function buildLocales(manifest) {
-  return manifest.packages.map((pkg) => ({
-    lang: pkg.locale,
-    code: localeCode(pkg.locale),
-    sourcePath: resolve(manifest.sourceDir, pkg.slides),
-  }))
+  const sourceDir = resolve(ROOT, manifest.source)
+  const localeCodes = loadLocaleCodes()
+  return manifest.packages.map((pkg) => {
+    const code = localeCodes.get(pkg.locale)
+    if (!code) throw new Error(`assets/locales に ${pkg.locale} のロケールファイルが見つかりません`)
+    return { lang: pkg.locale, code, sourcePath: resolve(sourceDir, pkg.slides) }
+  })
 }
 
 /** ログ表示用のスライド識別ラベル（`locale/00-id`） */
@@ -60,8 +65,10 @@ function slideLabel(lang, index, id) {
  *
  * パターンは末尾 `*` が必須: アプリは取得先に `?locale=…` を明示的に付ける
  * （src/sampleSlides.ts の withLocaleQuery）ため、`**\/slides.json` だけではクエリ付き URL に一致せず
- * 差し替えが発火しない。発火回数（routeHits）を数え、呼び出し元がゼロ件を検出できるようにする
- * （偽陽性の構造的防止・#113）。
+ * 差し替えが発火しない。発火回数（routeHits）を数え、呼び出し元がゼロ件を検出できるようにする。
+ * さらに、route が発火してもアプリ側のバリデーションで弾かれフォールバック表示になる可能性があるため、
+ * 描画されたスライド数（renderedCount）を実測し、注入した枚数（expectedCount）と比較する
+ * （e2e/presentation.spec.ts と同じ手法。route 発火だけを見る検証より一段深い偽陽性防止・#113）。
  */
 async function inspectLocale(browser, locale, vp) {
   const raw = readFileSync(locale.sourcePath, 'utf-8')
@@ -83,6 +90,8 @@ async function inspectLocale(browser, locale, vp) {
     // section の存在だけでなく `.reveal.ready` を待つ。useReveal の初期化エフェクトが history.replaceState で
     // hash を消すため、これより先に hash ナビすると移動が失われる（e2e/fixtures.ts の openSample と同じ理由）
     await page.waitForSelector('.reveal.ready .slides section.present', { timeout: 15000 })
+
+    const renderedCount = await page.evaluate(() => document.querySelectorAll('.reveal .slides > section').length)
 
     for (const [index, slide] of slides.entries()) {
       await page.evaluate((h) => (window.location.hash = h), `#/${index}`)
@@ -109,10 +118,11 @@ async function inspectLocale(browser, locale, vp) {
       }
       results.push({ lang: locale.lang, index, id: slide.id, warnings })
     }
+
+    return { lang: locale.lang, results, routeHits, renderedCount, expectedCount: slides.length }
   } finally {
     await context.close()
   }
-  return { results, routeHits }
 }
 
 function formatResult(result) {
@@ -132,6 +142,7 @@ async function main() {
     browser = await webkit.launch()
 
     const manifest = loadManifest()
+    validateManifest(manifest)
     const locales = buildLocales(manifest)
     const vp = contentViewport(VIEWPORT_KEY)
     const perLocale = await Promise.all(locales.map((locale) => inspectLocale(browser, locale, vp)))
@@ -141,15 +152,20 @@ async function main() {
       console.log(formatResult(result))
     }
 
-    const routeFailures = locales.filter((_, i) => perLocale[i].routeHits === 0)
-    for (const locale of routeFailures) {
-      console.error(`[inspect] ${locale.lang}: /slides.json への差し替え（page.route）が発火しませんでした。ビルド同梱の内容を検査してしまい、あふれを見逃す危険があります。`)
+    const routeFailures = perLocale.filter((r) => r.routeHits === 0)
+    for (const r of routeFailures) {
+      console.error(`[inspect] ${r.lang}: /slides.json への差し替え（page.route）が発火しませんでした。ビルド同梱の内容を検査してしまい、あふれを見逃す危険があります。`)
+    }
+
+    const countMismatches = perLocale.filter((r) => r.renderedCount !== r.expectedCount)
+    for (const r of countMismatches) {
+      console.error(`[inspect] ${r.lang}: 描画されたスライド数（${r.renderedCount}）が配布サンプルの枚数（${r.expectedCount}）と一致しません。差し替えた内容がアプリ側で弾かれ、フォールバック表示を検査した可能性があります。`)
     }
 
     const failing = allResults.filter((r) => r.warnings.length > 0)
     console.log(`\n[inspect] まとめ: ${allResults.length}枚検査 / 警告あり ${failing.length}枚`)
 
-    if (failing.length > 0 || routeFailures.length > 0) {
+    if (failing.length > 0 || routeFailures.length > 0 || countMismatches.length > 0) {
       console.error('[inspect] 配布サンプルに見た目の破綻、または検査自体の失敗を検出しました。')
       process.exitCode = 1
     } else {
