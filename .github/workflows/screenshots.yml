@@ -2,7 +2,10 @@ name: Update Screenshots
 
 # README 用スクリーンショットを WebKit で撮影し、差分があればコミットする。
 # 日本語フォント・WebKit 描画差のため macOS ランナー固定（Linux では豆腐化・見た目差が出る）。
-# 撮影は e2e スモークを兼ねており、いずれかのシナリオが失敗するとジョブも失敗する。
+# 撮影は e2e スモークを兼ねており、いずれかのシナリオが失敗するとジョブも失敗する（自己検証。md5重複・assert。#125）。
+# `keys` 指定時（部分撮影）は、その意図した範囲だけが変化したかを screenshots:diff で確認し、
+# 想定外の変化（写り込み事故等）があればジョブを失敗させる（#125 Phase2）。
+# `keys` 未指定（全シナリオ再撮影）時は比較対象が無いためスキップする。
 on:
   workflow_dispatch:
     inputs:
@@ -23,6 +26,8 @@ jobs:
     name: Update Screenshots (macOS)
     runs-on: macos-latest
     timeout-minutes: 20
+    env:
+      SCREENSHOT_KEYS: ${{ github.event.inputs.keys }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -33,7 +38,10 @@ jobs:
       - name: Install Playwright WebKit
         run: npx playwright install webkit
       - name: Generate screenshots
-        run: npm run generate-screenshots -- ${{ github.event.inputs.keys }}
+        run: npm run generate-screenshots -- $SCREENSHOT_KEYS
+      - name: Diff report (regression self-check)
+        if: ${{ github.event.inputs.keys != '' }}
+        run: npm run screenshots:diff -- --expect "$(echo "$SCREENSHOT_KEYS" | tr -s ' ' ',')"
       - name: Commit screenshots if changed
         run: |
           git config user.name "github-actions[bot]"

@@ -23,12 +23,12 @@
  *
  * 既定: --base=HEAD, --mask-bottom=120
  */
-import { execFileSync } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import pixelmatch from 'pixelmatch'
 import { PNG } from 'pngjs'
+import { readRefBuffer } from './git-ref-buffer.mjs'
 import { expectedFileNames, fixtureSlides } from './reference-deck-fixture.mjs'
 import { LOCALES } from './vite-runtime.mjs'
 
@@ -91,18 +91,9 @@ function parseArgs(argv) {
   return result
 }
 
-/** git コマンドを実行し、失敗（対象が存在しない等）した場合は null を返す */
-function tryGit(args, options) {
-  try {
-    return execFileSync('git', args, { stdio: ['ignore', 'pipe', 'ignore'], ...options })
-  } catch {
-    return null
-  }
-}
-
 /** git ref 側の PNG を読む。存在しない（新規追加ファイル）場合は null */
 function readRefPng(base, relPath) {
-  const buf = tryGit(['show', `${base}:${relPath}`], { maxBuffer: 1024 * 1024 * 64 })
+  const buf = readRefBuffer(base, relPath)
   return buf ? PNG.sync.read(buf) : null
 }
 
