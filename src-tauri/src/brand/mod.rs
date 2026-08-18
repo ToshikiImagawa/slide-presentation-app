@@ -138,6 +138,28 @@ pub struct BandCandidate {
   pub thickness_emu: i64,
 }
 
+/// ブランドマーク候補内の1個の形状（#346）。`isCircle` は `rule` + `borderRadius` への変換
+/// （円は辺の半分、正方形は0）の判断材料になる
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MarkShape {
+  pub x_emu: i64,
+  pub y_emu: i64,
+  pub width_emu: i64,
+  pub height_emu: i64,
+  pub color_hex: String,
+  pub is_circle: bool,
+}
+
+/// ブランドマーク候補（#346 のヒューリスティクス出力）。同一サイズの単色小図形が複数近接して並んでいる
+/// まとまりを1候補とする。`BandCandidate` と同じく、採否は人が確認ダイアログで決める前提の**候補**であり、
+/// 自動確定はしない。採用すると `shapes` の各要素が `rule` + `borderRadius` の装飾に変換される
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MarkCandidate {
+  pub shapes: Vec<MarkShape>,
+}
+
 /// 固定テキスト/ページ番号候補（#318）。`BandCandidate` と同じく、採否は人が確認ダイアログで決める前提の
 /// **候補**。`anchor`/`offset` への変換（`bandToDecoration` と同じ EMU→px 換算を使う）はフロント（`compile()`）の責務
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
@@ -228,6 +250,8 @@ pub struct BrandProfile {
   pub band_candidates: Vec<BandCandidate>,
   /// 検出した固定テキスト/ページ番号候補（#318）
   pub text_candidates: Vec<TextCandidate>,
+  /// 検出したブランドマーク候補（#346）
+  pub mark_candidates: Vec<MarkCandidate>,
   /// `p:embeddedFontLst` に列挙された埋め込みフォント（#318）。非圧縮 EOT の実体は `payload` に持つ
   /// （#321 段階1）。圧縮（MicroType Express）フォントは対象外で書体名のみ
   pub embedded_fonts: Vec<EmbeddedFont>,
@@ -270,39 +294,56 @@ fn extract<R: Read + Seek>(mut reader: R) -> Result<BrandProfile, BrandError> {
     None => None,
   };
 
-  let (logo_candidates, band_candidates, text_candidates) = match (&parts.slide_master, slide_size)
-  {
-    (Some(master_part), Some(size)) => {
-      let raw = shapes::parse_shapes(&package.read_text(master_part)?)?;
-      let logos = heuristics::rank_logo_candidates(&raw.pics, size)
-        .into_iter()
-        .filter_map(|ranked| resolve_logo_candidate(&mut package, master_part, ranked))
-        .collect();
-      let bands = heuristics::classify_bands(&raw.shapes, &theme.colors, &master.color_map, size)
-        .into_iter()
-        .map(|b| BandCandidate {
-          orientation: b.orientation.to_string(),
-          anchor: b.anchor.to_string(),
-          color_hex: b.color.to_hex(),
-          thickness_emu: b.thickness_emu,
-        })
-        .collect();
-      let texts = heuristics::list_text_candidates(&raw.shapes, &theme.colors, &master.color_map)
-        .into_iter()
-        .map(|t| TextCandidate {
-          content: t.content,
-          x_emu: t.x_emu,
-          y_emu: t.y_emu,
-          width_emu: t.width_emu,
-          height_emu: t.height_emu,
-          size_pt: t.size_pt,
-          color_hex: t.color.map(Rgb::to_hex),
-        })
-        .collect();
-      (logos, bands, texts)
-    }
-    _ => (Vec::new(), Vec::new(), Vec::new()),
-  };
+  let (logo_candidates, band_candidates, text_candidates, mark_candidates) =
+    match (&parts.slide_master, slide_size) {
+      (Some(master_part), Some(size)) => {
+        let raw = shapes::parse_shapes(&package.read_text(master_part)?)?;
+        let logos = heuristics::rank_logo_candidates(&raw.pics, size)
+          .into_iter()
+          .filter_map(|ranked| resolve_logo_candidate(&mut package, master_part, ranked))
+          .collect();
+        let bands = heuristics::classify_bands(&raw.shapes, &theme.colors, &master.color_map, size)
+          .into_iter()
+          .map(|b| BandCandidate {
+            orientation: b.orientation.to_string(),
+            anchor: b.anchor.to_string(),
+            color_hex: b.color.to_hex(),
+            thickness_emu: b.thickness_emu,
+          })
+          .collect();
+        let texts = heuristics::list_text_candidates(&raw.shapes, &theme.colors, &master.color_map)
+          .into_iter()
+          .map(|t| TextCandidate {
+            content: t.content,
+            x_emu: t.x_emu,
+            y_emu: t.y_emu,
+            width_emu: t.width_emu,
+            height_emu: t.height_emu,
+            size_pt: t.size_pt,
+            color_hex: t.color.map(Rgb::to_hex),
+          })
+          .collect();
+        let marks = heuristics::classify_marks(&raw.shapes, &theme.colors, &master.color_map, size)
+          .into_iter()
+          .map(|group| MarkCandidate {
+            shapes: group
+              .shapes
+              .into_iter()
+              .map(|s| MarkShape {
+                x_emu: s.x_emu,
+                y_emu: s.y_emu,
+                width_emu: s.width_emu,
+                height_emu: s.height_emu,
+                color_hex: s.color.to_hex(),
+                is_circle: s.is_circle,
+              })
+              .collect(),
+          })
+          .collect();
+        (logos, bands, texts, marks)
+      }
+      _ => (Vec::new(), Vec::new(), Vec::new(), Vec::new()),
+    };
 
   // presentation.xml の宣言を読み、非圧縮 EOT のフォント実体を展開する（#321 段階1）。
   // 圧縮（MicroType Express）・壊れたヘッダ・sfnt マジック不一致は例外にせず書体名のみへ退避する
@@ -357,6 +398,7 @@ fn extract<R: Read + Seek>(mut reader: R) -> Result<BrandProfile, BrandError> {
     logo_candidates,
     band_candidates,
     text_candidates,
+    mark_candidates,
     embedded_fonts,
     mapped_colors,
     text_styles: TextStyles {
@@ -1027,6 +1069,22 @@ mod tests {
           <a:solidFill><a:srgbClr val="1F4E79"/></a:solidFill>
         </p:spPr>
       </p:sp>
+      <p:sp>
+        <p:nvSpPr><p:cNvPr id="5" name="Mark Dot 1"/></p:nvSpPr>
+        <p:spPr>
+          <a:xfrm><a:off x="0" y="6500000"/><a:ext cx="300000" cy="300000"/></a:xfrm>
+          <a:prstGeom prst="ellipse"/>
+          <a:solidFill><a:srgbClr val="ED7D31"/></a:solidFill>
+        </p:spPr>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr><p:cNvPr id="6" name="Mark Dot 2"/></p:nvSpPr>
+        <p:spPr>
+          <a:xfrm><a:off x="400000" y="6500000"/><a:ext cx="300000" cy="300000"/></a:xfrm>
+          <a:prstGeom prst="ellipse"/>
+          <a:solidFill><a:srgbClr val="ED7D31"/></a:solidFill>
+        </p:spPr>
+      </p:sp>
       <p:pic>
         <p:nvPicPr><p:cNvPr id="4" name="Company Logo"/></p:nvPicPr>
         <p:blipFill><a:blip r:embed="rId9"/></p:blipFill>
@@ -1120,6 +1178,16 @@ mod tests {
     assert_eq!(band.anchor, "top-center");
     assert_eq!(band.color_hex, "#1f4e79");
     assert_eq!(band.thickness_emu, 457_200);
+  }
+
+  #[test]
+  fn detects_mark_candidate_from_master_shapes() {
+    let profile = extract_bytes(&pptx_package_with_shapes_and_thumbnail()).unwrap();
+    assert_eq!(profile.mark_candidates.len(), 1);
+    let mark = &profile.mark_candidates[0];
+    assert_eq!(mark.shapes.len(), 2);
+    assert!(mark.shapes.iter().all(|s| s.is_circle));
+    assert!(mark.shapes.iter().all(|s| s.color_hex == "#ed7d31"));
   }
 
   #[test]

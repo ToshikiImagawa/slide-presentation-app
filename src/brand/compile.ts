@@ -17,6 +17,8 @@ import {
   type LayoutAssignmentSlot,
   type MappedColorKey,
   type BrandPlaceholderKind,
+  type MarkCandidate,
+  type MarkShape,
   type MediaAsset,
   type PlaceholderProfile,
   type PlaceholderTextProps,
@@ -554,6 +556,17 @@ function buildDecorations(profile: BrandProfile, overrides: BrandOverrides, logo
   for (const { index, candidate } of selectedTexts) {
     decorations.push(textCandidateToDecoration(candidate, overrides.textIndexFormats?.[String(index)], profile.slideSize, canvasHeight))
   }
+
+  const selectedMarks = (overrides.selectedMarkIndices ?? []).map((i) => profile.markCandidates[i]).filter((m): m is MarkCandidate => m !== undefined)
+  report.fields['decorations.marks'] = {
+    status: selectedMarks.length > 0 ? 'ok' : 'missing',
+    detail: selectedMarks.length > 0 ? undefined : profile.markCandidates.length > 0 ? 'マーク候補は検出済みだが人が未選択' : 'マーク候補が検出されなかった',
+  }
+  for (const mark of selectedMarks) {
+    for (const shape of mark.shapes) {
+      decorations.push(markShapeToDecoration(shape, profile.slideSize, canvasHeight))
+    }
+  }
   return decorations
 }
 
@@ -611,7 +624,11 @@ function bandToDecoration(band: BandCandidate, slideSize: BrandProfile['slideSiz
  * オフセットは `SlideMasterLayer.decorationStyle` の配置規則（top/bottom/left/right は `0` 基準、
  * center 系は自身の寸法の半分だけ引いた `50%` 基準）に合わせて逆算する
  */
-function anchorAndOffsetForRect(rect: { xEmu: number; yEmu: number; widthEmu: number; heightEmu: number }, slideSize: BrandProfile['slideSize'], canvasHeight: number): { anchor: MasterAnchor; offset: { x: number; y: number } } {
+function anchorAndOffsetForRect(
+  rect: { xEmu: number; yEmu: number; widthEmu: number; heightEmu: number },
+  slideSize: BrandProfile['slideSize'],
+  canvasHeight: number,
+): { anchor: MasterAnchor; offset: { x: number; y: number }; widthPx: number; heightPx: number } {
   const slideWidthEmu = slideSize && slideSize.widthEmu > 0 ? slideSize.widthEmu : FALLBACK_SLIDE_WIDTH_EMU
   const slideHeightEmu = slideSize && slideSize.heightEmu > 0 ? slideSize.heightEmu : FALLBACK_SLIDE_HEIGHT_EMU
   const xPx = emuToPx(rect.xEmu, slideWidthEmu, SLIDE_WIDTH)
@@ -627,7 +644,7 @@ function anchorAndOffsetForRect(rect: { xEmu: number; yEmu: number; widthEmu: nu
   const offsetX = horizontal === 'left' ? xPx : horizontal === 'right' ? xPx + widthPx - SLIDE_WIDTH : centerXPx - SLIDE_WIDTH / 2
   const offsetY = vertical === 'top' ? yPx : vertical === 'bottom' ? yPx + heightPx - canvasHeight : centerYPx - canvasHeight / 2
 
-  return { anchor: `${vertical}-${horizontal}` as MasterAnchor, offset: { x: Math.round(offsetX), y: Math.round(offsetY) } }
+  return { anchor: `${vertical}-${horizontal}` as MasterAnchor, offset: { x: Math.round(offsetX), y: Math.round(offsetY) }, widthPx, heightPx }
 }
 
 /** `{index}` を含む候補の表示形式（#318）。`indexTotal` は `{index}/{total}` へ展開する。候補に `{index}`
@@ -648,6 +665,19 @@ function textCandidateToDecoration(candidate: TextCandidate, format: 'index' | '
     ...(fontSize != null ? { fontSize } : {}),
     ...(candidate.colorHex ? { color: candidate.colorHex } : {}),
   }
+}
+
+/**
+ * ブランドマーク候補の1形状（#346）を `rule` + `borderRadius` の装飾へ変換する。
+ * `anchor`/`offset` は固定テキスト候補（`textCandidateToDecoration`）と同じ `anchorAndOffsetForRect`
+ * を共有し、EMU→px 換算（`bandToDecoration` と共通の `emuToPx`）を複製しない。
+ * 円（`isCircle`）は辺の半分を `borderRadius` にし、正方形は 0 のままにする（`getMasterWarnings` の
+ * 負値クランプ対象にならないよう、常に 0 以上の整数にする）
+ */
+function markShapeToDecoration(shape: MarkShape, slideSize: BrandProfile['slideSize'], canvasHeight: number): MasterDecoration {
+  const { anchor, offset, widthPx, heightPx } = anchorAndOffsetForRect(shape, slideSize, canvasHeight)
+  const borderRadius = shape.isCircle ? Math.round(Math.min(widthPx, heightPx) / 2) : 0
+  return { type: 'rule', anchor, offset, thickness: heightPx, length: widthPx, color: shape.colorHex, borderRadius }
 }
 
 /** `MediaAsset` を `<img src>` に直接渡せる data URL へ変換する（サムネイル・ロゴ候補の表示で共有する） */
