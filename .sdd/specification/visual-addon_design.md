@@ -45,9 +45,9 @@ category: addon-system
 | `src/components/ComponentRegistry.tsx` owner 機構 | 🟢    | `registerComponent(name, component, owner?)` / `unregisterOwner` / `customOwners` / 名前衝突警告（後方互換） |
 | `src/components/registerDefaults.tsx` 修正     | 🟢       | ビジュアル3つの登録を削除 |
 | `vite.config.ts` dev/prod アドオン配信設定          | 🟢       | alias + copyAddonsPlugin |
-| `src/visuals/` 削除                            | 🟢       |      |
+| `src/visuals/` 削除 <!-- doc-check-ignore -->    | 🟢       |      |
 | `addonLoader.ts` の `loadBuiltinAddons` dev gate | 🟢       | `import.meta.env.DEV` で gate。release では manifest を fetch せず層Aを読み込まない（#35・DC-003）。単体テストで release 経路を検証 |
-| `vite.config.ts` `copyAddonsPlugin` dev gate    | 🟢       | `configResolved` で `resolved.env.DEV`（ランタイムの `import.meta.env.DEV` と同一軸）を取得し、`closeBundle` を dev のみで実行。release では `addons/dist → dist/addons` をコピーしない（#35・DC-003）。ビルド実地で `dist/addons` 非生成を確認 |
+| `vite.config.ts` `copyAddonsPlugin` dev gate    | 🟢       | `configResolved` で `resolved.env.DEV`（ランタイムの `import.meta.env.DEV` と同一軸）を取得し、`closeBundle` を dev のみで実行。release では `addons/dist → dist/addons` をコピーしない（#35・DC-003）。ビルド実地で `dist/addons` 非生成を確認 <!-- doc-check-ignore --> |
 
 ---
 
@@ -296,7 +296,7 @@ if (register) {
 
 | 決定事項                   | 選択肢                                                    | 決定内容                                  | 理由                                                         |
 |------------------------|--------------------------------------------------------|--------------------------------------|------------------------------------------------------------|
-| アドオン配置場所              | (A) `src/addons/` (B) ルートレベル `addons/`                  | (B) ルートレベル `addons/`                  | ホストアプリの `src/` から完全に分離し、独立したビルドプロセスを明確化するため             |
+| アドオン配置場所              | (A) `src/addons/` (B) ルートレベル `addons/`                  | (B) ルートレベル `addons/`                  | ホストアプリの `src/` から完全に分離し、独立したビルドプロセスを明確化するため <!-- doc-check-ignore --> |
 | バンドル形式                | (A) ESM (B) IIFE (C) UMD                                | (B) IIFE                              | `<script>` タグでの動的ロードに最適。即時実行で登録が完了する                     |
 | アドオン登録方式              | (A) static import (B) dynamic import (C) window グローバルコールバック | (C) window グローバルコールバック               | IIFE バンドルとの親和性が高い。React の共有も window 経由で自然に実現             |
 | 有効/無効管理方式             | (A) import 追加/削除 (B) manifest.json (C) 環境変数             | (B) manifest.json                     | ホストアプリのソースコード変更不要。宣言的で拡張性が高い                           |
@@ -359,14 +359,14 @@ if (register) {
 - `addons/src/*/entry.ts` 自動検出方式に変更。手動のエントリファイル管理を不要化
 - `addons/src/` を gitignore 対象に変更（プラグインコンテンツとして外部配置）
 - バンドルファイル名を `ai-sdd-visuals.iife.js` から `addons.iife.js` に変更（特定アドオン名に依存しない）
-- `addons/entry.ts` を廃止し、各アドオンディレクトリ内の `entry.ts` に移動
+- `addons/entry.ts` を廃止し、各アドオンディレクトリ内の `entry.ts` に移動 <!-- doc-check-ignore -->
 
 ## v2.0.0 (2026-01-30)
 
 **変更内容:**
 
 - 設計を全面改訂: 静的 import 方式から動的 IIFE バンドル方式に移行
-- アドオン配置を `src/addons/` からルートレベル `addons/` に変更
+- アドオン配置を `src/addons/` からルートレベル `addons/` に変更 <!-- doc-check-ignore -->
 - manifest.json による宣言的アドオン管理を導入
 - `window.__ADDON_REGISTER__` グローバルコールバックによる動的登録方式を導入
 - `addon-bridge.ts` によるホスト/アドオン間の接続インターフェースを追加

@@ -112,7 +112,7 @@ flowchart LR
 | ユースケース                | 説明                                                        |
 |:----------------------|:----------------------------------------------------------|
 | アドオンを `.spkg` に同梱      | `export-slides --addons` でビルド済みアドオンをパッケージに含める             |
-| パッケージを開いてアドオンを動的ロード | 起動後に開いた `.spkg` の `addons/manifest.json` を読み、バンドルをロードする    |
+| パッケージを開いてアドオンを動的ロード | 起動後に開いた `.spkg` の `addons/manifest.json` を読み、バンドルをロードする <!-- doc-check-ignore --> |
 | パッケージ切替時に破棄・再ロード     | パッケージ A→B 切替時に A のアドオンを破棄し、B のアドオンをロードしてから再マウントする          |
 | 発表者ビューへ伝搬            | 別ウィンドウの発表者ビューにも同じアドオンをロード・登録する                            |
 | 同梱アドオンの信頼確認         | 実行コードを含むパッケージの初回オープン時に許可/拒否を確認する                          |
@@ -307,7 +307,7 @@ requirementDiagram
 
 **優先度**: Must ／ **派生元**: UR-001（[visual-addon.md](./visual-addon.md) FR-001/FR-002 を再利用）
 
-`.spkg` を開いた後、パッケージ内 `addons/manifest.json` に宣言されたバンドルを、`convertFileSrc` が返す asset URL を `<script src>` に注入することで起動後にロードする。ロード方式は実機（macOS/WKWebView）で確認済みの「IIFE + asset URL の `<script>` 注入」を採る。
+`.spkg` を開いた後、パッケージ内 `addons/manifest.json` に宣言されたバンドルを、`convertFileSrc` が返す asset URL を `<script src>` に注入することで起動後にロードする。ロード方式は実機（macOS/WKWebView）で確認済みの「IIFE + asset URL の `<script>` 注入」を採る。<!-- doc-check-ignore -->
 
 **検証方法:** デモンストレーション（パッケージを開きコンポーネントが解決される）による検証
 

@@ -27,7 +27,8 @@
     "reference-deck:diff": "node scripts/screenshot/diff-reference-deck.mjs",
     "reference-deck:inspect": "node scripts/screenshot/inspect-reference-deck.mjs",
     "reference-deck:check-files": "node scripts/screenshot/check-reference-deck-files.mjs",
-    "samples:inspect": "node scripts/screenshot/inspect-samples.mjs"
+    "samples:inspect": "node scripts/screenshot/inspect-samples.mjs",
+    "check:docs": "node scripts/check-doc-references.mjs"
   },
   "keywords": [],
   "author": "",

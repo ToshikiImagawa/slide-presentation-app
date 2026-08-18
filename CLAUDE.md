@@ -33,6 +33,7 @@ npm run reference-deck:inspect     # 基準見本デッキ全枚数の見た目�
 npm run reference-deck:check-files # fixture と resources/reference-deck/ のファイル名照合（孤児・欠落検知。撮影不要・Linux 可）
 npm run samples:inspect            # 配布サンプル（samples/manifest.json の全ロケール）の見た目破綻検査（はみ出し・セーフエリア侵入・装飾重なり。DOM実測ベース・Linux 可）
 npm run generate-docs              # README.md / CHANGELOG.md を PDF 化（docs/ に出力・puppeteer）
+npm run check:docs                 # ドキュメント中のバックティック囲みファイルパス参照の実在確認（quality ジョブに統合）
 ```
 
 ### スナップショット / e2e（スクリーンショット機構）

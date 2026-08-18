@@ -30,7 +30,7 @@ category: addon-system
 # 1. 背景
 
 プレゼンテーションアプリケーションでは、ビジュアルコンポーネント（VibeCodingDemo, HierarchyFlowVisual, PersistenceVisual）が
-`src/visuals/` に配置され、`registerDefaults.tsx` でデフォルトコンポーネントとして登録されていた。これらのビジュアルは
+`src/visuals/` に配置され、`registerDefaults.tsx` でデフォルトコンポーネントとして登録されていた。これらのビジュアルは <!-- doc-check-ignore -->
 AI-SDD デモ用の特化コンポーネントであり、プレゼンテーション本体の汎用コンポーネントとは性質が異なるが、同じ登録経路で管理されていた。
 
 本体コードとビジュアルの結合を解消し、独立した IIFE バンドルとしてアドオン化することで、拡張性と保守性を向上させる。
@@ -85,7 +85,7 @@ AI-SDD デモ用の特化コンポーネントであり、プレゼンテーシ�
 | ディレクトリ                  | ファイル名           | 役割                | 概要                             |
 |-------------------------|-----------------|-------------------|--------------------------------|
 | `addons/src/ai-sdd-visuals` | `entry.ts`  | 登録エントリポイント         | `window.__ADDON_REGISTER__` を呼びコンポーネントを登録 |
-| `addons`                    | `vite.config.ts`| ビルド設定（自動検出方式）   | `src/*/entry.ts` 自動検出、IIFE バンドル生成、CSS インライン化、manifest 生成 |
+| `addons`                    | `vite.config.ts`| ビルド設定（自動検出方式）   | `addons/src/*/entry.ts` 自動検出、IIFE バンドル生成、CSS インライン化、manifest 生成 |
 | `addons/dist`               | `manifest.json` | アドオンメタデータ        | 有効アドオン一覧とバンドルパス                 |
 | `addons/src/ai-sdd-visuals` | `*.tsx`         | ビジュアルコンポーネント     | プレゼン固有のビジュアル（3コンポーネント + icons）  |
 
