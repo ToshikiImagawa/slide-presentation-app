@@ -445,9 +445,8 @@
         "right": {
           "heading": "Two Ways to Set Theme",
           "items": [
-            {"text": "Method 1:", "emphasis": true, "description": " slides.json theme field"},
-            {"text": "Method 2:", "emphasis": true, "description": " public/theme-colors.json (colors only)"},
-            {"text": "meta.themeColors:", "emphasis": true, "description": " Colors in meta (same as Method 1)"}
+            {"text": "Method 1:", "emphasis": true, "description": " slides.json theme field (or meta.themeColors)"},
+            {"text": "Method 2:", "emphasis": true, "description": " public/theme-colors.json (colors only)"}
           ],
           "codeBlock": {
             "header": "> theme-colors.json (Method 2)",
