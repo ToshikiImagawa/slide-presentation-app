@@ -16,6 +16,7 @@ use std::io::{BufReader, Read, Seek};
 use std::path::Path;
 
 mod color;
+mod eot;
 mod heuristics;
 mod layout_xml;
 mod master_xml;
@@ -227,7 +228,8 @@ pub struct BrandProfile {
   pub band_candidates: Vec<BandCandidate>,
   /// 検出した固定テキスト/ページ番号候補（#318）
   pub text_candidates: Vec<TextCandidate>,
-  /// `p:embeddedFontLst` に列挙された埋め込みフォント（#318）。フォント実体は含まない（#321のスコープ）
+  /// `p:embeddedFontLst` に列挙された埋め込みフォント（#318）。非圧縮 EOT の実体は `payload` に持つ
+  /// （#321 段階1）。圧縮（MicroType Express）フォントは対象外で書体名のみ
   pub embedded_fonts: Vec<EmbeddedFont>,
   /// `a:clrScheme` の 12 スロット
   pub colors: ClrScheme,
@@ -302,11 +304,15 @@ fn extract<R: Read + Seek>(mut reader: R) -> Result<BrandProfile, BrandError> {
     _ => (Vec::new(), Vec::new(), Vec::new()),
   };
 
-  // フォント実体（`ppt/fonts/*.fntdata`）は展開しない（#321のスコープ）。presentation.xml の宣言だけを読む
-  let embedded_fonts = match &parts.presentation {
-    Some(part) => opc::parse_embedded_fonts(&package.read_text(part)?)?,
-    None => Vec::new(),
-  };
+  // presentation.xml の宣言を読み、非圧縮 EOT のフォント実体を展開する（#321 段階1）。
+  // 圧縮（MicroType Express）・壊れたヘッダ・sfnt マジック不一致は例外にせず書体名のみへ退避する
+  let mut embedded_fonts = Vec::new();
+  if let Some(part) = &parts.presentation {
+    embedded_fonts = opc::parse_embedded_fonts(&package.read_text(part)?)?;
+    for font in embedded_fonts.iter_mut() {
+      font.payload = resolve_embedded_font_payload(&mut package, part, font);
+    }
+  }
 
   // トップレベルの `mapped_colors`（常に1枚目基準）と `masters[0].mapped_colors` は本来同一値でなければならない。
   // 独立に計算すると「両者が一致する」という不変条件がテストでしか守れなくなるため、1度だけ計算した値を
@@ -525,6 +531,31 @@ fn resolve_logo_candidate(
     x_emu: ranked.x_emu,
     y_emu: ranked.y_emu,
   })
+}
+
+/// 埋め込みフォントの実体を解決する（#321 段階1）。`p:regular` を優先し、無ければ `p:bold` を試す。
+/// 参照が無い・解決できない・圧縮されている・壊れている・sfnt マジック不一致のいずれでも `None`
+/// （例外にせず #318 の書体名のみの挙動へ退避する）
+fn resolve_embedded_font_payload(
+  package: &mut OpcPackage<impl Read + Seek>,
+  presentation_part: &str,
+  font: &EmbeddedFont,
+) -> Option<MediaAsset> {
+  for rid in [&font.regular_rid, &font.bold_rid].into_iter().flatten() {
+    let Ok(Some(part)) = package.resolve_relationship_id(presentation_part, rid) else {
+      continue;
+    };
+    let Ok(bytes) = package.read_bytes(&part) else {
+      continue;
+    };
+    if let Some(sfnt) = eot::extract_sfnt_from_eot(&bytes) {
+      return Some(MediaAsset {
+        content_type: eot::sfnt_content_type(sfnt).to_string(),
+        base64: encode_base64(sfnt),
+      });
+    }
+  }
+  None
 }
 
 /// パッケージの埋め込みサムネイル（root の `_rels/.rels` にある `metadata/thumbnail` 関係）。
@@ -1107,7 +1138,8 @@ mod tests {
   /// - `p:hf ftr="0"`（フッタ非表示指定）が付いていても、フッタは普通の `p:sp` として置かれているため候補に出る
   /// - タイトルプレースホルダにもテキストがあるが、プレースホルダなので候補から除外される
   /// - `p:embeddedFontLst` に2書体（bold の有無が異なる）を持ち、`ppt/fonts/font1.fntdata` は
-  ///   実際の圧縮フォントを模した非 sfnt のダミーバイト列（実体は展開しないので中身は無関係）
+  ///   EOT ヘッダとして壊れているダミーバイト列（#321: 実体の取り込みに失敗し書体名のみへ安全に退避することを
+  ///   確認する用途。`rId6`/`rId7` は関係先自体が無く未解決になる）
   fn pptx_package_with_text_candidates_and_embedded_fonts() -> Vec<u8> {
     const PRESENTATION_WITH_FONTS: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
 <p:presentation xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" embedTrueTypeFonts="1">
@@ -1169,7 +1201,8 @@ mod tests {
       ("ppt/slideMasters/slideMaster1.xml", MASTER_WITH_TEXT),
       ("ppt/slideMasters/_rels/slideMaster1.xml.rels", &master_rels),
       ("ppt/theme/theme1.xml", &theme),
-      // MicroType Express 圧縮の EOT を模した、sfnt マジックを持たないダミーバイト列（#321 の対象。展開はしない）
+      // EOT ヘッダとして解釈しても EOTSize がバイト列長を超え壊れている（sfnt マジックも持たない）
+      // ダミーバイト列（#321: 例外にせず安全に取り込みを諦めることを確認する対象）
       (
         "ppt/fonts/font1.fntdata",
         "\u{0}\u{1}not-a-real-font-EOT-payload",
@@ -1216,6 +1249,15 @@ mod tests {
   }
 
   #[test]
+  fn broken_embedded_font_header_falls_back_to_typeface_only_without_panicking() {
+    // #321: `rId5` は壊れた EOT ヘッダ、`rId6`/`rId7` は関係先が存在しない未解決参照。
+    // いずれも例外を起こさず、実体を取り込まず書体名のみへ安全に退避する
+    let profile = extract_bytes(&pptx_package_with_text_candidates_and_embedded_fonts()).unwrap();
+    assert_eq!(profile.embedded_fonts[0].payload, None);
+    assert_eq!(profile.embedded_fonts[1].payload, None);
+  }
+
+  #[test]
   fn text_and_embedded_font_extraction_is_deterministic() {
     let bytes = pptx_package_with_text_candidates_and_embedded_fonts();
     let first = serde_json::to_string(&extract_bytes(&bytes).unwrap()).unwrap();
@@ -1225,6 +1267,62 @@ mod tests {
         first
       );
     }
+  }
+
+  /// 非圧縮 EOT でラップされたフォント実体（`rId5` → `fonts/font1.fntdata`）を1書体だけ持つパッケージ（#321）。
+  /// sfnt 本体は `OTTO` マジックのダミー（中身の妥当性までは検証しないため実データでなくてよい）
+  fn pptx_package_with_embedded_font_payload() -> Vec<u8> {
+    const PRESENTATION_WITH_FONT: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
+<p:presentation xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <p:sldMasterIdLst><p:sldMasterId id="2147483696" r:id="rId1"/></p:sldMasterIdLst>
+  <p:embeddedFontLst>
+    <p:embeddedFont>
+      <p:font typeface="Corporate Sans"/>
+      <p:regular r:id="rId5"/>
+    </p:embeddedFont>
+  </p:embeddedFontLst>
+</p:presentation>"#;
+
+    let types = content_types(&[
+      ("/ppt/presentation.xml", CT_PRESENTATION),
+      ("/ppt/slideMasters/slideMaster1.xml", CT_SLIDE_MASTER),
+      ("/ppt/theme/theme1.xml", CT_THEME),
+      ("/ppt/fonts/font1.fntdata", "application/x-font-ttf"),
+    ]);
+    let root_rels = relationships(&[("rId1", "officeDocument", "ppt/presentation.xml")]);
+    let pres_rels = relationships(&[
+      ("rId1", "slideMaster", "slideMasters/slideMaster1.xml"),
+      ("rId5", "font", "fonts/font1.fntdata"),
+    ]);
+    let master_rels = relationships(&[("rId12", "theme", "../theme/theme1.xml")]);
+    let theme = theme_part("Corporate", "1F4E79");
+    let font_data = eot::eot_wrapped("OTTOfake-cff-outline-data", 0);
+    build_zip(&[
+      ("[Content_Types].xml", &types),
+      ("_rels/.rels", &root_rels),
+      ("ppt/presentation.xml", PRESENTATION_WITH_FONT),
+      ("ppt/_rels/presentation.xml.rels", &pres_rels),
+      ("ppt/slideMasters/slideMaster1.xml", MASTER_PART),
+      ("ppt/slideMasters/_rels/slideMaster1.xml.rels", &master_rels),
+      ("ppt/theme/theme1.xml", &theme),
+      ("ppt/fonts/font1.fntdata", &font_data),
+    ])
+  }
+
+  #[test]
+  fn extracts_uncompressed_eot_font_payload_with_validated_sfnt_magic() {
+    let profile = extract_bytes(&pptx_package_with_embedded_font_payload()).unwrap();
+    assert_eq!(profile.embedded_fonts.len(), 1);
+    let payload = profile.embedded_fonts[0]
+      .payload
+      .as_ref()
+      .expect("非圧縮 EOT は実体を取り込める");
+    assert_eq!(payload.content_type, "font/otf");
+    use base64::Engine as _;
+    let bytes = base64::engine::general_purpose::STANDARD
+      .decode(&payload.base64)
+      .unwrap();
+    assert_eq!(&bytes, b"OTTOfake-cff-outline-data");
   }
 
   #[test]

@@ -214,6 +214,22 @@ export function BrandConfirmDialog({ open, profile, initialOverrides, previewSli
   const toggleBand = (index: number, checked: boolean) => toggleSelectedIndex('selectedBandIndices', index, checked)
   const toggleText = (index: number, checked: boolean) => toggleSelectedIndex('selectedTextIndices', index, checked)
 
+  /** 埋め込みフォント実体の取り込み可否（#171/#321）。チェックした瞬間に区分の既定値 `internal-only` を
+   * 確定させる（`compile()` は `overrides.embeddedFontRedistribution` に値がある候補だけ `src` を書くため、
+   * チェック操作そのものが「人が明示的に区分を選んだ」ことになる） */
+  const toggleEmbeddedFontPayload = (index: number, checked: boolean) => {
+    setOverrides((prev) => {
+      const next = { ...prev.embeddedFontRedistribution }
+      if (checked) next[String(index)] = 'internal-only'
+      else delete next[String(index)]
+      return { ...prev, embeddedFontRedistribution: next }
+    })
+  }
+
+  const setEmbeddedFontRedistribution = (index: number, value: 'permitted' | 'internal-only' | 'prohibited') => {
+    setOverrides((prev) => ({ ...prev, embeddedFontRedistribution: { ...prev.embeddedFontRedistribution, [String(index)]: value } }))
+  }
+
   const setTextIndexFormat = (index: number, format: 'index' | 'indexTotal') => {
     setOverrides((prev) => ({ ...prev, textIndexFormats: { ...prev.textIndexFormats, [String(index)]: format } }))
   }
@@ -533,10 +549,46 @@ export function BrandConfirmDialog({ open, profile, initialOverrides, previewSli
             埋め込みフォントは検出されませんでした
           </Typography>
         ) : (
-          <Stack direction="row" spacing={1} sx={{ mb: 2, flexWrap: 'wrap' }}>
-            {profile.embeddedFonts.map((font, i) => (
-              <Chip key={i} size="small" variant="outlined" label={font.hasBold ? `${font.typeface}（Bold）` : font.typeface} />
-            ))}
+          <Stack spacing={0.5} sx={{ mb: 2 }}>
+            {profile.embeddedFonts.map((font, i) => {
+              const redistribution = overrides.embeddedFontRedistribution?.[String(i)]
+              const payloadField = report.fields[`fonts.embedded[${i}].payload`]
+              return (
+                <Stack key={i} direction="row" spacing={1} alignItems="center" sx={{ flexWrap: 'wrap' }}>
+                  <Chip size="small" variant="outlined" label={font.hasBold ? `${font.typeface}（Bold）` : font.typeface} />
+                  {font.payload ? (
+                    <>
+                      <FormControlLabel
+                        control={<Checkbox size="small" checked={redistribution !== undefined} onChange={(e) => toggleEmbeddedFontPayload(i, e.target.checked)} />}
+                        label={
+                          <Typography component="span" sx={{ fontSize: 12 }}>
+                            実体を取り込む
+                          </Typography>
+                        }
+                      />
+                      {redistribution !== undefined && (
+                        <FormControl size="small" sx={{ minWidth: 200 }}>
+                          <Select
+                            value={redistribution}
+                            onChange={(e) => setEmbeddedFontRedistribution(i, e.target.value as 'permitted' | 'internal-only' | 'prohibited')}
+                            SelectDisplayProps={{ 'aria-label': `${font.typeface} の再配布ライセンス区分` }}
+                          >
+                            <MenuItem value="permitted">再配布可（permitted）</MenuItem>
+                            <MenuItem value="internal-only">社内限定（internal-only）</MenuItem>
+                            <MenuItem value="prohibited">再配布不可（prohibited）</MenuItem>
+                          </Select>
+                        </FormControl>
+                      )}
+                    </>
+                  ) : (
+                    <Typography component="span" sx={{ color: 'var(--fixed-text-muted)', fontSize: 12 }}>
+                      実体を取り込めません（書体名のみ登録）
+                    </Typography>
+                  )}
+                  {payloadField && <Chip size="small" color={statusChipColor(payloadField.status)} label={payloadField.status} />}
+                </Stack>
+              )
+            })}
           </Stack>
         )}
 

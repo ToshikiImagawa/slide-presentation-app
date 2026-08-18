@@ -73,12 +73,14 @@ export interface TextCandidate {
   colorHex: string | null
 }
 
-/** 埋め込みフォント（#318 のヒューリスティクス出力）。Rust `brand::opc::EmbeddedFont` と同じ形。
- * `ppt/fonts/*.fntdata` のフォント実体は対象外（#321）で書体名のみ */
+/** 埋め込みフォント（#318 のヒューリスティクス出力 + #321 の実体解決）。Rust `brand::opc::EmbeddedFont` と同じ形。
+ * `payload` は非圧縮 EOT を剥がし sfnt マジックを検証済みの実体（#321 段階1）。圧縮（MicroType Express）・
+ * 壊れたヘッダ・sfnt 不一致・参照未解決のいずれでも `null`（書体名のみへ退避） */
 export interface EmbeddedFont {
   typeface: string
   hasRegular: boolean
   hasBold: boolean
+  payload: MediaAsset | null
 }
 
 /** slideLayout の1プレースホルダ（Rust `brand::PlaceholderProfile` と同じ形） */
@@ -202,6 +204,11 @@ export interface BrandOverrides {
   layoutAssignments?: Record<string, LayoutAssignmentSlot>
   /** `canvas.safeArea`（#188/#317）の辺単位の上書き。未指定の辺は導出値（無ければ CSS 側の既定 60px）のまま */
   safeAreaOverrides?: Partial<SafeArea>
+  /** 取り込んだ埋め込みフォント実体（`embeddedFonts[].payload`）の再配布ライセンス区分（#171/#321）。
+   * key は `embeddedFonts` の添字（文字列化）。値が無い候補は区分未確定として扱い、`payload` があっても
+   * `compile()` は `src` を書かない（人が確認ダイアログで明示的に区分を選ぶまで実体を同梱しない）。
+   * `'prohibited'` を選んだ場合も同様に `src` を書かない（#171 の再配布禁止ゲート） */
+  embeddedFontRedistribution?: Record<string, 'permitted' | 'internal-only' | 'prohibited'>
 }
 
 /** `compile` の出力。生成 CSS 文字列は含めない（Epic #173 の方針）。フォント/masters/decorations は
@@ -211,8 +218,9 @@ export interface CompiledBrandTheme {
   /** 抽出した latin/ea/major/minor を潰さずに写す（#187）。取得できなかったスロットは省略する。
    * `baseFontSize`/`fontSizeRatios` は slideLayout のプレースホルダの `a:defRPr@sz` から導出した
    * 型階層（#316）。段が取れなかった場合は省略する（既定の型階層のまま）。
-   * `sources` は埋め込みフォント名を `local()` 参照のみで登録したもの（#318）。`src` を書かないため
-   * フォント実体は同梱しない（#171 の再配布ゲートには触れない） */
+   * `sources` は埋め込みフォントを登録したもの（#318/#321）。`BrandOverrides.embeddedFontRedistribution` で
+   * 人が再配布ライセンス区分を明示的に選ぶまでは `local()` 参照のみ（`src` を書かない）。区分を選んだ後は
+   * 実体（非圧縮 EOT のみ。#171 の再配布ゲート対象）を data URL の `src` として同梱する */
   fonts: { heading?: FontFamilySpec; body?: FontFamilySpec; baseFontSize?: number; fontSizeRatios?: Record<string, number>; sources?: FontSource[] }
   masters: Record<string, MasterDefinition>
   masterMap: Record<string, string>
