@@ -138,6 +138,39 @@ describe('SlideMasterLayer', () => {
       expect(el.style.backgroundColor).toBe('rgb(18, 52, 86)')
     })
 
+    // #345: rule 装飾に borderRadius を足すと、アセット追加もアドオン実装もなしに小図形（円・正方形）が書ける
+    it('rule は borderRadius 未指定時、borderRadius を出力しない（現行と完全同一のスタイル）', () => {
+      const el = renderBackLayer({ decorations: [{ type: 'rule', anchor: 'bottom-center' }] }).firstElementChild as HTMLElement
+      expect(el.style.borderRadius).toBe('')
+    })
+
+    it('rule は length と thickness を同値にし borderRadius をその半分にすると円になる', () => {
+      const el = renderBackLayer({ decorations: [{ type: 'rule', anchor: 'bottom-center', length: 24, thickness: 24, borderRadius: 12 }] }).firstElementChild as HTMLElement
+      expect(el.style.width).toBe('24px')
+      expect(el.style.height).toBe('24px')
+      expect(el.style.borderRadius).toBe('12px')
+    })
+
+    it('rule は borderRadius 省略時は正方形になる（角丸なし）', () => {
+      const el = renderBackLayer({ decorations: [{ type: 'rule', anchor: 'bottom-center', length: 24, thickness: 24 }] }).firstElementChild as HTMLElement
+      expect(el.style.width).toBe('24px')
+      expect(el.style.height).toBe('24px')
+      expect(el.style.borderRadius).toBe('')
+    })
+
+    it('rule は borderRadius に負値を指定すると 0 にクランプする', () => {
+      const el = renderBackLayer({ decorations: [{ type: 'rule', anchor: 'bottom-center', borderRadius: -8 }] }).firstElementChild as HTMLElement
+      expect(el.style.borderRadius).toBe('0')
+    })
+
+    it('円・正方形の色も color 経由でテーマトークン（CSS変数）に追従する（マスター/章スコープの上書きが color の値としてそのまま反映される）', () => {
+      const el = renderBackLayer({
+        decorations: [{ type: 'rule', anchor: 'bottom-center', length: 24, thickness: 24, borderRadius: 12, color: 'var(--theme-primary)' }],
+      }).firstElementChild as HTMLElement
+      expect(el.style.backgroundColor).toBe('var(--theme-primary)')
+      expect(el.style.borderRadius).toBe('12px')
+    })
+
     it('text は color 未指定時、既定色をインラインで指定せず .master-decoration-text に委ねる', () => {
       const el = renderBackLayer({ decorations: [{ type: 'text', anchor: 'bottom-center', content: 'x' }] }).firstElementChild as HTMLElement
       expect(el.className).toBe('master-decoration-text')

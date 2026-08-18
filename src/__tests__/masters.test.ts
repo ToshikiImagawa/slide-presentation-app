@@ -344,6 +344,16 @@ describe('getMasterWarnings', () => {
       expect(warningsFor({ decorations: [{ type: 'band', anchor: 'top-center', rotate: '45deg' }] })).toContain('theme.masters.standard.decorations[0].rotate: 数値（deg）を指定してください（"45deg"）')
     })
 
+    // #345: rule.borderRadius に負値を指定すると警告する（描画側は0にクランプするが、意図しない指定に気づけるようにする）
+    it('rule の borderRadius が負値なら警告する', () => {
+      expect(warningsFor({ decorations: [{ type: 'rule', anchor: 'bottom-center', borderRadius: -8 }] })).toContain('theme.masters.standard.decorations[0].borderRadius: 0 以上の数値を指定してください（"-8"。0 にクランプして描画します）')
+    })
+
+    it('rule の borderRadius が 0 以上なら警告しない', () => {
+      expect(warningsFor({ decorations: [{ type: 'rule', anchor: 'bottom-center', borderRadius: 12 }] })).toEqual([])
+      expect(warningsFor({ decorations: [{ type: 'rule', anchor: 'bottom-center' }] })).toEqual([])
+    })
+
     it('妥当な background / opacity / rotate では警告しない', () => {
       const theme: ThemeData = {
         masters: {

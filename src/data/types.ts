@@ -246,13 +246,18 @@ export interface BandMasterDecoration extends MasterDecorationBase {
   orientation?: 'horizontal' | 'vertical'
 }
 
-/** 線装飾（長さを指定できる帯より短い区切り線） */
+/** 線装飾（長さを指定できる帯より短い区切り線）。borderRadius を足すと小さな図形（円・正方形）も表現できる。
+ * length と thickness を同値にし borderRadius をその半分にすると円、省略または 0 なら正方形になる。
+ * 「線」という名前と実体が乖離するが、小図形専用の shape 装飾を新設せず 6 種固定を維持するために
+ * rule を流用する設計判断（#345。#189 の 6 種固定を崩さない） */
 export interface RuleMasterDecoration extends MasterDecorationBase {
   type: 'rule'
   color?: string
   thickness?: number
   length?: number
   orientation?: 'horizontal' | 'vertical'
+  /** 角丸の半径（px）。省略時は角丸なし。負値は 0 にクランプされ getMasterWarnings が警告する */
+  borderRadius?: number
 }
 
 /** テキスト装飾（フッター・ページ番号・章見出し等）。content 内の {index}/{total} と
