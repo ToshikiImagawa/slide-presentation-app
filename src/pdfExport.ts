@@ -95,6 +95,15 @@ export async function exportSlidesToPdf(deckEl: HTMLElement, title: string, canv
           // QrCodeCard等の外部画像（api.qrserver.com等）をCORSモードで再取得する。
           // 未対応だとcanvasが汚染され、その画像だけ空白になる
           useCORS: true,
+          // html2canvasは撮影対象を非表示iframeへクローンしてから読み取るため、entrance animation
+          // （fadeInUp）はクローン側でゼロから再スタートする。ライブDOM側でどれだけAnimation.finish()
+          // を呼んでも（waitForSlideReady）クローンには引き継がれず、クローンのiframeが読み込まれた
+          // 直後（アニメーション開始直後・opacityがほぼ0）の状態がキャプチャされてしまう（#349）。
+          // onclone はクローンのiframeが読み込まれた後（フォント確定・WebKitでは画像読み込み後）に
+          // 呼ばれるため、ここでクローン側の要素に対して同じ確定処理を行う
+          onclone: (_clonedDoc, clonedElement) => {
+            finishSettlingAnimations(clonedElement)
+          },
         })
         imageData = canvas.toDataURL('image/png')
       } finally {
