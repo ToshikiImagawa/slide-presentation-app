@@ -335,8 +335,8 @@
             "Placez des composants dans <code>addons/src/</code> pour les enregistrer dynamiquement et les utiliser dans les diapositives."
           ],
           "items": [
-            {"text": "Enregistrement automatique :", "emphasis": true, "description": " les modules complémentaires sont enregistrés dans ComponentRegistry au démarrage"},
-            {"text": "Lorsqu'ils ne sont pas chargés :", "emphasis": true, "description": " affichage de repli (le nom du composant est affiché)"}
+            {"text": "Enregistrement automatique :", "emphasis": true, "description": " enregistrés dans ComponentRegistry au démarrage"},
+            {"text": "Lorsqu'ils ne sont pas chargés :", "emphasis": true, "description": " affichage de repli (nom du composant affiché)"}
           ],
           "codeBlock": {
             "header": "> Exemple de spécification JSON",
@@ -445,9 +445,8 @@
         "right": {
           "heading": "Deux façons de définir le thème",
           "items": [
-            {"text": "Méthode 1 :", "emphasis": true, "description": " champ theme de slides.json"},
-            {"text": "Méthode 2 :", "emphasis": true, "description": " public/theme-colors.json (couleurs)"},
-            {"text": "meta.themeColors:", "emphasis": true, "description": " couleurs dans meta (comme la méthode 1)"}
+            {"text": "Méthode 1 :", "emphasis": true, "description": " champ theme de slides.json (ou meta.themeColors)"},
+            {"text": "Méthode 2 :", "emphasis": true, "description": " public/theme-colors.json (couleurs)"}
           ],
           "codeBlock": {
             "header": "> theme-colors.json (méthode 2)",
@@ -656,10 +655,10 @@
           "heading": "Boutons de la barre d'outils",
           "items": [
             {"text": "Lecture / Arrêt :", "emphasis": true, "description": " lire ou arrêter manuellement l'audio de la diapositive actuelle"},
-            {"text": "Lecture automatique :", "emphasis": true, "description": " activer ou désactiver la lecture audio automatique lors du changement de diapositive"},
-            {"text": "Diaporama automatique :", "emphasis": true, "description": " activer ou désactiver l'avance automatique des diapositives à la fin de l'audio"}
+            {"text": "Lecture automatique :", "emphasis": true, "description": " lecture audio automatique au changement de diapositive"},
+            {"text": "Diaporama automatique :", "emphasis": true, "description": " avance automatique des diapositives en fin d'audio"}
           ],
-          "accentText": "→ Lecture automatique + diaporama automatique permettent des présentations entièrement automatisées"
+          "accentText": "→ Lecture automatique + diaporama automatique = présentations entièrement automatisées"
         }
       },
       "meta": {
