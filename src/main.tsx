@@ -118,7 +118,7 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
       const themeApplied = await applyPresentationTheme(data?.meta?.themeColors, data?.theme, brand)
       if (!themeApplied) {
         showToast(t('theme.applyFailed'))
-      } else if (getThemeWarnings(data?.theme, data?.slides).length > 0) {
+      } else if (getThemeWarnings(data?.theme, data?.slides, data?.meta?.logo).length > 0) {
         showToast(t('theme.colorWarning'))
       }
     },

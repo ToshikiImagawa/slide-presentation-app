@@ -244,6 +244,28 @@ describe('getMasterWarnings', () => {
     expect(warnings).toEqual([])
   })
 
+  // #350: meta.logo（LogoMasterDecoration へ合成される）の anchor/only の値検証
+  describe('meta.logo の検証（#350）', () => {
+    it('theme 未指定でも meta.logo.anchor の綴りミスを警告する', () => {
+      const warnings = getMasterWarnings(undefined, undefined, { src: '/logo.png', anchor: 'top-lft' as never })
+      expect(warnings).toContain('meta.logo.anchor: 不明な値 "top-lft" です')
+    })
+
+    it('meta.logo.only の綴りミスを警告する', () => {
+      const warnings = getMasterWarnings({}, undefined, { src: '/logo.png', only: 'furst' as never })
+      expect(warnings).toContain('meta.logo.only: 不明な値 "furst" です')
+    })
+
+    it('anchor/only が正しい値なら警告しない', () => {
+      const warnings = getMasterWarnings({}, undefined, { src: '/logo.png', anchor: 'top-left', only: 'not-first' })
+      expect(warnings).toEqual([])
+    })
+
+    it('logo 未指定なら警告しない', () => {
+      expect(getMasterWarnings(undefined, undefined, undefined)).toEqual([])
+    })
+  })
+
   it('extends が存在しない masterKey を参照する場合に警告する', () => {
     const warnings = getMasterWarnings({ masters: { standard: { extends: 'missing', decorations: [] } } })
     expect(warnings).toContain('theme.masters.standard.extends: 存在しない masterKey "missing" を参照しています')

@@ -8,7 +8,7 @@ const ctx: MasterRenderContext = { index: 0, total: 1 }
 
 /** back レイヤーを描画する（master は decorations / background だけを与えれば足りる） */
 function renderBackLayer(master: { decorations?: MasterDecoration[]; background?: MasterBackground }, renderCtx: MasterRenderContext = ctx): HTMLElement {
-  const { container } = render(<SlideMasterLayer master={{ masterKey: 'standard', decorations: master.decorations ?? [], background: master.background }} layer="back" ctx={renderCtx} />)
+  const { container } = render(<SlideMasterLayer master={{ decorations: master.decorations ?? [], background: master.background }} layer="back" ctx={renderCtx} />)
   return container
 }
 
@@ -193,7 +193,7 @@ describe('マスター背景', () => {
   })
 
   it('front レイヤーには背景を描かない（背景は back の最背面だけ）', () => {
-    const { container } = render(<SlideMasterLayer master={{ masterKey: 'standard', decorations: [], background: { type: 'plain' } }} layer="front" ctx={ctx} />)
+    const { container } = render(<SlideMasterLayer master={{ decorations: [], background: { type: 'plain' } }} layer="front" ctx={ctx} />)
     expect(container.querySelector('.master-background')).toBeNull()
   })
 
@@ -253,7 +253,7 @@ describe('マスター背景', () => {
 // #236: スライド個別背景（meta.backgroundColor/backgroundImage）とマスター背景の優先順位
 describe('スライド個別背景（#236）', () => {
   function renderBackLayerWithMeta(meta: SlideMeta, master?: { decorations?: MasterDecoration[]; background?: MasterBackground }): HTMLElement {
-    const { container } = render(<SlideMasterLayer master={master ? { masterKey: 'standard', decorations: master.decorations ?? [], background: master.background } : undefined} layer="back" ctx={ctx} meta={meta} />)
+    const { container } = render(<SlideMasterLayer master={master ? { decorations: master.decorations ?? [], background: master.background } : undefined} layer="back" ctx={ctx} meta={meta} />)
     return container
   }
 

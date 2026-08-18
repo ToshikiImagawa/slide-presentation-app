@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { render } from '@testing-library/react'
 import { SlideFrame } from '../SlideFrame'
 import { buildSectionAccentCss } from '../../applyTheme'
-import type { MasterRenderContext, SectionInfo, ThemeData } from '../../data'
+import type { LogoConfig, MasterRenderContext, SectionInfo, ThemeData } from '../../data'
 
 // 5枚のデッキ: [0]表紙（章なし） [1][2]第1章 [3][4]第2章
 const section1: SectionInfo = { title: '導入', number: 1, startIndex: 1, slideCount: 2 }
@@ -21,6 +21,64 @@ function renderFrame(ctx: MasterRenderContext, theme?: ThemeData): HTMLElement {
   )
   return container.querySelector('section.slide-container') as HTMLElement
 }
+
+/** logo 付きの section を描画して返す（#350: meta.logo → LogoMasterDecoration 合成の検証用） */
+function renderFrameWithLogo(logo: LogoConfig, ctx: MasterRenderContext = at(0), theme?: ThemeData): HTMLElement {
+  const { container } = render(
+    <SlideFrame id="s1" layout="content" logo={logo} theme={theme} ctx={ctx}>
+      <div>body</div>
+    </SlideFrame>,
+  )
+  return container.querySelector('section.slide-container') as HTMLElement
+}
+
+describe('meta.logo の LogoMasterDecoration への合成（#350）', () => {
+  it('logo未指定時は前面レイヤーに何も描画しない', () => {
+    const section = renderFrame(at(0))
+    expect(section.querySelector('.master-layer-front')?.innerHTML).toBe('')
+  })
+
+  it('anchor/offset未指定時は現行と同一の位置（bottom:0/left:0 + translate(30px,-20px)相当）に描画される', () => {
+    const section = renderFrameWithLogo({ src: '/logo.png' })
+    const logoEl = section.querySelector('.master-layer-front > div') as HTMLElement
+    expect(logoEl.style.bottom).toBe('0px')
+    expect(logoEl.style.left).toBe('0px')
+    expect(logoEl.style.transform).toBe('translate(0%, 0%) translate(30px, -20px)')
+  })
+
+  it('width/height未指定時の既定値は120/40（現行と同一）', () => {
+    const section = renderFrameWithLogo({ src: '/logo.png' })
+    const img = section.querySelector('.master-layer-front img') as HTMLImageElement
+    expect(img.style.width).toBe('120px')
+    expect(img.style.height).toBe('40px')
+  })
+
+  it('anchorを指定すると位置が変わる', () => {
+    const section = renderFrameWithLogo({ src: '/logo.png', anchor: 'top-right', offset: { x: 5, y: 5 } })
+    const logoEl = section.querySelector('.master-layer-front > div') as HTMLElement
+    expect(logoEl.style.top).toBe('0px')
+    expect(logoEl.style.right).toBe('0px')
+    expect(logoEl.style.transform).toBe('translate(0%, 0%) translate(5px, 5px)')
+  })
+
+  it('onlyで特定スライドから除外できる（本文領域全体を使うコンポーネントと重なるスライドを除外する用途）', () => {
+    const excluded = renderFrameWithLogo({ src: '/logo.png', only: 'not-first' }, at(0))
+    expect(excluded.querySelector('.master-layer-front img')).toBeNull()
+
+    const included = renderFrameWithLogo({ src: '/logo.png', only: 'not-first' }, at(1, section1))
+    expect(included.querySelector('.master-layer-front img')).not.toBeNull()
+  })
+
+  it('マスター装飾のlogoとmeta.logoの両方を指定した場合に両方描画される', () => {
+    const theme: ThemeData = {
+      masters: { standard: { decorations: [{ type: 'logo', anchor: 'top-left', src: '/brand.png', layer: 'front' }] } },
+      masterMap: { content: 'standard' },
+    }
+    const section = renderFrameWithLogo({ src: '/meta-logo.png' }, at(0), theme)
+    const imgs = [...section.querySelectorAll('.master-layer-front img')] as HTMLImageElement[]
+    expect(imgs.map((img) => img.getAttribute('data-src'))).toEqual(['/brand.png', '/meta-logo.png'])
+  })
+})
 
 describe('SlideFrame の章スコープ属性（#319）', () => {
   it('章に属するスライドには章番号と章色のカラートークン名を付ける', () => {

@@ -1,5 +1,5 @@
 import { hasComponent } from './components/ComponentRegistry'
-import type { MasterBackground, MasterDecoration, MasterDecorationOnly, MasterDefinition, MasterGradient, MasterRenderContext, SlideData, ThemeData } from './data'
+import type { LogoConfig, LogoMasterDecoration, MasterBackground, MasterDecoration, MasterDecorationOnly, MasterDefinition, MasterGradient, MasterRenderContext, SlideData, ThemeData } from './data'
 
 // schema/slide-content-schema.json の theme.masters 配下の同名 enum と手作業で同期している。
 // slideContentSchema.ts の SCHEMA は AI生成専用の厳格検証のためのモジュールであり、汎用の
@@ -19,6 +19,23 @@ type MergedMasterDefinition = Omit<MasterDefinition, 'extends' | 'decorations'> 
 
 /** 合成済みのマスター定義に、採用された masterKey を添えた描画側の契約 */
 export type ResolvedMaster = MergedMasterDefinition & { masterKey: string }
+
+/** meta.logo（LogoConfig）を LogoMasterDecoration へ合成する（#350）。配置語彙をマスター装飾に一本化し、
+ * anchor/offset/only 未指定時は現行の position: absolute; bottom: 20px; left: 30px; と同一の見た目になる
+ * よう既定値を与える。layer は front 固定（.slide-logo-inline が front レイヤーに描かれていた挙動を維持）。
+ * SlideFrame（描画）と getMasterWarnings（decorationWarnings 経由の検証）の両方がこの1箇所を共有する */
+export function logoToDecoration(logo: LogoConfig): LogoMasterDecoration {
+  return {
+    type: 'logo',
+    src: logo.src,
+    width: logo.width,
+    height: logo.height,
+    anchor: logo.anchor ?? 'bottom-left',
+    offset: logo.offset ?? { x: 30, y: -20 },
+    only: logo.only,
+    layer: 'front',
+  }
+}
 
 /**
  * masterKey を解決順序どおりに候補列挙し、extends チェーンを辿って定義を合成する。
@@ -289,19 +306,28 @@ function tokenWarnings(tokens: Record<string, Record<string, string>> | undefine
     .map((masterKey) => `theme.tokens.${masterKey}: 存在しない masterKey です`)
 }
 
+/** meta.logo の値検証（#350）。logoToDecoration で合成した実際の描画形（LogoMasterDecoration）を
+ * decorationWarnings にそのまま渡すことで、theme.masters[].decorations[] と同じ検証（anchor/only の
+ * 綴りミス等）を重複実装せずに共有する */
+function logoConfigWarnings(logo: LogoConfig | undefined): string[] {
+  if (!logo) return []
+  return decorationWarnings(logoToDecoration(logo), 'meta.logo')
+}
+
 /**
- * masters/masterMap/tokens、および slides[].meta.master（スライド個別指定）の値検証エラー
+ * masters/masterMap/tokens、slides[].meta.master（スライド個別指定）、meta.logo（#350）の値検証エラー
  * （綴りミス等）を警告として返す。getThemeWarnings と同じ方針: 検証エラーではなく警告として扱い、
  * 描画は継続する（resolveMaster は循環・未解決を静かに次の候補へフォールバックするため、
- * その事実をここで利用者に伝える）。slides は省略可能（省略時は meta.master の検証をスキップする）。
+ * その事実をここで利用者に伝える）。slides/logo は省略可能（省略時は該当する検証をスキップする）。
  */
-export function getMasterWarnings(theme?: ThemeData, slides?: SlideData[]): string[] {
-  if (!theme) return []
+export function getMasterWarnings(theme?: ThemeData, slides?: SlideData[], logo?: LogoConfig): string[] {
+  const logoWarnings = logoConfigWarnings(logo)
+  if (!theme) return logoWarnings
 
   const masters = theme.masters ?? {}
   const masterKeys = new Set(Object.keys(masters))
 
-  return [masterMapWarnings(theme.masterMap, masterKeys), slideMasterWarnings(slides, masterKeys), definitionWarnings(masters, masterKeys), tokenWarnings(theme.tokens, masterKeys)].flat()
+  return [logoWarnings, masterMapWarnings(theme.masterMap, masterKeys), slideMasterWarnings(slides, masterKeys), definitionWarnings(masters, masterKeys), tokenWarnings(theme.tokens, masterKeys)].flat()
 }
 
 function isCircular(masters: Record<string, MasterDefinition>, startKey: string): boolean {

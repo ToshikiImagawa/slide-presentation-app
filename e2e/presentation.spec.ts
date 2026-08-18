@@ -30,8 +30,9 @@ test.describe('プレゼンテーション', () => {
 
   test('ロゴが左下に表示される', async ({ page }) => {
     await openSample(page)
-    // #163: ロゴは各 section 内側の .slide-logo-inline に移動した（PDF書き出し・発表者ビュー・
-    // 編集プレビューにも写るようにするため）。表示中のスライドのロゴのみを対象にする
-    await expect(page.locator('section.present .slide-logo-inline img')).toBeVisible()
+    // #163: ロゴは各 section 内側の .master-layer-front に描かれる（PDF書き出し・発表者ビュー・
+    // 編集プレビューにも写るようにするため）。#350 で LogoMasterDecoration への合成に変わったが、
+    // 描画先のレイヤーは変わらない。表示中のスライドのロゴのみを対象にする
+    await expect(page.locator('section.present .master-layer-front img[alt="Logo"]')).toBeVisible()
   })
 })

@@ -22,11 +22,18 @@ export interface PresentationMeta {
   brandTheme?: string
 }
 
-/** ロゴ設定 */
+/** ロゴ設定。描画は内部的に LogoMasterDecoration へ合成される（#350）。anchor/offset/only 未指定時は
+ * 現行と同一の位置（bottom-left・offset { x: 30, y: -20 } 相当）になる */
 export interface LogoConfig {
   src: string
   width?: number
   height?: number
+  /** 省略時 'bottom-left'（現行の position: absolute; bottom: 20px; left: 30px; と同じ位置） */
+  anchor?: MasterAnchor
+  /** 省略時 { x: 30, y: -20 }（bottom アンカーは offset.y が負方向で辺から離れる） */
+  offset?: { x?: number; y?: number }
+  /** 本文領域全体を使うコンポーネント（hierarchyDiagram/flow等）と重なるスライドをロゴから除外する等に使う */
+  only?: MasterDecorationOnly
 }
 
 /** 個別スライドのデータ */

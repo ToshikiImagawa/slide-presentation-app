@@ -5,9 +5,14 @@ import type { MasterBackground, MasterDecoration, MasterDecorationLayer, MasterG
 import type { ResolvedMaster } from '../masters'
 import { matchesDecorationOnly, renderMasterText } from '../masters'
 
+/** SlideFrame が meta.logo を合成した装飾を末尾に足せるよう、ResolvedMaster から masterKey を落とした最小形。
+ * masterKey はこのコンポーネント内で未使用（data-master 属性は SlideFrame 側が resolved から別途持つ）（#350） */
+type MasterLike = Pick<ResolvedMaster, 'decorations' | 'background'>
+
 type Props = {
-  /** resolveMaster が解決したマスター。未解決（undefined）でも meta 個別背景があれば描く */
-  master: ResolvedMaster | undefined
+  /** resolveMaster が解決したマスター、または meta.logo 合成済みの装飾セット。未解決（undefined）でも
+   * meta 個別背景があれば描く */
+  master: MasterLike | undefined
   layer: MasterDecorationLayer
   ctx: MasterRenderContext
   /** slides[].meta。backgroundColor/backgroundImage は back レイヤーで theme.masters[key].background より
