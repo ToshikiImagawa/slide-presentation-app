@@ -117,6 +117,34 @@ describe('exportSlidesToPdf', () => {
     expect(infinite.finish).not.toHaveBeenCalled()
   })
 
+  // #349: html2canvasは撮影対象を非表示iframeへクローンしてから読み取るため、entrance animation
+  // （fadeInUp）はクローン側でゼロから再スタートする。ライブDOM側でAnimation.finish()を呼んでも
+  // クローンには引き継がれず、クローンのiframeが読み込まれた直後（開始直後・opacityがほぼ0）の
+  // 状態がキャプチャされてしまう。html2canvasのonclone（クローン側の要素を受け取れる）で
+  // 同じ確定処理を行うことで、クローン側のアニメーションも確定させる
+  it('html2canvas の onclone でクローン側の要素の entrance animation を確定する（#349: クローン内でアニメーションが再スタートし本文が空白になる不具合）', async () => {
+    h.save.mockResolvedValue('/tmp/my-deck.pdf')
+    const deck = buildDeck(1)
+    const sections = deck.querySelectorAll('section')
+    sections[0].classList.add('present')
+
+    const clonedFinish = vi.fn()
+    const clonedElement = document.createElement('section')
+    clonedElement.getAnimations = vi.fn().mockReturnValue([{ finish: clonedFinish, effect: { getComputedTiming: () => ({ iterations: 1 }) } }])
+
+    let capturedOnclone: ((doc: Document, element: HTMLElement) => void) | undefined
+    h.html2canvas.mockImplementation(async (_el: HTMLElement, options: { onclone?: (doc: Document, element: HTMLElement) => void }) => {
+      capturedOnclone = options.onclone
+      return { toDataURL: () => 'data:image/png;base64,dummy' }
+    })
+
+    await exportSlidesToPdf(deck, 'my-deck')
+
+    expect(capturedOnclone).toBeTypeOf('function')
+    capturedOnclone?.(document, clonedElement)
+    expect(clonedFinish).toHaveBeenCalledTimes(1)
+  })
+
   it('キャプチャ対象に .past/.future が残っていない状態で html2canvas を呼ぶ（Reveal.jsの隠しCSSを回避）', async () => {
     h.save.mockResolvedValue('/tmp/my-deck.pdf')
     const deck = buildDeck(3)
