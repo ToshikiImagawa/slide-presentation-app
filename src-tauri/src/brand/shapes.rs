@@ -58,6 +58,8 @@ pub struct RawShape {
   /// `p:nvSpPr/p:nvPr/p:ph` の有無。固定テキスト候補の列挙でプレースホルダを除外する用途（#318）
   pub is_placeholder: bool,
   pub text: RawShapeText,
+  /// `p:spPr/a:prstGeom@prst`（"ellipse"/"rect" 等）。ブランドマーク候補の円/正方形判定に使う（#346）
+  pub prst_geom: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -66,11 +68,13 @@ pub struct RawShapes {
   pub shapes: Vec<RawShape>,
 }
 
-/// 構築中の形状（spTree 直下の境界で確定させ、次の境界で確定済みのものを結果へ積む）
+/// 構築中の形状（spTree 直下の境界で確定させ、次の境界で確定済みのものを結果へ積む）。
+/// `Sp` は `Pic` より大幅に大きい（`RawShapeText`/`RawTextProps` を持つ）ため `Box` で間接化し、
+/// enum 全体のサイズを小さい方の変種（`Pic`）に近づける（`clippy::large_enum_variant`）
 enum Current {
   None,
   Pic(RawPic),
-  Sp(RawShape),
+  Sp(Box<RawShape>),
 }
 
 pub fn parse_shapes(xml: &str) -> Result<RawShapes, BrandError> {
@@ -93,7 +97,7 @@ pub fn parse_shapes(xml: &str) -> Result<RawShapes, BrandError> {
 fn flush(current: &mut Current, out: &mut RawShapes) {
   match std::mem::replace(current, Current::None) {
     Current::Pic(pic) => out.pics.push(pic),
-    Current::Sp(sp) => out.shapes.push(sp),
+    Current::Sp(sp) => out.shapes.push(*sp),
     Current::None => {}
   }
 }
@@ -113,7 +117,7 @@ fn visit_element(
       flush(current, out);
       *current = match name {
         "pic" => Current::Pic(RawPic::default()),
-        "sp" => Current::Sp(RawShape::default()),
+        "sp" => Current::Sp(Box::default()),
         _ => Current::None,
       };
     }
@@ -159,6 +163,10 @@ fn visit_shape_element(sp: &mut RawShape, inner: &[String], name: &str, e: &Byte
   }
   if read_placeholder_marker(inner, name, e).is_some() {
     sp.is_placeholder = true;
+    return;
+  }
+  if inner == ["spPr"] && name == "prstGeom" {
+    sp.prst_geom = attr(e, "prst");
     return;
   }
   if let Some(rest) = strip_path(inner, &["spPr", "solidFill"]) {
@@ -464,5 +472,47 @@ mod tests {
       parse_shapes("<p:sldMaster><p:cSld></p:sldMaster>"),
       Err(BrandError::Xml(_))
     ));
+  }
+
+  /// ブランドマーク候補向けの小図形（円・正方形）を持つ spTree（#346）
+  const XML_WITH_MARKS: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
+<p:sldMaster xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
+  <p:cSld>
+    <p:spTree>
+      <p:sp>
+        <p:nvSpPr><p:cNvPr id="2" name="Dot 1"/></p:nvSpPr>
+        <p:spPr>
+          <a:xfrm><a:off x="0" y="0"/><a:ext cx="100000" cy="100000"/></a:xfrm>
+          <a:prstGeom prst="ellipse"/>
+          <a:solidFill><a:srgbClr val="1F4E79"/></a:solidFill>
+        </p:spPr>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr><p:cNvPr id="3" name="Square 1"/></p:nvSpPr>
+        <p:spPr>
+          <a:xfrm><a:off x="200000" y="0"/><a:ext cx="100000" cy="100000"/></a:xfrm>
+          <a:prstGeom prst="rect"/>
+          <a:solidFill><a:srgbClr val="1F4E79"/></a:solidFill>
+        </p:spPr>
+      </p:sp>
+    </p:spTree>
+  </p:cSld>
+</p:sldMaster>"#;
+
+  #[test]
+  fn reads_prst_geom_for_ellipse_and_rect_shapes() {
+    let parsed = parse_shapes(XML_WITH_MARKS).unwrap();
+    let dot = parsed
+      .shapes
+      .iter()
+      .find(|s| s.name.as_deref() == Some("Dot 1"))
+      .unwrap();
+    assert_eq!(dot.prst_geom.as_deref(), Some("ellipse"));
+    let square = parsed
+      .shapes
+      .iter()
+      .find(|s| s.name.as_deref() == Some("Square 1"))
+      .unwrap();
+    assert_eq!(square.prst_geom.as_deref(), Some("rect"));
   }
 }

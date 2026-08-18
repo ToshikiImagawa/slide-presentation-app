@@ -35,6 +35,25 @@ export interface BandCandidate {
   thicknessEmu: number
 }
 
+/** ブランドマーク候補内の1個の形状（#346 のヒューリスティクス出力）。Rust `brand::MarkShape` と同じ形。
+ * `isCircle` は `rule` + `borderRadius` への変換（円は辺の半分、正方形は0）の判断材料になる */
+export interface MarkShape {
+  xEmu: number
+  yEmu: number
+  widthEmu: number
+  heightEmu: number
+  colorHex: string
+  isCircle: boolean
+}
+
+/** ブランドマーク候補（#346 のヒューリスティクス出力）。Rust `brand::MarkCandidate` と同じ形。
+ * 同一サイズの単色小図形が複数近接して並んでいるまとまりを1候補とする。`BandCandidate` と同じく
+ * 採否は人が確認ダイアログで決める前提の**候補**。採用すると `shapes` の各要素が `rule` + `borderRadius`
+ * の装飾に変換される */
+export interface MarkCandidate {
+  shapes: MarkShape[]
+}
+
 /** 書体の決定根拠（#316）。Rust `brand::text_props::FontOrigin` と同じ値。
  * `fontScheme` は Office 既定値のままである可能性があり（作者が触っていない）、`defRPr` は
  * テンプレート作者がプレースホルダ / slideMaster に明示した実測値であることを表す */
@@ -154,6 +173,8 @@ export interface BrandProfile {
   bandCandidates: BandCandidate[]
   /** 検出した固定テキスト/ページ番号候補（#318） */
   textCandidates: TextCandidate[]
+  /** 検出したブランドマーク候補（#346） */
+  markCandidates: MarkCandidate[]
   /** `p:embeddedFontLst` に列挙された埋め込みフォント（#318） */
   embeddedFonts: EmbeddedFont[]
   /** clrMap 適用後の 12 キー。値が取れなかったキーは `null`（`compile` がフォールバックする） */
@@ -186,6 +207,8 @@ export interface BrandOverrides {
   selectedBandIndices?: number[]
   /** `textCandidates` から装飾として採用する index の一覧（既定は空＝何も自動適用しない。#318） */
   selectedTextIndices?: number[]
+  /** `markCandidates` から装飾として採用する index の一覧（既定は空＝何も自動適用しない。#346） */
+  selectedMarkIndices?: number[]
   /** 採用したテキスト候補ごとの表示形式（#318）。key は `textCandidates` の添字（文字列化）。
    * `indexTotal` は `{index}` を `{index}/{total}` に展開する。未指定の候補は `{index}` のまま */
   textIndexFormats?: Record<string, 'index' | 'indexTotal'>

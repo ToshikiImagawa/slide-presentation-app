@@ -28,6 +28,7 @@ function profile(overrides: Partial<BrandProfile> = {}): BrandProfile {
     logoCandidates: [],
     bandCandidates: [],
     textCandidates: [],
+    markCandidates: [],
     embeddedFonts: [],
     mappedColors,
     fonts: { major: { latin: 'Trebuchet MS', ea: null, cs: null, jpan: null }, minor: { latin: 'Calibri', ea: null, cs: null, jpan: null } },
@@ -327,6 +328,53 @@ describe('compile（#168 の並置比較・取り込み確認）', () => {
       const { report } = compile(profile(), {})
       expect(report.fields['decorations.text']?.status).toBe('missing')
       expect(report.fields['decorations.text']?.detail).toContain('検出されなかった')
+    })
+  })
+
+  describe('ブランドマーク（#346）', () => {
+    const withMarks = () =>
+      profile({
+        markCandidates: [
+          {
+            shapes: [
+              { xEmu: 0, yEmu: 0, widthEmu: 300_000, heightEmu: 300_000, colorHex: '#1f4e79', isCircle: true },
+              { xEmu: 400_000, yEmu: 0, widthEmu: 300_000, heightEmu: 300_000, colorHex: '#1f4e79', isCircle: false },
+            ],
+          },
+        ],
+      })
+
+    it('selectedMarkIndices が空（既定）なら decorations に含めず missing として報告する（現行と完全同一）', () => {
+      const { theme, report } = compile(withMarks(), {})
+      expect(theme.masters.brand.decorations!).toHaveLength(0)
+      expect(report.fields['decorations.marks']?.status).toBe('missing')
+    })
+
+    it('採用したマーク候補の各形状を rule + borderRadius の装飾として積む', () => {
+      const { theme, report } = compile(withMarks(), { selectedMarkIndices: [0] })
+      const decorations = theme.masters.brand.decorations!
+      expect(decorations).toHaveLength(2)
+      expect(decorations.every((d) => d.type === 'rule')).toBe(true)
+      expect(report.fields['decorations.marks']?.status).toBe('ok')
+    })
+
+    it('円（isCircle）は borderRadius を辺の半分にし、正方形は 0 のままにする', () => {
+      const { theme } = compile(withMarks(), { selectedMarkIndices: [0] })
+      const [circle, square] = theme.masters.brand.decorations!
+      expect(circle).toMatchObject({ type: 'rule', color: '#1f4e79' })
+      expect(square).toMatchObject({ type: 'rule', color: '#1f4e79', borderRadius: 0 })
+      if (circle.type === 'rule') {
+        // widthEmu=heightEmu=300_000 は slideWidthEmu 12_192_000 に対し px換算で幅・高さとも同じ値になる
+        expect(circle.thickness).toBe(circle.length)
+        expect(circle.borderRadius).toBeGreaterThan(0)
+        expect(circle.borderRadius).toBe(Math.round(circle.thickness! / 2))
+      }
+    })
+
+    it('検出されたマーク候補が無いテンプレートは missing として報告する（未検出と未選択を区別する detail）', () => {
+      const { report } = compile(profile(), {})
+      expect(report.fields['decorations.marks']?.status).toBe('missing')
+      expect(report.fields['decorations.marks']?.detail).toContain('検出されなかった')
     })
   })
 

@@ -43,6 +43,7 @@ function buildProfile(overrides: Partial<BrandProfile> = {}): BrandProfile {
     logoCandidates: [],
     bandCandidates: [],
     textCandidates: [],
+    markCandidates: [],
     embeddedFonts: [],
     mappedColors,
     fonts: { major: { latin: 'Trebuchet MS', ea: null, cs: null, jpan: null }, minor: { latin: 'Calibri', ea: null, cs: null, jpan: null } },
@@ -204,6 +205,29 @@ describe('BrandConfirmDialog（#168 並置比較・取り込み確認）', () =>
     fireEvent.click(screen.getByRole('button', { name: '取り込む' }))
     const arg = onApply.mock.calls[0][0] as { overrides: BrandOverrides }
     expect(arg.overrides.selectedBandIndices).toEqual([0])
+  })
+
+  it('ブランドマーク候補が無ければ検出されなかった旨を表示する（#346）', () => {
+    renderDialog()
+    expect(screen.getByText('ブランドマークは検出されませんでした')).toBeTruthy()
+  })
+
+  it('ブランドマーク候補をチェックして取り込むと selectedMarkIndices が渡る（#346）', () => {
+    const profile = buildProfile({
+      markCandidates: [
+        {
+          shapes: [
+            { xEmu: 0, yEmu: 0, widthEmu: 300_000, heightEmu: 300_000, colorHex: '#1f4e79', isCircle: true },
+            { xEmu: 400_000, yEmu: 0, widthEmu: 300_000, heightEmu: 300_000, colorHex: '#1f4e79', isCircle: true },
+          ],
+        },
+      ],
+    })
+    const { onApply } = renderDialog({ profile })
+    fireEvent.click(screen.getByRole('checkbox'))
+    fireEvent.click(screen.getByRole('button', { name: '取り込む' }))
+    const arg = onApply.mock.calls[0][0] as { overrides: BrandOverrides }
+    expect(arg.overrides.selectedMarkIndices).toEqual([0])
   })
 
   it('固定テキスト候補が無ければ検出されなかった旨を表示する（#318）', () => {

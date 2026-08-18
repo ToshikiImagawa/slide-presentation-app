@@ -200,9 +200,9 @@ export function BrandConfirmDialog({ open, profile, initialOverrides, previewSli
     setOverrides((prev) => ({ ...prev, selectedLogoIndex: index, manualLogo: undefined }))
   }
 
-  /** 候補（帯・固定テキスト等）の採否 index 一覧（`selectedBandIndices`/`selectedTextIndices` と同じ形）の
-   * チェック状態を切り替える共通ロジック */
-  const toggleSelectedIndex = (key: 'selectedBandIndices' | 'selectedTextIndices', index: number, checked: boolean) => {
+  /** 候補（帯・固定テキスト・マーク等）の採否 index 一覧（`selectedBandIndices`/`selectedTextIndices`/
+   * `selectedMarkIndices` と同じ形）のチェック状態を切り替える共通ロジック */
+  const toggleSelectedIndex = (key: 'selectedBandIndices' | 'selectedTextIndices' | 'selectedMarkIndices', index: number, checked: boolean) => {
     setOverrides((prev) => {
       const current = new Set(prev[key] ?? [])
       if (checked) current.add(index)
@@ -213,6 +213,7 @@ export function BrandConfirmDialog({ open, profile, initialOverrides, previewSli
 
   const toggleBand = (index: number, checked: boolean) => toggleSelectedIndex('selectedBandIndices', index, checked)
   const toggleText = (index: number, checked: boolean) => toggleSelectedIndex('selectedTextIndices', index, checked)
+  const toggleMark = (index: number, checked: boolean) => toggleSelectedIndex('selectedMarkIndices', index, checked)
 
   /** 埋め込みフォント実体の取り込み可否（#171/#321）。チェックした瞬間に区分の既定値 `internal-only` を
    * 確定させる（`compile()` は `overrides.embeddedFontRedistribution` に値がある候補だけ `src` を書くため、
@@ -493,6 +494,41 @@ export function BrandConfirmDialog({ open, profile, initialOverrides, previewSli
                 }
               />
             ))}
+          </Stack>
+        )}
+
+        {/* #346 で追加した新規セクション。assets/locales/** は別 wave で編集するため、
+            #318 のセクション（固定テキスト）と同じく t() 化の対象外にする */}
+        <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
+          ブランドマーク
+        </Typography>
+        {profile.markCandidates.length === 0 ? (
+          <Typography variant="body2" sx={{ color: 'var(--fixed-text-muted)', mb: 2 }}>
+            ブランドマークは検出されませんでした
+          </Typography>
+        ) : (
+          <Stack spacing={0.5} sx={{ mb: 2 }}>
+            {profile.markCandidates.map((candidate, i) => {
+              const allCircle = candidate.shapes.every((s) => s.isCircle)
+              const allSquare = candidate.shapes.every((s) => !s.isCircle)
+              const shapeLabel = allCircle ? '円' : allSquare ? '正方形' : '円/正方形混在'
+              return (
+                <FormControlLabel
+                  key={i}
+                  control={<Checkbox size="small" checked={(overrides.selectedMarkIndices ?? []).includes(i)} onChange={(e) => toggleMark(i, e.target.checked)} />}
+                  label={
+                    <Stack direction="row" spacing={0.5} alignItems="center">
+                      {candidate.shapes.map((shape, j) => (
+                        <ColorSwatch key={j} value={shape.colorHex} />
+                      ))}
+                      <Typography component="span" sx={{ fontSize: 12 }}>
+                        {candidate.shapes.length}個（{shapeLabel}）
+                      </Typography>
+                    </Stack>
+                  }
+                />
+              )
+            })}
           </Stack>
         )}
 

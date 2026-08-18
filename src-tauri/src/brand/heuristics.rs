@@ -232,6 +232,136 @@ fn edge_anchor(
   None
 }
 
+/// マーク（小図形のブランドマーク）候補1件を構成する形状の幾何・色・種別（円/正方形。#346）
+#[derive(Debug, Clone, PartialEq)]
+pub struct MarkShapeGeometry {
+  pub x_emu: i64,
+  pub y_emu: i64,
+  pub width_emu: i64,
+  pub height_emu: i64,
+  pub color: Rgb,
+  /// `a:prstGeom@prst == "ellipse"` なら円（`borderRadius` = 辺の半分に変換する）。それ以外は正方形扱い（`borderRadius` = 0）
+  pub is_circle: bool,
+}
+
+/// 同一サイズ・近接した形状のまとまり（1つのブランドマークを構成する候補。#346）
+#[derive(Debug, Clone, PartialEq)]
+pub struct MarkGroup {
+  pub shapes: Vec<MarkShapeGeometry>,
+}
+
+/// UI に出すマーク候補（グループ）数の上限
+const MAX_MARK_CANDIDATES: usize = 8;
+/// 「キャンバスに対して十分小さい」の上限比（短辺に対する辺の比率）。これを超える形状は帯や背景の
+/// 一部とみなし対象外にする
+const MAX_MARK_SIZE_RATIO: f64 = 0.12;
+/// 同一サイズの形状が「近接して並んでいる」とみなす最大距離比（短辺に対する中心間の最大距離）。
+/// これを超えて散らばっている場合は背景パターン等とみなし対象外にする
+const MAX_MARK_CLUSTER_SPAN_RATIO: f64 = 0.3;
+
+/// `p:sp` の生データから、ブランドマーク候補（同一サイズの単色小図形が複数近接して並んでいるまとまり）を
+/// 抽出する（#346）。判定条件は3つすべてを満たすこと: ①キャンバス短辺に対して十分小さい、②単色塗り、
+/// ③同一サイズの形状が複数・近接している（1個だけの小図形は誤検知が多いため候補にしない）。
+/// 走査は `shapes` の記述順のまま処理し（`HashMap` を使わない）、結果が決定的になるようにする
+pub fn classify_marks(
+  shapes: &[RawShape],
+  scheme: &ClrScheme,
+  map: &ClrMap,
+  slide: SlideSize,
+) -> Vec<MarkGroup> {
+  let short_side = slide.width_emu.min(slide.height_emu) as f64;
+  if short_side <= 0.0 {
+    return Vec::new();
+  }
+
+  let candidates: Vec<MarkShapeGeometry> = shapes
+    .iter()
+    .filter_map(|shape| {
+      let (x, y) = shape.xfrm.off?;
+      let (w, h) = shape.xfrm.ext?;
+      if w <= 0 || h <= 0 {
+        return None;
+      }
+      if w as f64 / short_side >= MAX_MARK_SIZE_RATIO
+        || h as f64 / short_side >= MAX_MARK_SIZE_RATIO
+      {
+        return None;
+      }
+      let spec = shape.fill.as_ref()?;
+      let color = super::resolve_color_spec(spec, scheme, map)?;
+      Some(MarkShapeGeometry {
+        x_emu: x,
+        y_emu: y,
+        width_emu: w,
+        height_emu: h,
+        color,
+        is_circle: shape.prst_geom.as_deref() == Some("ellipse"),
+      })
+    })
+    .collect();
+
+  let mut visited = vec![false; candidates.len()];
+  let mut groups: Vec<MarkGroup> = Vec::new();
+  for i in 0..candidates.len() {
+    if visited[i] {
+      continue;
+    }
+    let mut group_indices = vec![i];
+    for (j, candidate) in candidates.iter().enumerate().skip(i + 1) {
+      if !visited[j]
+        && candidate.width_emu == candidates[i].width_emu
+        && candidate.height_emu == candidates[i].height_emu
+      {
+        group_indices.push(j);
+      }
+    }
+    for &idx in &group_indices {
+      visited[idx] = true;
+    }
+    // 1個だけの小図形はアイコン・装飾の断片である可能性が高く、ブランドマークと区別できないため候補にしない
+    if group_indices.len() < 2 {
+      continue;
+    }
+    if !is_clustered(&group_indices, &candidates, short_side) {
+      continue;
+    }
+    groups.push(MarkGroup {
+      shapes: group_indices
+        .into_iter()
+        .map(|idx| candidates[idx].clone())
+        .collect(),
+    });
+    if groups.len() >= MAX_MARK_CANDIDATES {
+      break;
+    }
+  }
+  groups
+}
+
+/// グループ内の形状すべてが互いに近接しているか（中心間の最大距離が短辺に対する閾値以下か）を判定する
+fn is_clustered(indices: &[usize], shapes: &[MarkShapeGeometry], short_side: f64) -> bool {
+  let centers: Vec<(f64, f64)> = indices
+    .iter()
+    .map(|&i| {
+      let s = &shapes[i];
+      (
+        s.x_emu as f64 + s.width_emu as f64 / 2.0,
+        s.y_emu as f64 + s.height_emu as f64 / 2.0,
+      )
+    })
+    .collect();
+  let max_distance = centers
+    .iter()
+    .enumerate()
+    .flat_map(|(i, &(ax, ay))| {
+      centers[(i + 1)..]
+        .iter()
+        .map(move |&(bx, by)| ((ax - bx).powi(2) + (ay - by).powi(2)).sqrt())
+    })
+    .fold(0.0_f64, f64::max);
+  max_distance / short_side <= MAX_MARK_CLUSTER_SPAN_RATIO
+}
+
 /// 固定テキスト/ページ番号候補の幾何・文字プロパティ（#318）。`anchor`/`offset` への変換は
 /// フロント（`compile()`）が `bandToDecoration` と同じ EMU→px 換算を使って行うため、
 /// ここでは EMU の矩形のまま渡す
@@ -625,6 +755,180 @@ mod tests {
         list_text_candidates(&shapes, &ClrScheme::default(), &ClrMap::default()),
         first
       );
+    }
+  }
+
+  fn mark_shape(
+    name: &str,
+    off: (i64, i64),
+    ext: (i64, i64),
+    fill: Option<ColorSpec>,
+    prst_geom: Option<&str>,
+  ) -> RawShape {
+    RawShape {
+      name: Some(name.to_string()),
+      fill,
+      xfrm: RawXfrm {
+        off: Some(off),
+        ext: Some(ext),
+      },
+      prst_geom: prst_geom.map(str::to_string),
+      ..RawShape::default()
+    }
+  }
+
+  #[test]
+  fn classifies_same_size_nearby_shapes_as_a_mark_candidate() {
+    let shapes = vec![
+      mark_shape(
+        "Dot 1",
+        (0, 0),
+        (300_000, 300_000),
+        Some(fixed_fill("1F4E79")),
+        Some("ellipse"),
+      ),
+      mark_shape(
+        "Dot 2",
+        (400_000, 0),
+        (300_000, 300_000),
+        Some(fixed_fill("1F4E79")),
+        Some("ellipse"),
+      ),
+    ];
+    let scheme = ClrScheme::default();
+    let map = ClrMap::default();
+    let groups = classify_marks(&shapes, &scheme, &map, SLIDE);
+    assert_eq!(groups.len(), 1);
+    assert_eq!(groups[0].shapes.len(), 2);
+    assert!(groups[0].shapes.iter().all(|s| s.is_circle));
+  }
+
+  #[test]
+  fn excludes_mark_candidates_too_large_relative_to_the_slide() {
+    let shapes = vec![
+      mark_shape(
+        "Big 1",
+        (0, 0),
+        (2_000_000, 2_000_000),
+        Some(fixed_fill("1F4E79")),
+        None,
+      ),
+      mark_shape(
+        "Big 2",
+        (2_100_000, 0),
+        (2_000_000, 2_000_000),
+        Some(fixed_fill("1F4E79")),
+        None,
+      ),
+    ];
+    let scheme = ClrScheme::default();
+    let map = ClrMap::default();
+    assert_eq!(classify_marks(&shapes, &scheme, &map, SLIDE).len(), 0);
+  }
+
+  #[test]
+  fn excludes_mark_candidates_without_fill() {
+    let shapes = vec![
+      mark_shape("Dot 1", (0, 0), (300_000, 300_000), None, Some("ellipse")),
+      mark_shape(
+        "Dot 2",
+        (400_000, 0),
+        (300_000, 300_000),
+        None,
+        Some("ellipse"),
+      ),
+    ];
+    let scheme = ClrScheme::default();
+    let map = ClrMap::default();
+    assert_eq!(classify_marks(&shapes, &scheme, &map, SLIDE).len(), 0);
+  }
+
+  #[test]
+  fn excludes_a_lone_small_shape() {
+    let shapes = vec![mark_shape(
+      "Icon Fragment",
+      (0, 0),
+      (300_000, 300_000),
+      Some(fixed_fill("1F4E79")),
+      Some("ellipse"),
+    )];
+    let scheme = ClrScheme::default();
+    let map = ClrMap::default();
+    assert_eq!(classify_marks(&shapes, &scheme, &map, SLIDE).len(), 0);
+  }
+
+  #[test]
+  fn excludes_same_size_shapes_scattered_across_the_slide() {
+    // 同一サイズだが対角に散らばっている（背景パターン等）ため近接条件を満たさない
+    let shapes = vec![
+      mark_shape(
+        "Dot 1",
+        (0, 0),
+        (300_000, 300_000),
+        Some(fixed_fill("1F4E79")),
+        Some("ellipse"),
+      ),
+      mark_shape(
+        "Dot 2",
+        (11_800_000, 6_500_000),
+        (300_000, 300_000),
+        Some(fixed_fill("1F4E79")),
+        Some("ellipse"),
+      ),
+    ];
+    let scheme = ClrScheme::default();
+    let map = ClrMap::default();
+    assert_eq!(classify_marks(&shapes, &scheme, &map, SLIDE).len(), 0);
+  }
+
+  #[test]
+  fn distinguishes_square_shapes_from_circles() {
+    let shapes = vec![
+      mark_shape(
+        "Square 1",
+        (0, 0),
+        (300_000, 300_000),
+        Some(fixed_fill("1F4E79")),
+        Some("rect"),
+      ),
+      mark_shape(
+        "Square 2",
+        (400_000, 0),
+        (300_000, 300_000),
+        Some(fixed_fill("1F4E79")),
+        Some("rect"),
+      ),
+    ];
+    let scheme = ClrScheme::default();
+    let map = ClrMap::default();
+    let groups = classify_marks(&shapes, &scheme, &map, SLIDE);
+    assert_eq!(groups.len(), 1);
+    assert!(groups[0].shapes.iter().all(|s| !s.is_circle));
+  }
+
+  #[test]
+  fn mark_classification_is_deterministic() {
+    let shapes = vec![
+      mark_shape(
+        "Dot 1",
+        (0, 0),
+        (300_000, 300_000),
+        Some(fixed_fill("1F4E79")),
+        Some("ellipse"),
+      ),
+      mark_shape(
+        "Dot 2",
+        (400_000, 0),
+        (300_000, 300_000),
+        Some(fixed_fill("1F4E79")),
+        Some("ellipse"),
+      ),
+    ];
+    let scheme = ClrScheme::default();
+    let map = ClrMap::default();
+    let first = classify_marks(&shapes, &scheme, &map, SLIDE);
+    for _ in 0..5 {
+      assert_eq!(classify_marks(&shapes, &scheme, &map, SLIDE), first);
     }
   }
 }
