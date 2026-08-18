@@ -140,6 +140,10 @@ jobs:
         run: npx playwright install --with-deps webkit
       - name: Inspect reference deck
         run: npm run reference-deck:inspect
+      # 配布サンプル（samples/template-guide/）も同じ DOM 実測ロジックで検査する（#113）。
+      # ピクセル比較ではないため撮影の非決定性・フォント描画差の影響を受けず、同じジョブに載せられる
+      - name: Inspect distributed samples
+        run: npm run samples:inspect
 
   build:
     name: Build (frontend)

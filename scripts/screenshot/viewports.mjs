@@ -35,6 +35,9 @@ export const VIEWPORTS = {
 
   // 基準見本デッキ（#208）。全スライドを同一 viewport で撮影する
   'reference-deck': { ...MAIN },
+
+  // 配布サンプル（#113）。見た目破綻検査のみでスクリーンショットは撮らないが viewport は他と揃える
+  samples: { ...MAIN },
 }
 
 /** 撮影時のコンテンツ viewport 高さ（chrome 合成分を差し引く） */

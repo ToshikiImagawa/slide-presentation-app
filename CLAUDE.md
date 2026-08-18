@@ -31,6 +31,7 @@ npm run reference-deck:screenshots # 基準見本デッキ（全スライド種�
 npm run reference-deck:diff        # 基準見本デッキの HEAD 版と作業ツリー版を比較（下端マスク付き・バウンディングボックス出力）
 npm run reference-deck:inspect     # 基準見本デッキ全枚数の見た目破綻検査（はみ出し・セーフエリア侵入・装飾重なり。DOM実測ベース・Linux 可）
 npm run reference-deck:check-files # fixture と resources/reference-deck/ のファイル名照合（孤児・欠落検知。撮影不要・Linux 可）
+npm run samples:inspect            # 配布サンプル（samples/manifest.json の全ロケール）の見た目破綻検査（はみ出し・セーフエリア侵入・装飾重なり。DOM実測ベース・Linux 可）
 npm run generate-docs              # README.md / CHANGELOG.md を PDF 化（docs/ に出力・puppeteer）
 ```
 
@@ -65,6 +66,7 @@ npm run generate-docs              # README.md / CHANGELOG.md を PDF 化（docs
 - **はみ出し・セーフエリア侵入・マスター装飾との重なり・高さ 0 の「埋める要素」**（`getVisualCheckWarnings`。`src/visualChecks.ts`）— JSON だけでは判定できないため、実際にレンダリングされた `<section class="slide-container">` を `getBoundingClientRect` で実測する。①スライド領域（`section` 自体の矩形）を超える要素＝はみ出し、②`.master-body` の padding（セーフエリア。#188）に侵入する要素＝セーフエリア侵入、③`.master-layer-back`/`.master-layer-front` の装飾要素と矩形が重なる要素＝装飾との重なり、④幅は持つのに高さが 0 の `.content-area-fill-item`、の4種を返す。④だけは幾何の破綻ではなく **`.content-area` の fill 変種の契約（`src/styles/global.css`）が成立しているかの検査**（fill ホストの外に置かれた要素は静かに高さ 0 になり、①〜③では検出できない・#259）。実測は1要素につき1回だけ行い、4種の判定がその結果を共有する。
   - **ライブアプリ**: `useVisualCheckWarnings`（`src/hooks/useVisualCheckWarnings.ts`）が現在表示中のスライド（`section.present`）をスライド切り替えの都度実測し、警告があれば `App.tsx` がトースト表示する（`visualCheck.warning`。編集中の見た目の破綻もその場で気づける）。
   - **CI**: `npm run reference-deck:inspect`（`scripts/screenshot/inspect-reference-deck.mjs`）が基準見本デッキ（`resources/reference-deck/` の元になる fixture・#208）全枚数を検査し、警告が1件でもあれば非ゼロ終了する。ロジックはライブアプリと共有し複製しない: `src/visualChecks.ts` は `vite --mode screenshot` の時だけ `window.__VISUAL_CHECK__` として検出関数を公開し（`src/__screenshot__/` の Tauri IPC モックと同じ「screenshot モード限定で window に生やす」規約）、CI スクリプトは Playwright の `page.evaluate` 経由でそれを呼ぶだけ。**ピクセル比較（`reference-deck:diff`）と違い、撮影の非決定性・フォント描画差の影響を受けないため Linux CI（`ci.yml` の `Visual Check` ジョブ）で実行できる**（macOS 専用の `screenshots.yml` とは独立）。
+  - **配布サンプル**: `npm run samples:inspect`（`scripts/screenshot/inspect-samples.mjs`。#113）が同じ `window.__VISUAL_CHECK__` を使い `samples/manifest.json` の全ロケール（ja/en/fr）を検査する。基準見本デッキと違い screenshot モードの vite は配布サンプルを配信しないため、`page.route('**/slides.json*', ...)` で取得先を `samples/template-guide/slides.<locale>.json` の内容へ直接差し替える（パターンの末尾 `*` は `?locale=…` 付き URL に一致させるために必須）。差し替え（route）が発火した回数を数え、ゼロ件なら検査自体の失敗として非ゼロ終了する（差し替え漏れでビルド同梱の内容を検査してしまう偽陽性を構造的に防ぐ）。同じ `Visual Check` ジョブに載せている。
 
 ## アーキテクチャ
 
