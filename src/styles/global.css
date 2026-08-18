@@ -163,7 +163,7 @@ body {
 }
 
 /* 装飾レイヤー。.master-layer-back はマスター背景（.master-background）と back 装飾、
-   .master-layer-front は front 装飾とロゴ（.slide-logo-inline）を含む。
+   .master-layer-front は front 装飾（meta.logo が合成された logo 装飾を含む・#350）を含む。
    .master-body（z-index:1）を挟んで背面・前面になるよう z-index を明示する
    （ロゴはコンテンツより手前に来る必要がある） */
 .master-layer-back,
@@ -236,13 +236,6 @@ body {
   height: 100%;
   background: linear-gradient(to bottom, var(--theme-background) 0%, transparent 50%, var(--theme-background) 100%);
   z-index: 5;
-  pointer-events: none;
-}
-
-.slide-logo-inline {
-  position: absolute;
-  bottom: 20px;
-  left: 30px;
   pointer-events: none;
 }
 

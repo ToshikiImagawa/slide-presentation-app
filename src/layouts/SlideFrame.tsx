@@ -1,8 +1,7 @@
 import type { ReactNode } from 'react'
-import { FallbackImage } from '../components/FallbackImage'
 import type { LogoConfig, MasterRenderContext, SlideMeta, ThemeData } from '../data'
 import { resolveSectionAccent } from '../applyTheme'
-import { resolveMaster } from '../masters'
+import { logoToDecoration, resolveMaster } from '../masters'
 import { SlideMasterLayer } from './SlideMasterLayer'
 
 /** 4つのレイアウトラッパー（TitleLayout等）と SlideFrame が共通で受け取るprops。SlideFrame にpropsを
@@ -28,7 +27,8 @@ type Props = SlideFrameCommonProps & {
 /** 5レイアウト共通の section 生成を担う。.master-layer-back/front の中身は resolveMaster が解決した
  * master を渡して SlideMasterLayer に任せる（優先順: meta.master → masterMap["layout/variant"] →
  * masterMap["layout"]）。master が未解決（未指定・masterKey不明・extends循環）の場合は現行と完全同一の
- * DOMになる。.master-layer-front はロゴ（.slide-logo-inline）も持つ。
+ * DOMになる。meta.logo は独自描画を持たず、LogoMasterDecoration に合成してマスター装飾の末尾（前面）に
+ * 追加することで同じ描画経路に載せる（#350）。
  * meta.backgroundColor/backgroundImage は SlideMasterLayer の back レイヤーで描く（#236）。Reveal.js の
  * 背景レイヤー（data-background-*・.backgrounds）は本編でしか効かないため使わない。
  * 余白は section ではなく .master-body に持たせることで、本編・発表者ビュー・編集プレビュー・PDF書き出しの
@@ -42,19 +42,16 @@ export function SlideFrame({ id, layout, variant, meta, logo, theme, ctx, bleed,
   const sectionNumber = ctx.section?.number
   const sectionAccent = sectionNumber === undefined ? undefined : resolveSectionAccent(theme?.sectionAccents, sectionNumber)
 
+  const effectiveMaster = logo ? { decorations: [...(resolved?.decorations ?? []), logoToDecoration(logo)], background: resolved?.background } : resolved
+
   return (
     <section className="slide-container" id={id} data-master={resolved?.masterKey} data-section-number={sectionNumber} data-section-accent={sectionAccent} data-transition={meta?.transition}>
       <div className="master-layer-back">
-        <SlideMasterLayer master={resolved} layer="back" ctx={ctx} meta={meta} />
+        <SlideMasterLayer master={effectiveMaster} layer="back" ctx={ctx} meta={meta} />
       </div>
       <div className={bleed ? 'master-body bleed-image-layout' : 'master-body'}>{children}</div>
       <div className="master-layer-front">
-        <SlideMasterLayer master={resolved} layer="front" ctx={ctx} />
-        {logo && (
-          <div className="slide-logo-inline">
-            <FallbackImage src={logo.src} width={logo.width ?? 120} height={logo.height ?? 40} alt="Logo" />
-          </div>
-        )}
+        <SlideMasterLayer master={effectiveMaster} layer="front" ctx={ctx} />
       </div>
     </section>
   )

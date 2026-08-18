@@ -606,10 +606,22 @@
     "author": { "type": "string" },
     "logo": {
       "type": "object",
+      "description": "内部的に LogoMasterDecoration へ合成される（#350）。anchor/offset/only未指定時は現行と同一の位置（bottom-left・{x:30,y:-20}相当）になる",
       "fields": {
         "src": { "type": "string" },
         "width": { "type": "number", "description": "デフォルト120" },
-        "height": { "type": "number", "description": "デフォルト40" }
+        "height": { "type": "number", "description": "デフォルト40" },
+        "anchor": {
+          "type": "string",
+          "enum": ["top-left", "top-center", "top-right", "middle-left", "middle-center", "middle-right", "bottom-left", "bottom-center", "bottom-right"],
+          "description": "9方向のアンカー位置。省略時bottom-left"
+        },
+        "offset": { "type": "object", "description": "{ x, y } でアンカーからのpxオフセット。省略時 { x: 30, y: -20 }" },
+        "only": {
+          "type": "string",
+          "enum": ["first", "last", "not-first", "all", "middle", "section-first", "not-section-first"],
+          "description": "ロゴを描画するスライドの絞り込み。省略時all。本文領域全体を使うコンポーネント（hierarchyDiagram/flow等）と重なるスライドを除外する用途"
+        }
       }
     },
     "themeColors": { "type": "string" },

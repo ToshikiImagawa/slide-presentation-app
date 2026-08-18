@@ -264,26 +264,27 @@ describe('SlideRenderer', () => {
     })
   })
 
-  describe('ロゴ（meta.logo → .slide-logo-inline）', () => {
+  // #350: meta.logo は独自描画（.slide-logo-inline）を持たず、LogoMasterDecoration に合成されて
+  // .master-layer-front に描画される（SlideFrame.test.tsx が合成ロジック自体の詳細は検証する）
+  describe('ロゴ（meta.logo → LogoMasterDecoration への合成）', () => {
     const logo = { src: '/logo.png', width: 100, height: 32 }
 
-    it('logo指定時、section内側の.master-layer-frontに.slide-logo-inlineが描画される', () => {
+    it('logo指定時、section内側の.master-layer-frontにロゴ画像が描画される', () => {
       const { container } = renderWithTheme(<SlideRenderer slides={[testSlides[0]]} logo={logo} />)
       const section = container.querySelector('section.slide-container')!
-      const logoEl = section.querySelector('.master-layer-front > .slide-logo-inline')
-      expect(logoEl).not.toBeNull()
+      expect(section.querySelector('.master-layer-front img[alt="Logo"]')).not.toBeNull()
     })
 
-    it('logo未指定時は.slide-logo-inlineが描画されない', () => {
+    it('logo未指定時はロゴ画像が描画されない', () => {
       const { container } = renderWithTheme(<SlideRenderer slides={[testSlides[0]]} />)
-      expect(container.querySelector('.slide-logo-inline')).toBeNull()
+      expect(container.querySelector('img[alt="Logo"]')).toBeNull()
     })
 
     it('全レイアウトでロゴがsection内側に描画される（PDF書き出し・発表者ビュー・編集プレビューに写る前提）', () => {
       const { container } = renderWithTheme(<SlideRenderer slides={testSlides} logo={logo} />)
       const sections = container.querySelectorAll('section.slide-container')
       sections.forEach((section) => {
-        expect(section.querySelector('.slide-logo-inline')).not.toBeNull()
+        expect(section.querySelector('.master-layer-front img[alt="Logo"]')).not.toBeNull()
       })
     })
   })
