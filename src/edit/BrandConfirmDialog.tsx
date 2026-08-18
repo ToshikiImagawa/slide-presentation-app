@@ -40,10 +40,11 @@ import { SlidePreview } from './SlidePreview'
 const TEXT_KEY_TO_BACKGROUND_KEY: Partial<Record<MappedColorKey, MappedColorKey>> = { tx1: 'bg1', tx2: 'bg2' }
 const HEX_PATTERN = /^#[0-9a-f]{6}$/i
 
-/** 型階層の段（`fonts.fontSizeRatios` のキー）の表示ラベル（#316。`compile.ts` の
- * `SLOT_TO_FONT_SIZE_STEP` と対応）。既定比率にしかないキー（subtitle1 等）を人が上書きした場合は
- * キー名をそのまま見せる。#332 では `t()` 化の対象外とし、locale 化は #338 へ切り出した */
-const FONT_SIZE_STEP_LABELS: Record<string, string> = { h1: '表紙タイトル', h2: '章タイトル', h3: '本文見出し' }
+/** 型階層の段（`fonts.fontSizeRatios` のキー）の表示フォールバック（#316。`compile.ts` の
+ * `SLOT_TO_FONT_SIZE_STEP` と対応。locale キーは `FONT_SLOT_ROWS`/`SAFE_AREA_ROWS` と同じく
+ * `capitalize()` で導出する。#338 で `t()` 化）。既定比率にしかないキー（subtitle1 等）を
+ * 人が上書きした場合はここに無いためキー名をそのまま見せる */
+const FONT_SIZE_STEP_LABEL_FALLBACKS: Record<string, string> = { h1: '表紙タイトル', h2: '章タイトル', h3: '本文見出し' }
 
 /** 書体名の上書きキー（`BrandOverrides.fontOverrides` のうち文字列のスロット。#316） */
 type FontNameOverrideKey = 'heading' | 'headingEa' | 'body' | 'bodyEa'
@@ -78,16 +79,17 @@ const SAFE_AREA_ROWS: ReadonlyArray<{ key: keyof SafeArea; labelFallback: string
   { key: 'left', labelFallback: '左' },
 ]
 
-/** 割り当て可能な7枠の表示ラベル（`LAYOUT_ASSIGNMENT_SLOTS` の並び順。#185/#192 で5枠固定、#262 で反転面/締めの2枠を追加）。
- * #332 では `t()` 化の対象外とし、locale 化は #338 へ切り出した */
-const LAYOUT_SLOT_LABELS: Record<LayoutAssignmentSlot, string> = {
-  center: 'タイトル',
-  'center/section': 'タイトル（セクション）',
-  'center/message-inverse': '大メッセージ（全面塗り）',
-  'center/closing': '締め',
-  content: '本文',
-  'two-column': '2カラム',
-  bleed: '全面',
+/** 割り当て可能な7枠の locale キーとフォールバック文言（`LAYOUT_ASSIGNMENT_SLOTS` の並び順。
+ * #185/#192 で5枠固定、#262 で反転面/締めの2枠を追加、#338 で `t()` 化）。スロット名が `/` を含むため
+ * `FONT_SIZE_STEP_LABEL_FALLBACKS` と異なり `capitalize()` では locale キーを導出できず、明示的に持つ */
+const LAYOUT_SLOT_LABELS: Record<LayoutAssignmentSlot, { localeKey: string; labelFallback: string }> = {
+  center: { localeKey: 'brand.layoutSlotCenter', labelFallback: 'タイトル' },
+  'center/section': { localeKey: 'brand.layoutSlotCenterSection', labelFallback: 'タイトル（セクション）' },
+  'center/message-inverse': { localeKey: 'brand.layoutSlotCenterMessageInverse', labelFallback: '大メッセージ（全面塗り）' },
+  'center/closing': { localeKey: 'brand.layoutSlotCenterClosing', labelFallback: '締め' },
+  content: { localeKey: 'brand.layoutSlotContent', labelFallback: '本文' },
+  'two-column': { localeKey: 'brand.layoutSlotTwoColumn', labelFallback: '2カラム' },
+  bleed: { localeKey: 'brand.layoutSlotBleed', labelFallback: '全面' },
 }
 
 export interface BrandConfirmDialogProps {
@@ -422,7 +424,7 @@ export function BrandConfirmDialog({ open, profile, initialOverrides, previewSli
               fontSizeStepKeys.map((key) => (
                 <Stack key={key} direction="row" spacing={0.5} alignItems="center">
                   <Typography component="span" sx={{ fontSize: 12 }}>
-                    {FONT_SIZE_STEP_LABELS[key] ?? key}
+                    {t(`brand.fontSizeStep${capitalize(key)}`, FONT_SIZE_STEP_LABEL_FALLBACKS[key] ?? key)}
                   </Typography>
                   <TextField
                     size="small"
@@ -532,8 +534,8 @@ export function BrandConfirmDialog({ open, profile, initialOverrides, previewSli
           </Stack>
         )}
 
-        {/* #318 で追加した新規セクション。assets/locales/** は #338 が別 wave で編集するため、
-            このセクションは #332/FONT_SIZE_STEP_LABELS と同じく t() 化の対象外にする */}
+        {/* #318 で追加した新規セクション。assets/locales/** の追加は別 issue で行うため、
+            このセクションは t() 化の対象外にする（#338 のスコープ外） */}
         <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
           固定テキスト・ページ番号
         </Typography>
@@ -660,11 +662,14 @@ export function BrandConfirmDialog({ open, profile, initialOverrides, previewSli
                         <MenuItem value="">
                           <em>{t('brand.layoutSlotNone', '未割当')}</em>
                         </MenuItem>
-                        {LAYOUT_ASSIGNMENT_SLOTS.map((slot) => (
-                          <MenuItem key={slot} value={slot}>
-                            {LAYOUT_SLOT_LABELS[slot]}
-                          </MenuItem>
-                        ))}
+                        {LAYOUT_ASSIGNMENT_SLOTS.map((slot) => {
+                          const { localeKey, labelFallback } = LAYOUT_SLOT_LABELS[slot]
+                          return (
+                            <MenuItem key={slot} value={slot}>
+                              {t(localeKey, labelFallback)}
+                            </MenuItem>
+                          )
+                        })}
                       </Select>
                     </FormControl>
                   </Stack>

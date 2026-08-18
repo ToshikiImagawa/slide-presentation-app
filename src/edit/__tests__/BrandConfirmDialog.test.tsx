@@ -7,8 +7,8 @@ import type { LocaleResource } from '../../i18n'
 import type { BrandOverrides, BrandPlaceholderKind, BrandProfile, CompiledBrandTheme, MappedColorKey, PlaceholderProfile, PlaceholderTextProps } from '../../brand/types'
 import type { SlideData } from '../../data'
 
-const locales: LocaleResource[] = [{ languageCode: 'ja-JP', languageName: '日本語', ui: {} }]
-function wrap(ui: ReactNode) {
+function wrap(ui: ReactNode, localeUi: LocaleResource['ui'] = {}) {
+  const locales: LocaleResource[] = [{ languageCode: 'ja-JP', languageName: '日本語', ui: localeUi }]
   return (
     <I18nProvider locales={locales} defaultLocale="ja-JP">
       {ui}
@@ -122,10 +122,10 @@ function profileWithContentBodyRect(): BrandProfile {
 
 const CONTENT_ASSIGNMENT: BrandOverrides = { layoutAssignments: { '0:0': 'content' } }
 
-function renderDialog(props: { profile?: BrandProfile; initialOverrides?: BrandOverrides } = {}) {
+function renderDialog(props: { profile?: BrandProfile; initialOverrides?: BrandOverrides; localeUi?: LocaleResource['ui'] } = {}) {
   const onApply = vi.fn()
   const onCancel = vi.fn()
-  render(wrap(<BrandConfirmDialog open profile={props.profile ?? buildProfile()} initialOverrides={props.initialOverrides ?? {}} previewSlide={PREVIEW_SLIDE} onApply={onApply} onCancel={onCancel} />))
+  render(wrap(<BrandConfirmDialog open profile={props.profile ?? buildProfile()} initialOverrides={props.initialOverrides ?? {}} previewSlide={PREVIEW_SLIDE} onApply={onApply} onCancel={onCancel} />, props.localeUi))
   return { onApply, onCancel }
 }
 
@@ -360,6 +360,24 @@ describe('BrandConfirmDialog（#168 並置比較・取り込み確認）', () =>
     expect(arg.compiled.masters['brand-section-divider-0-0']).toEqual({ extends: 'brand', background: { type: 'fill', color: '#000000' } })
   })
 
+  it('レイアウト枠の選択肢ラベルが locale 経由で解決される（#338）', () => {
+    const profile = buildProfile({
+      masters: [
+        {
+          part: 'ppt/slideMasters/slideMaster1.xml',
+          mappedColors: buildProfile().mappedColors,
+          slideLayouts: [{ part: 'ppt/slideLayouts/slideLayout1.xml', name: 'Section Divider', layoutType: 'secHead', placeholders: [], backgroundColorHex: '#000000' }],
+        },
+      ],
+    })
+    renderDialog({ profile, localeUi: { brand: { layoutSlotCenterSection: 'Title (Section) EN' } } })
+
+    const layoutSelect = screen.getByRole('combobox', { name: /Section Divider/ })
+    fireEvent.mouseDown(layoutSelect)
+    expect(screen.getByRole('option', { name: 'Title (Section) EN' })).toBeTruthy()
+    expect(screen.queryByRole('option', { name: 'タイトル（セクション）' })).toBeNull()
+  })
+
   it('反転面・締め用の2枠が選択肢に表示される（#262）', () => {
     const profile = buildProfile({
       masters: [
@@ -418,6 +436,14 @@ describe('BrandConfirmDialog（#168 並置比較・取り込み確認）', () =>
       expect((screen.getByLabelText('基準サイズ（px）') as HTMLInputElement).value).toBe('24')
       expect((screen.getByLabelText('型階層 h1') as HTMLInputElement).value).toBe('2.222')
       expect((screen.getByLabelText('型階層 h3') as HTMLInputElement).value).toBe('1.333')
+    })
+
+    it('型階層の段ラベルが locale 経由で解決される（#338）', () => {
+      renderDialog({ profile: profileWithDefRprLayouts(), initialOverrides: DEF_RPR_ASSIGNMENTS, localeUi: { brand: { fontSizeStepH1: 'Cover Title EN' } } })
+      expect(screen.getByText('Cover Title EN')).toBeTruthy()
+      expect(screen.queryByText('表紙タイトル')).toBeNull()
+      // h3 は locale 未上書きのためフォールバック文言のまま表示される
+      expect(screen.getByText('本文見出し')).toBeTruthy()
     })
 
     it('書体を上書きして取り込むと fontOverrides（欧文・和文）が渡る', () => {
