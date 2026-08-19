@@ -58,7 +58,7 @@ category: addon-system
 1. **owner スコープによるライフサイクルの構造的解決** — パッケージ切替時の残留・同名 silent 上書き・戻り時の混線（NFR-003）を、owner 単位のアンロードで根本的に防ぐ。
 2. **解決ロジックの不変性** — `resolveComponent` の custom → default → fallback を一切変更せず、追加 API のみで実現する（DC-001）。
 3. **ロード順序の厳守** — 「展開 → `allow_asset_dir` → `<script>` 注入 → 再マウント」の順序を守り、描画前に登録を完了させる（Map は React 状態でないため）。
-4. **ローダの一元化と冪等化** — `main.tsx` / `presenterViewEntry.tsx` に重複する `loadAddonScript`/`loadAddons` を単一モジュールへ集約し、二重注入を防止する。
+4. **ローダの一元化と冪等化** — `main.tsx` / `presenterViewEntry.tsx` に重複する `loadAddonScript`/`loadAddons` を単一モジュールへ集約し、二重注入を防止する。 <!-- doc-check-ignore -->
 5. **セキュリティのデフォルト安全化** — 同梱アドオンは既定で実行せず、利用者の明示的許可を要する。
 6. **リグレッションゼロ** — 既存のビルド時同梱・組み込みアドオンロードの挙動を変えない（NFR-002）。
 
@@ -227,7 +227,7 @@ export function usePresenterView(options: { slides; addonOwner?; addonScripts?; 
 | 要件 | 実現方針 |
 |------|------|
 | NFR-001 セキュリティ | `isAddonAllowed` で「設定の一律無効化 → path 単位の永続化判断 → 未判断は確認ダイアログ（既定拒否）」を通過したときのみ `loadAddonScripts` を呼ぶ。一律無効化トグルは既存 `SettingsWindow` に追加し、その `SettingsWindow` は Root（`main.tsx`）がマウントするためホーム画面（スライドを開く前）からも無効化できる。設定 state と永続化は `useAddonSettings` に集約。ロード対象は manifest 宣言かつ `baseDir/addons/` 配下に限定（FR-010）。README に信頼発行元・無効化を明記 |
-| NFR-002 リグレッション | 起動時ロードは `loadBuiltinAddons()`（旧 `loadAddons` を移設）として分離保持。`registerComponent` の owner は任意引数のため既存呼び出しは無変更。typecheck/test をゲートにする |
+| NFR-002 リグレッション | 起動時ロードは `loadBuiltinAddons()`（旧 `loadAddons` を移設）として分離保持。`registerComponent` の owner は任意引数のため既存呼び出しは無変更。typecheck/test をゲートにする <!-- doc-check-ignore --> |
 | NFR-003 切替堅牢性 | 切替の度に旧 owner を `unregisterOwner` → 新 owner を `await` ロード → 再マウント。ホーム復帰・サンプル表示時も旧 owner を unregister。owner=baseDir で A/B を一意識別 |
 | NFR-004 実機互換 | ロード方式は PoC 済みの asset script 注入。Windows(WebView2) は追跡課題として `9.2` に記載 |
 

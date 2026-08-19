@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 /**
  * ドキュメント（.sdd 配下の *.md、README、CONTRIBUTING、CLAUDE.md）中の
- * バックティック囲みファイルパス参照が実在するかを検証する（#124）。
+ * バックティック囲みファイルパス参照・識別子参照が実在するかを検証する（#124, #360）。
  *
  * ドキュメントの記述と実装の乖離は人間が偶然読むまで残り続けるため、
- * 決定的に真偽が定まるパス参照だけを CI ゲートにする（シンボル照合・Mermaid
- * エッジ解析・自然言語の UI 位置検証は誤検知の設計課題が残るため対象外）。
+ * 決定的に真偽が定まるパス参照・識別子参照だけを CI ゲートにする（型・シグネチャの
+ * プロパティ名チェックと、自然言語の UI 位置検証は誤検知の設計課題が残るため対象外。#360）。
  *
  * 実行: node scripts/check-doc-references.mjs
  */
@@ -53,6 +53,155 @@ function extractBacktickedStrings(content) {
 
 function isPathReference(text) {
   return PATH_PREFIXES.some((prefix) => text.startsWith(prefix))
+}
+
+// 既知集合 = src/** の宣言名（export の有無を問わない）・import 名・プロパティ名・
+// ファイル名（#360）。import 名を含めることで、外部ライブラリ由来の識別子
+// （React / MUI / Playwright 等）はプロジェクト内のどこかで必ず import されているため、
+// 構造的に誤検知にならない。宣言名を export 有無を問わず拾うのは、ドキュメントが
+// 実装の内部動作（`RootContent` のようなモジュール内部の関数等）を説明することが多く、
+// export のみに限ると大半が誤検知になるため（実測で確認）。ファイル名（拡張子抜き）を
+// 含めるのは、`ComponentRegistry` のようにモジュール名としての言及が最頻出のため。
+// プロパティ名（interface / type のフィールド名、React の props 名）を含めるのは、
+// これらの型がコンポーネント固有で export されないことが多いため。
+// 「型として実装と一致するか」までは検証しない（それは Phase 2 の範囲）。
+function collectNamedListSymbols(inner, known) {
+  for (const rawPart of inner.split(',')) {
+    const part = rawPart.trim().replace(/^type\s+/, '')
+    if (!part) continue
+    const asMatch = part.match(/^([A-Za-z_$][A-Za-z0-9_$]*)\s+as\s+([A-Za-z_$][A-Za-z0-9_$]*)$/)
+    const name = asMatch ? asMatch[2] : part
+    if (/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(name)) known.add(name)
+  }
+}
+
+// 配列分割代入（`const [a, setA] = useState(...)`）・オブジェクト分割代入（リネームを除く。
+// `const { fallbackLocale } = samplesManifest`）は要素先頭の識別子だけを拾えばよい
+function collectDestructuredIdentifiers(inner, known) {
+  for (const rawPart of inner.split(',')) {
+    const nameMatch = rawPart.trim().match(/^([A-Za-z_$][A-Za-z0-9_$]*)/)
+    if (nameMatch) known.add(nameMatch[1])
+  }
+}
+
+function collectJsSymbols(content, known) {
+  for (const match of content.matchAll(/(?:export\s+)?(?:default\s+)?(?:abstract\s+)?(?:async\s+)?(?:function\*?|class|interface|type|enum)\s+([A-Za-z_$][A-Za-z0-9_$]*)/g)) {
+    known.add(match[1])
+  }
+  for (const match of content.matchAll(/(?:export\s+)?(?:const|let|var)\s+([A-Za-z_$][A-Za-z0-9_$]*)/g)) known.add(match[1])
+  for (const match of content.matchAll(/export\s+default\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*[;\n]/g)) known.add(match[1])
+  for (const match of content.matchAll(/export\s*\{([^}]+)\}/g)) collectNamedListSymbols(match[1], known)
+  for (const match of content.matchAll(/import\s*\{([^}]+)\}\s*from/g)) collectNamedListSymbols(match[1], known)
+  for (const match of content.matchAll(/import\s+\*\s+as\s+([A-Za-z_$][A-Za-z0-9_$]*)\s+from/g)) known.add(match[1])
+  for (const match of content.matchAll(/import\s+(?:type\s+)?([A-Za-z_$][A-Za-z0-9_$]*)\s*,?\s*(?:\{[^}]*\})?\s*from/g)) known.add(match[1])
+  // import パスの末尾セグメント（`@mui/icons-material/FactCheck` の `FactCheck`）はアイコン名等として言及される
+  for (const match of content.matchAll(/from\s+['"]([^'"]+)['"]/g)) {
+    const base = match[1].split('/').pop()
+    if (/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(base)) known.add(base)
+  }
+  for (const match of content.matchAll(/\b([A-Za-z_$][A-Za-z0-9_$]*)\??:\s/g)) known.add(match[1])
+  // 配列分割代入（`const [scrollSpeed, setScrollSpeed] = useState(...)`）は変数名が `identifier:` の形にならない
+  for (const match of content.matchAll(/const\s*\[([^\]]+)\]\s*=/g)) collectDestructuredIdentifiers(match[1], known)
+  // discriminated union のタグ値（`{ type: 'scrollSpeedChange'; ... }`）は文字列リテラルで識別子ではない
+  for (const match of content.matchAll(/type:\s*'([A-Za-z_$][A-Za-z0-9_$]*)'/g)) known.add(match[1])
+  // オブジェクト分割代入（`const { fallbackLocale } = samplesManifest`）はプロパティ名パターン（`identifier:`）にならない
+  for (const match of content.matchAll(/const\s*\{([^}]+)\}\s*=/g)) collectDestructuredIdentifiers(match[1], known)
+}
+
+// CSS の @keyframes 名（`fadeInUp` 等）はドキュメントでアニメーション名として言及される
+function collectCssSymbols(content, known) {
+  for (const match of content.matchAll(/@keyframes\s+([A-Za-z_-][A-Za-z0-9_-]*)/g)) known.add(match[1])
+}
+
+function collectFileNameSymbols(files, known) {
+  for (const file of files) {
+    const base = file
+      .split('/')
+      .pop()
+      .replace(/\.[^.]+$/, '')
+    if (/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(base)) known.add(base)
+  }
+}
+
+function collectRustSymbols(content, known) {
+  for (const match of content.matchAll(/(?:pub\s+)?(?:async\s+)?(?:fn|struct|enum|trait|const|type)\s+([A-Za-z_][A-Za-z0-9_]*)/g)) {
+    known.add(match[1])
+  }
+  // enum variant（`enum X { Credential(String), Err, ... }`）は PascalCase の行頭識別子として現れる
+  for (const match of content.matchAll(/^\s*([A-Z][A-Za-z0-9_]*)\s*[,({]/gm)) known.add(match[1])
+  // use 文のパス末尾セグメント（`use std::sync::Mutex;` の `Mutex`）は標準/外部クレートの型を拾う
+  for (const match of content.matchAll(/use\s+([\w:]+)/g)) {
+    const base = match[1].split('::').pop()
+    if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(base)) known.add(base)
+  }
+}
+
+// JSON 設定ファイル（tauri.conf.json / tsconfig.json）のキー名・識別子形の値を拾う。
+// これらはドキュメントで「設定キー」として言及されることが多く、TS/Rust の宣言収集では拾えない
+function collectJsonSymbols(content, known) {
+  let data
+  try {
+    data = JSON.parse(content)
+  } catch {
+    return
+  }
+  const stack = [data]
+  while (stack.length > 0) {
+    const value = stack.pop()
+    if (Array.isArray(value)) stack.push(...value)
+    else if (value && typeof value === 'object') {
+      for (const [key, val] of Object.entries(value)) {
+        known.add(key)
+        stack.push(val)
+      }
+    } else if (typeof value === 'string' && /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(value)) known.add(value)
+  }
+}
+
+function listExtFiles(dir, exts) {
+  return listFilesUnder(dir).filter((path) => exts.some((ext) => path.endsWith(ext)))
+}
+
+// scripts/** と vite.config.ts はビルド・CI ツールの実装であり、CONTRIBUTING.md や CLAUDE.md が
+// その内部動作（関数名・変数名）を頻繁に説明するため、走査対象に含めないと allowlist が肥大化する
+const EXTRA_JS_FILES = ['vite.config.ts']
+const JSON_CONFIG_FILES = ['tsconfig.json', 'src-tauri/tauri.conf.json']
+
+function buildKnownSymbols() {
+  const known = new Set()
+  const srcFiles = listFilesUnder('src')
+  const jsFiles = srcFiles.filter((path) => path.endsWith('.ts') || path.endsWith('.tsx'))
+  const cssFiles = srcFiles.filter((path) => path.endsWith('.css'))
+  const rustFiles = listExtFiles('src-tauri/src', ['.rs'])
+  const scriptFiles = listExtFiles('scripts', ['.mjs'])
+  const extraJsFiles = EXTRA_JS_FILES.filter((path) => existsSync(resolve(ROOT, path)))
+  for (const file of [...jsFiles, ...scriptFiles, ...extraJsFiles]) collectJsSymbols(readFileSync(resolve(ROOT, file), 'utf8'), known)
+  for (const file of rustFiles) collectRustSymbols(readFileSync(resolve(ROOT, file), 'utf8'), known)
+  for (const file of cssFiles) collectCssSymbols(readFileSync(resolve(ROOT, file), 'utf8'), known)
+  for (const file of JSON_CONFIG_FILES.filter((path) => existsSync(resolve(ROOT, path)))) {
+    collectJsonSymbols(readFileSync(resolve(ROOT, file), 'utf8'), known)
+  }
+  collectFileNameSymbols([...jsFiles, ...rustFiles, ...scriptFiles], known)
+  return known
+}
+
+// バックティック文字列を識別子候補に絞り込む（#360）。純粋な JS 識別子の形に限ることで
+// パス・CSS 変数（`--theme-primary`）・XML 名（`a:defRPr`）・kebab-case が自動的に落ちる。
+// さらに大文字を含む、または `use` で始まるものに限ることで、PascalCase の型・コンポーネント・
+// camelCase の関数・フックだけが対象になり、`gh` / `jq` のような短い小文字語が落ちる。
+function isSymbolCandidate(text) {
+  return /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(text) && (/[A-Z]/.test(text) || text.startsWith('use'))
+}
+
+const ALLOWLIST_PATH = resolve(ROOT, 'scripts/doc-symbol-allowlist.json')
+
+// 恒久的に既知集合の対象範囲外にあるシンボル（Web/Rust 標準ライブラリ、外部クレート、他アプリの
+// 識別子、キーボード表記等）を理由付きで許容するための一覧（#360）。「このリポジトリ内で改名・削除
+// された旧識別子への一度限りの言及」は、こちらではなく該当行に `<!-- doc-check-ignore -->` を付ける
+// （DOC_CHECK_IGNORE。変更履歴の記述はドキュメントの他の場所では再利用されないため）。
+function loadSymbolAllowlist() {
+  if (!existsSync(ALLOWLIST_PATH)) return {}
+  return JSON.parse(readFileSync(ALLOWLIST_PATH, 'utf8'))
 }
 
 // `<name>` や単語のみの `{name}`（カンマを含まない）はプレースホルダーであり、
@@ -159,18 +308,18 @@ function computeMatchesGlob(pattern) {
 
 function main() {
   const references = [] // { doc, text }
+  const symbolCandidates = [] // { doc, text }
   for (const doc of targetDocs()) {
     const content = readFileSync(resolve(ROOT, doc), 'utf8')
     for (const text of extractBacktickedStrings(content)) {
       if (isPathReference(text)) references.push({ doc, text })
+      else if (isSymbolCandidate(text)) symbolCandidates.push({ doc, text })
     }
   }
 
   const normalized = references.map((ref) => ({ ...ref, normalizedText: normalizePlaceholders(ref.text) }))
   const globRefs = normalized.filter((ref) => isGlobPattern(ref.normalizedText))
-  const plainRefs = normalized
-    .filter((ref) => !isGlobPattern(ref.normalizedText))
-    .map((ref) => ({ ...ref, path: stripLineNumber(ref.normalizedText) }))
+  const plainRefs = normalized.filter((ref) => !isGlobPattern(ref.normalizedText)).map((ref) => ({ ...ref, path: stripLineNumber(ref.normalizedText) }))
 
   const missingRefs = plainRefs.filter((ref) => !existsSync(resolve(ROOT, ref.path)))
   const ignoredSet = getIgnoredSet(missingRefs.map((ref) => ref.path))
@@ -188,14 +337,23 @@ function main() {
     if (!matched) failures.push(`${ref.doc}: \`${ref.text}\` に一致するファイルがありません`)
   }
 
+  const knownSymbols = buildKnownSymbols()
+  const allowlist = loadSymbolAllowlist()
+  const symbolFailures = []
+  for (const ref of symbolCandidates) {
+    if (knownSymbols.has(ref.text) || Object.hasOwn(allowlist, ref.text)) continue
+    symbolFailures.push(`${ref.doc}: \`${ref.text}\` という識別子が src/**・src-tauri/src/** に見つかりません`)
+  }
+  failures.push(...symbolFailures)
+
   if (failures.length > 0) {
-    console.error('[check-doc-references] ドキュメントが参照する以下のパスが実装に存在しません:')
+    console.error('[check-doc-references] ドキュメントが参照する以下の内容が実装に存在しません:')
     for (const failure of failures) console.error(`  - ${failure}`)
     process.exitCode = 1
     return
   }
 
-  console.log(`[check-doc-references] ${references.length} 件のパス参照を検証し、すべて実在を確認しました。`)
+  console.log(`[check-doc-references] ${references.length} 件のパス参照・${symbolCandidates.length} 件の識別子参照を検証し、すべて実在を確認しました。`)
 }
 
 main()

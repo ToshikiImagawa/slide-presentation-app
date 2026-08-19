@@ -423,7 +423,7 @@ function resetThemeOverrides(): void {
 **変更内容:**
 
 - ディレクトリ構造から `src/data/default-slides-{ja,en}.json` を削除。デモ用スライドは `samples/template-guide/` へ移設し、アプリには同梱せず `.spkg` として配布する <!-- doc-check-ignore -->
-- `src/data/loader.ts` の責務を「最小フォールバックの生成」に更新（`getDefaultPresentationData` は廃止）
+- `src/data/loader.ts` の責務を「最小フォールバックの生成」に更新（`getDefaultPresentationData` は廃止） <!-- doc-check-ignore -->
 - ホーム画面の「サンプルを開く」が3段フォールバック（同梱 → 配布パッケージ → 案内スライド）で解決することを注記。配布と取得の設計は [slide-package-distribution_design.md](./slide-package-distribution_design.md) が所有する
 
 ## v1.3.0 (2026-07-24)
