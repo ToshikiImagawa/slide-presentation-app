@@ -420,6 +420,109 @@ describe('BrandConfirmDialog（#168 並置比較・取り込み確認）', () =>
     expect(arg.compiled.tokens[masterKey]?.['theme-text-body']).not.toBe('#000000')
   })
 
+  describe('レイアウト割り当ての推薦（#372）', () => {
+    function profileWithTitleOnlyLayout(): BrandProfile {
+      return buildProfile({
+        masters: [
+          {
+            part: 'ppt/slideMasters/slideMaster1.xml',
+            mappedColors: buildProfile().mappedColors,
+            slideLayouts: [{ part: 'ppt/slideLayouts/slideLayout1.xml', name: 'Title Slide', layoutType: 'title', backgroundColorHex: null, placeholders: [placeholder('title', 'ctrTitle')] }],
+          },
+        ],
+      })
+    }
+
+    it('確認ダイアログを開いた時点で、確度の高いレイアウトに枠が初期選択されている', () => {
+      renderDialog({ profile: profileWithTitleOnlyLayout() })
+      const layoutSelect = screen.getByRole('combobox', { name: /Title Slide/ })
+      expect(layoutSelect.textContent).toBe('タイトル')
+    })
+
+    it('推薦値には人の上書きと区別できる表示（推薦チップ）が付く', () => {
+      renderDialog({ profile: profileWithTitleOnlyLayout() })
+      expect(screen.getByText('推薦')).toBeTruthy()
+      expect(screen.queryByText('人が選択')).toBeNull()
+    })
+
+    it('人が明示的に選び直すと推薦チップが消え、上書きの表示に切り替わる', () => {
+      const { onApply } = renderDialog({ profile: profileWithTitleOnlyLayout() })
+      const layoutSelect = screen.getByRole('combobox', { name: /Title Slide/ })
+      fireEvent.mouseDown(layoutSelect)
+      fireEvent.click(screen.getByRole('option', { name: '本文' }))
+
+      expect(screen.queryByText('推薦')).toBeNull()
+      expect(screen.getByText('人が選択')).toBeTruthy()
+
+      fireEvent.click(screen.getByRole('button', { name: '取り込む' }))
+      const arg = onApply.mock.calls[0][0] as { overrides: BrandOverrides; compiled: CompiledBrandTheme }
+      expect(arg.overrides.layoutAssignments).toEqual({ '0:0': 'content' })
+    })
+
+    it('人が明示的に「未割当」を選ぶと、推薦があっても未割当のままになる（推薦へ戻らない）', () => {
+      const { onApply } = renderDialog({ profile: profileWithTitleOnlyLayout() })
+      const layoutSelect = screen.getByRole('combobox', { name: /Title Slide/ })
+      fireEvent.mouseDown(layoutSelect)
+      fireEvent.click(screen.getByRole('option', { name: '未割当' }))
+
+      expect(layoutSelect.textContent).toBe('未割当')
+      expect(screen.queryByText('推薦')).toBeNull()
+      expect(screen.queryByText('人が選択')).toBeNull()
+
+      fireEvent.click(screen.getByRole('button', { name: '取り込む' }))
+      const arg = onApply.mock.calls[0][0] as { overrides: BrandOverrides; compiled: CompiledBrandTheme }
+      expect(arg.overrides.layoutAssignments).toEqual({ '0:0': null })
+      // 未割当なので center 用の brand-<slug> master は作られない
+      expect(Object.keys(arg.compiled.masters)).toEqual(['brand'])
+    })
+
+    it('推薦が0件（確信が持てない構成）のとき、初期選択は現行と同一（未割当）', () => {
+      const profile = buildProfile({
+        masters: [
+          {
+            part: 'ppt/slideMasters/slideMaster1.xml',
+            mappedColors: buildProfile().mappedColors,
+            slideLayouts: [{ part: 'ppt/slideLayouts/slideLayout1.xml', name: 'Section Divider', layoutType: 'secHead', placeholders: [], backgroundColorHex: '#000000' }],
+          },
+        ],
+      })
+      renderDialog({ profile })
+      const layoutSelect = screen.getByRole('combobox', { name: /Section Divider/ })
+      expect(layoutSelect.textContent).toBe('未割当')
+      expect(screen.queryByText('推薦')).toBeNull()
+    })
+
+    it('別レイアウトの人の上書きが推薦の枠を奪った場合、表示も未割当に切り替わる（取り込み結果と表示の食い違いを防ぐ）', () => {
+      const profile = buildProfile({
+        masters: [
+          {
+            part: 'ppt/slideMasters/slideMaster1.xml',
+            mappedColors: buildProfile().mappedColors,
+            slideLayouts: [
+              { part: 'ppt/slideLayouts/slideLayout1.xml', name: 'Title Slide', layoutType: 'title', backgroundColorHex: null, placeholders: [placeholder('title', 'ctrTitle')] },
+              { part: 'ppt/slideLayouts/slideLayout2.xml', name: 'Custom Layout', layoutType: 'obj', backgroundColorHex: null, placeholders: [] },
+            ],
+          },
+        ],
+      })
+      const { onApply } = renderDialog({ profile })
+
+      // '0:1'（Custom Layout）を人が明示的に center へ割り当てると、'0:0'（Title Slide）が推薦していた
+      // center を奪う。'0:0' 側は表示上も未割当へ戻るべき（compile.ts の resolveAssignedLayouts と同じ判定）
+      const customLayoutSelect = screen.getByRole('combobox', { name: /Custom Layout/ })
+      fireEvent.mouseDown(customLayoutSelect)
+      fireEvent.click(screen.getByRole('option', { name: 'タイトル' }))
+
+      const titleSlideSelect = screen.getByRole('combobox', { name: /Title Slide/ })
+      expect(titleSlideSelect.textContent).toBe('未割当')
+
+      fireEvent.click(screen.getByRole('button', { name: '取り込む' }))
+      const arg = onApply.mock.calls[0][0] as { overrides: BrandOverrides; compiled: CompiledBrandTheme }
+      expect(arg.overrides.layoutAssignments).toEqual({ '0:1': 'center' })
+      expect(arg.compiled.masterMap.center).toBe('brand-custom-layout-0-1')
+    })
+  })
+
   describe('書体と型階層（#316）', () => {
     it('決定された書体（defRPr 由来）と決定根拠を表示する', () => {
       renderDialog({ profile: profileWithDefRprLayouts(), initialOverrides: DEF_RPR_ASSIGNMENTS })

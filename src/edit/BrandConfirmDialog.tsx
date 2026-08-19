@@ -20,6 +20,7 @@ import { useTranslation } from '../i18n'
 import { getContrastRatio, WCAG_AA_THRESHOLD, type FontSizeStepKey } from '../applyTheme'
 import type { LogoConfig, SafeArea, SlideData, ThemeData } from '../data'
 import { compile, mediaAssetToDataUrl, mergeCompiledBrandTheme } from '../brand/compile'
+import { mergeLayoutAssignments, recommendLayoutAssignments } from '../brand/layoutAssignmentHints'
 import {
   LAYOUT_ASSIGNMENT_SLOTS,
   MAPPED_COLOR_KEYS,
@@ -141,6 +142,10 @@ export function BrandConfirmDialog({ open, profile, initialOverrides, previewSli
   const [safeAreaDrafts, setSafeAreaDrafts] = useState<Partial<Record<keyof SafeArea, string>>>({})
 
   const { theme: compiled, report } = useMemo(() => compile(profile, overrides), [profile, overrides])
+  /** 確認ダイアログを開いた時点でのレイアウト割り当ての初期選択（#372）。`compile.ts` の
+   * `resolveAssignedLayouts` と同じ `mergeLayoutAssignments` を通すことで、「別レイアウトの人の上書きが
+   * 推薦の枠を奪っている」場合の判定を UI 側で再実装せず、取り込み結果と表示を必ず一致させる */
+  const mergedLayoutAssignments = useMemo(() => mergeLayoutAssignments(recommendLayoutAssignments(profile), overrides.layoutAssignments), [profile, overrides.layoutAssignments])
 
   const previewMergedTheme = useMemo<ThemeData>(() => mergeCompiledBrandTheme(previewTheme, compiled), [previewTheme, compiled])
   const previewCanvasSize = resolveCanvasSize(previewMergedTheme.canvas)
@@ -238,14 +243,11 @@ export function BrandConfirmDialog({ open, profile, initialOverrides, previewSli
     setOverrides((prev) => ({ ...prev, textIndexFormats: { ...prev.textIndexFormats, [String(index)]: format } }))
   }
 
-  /** `key` は `"<masterIndex>:<layoutIndex>"`（`profile.masters` の添字）。空文字は「未割当」への戻しを表す */
+  /** `key` は `"<masterIndex>:<layoutIndex>"`（`profile.masters` の添字）。空文字は「未割当」を明示的に選んだ
+   * ことを表す（#372）。推薦（`recommendLayoutAssignments`）を明示的に打ち消すため、キーを削除するのではなく
+   * `null` を書く（`manualLogo` と同じ「`null` で明示選択を表す」設計） */
   const assignLayout = (key: string, slot: string) => {
-    setOverrides((prev) => {
-      const next = { ...prev.layoutAssignments }
-      if (slot) next[key] = slot as LayoutAssignmentSlot
-      else delete next[key]
-      return { ...prev, layoutAssignments: next }
-    })
+    setOverrides((prev) => ({ ...prev, layoutAssignments: { ...prev.layoutAssignments, [key]: slot ? (slot as LayoutAssignmentSlot) : null } }))
   }
 
   const handleApply = () => onApply({ overrides, compiled })
@@ -643,6 +645,12 @@ export function BrandConfirmDialog({ open, profile, initialOverrides, previewSli
             {profile.masters.map((master, masterIndex) =>
               master.slideLayouts.map((layout, layoutIndex) => {
                 const key = `${masterIndex}:${layoutIndex}`
+                // 人の上書き（`null` の明示的な未割当を含む）が最優先。無ければ `mergedLayoutAssignments`
+                // （推薦のうち、他レイアウトの人の上書きに枠を奪われていないもの）を初期表示する（#372）
+                const manualSlot = overrides.layoutAssignments?.[key]
+                const isOverridden = manualSlot !== undefined
+                const effectiveSlot = mergedLayoutAssignments[key] ?? ''
+                const isRecommended = !isOverridden && Boolean(effectiveSlot)
                 return (
                   <Stack key={key} direction="row" spacing={1} alignItems="center" sx={{ flexWrap: 'wrap' }}>
                     <Typography component="span" sx={{ width: 80, flexShrink: 0, color: 'var(--fixed-text-muted)', fontSize: 12 }}>
@@ -655,7 +663,7 @@ export function BrandConfirmDialog({ open, profile, initialOverrides, previewSli
                     <ColorSwatch value={layout.backgroundColorHex ?? undefined} />
                     <FormControl size="small" sx={{ minWidth: 180 }}>
                       <Select
-                        value={overrides.layoutAssignments?.[key] ?? ''}
+                        value={effectiveSlot}
                         onChange={(e) => assignLayout(key, e.target.value)}
                         displayEmpty
                         SelectDisplayProps={{ 'aria-label': `${t('brand.layoutsSection', 'レイアウトの割り当て')}: ${layout.name ?? layout.part}` }}
@@ -673,6 +681,9 @@ export function BrandConfirmDialog({ open, profile, initialOverrides, previewSli
                         })}
                       </Select>
                     </FormControl>
+                    {/* 推薦値と人の上書きを区別できるようにする（#372） */}
+                    {isRecommended && <Chip size="small" color="info" label={t('brand.layoutRecommended', '推薦')} />}
+                    {isOverridden && manualSlot && <Chip size="small" variant="outlined" label={t('brand.layoutOverridden', '人が選択')} />}
                   </Stack>
                 )
               }),

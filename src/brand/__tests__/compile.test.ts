@@ -2,40 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { getContrastRatio } from '../../applyTheme'
 import { compile, mergeCompiledBrandTheme } from '../compile'
 import type { BrandOverrides, BrandPlaceholderKind, BrandProfile, CompiledBrandTheme, MappedColorKey, PlaceholderProfile, PlaceholderTextProps } from '../types'
-
-function profile(overrides: Partial<BrandProfile> = {}): BrandProfile {
-  const mappedColors: Record<MappedColorKey, string | null> = {
-    bg1: '#ffffff',
-    tx1: '#000000',
-    bg2: '#f2f2f2',
-    tx2: '#44546a',
-    accent1: '#1f4e79',
-    accent2: '#ed7d31',
-    accent3: '#a5a5a5',
-    accent4: '#ffc000',
-    accent5: '#5b9bd5',
-    accent6: '#70ad47',
-    hlink: '#0563c1',
-    folHlink: '#954f72',
-  }
-  return {
-    name: 'Corporate',
-    themePart: 'ppt/theme/theme1.xml',
-    slideMasterPart: 'ppt/slideMasters/slideMaster1.xml',
-    templateHash: 'a'.repeat(64),
-    slideSize: { widthEmu: 12_192_000, heightEmu: 6_858_000 },
-    thumbnail: null,
-    logoCandidates: [],
-    bandCandidates: [],
-    textCandidates: [],
-    markCandidates: [],
-    embeddedFonts: [],
-    mappedColors,
-    fonts: { major: { latin: 'Trebuchet MS', ea: null, cs: null, jpan: null }, minor: { latin: 'Calibri', ea: null, cs: null, jpan: null } },
-    masters: [],
-    ...overrides,
-  }
-}
+import { profile } from './fixtures'
 
 /** slideLayout の1プレースホルダ（`kind` と既定文字プロパティは Rust 側で解決済みの形。#316）。
  * `kind` を `phType` から導出せず明示するのは、Rust の分類結果をそのまま受け取る契約を写すため。
@@ -658,7 +625,9 @@ describe('compile（#168 の並置比較・取り込み確認）', () => {
     })
 
     it('本文枠だけを割り当てた場合も、その枠のタイトルから段（h3）が取れる', () => {
-      const { theme } = compile(withDefRprLayouts(), { layoutAssignments: { '0:2': 'content' } })
+      // '0:0'/'0:1' は layoutType/プレースホルダ構成から推薦されうる（#372）ため、この本文枠単独の
+      // ケースを検証するには明示的に未割当（null）へ固定する
+      const { theme } = compile(withDefRprLayouts(), { layoutAssignments: { '0:0': null, '0:1': null, '0:2': 'content' } })
       expect(theme.fonts.fontSizeRatios).toEqual({ h3: 1.333 })
     })
 
@@ -673,16 +642,28 @@ describe('compile（#168 の並置比較・取り込み確認）', () => {
     })
 
     it('未割当のレイアウトのプレースホルダは無視する（書体・型階層とも fontScheme と既定のまま）', () => {
-      const { theme, report } = compile(withDefRprLayouts(), {})
+      // 3枠すべてを明示的に未割当（null）にし、推薦（#372）が効かない状態を作る
+      const allUnassigned: BrandOverrides = { layoutAssignments: { '0:0': null, '0:1': null, '0:2': null } }
+      const { theme, report } = compile(withDefRprLayouts(), allUnassigned)
       expect(theme.fonts.heading).toEqual({ latin: 'Calibri Light', ea: '游ゴシック Light' })
       expect(theme.fonts.baseFontSize).toBeUndefined()
       expect(theme.fonts.fontSizeRatios).toBeUndefined()
       expect(report.fields['fonts.baseFontSize']?.status).toBe('missing')
     })
 
+    it('推薦（#372）: 上書きが無ければ layoutType/プレースホルダ構成から自動で割り当てられ、書体・型階層に反映する', () => {
+      const { theme } = compile(withDefRprLayouts(), {})
+      // '0:0'（layoutType: title）→ center、'0:2'（title+body）→ content が推薦される。
+      // '0:1'（title のみ）も center の候補になるが、layoutType 由来の '0:0' の方が確度が高く枠を奪う
+      expect(theme.fonts.heading).toEqual({ latin: 'Corporate Display', ea: 'コーポレート見出し', weight: '700' })
+      expect(theme.fonts.baseFontSize).toBe(24)
+      expect(theme.fonts.fontSizeRatios).toEqual({ h1: 2.222, h3: 1.333 })
+    })
+
     it('本文枠（content/two-column/bleed）以外の body プレースホルダは基準サイズに採らない', () => {
-      // center 枠の body はサブタイトル（20pt）であって本文の段ではない
-      const { theme } = compile(withDefRprLayouts(), { layoutAssignments: { '0:0': 'center' } })
+      // center 枠の body はサブタイトル（20pt）であって本文の段ではない。'0:2' は推薦され得る（#372）ため
+      // 明示的に未割当へ固定し、center 単独のケースを検証する
+      const { theme } = compile(withDefRprLayouts(), { layoutAssignments: { '0:0': 'center', '0:2': null } })
       expect(theme.fonts.baseFontSize).toBeUndefined()
     })
 

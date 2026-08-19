@@ -2,6 +2,7 @@ import { getContrastRatio, hexToRgbTuple, mergeRecord, normalizeHex, relativeLum
 import { SLIDE_WIDTH, SLIDE_HEIGHT } from '../hooks/useReveal'
 import { slugify } from '../slugify'
 import type { FontFamilySpec, FontSource, MasterAnchor, MasterDecoration, MasterDefinition, SafeArea, ThemeData } from '../data'
+import { countMergedLayoutAssignments, mergeLayoutAssignments, recommendLayoutAssignments } from './layoutAssignmentHints'
 import {
   LAYOUT_ASSIGNMENT_SLOTS,
   MAPPED_COLOR_KEYS,
@@ -87,9 +88,14 @@ export function compile(profile: BrandProfile, overrides: BrandOverrides): { the
 
   // 書体・型階層は割り当て済みレイアウトのプレースホルダ（`a:defRPr`）を抽出元にするため、
   // 割り当ての解決を先に行う（#316）。枠単位のルックアップ（`bySlot`）は書体と safeArea（#317）が
-  // 共有し、レイアウト割り当てが変わっても走査を2回行わない
-  const assignedLayouts = resolveAssignedLayouts(profile, overrides)
+  // 共有し、レイアウト割り当てが変わっても走査を2回行わない。
+  // 推薦（`recommendLayoutAssignments`）は masters×slideLayouts を全走査するため、ここで1回だけ計算し、
+  // `resolveAssignedLayouts` と `buildLayoutAssignmentReport` の両方へ合成済みの `mergedLayoutAssignments`
+  // を渡す（#372。走査を2回行わないという上記と同じ方針をレイアウト割り当てにも適用する）
+  const mergedLayoutAssignments = mergeLayoutAssignments(recommendLayoutAssignments(profile), overrides.layoutAssignments)
+  const assignedLayouts = resolveAssignedLayouts(profile, mergedLayoutAssignments)
   const bySlot = indexBySlot(assignedLayouts)
+  report.fields.layoutAssignments = buildLayoutAssignmentReport(profile, overrides, mergedLayoutAssignments)
   const fonts = resolveFonts(profile, overrides, bySlot, report)
   const logo = resolveLogo(profile, overrides)
   report.fields.logo = { status: logo ? 'ok' : 'missing', detail: logo ? undefined : 'ロゴ候補が無いか、人が未選択' }
@@ -120,18 +126,34 @@ interface AssignedLayout {
   placeholders: PlaceholderProfile[]
 }
 
-/** `overrides.layoutAssignments` のうち、①`LAYOUT_ASSIGNMENT_SLOTS` に実在する枠を指し、②実在する layout
- * （`profile.masters[i].slideLayouts[j]`）を指す、有効なエントリだけを解決する。
- * 手編集や旧バージョンの永続化ファイルに残った不正な値は静かに無視する（描画を止めない） */
-function resolveAssignedLayouts(profile: BrandProfile, overrides: BrandOverrides): AssignedLayout[] {
-  return Object.entries(overrides.layoutAssignments ?? {})
+/** 呼び出し元（`compile`）が合成済みの `mergedLayoutAssignments`（決定的ヒューリスティクスの推薦と人の
+ * 上書きを合成した結果。`null` は推薦を明示的に未割当へ戻す指定）から、①`LAYOUT_ASSIGNMENT_SLOTS` に
+ * 実在する枠を指し、②実在する layout（`profile.masters[i].slideLayouts[j]`）を指す、有効なエントリだけを
+ * 解決する（#372）。手編集や旧バージョンの永続化ファイルに残った不正な値は静かに無視する（描画を止めない） */
+function resolveAssignedLayouts(profile: BrandProfile, merged: Record<string, LayoutAssignmentSlot | null>): AssignedLayout[] {
+  return Object.entries(merged)
     .map(([key, slot]): AssignedLayout | undefined => {
-      if (!LAYOUT_ASSIGNMENT_SLOTS.includes(slot)) return undefined
+      if (slot == null || !LAYOUT_ASSIGNMENT_SLOTS.includes(slot)) return undefined
       const [masterIndex, layoutIndex] = key.split(':').map(Number)
       const layout = profile.masters[masterIndex]?.slideLayouts[layoutIndex]
       return layout ? { key, slot, name: layout.name, backgroundColorHex: layout.backgroundColorHex, placeholders: layout.placeholders } : undefined
     })
     .filter((entry): entry is AssignedLayout => entry !== undefined)
+}
+
+/** `report.fields['layoutAssignments']`（issue #372 の実装ステップ5）。推薦 / 上書き / 未割当の件数を出す。
+ * レイアウトが1枚も無いテンプレートは判定材料が無いため `missing`、1枚以上あり全枚が埋まっていれば `ok`、
+ * 一部でも埋まっていれば `derived`（推薦の効果が出ている状態）、1枚も埋まっていなければ `missing` とする。
+ * `merged` は呼び出し元（`compile`）で計算済みの合成結果を受け取り、`recommendLayoutAssignments`（全走査）
+ * をここで再計算しない */
+function buildLayoutAssignmentReport(profile: BrandProfile, overrides: BrandOverrides, merged: Record<string, LayoutAssignmentSlot | null>): { status: BrandFieldStatus; detail?: string } {
+  const counts = countMergedLayoutAssignments(profile, overrides.layoutAssignments, merged)
+  const total = counts.recommended + counts.overridden + counts.unassigned
+  const detail = `推薦 ${counts.recommended} / 上書き ${counts.overridden} / 未割当 ${counts.unassigned}`
+  if (total === 0) return { status: 'missing', detail: 'レイアウトが検出されなかった' }
+  if (counts.unassigned === 0) return { status: 'ok', detail }
+  if (counts.recommended > 0 || counts.overridden > 0) return { status: 'derived', detail }
+  return { status: 'missing', detail }
 }
 
 /**

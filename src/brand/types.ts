@@ -223,8 +223,11 @@ export interface BrandOverrides {
     fontSizeRatios?: Record<string, number>
   }
   /** 抽出した slideLayout を `LAYOUT_ASSIGNMENT_SLOTS` の枠へ割り当てた結果（#192）。
-   * key は `"<masterIndex>:<layoutIndex>"`（`BrandProfile.masters` の添字）。未割当のレイアウトは省略する */
-  layoutAssignments?: Record<string, LayoutAssignmentSlot>
+   * key は `"<masterIndex>:<layoutIndex>"`（`BrandProfile.masters` の添字）。
+   * 値の3状態（#372）: **省略**＝人が未操作（決定的ヒューリスティクスの推薦に委ねる。`recommendLayoutAssignments`。
+   * `src/brand/layoutAssignmentHints.ts`）、**`null`**＝人が明示的に「未割当」を選び推薦を上書きする、
+   * **`LayoutAssignmentSlot`**＝人が明示的に枠を選ぶ。`manualLogo`（`null` で「ロゴなし」を明示する）と同じ設計 */
+  layoutAssignments?: Record<string, LayoutAssignmentSlot | null>
   /** `canvas.safeArea`（#188/#317）の辺単位の上書き。未指定の辺は導出値（無ければ CSS 側の既定 60px）のまま */
   safeAreaOverrides?: Partial<SafeArea>
   /** 取り込んだ埋め込みフォント実体（`embeddedFonts[].payload`）の再配布ライセンス区分（#171/#321）。
