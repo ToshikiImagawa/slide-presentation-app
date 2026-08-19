@@ -12,7 +12,8 @@
 import { execFileSync } from 'node:child_process'
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { dirname, join, relative, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
+import ts from 'typescript'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -199,9 +200,93 @@ const ALLOWLIST_PATH = resolve(ROOT, 'scripts/doc-symbol-allowlist.json')
 // 識別子、キーボード表記等）を理由付きで許容するための一覧（#360）。「このリポジトリ内で改名・削除
 // された旧識別子への一度限りの言及」は、こちらではなく該当行に `<!-- doc-check-ignore -->` を付ける
 // （DOC_CHECK_IGNORE。変更履歴の記述はドキュメントの他の場所では再利用されないため）。
+// Phase 2（型のプロパティ名チェック。#375）の抑制エントリは `TypeName.propertyName` 形式のキーで
+// 同じファイルに追記する（単純な識別子キーとは `.` の有無で区別でき、名前空間が競合しない）。
 function loadSymbolAllowlist() {
   if (!existsSync(ALLOWLIST_PATH)) return {}
   return JSON.parse(readFileSync(ALLOWLIST_PATH, 'utf8'))
+}
+
+// ```ts フェンスのコードブロックだけを対象にする（#375）。```tsx は JSX を含む例示コードが多く、
+// そこで定義される型（`type FooProps = {...}` 等）はコンポーネント固有の疑似的な説明用の型で
+// 実装の同名宣言と対応しないことが多いため、誤検知抑制のため対象外にする。
+// フェンス開始行自体に `<!-- doc-check-ignore -->` を付けるとそのブロックを抑制できる。
+export function extractTsCodeBlocks(content) {
+  const blocks = []
+  const lines = content.split('\n')
+  let i = 0
+  while (i < lines.length) {
+    const fenceMatch = lines[i].match(/^\s*```(\S+)?/)
+    if (!fenceMatch) {
+      i++
+      continue
+    }
+    const isTs = fenceMatch[1] === 'ts'
+    const ignore = lines[i].includes(DOC_CHECK_IGNORE)
+    i++
+    const codeLines = []
+    while (i < lines.length && !/^\s*```/.test(lines[i])) {
+      codeLines.push(lines[i])
+      i++
+    }
+    i++ // 閉じフェンスをスキップ
+    if (isTs && !ignore) blocks.push(codeLines.join('\n'))
+  }
+  return blocks
+}
+
+function propertyNamesOfMembers(members) {
+  const names = []
+  for (const member of members) {
+    if ((ts.isPropertySignature(member) || ts.isMethodSignature(member)) && member.name && ts.isIdentifier(member.name)) {
+      names.push(member.name.text)
+    }
+  }
+  return names
+}
+
+// interface / type（オブジェクトリテラル型のみ）/ 関数宣言の引数（インラインオブジェクト型のみ）
+// からプロパティ名を集める。ジェネリクスや交差型・ユニオン型の解決は行わない（#375 の議事: 完全一致を
+// 求めると誤検知が爆発するため、直接のメンバーだけを対象にし、解決できない型は無視する）。
+export function collectTypePropertyEntries(sourceFile) {
+  const entries = []
+  function visit(node) {
+    if (ts.isInterfaceDeclaration(node)) {
+      entries.push({ typeName: node.name.text, properties: propertyNamesOfMembers(node.members) })
+    } else if (ts.isTypeAliasDeclaration(node) && node.type && ts.isTypeLiteralNode(node.type)) {
+      entries.push({ typeName: node.name.text, properties: propertyNamesOfMembers(node.type.members) })
+    } else if (ts.isFunctionDeclaration(node) && node.name) {
+      for (const param of node.parameters) {
+        if (param.type && ts.isTypeLiteralNode(param.type)) entries.push({ typeName: node.name.text, properties: propertyNamesOfMembers(param.type.members) })
+      }
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(sourceFile)
+  return entries
+}
+
+// ドキュメントのコードブロック1件から { typeName, properties }[] を抽出する
+export function extractDocTypeProperties(code) {
+  const sourceFile = ts.createSourceFile('doc-snippet.ts', code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
+  return collectTypePropertyEntries(sourceFile).filter((entry) => entry.properties.length > 0)
+}
+
+// 実装側（src/**/*.ts(x)）の同名宣言からプロパティ名集合を構築する。同名の宣言が複数ファイルに
+// 存在する場合（オーバーロード的な再定義）はプロパティ名を合算する（一方向チェックの対象を広げすぎない）
+function buildImplementationTypeProperties() {
+  const typeProps = new Map()
+  const srcFiles = listFilesUnder('src').filter((path) => path.endsWith('.ts') || path.endsWith('.tsx'))
+  for (const file of srcFiles) {
+    const content = readFileSync(resolve(ROOT, file), 'utf8')
+    const scriptKind = file.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS
+    const sourceFile = ts.createSourceFile(file, content, ts.ScriptTarget.Latest, true, scriptKind)
+    for (const { typeName, properties } of collectTypePropertyEntries(sourceFile)) {
+      if (!typeProps.has(typeName)) typeProps.set(typeName, new Set())
+      for (const name of properties) typeProps.get(typeName).add(name)
+    }
+  }
+  return typeProps
 }
 
 // `<name>` や単語のみの `{name}`（カンマを含まない）はプレースホルダーであり、
@@ -306,14 +391,34 @@ function computeMatchesGlob(pattern) {
   return listFilesUnder(root).some((path) => regExp.test(path))
 }
 
+// ドキュメント側の型プロパティが実装の同名型に存在しない場合を警告として返す（一方向チェック・非ゲート・#375）。
+// 型名自体が実装側の集合に存在しない場合は型同定ができないため対象外にする（ドキュメント特有の
+// 疑似的な説明用の型の例示を誤検知しないため。issue #375 の設計上の課題を参照）。
+export function collectTypePropertyWarnings(docTypeProperties, implTypeProperties, allowlist) {
+  const warnings = []
+  for (const { doc, typeName, properties } of docTypeProperties) {
+    const implProps = implTypeProperties.get(typeName)
+    if (!implProps) continue
+    for (const prop of properties) {
+      if (implProps.has(prop) || Object.hasOwn(allowlist, `${typeName}.${prop}`)) continue
+      warnings.push(`${doc}: 型 \`${typeName}\` のプロパティ \`${prop}\` が実装に見つかりません`)
+    }
+  }
+  return warnings
+}
+
 function main() {
   const references = [] // { doc, text }
   const symbolCandidates = [] // { doc, text }
+  const docTypeProperties = [] // { doc, typeName, properties }
   for (const doc of targetDocs()) {
     const content = readFileSync(resolve(ROOT, doc), 'utf8')
     for (const text of extractBacktickedStrings(content)) {
       if (isPathReference(text)) references.push({ doc, text })
       else if (isSymbolCandidate(text)) symbolCandidates.push({ doc, text })
+    }
+    for (const code of extractTsCodeBlocks(content)) {
+      for (const entry of extractDocTypeProperties(code)) docTypeProperties.push({ doc, ...entry })
     }
   }
 
@@ -346,6 +451,13 @@ function main() {
   }
   failures.push(...symbolFailures)
 
+  const implTypeProperties = buildImplementationTypeProperties()
+  const propertyWarnings = collectTypePropertyWarnings(docTypeProperties, implTypeProperties, allowlist)
+  if (propertyWarnings.length > 0) {
+    console.warn('[check-doc-references] 型のプロパティ名チェックで以下の警告があります（非ゲート・#375）:')
+    for (const warning of propertyWarnings) console.warn(`  - ${warning}`)
+  }
+
   if (failures.length > 0) {
     console.error('[check-doc-references] ドキュメントが参照する以下の内容が実装に存在しません:')
     for (const failure of failures) console.error(`  - ${failure}`)
@@ -353,7 +465,12 @@ function main() {
     return
   }
 
-  console.log(`[check-doc-references] ${references.length} 件のパス参照・${symbolCandidates.length} 件の識別子参照を検証し、すべて実在を確認しました。`)
+  console.log(
+    `[check-doc-references] ${references.length} 件のパス参照・${symbolCandidates.length} 件の識別子参照を検証し、すべて実在を確認しました（型プロパティ警告 ${propertyWarnings.length} 件）。`,
+  )
 }
 
-main()
+// 直接実行時のみ main() を走らせる（テストからの import では実行しない）
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main()
+}
