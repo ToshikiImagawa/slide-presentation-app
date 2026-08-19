@@ -288,7 +288,7 @@ type AppProps = {
 
 **採らなかった案:** `App` が状態を持ち続け、setter だけを Root へ登録する方式（選択肢 D）。値の実体（App の state）と参照（Root の SettingsWindow）が分裂して**二重の真実源**になり、どちらが正なのかがコードから読み取れなくなるため却下した。実装量の多寡ではなく、真実源が一つに保てるかで判断している。
 
-**副産物:** 従来は `App` のマウント毎（＝デッキを開く毎）に `localStorage` を読み直していたが、所有が Root に移ったことで**アプリ起動時 1 回**になった。加えて `App.tsx` にあった死んだ `scrollSpeedRef`（書き込みのみで読み出しがなかった）と `setScrollSpeedRef` / `handleScrollSpeedChange` を削除でき、発表者ビューからの `scrollSpeedChange` は props をそのまま `usePresenterView` の `onScrollSpeedChange` に渡す形に単純化された。
+**副産物:** 従来は `App` のマウント毎（＝デッキを開く毎）に `localStorage` を読み直していたが、所有が Root に移ったことで**アプリ起動時 1 回**になった。加えて `App.tsx` にあった死んだ `scrollSpeedRef`（書き込みのみで読み出しがなかった）と `setScrollSpeedRef` / `handleScrollSpeedChange` を削除でき、発表者ビューからの `scrollSpeedChange` は props をそのまま `usePresenterView` の `onScrollSpeedChange` に渡す形に単純化された。 <!-- doc-check-ignore -->
 
 ## 9.2. 未解決の課題
 

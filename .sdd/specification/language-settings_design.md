@@ -470,7 +470,7 @@ interface HomeScreenProps {
 - `HomeScreen` に必須 prop `onOpenSettings` と左上の `SettingsButton` を追加（`.settingsCorner` は `position: fixed`。`.container` が `overflow-y: auto` のスクロール領域のため）。読み込み中も無効化しない（FR-001）
 - `SettingsWindow` の `scrollSpeed` / `setScrollSpeed` を optional 化し、両方揃ったときのみスクロール速度行を描画。ホーム画面ではグローバル設定のみを提示する（FR-011）
 - アドオン信頼設定を `src/hooks/useAddonSettings.ts` に、スクロール速度の永続化を `src/hooks/useScrollSpeed.ts` に抽出（`useAutoSlideshow` は controlled 化し `scrollSpeed` を必須オプションで受け取る）
-- `App` に `scrollSpeed` / `onScrollSpeedChange` / `onOpenSettings` / `onOpenShortcuts` を追加し、読み出しのない `scrollSpeedRef` 系を削除
+- `App` に `scrollSpeed` / `onScrollSpeedChange` / `onOpenSettings` / `onOpenShortcuts` を追加し、読み出しのない `scrollSpeedRef` 系を削除 <!-- doc-check-ignore -->
 - ダイアログを `ThemeProvider` で包む理由（`.window` と `.MuiPaper-root` の詳細度が同等）を §9.4 に記録
 - 編集画面（`SlideEditor`）への設定導線をスコープ外とした判断を §9.1 に記録
 - 技術スタック・§9.1「設定ウィンドウの実装」を実態（`DialogFrame` = MUI Dialog）へ訂正し、§9.3 のハードコード色の所在も実態（`DialogFrame.module.css` の box-shadow。オーバーレイ背景は MUI backdrop へ移行済み）へ更新
@@ -485,7 +485,7 @@ interface HomeScreenProps {
 - 欠落キー補完の仕組みを「ロード時マージ」→「`t()` 参照時の en-US フォールバック」に修正（§6 の「補完済みリソース」記述を実態に合わせて訂正）
 - SettingsWindow の拡張 props（scrollSpeed / setScrollSpeed / embeddedAddonsDisabled / onToggleEmbeddedAddons / onResetAddonTrust）と対応UIを反映（FR-010 の具現化）
 - A-002 準拠記述を実態（一部ハードコード色あり）に訂正し、§9.3 未解決の課題を追加
-- 起動フローを `Promise.all([loadBuiltinAddons(), loadLocales(), getRecentSlidePackages(), applyTheme()])` に修正（`loadAddons` → `loadBuiltinAddons`）
+- 起動フローを `Promise.all([loadBuiltinAddons(), loadLocales(), getRecentSlidePackages(), applyTheme()])` に修正（`loadAddons` → `loadBuiltinAddons`） <!-- doc-check-ignore -->
 
 ## v1.1.0 (2026-02-01)
 

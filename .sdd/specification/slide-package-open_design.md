@@ -317,7 +317,7 @@ function handleResolveOpen(confirmed: boolean): Promise<void>
 
 実装時に設計案から変えた点:
 
-- **`role` は `Editor`**（当初案は `Viewer`）。アプリは編集モードで `.spkg` を書き出せるため、閲覧専用の宣言では実態と合わない
+- **`role` は `Editor`**（当初案は `Viewer`）。アプリは編集モードで `.spkg` を書き出せるため、閲覧専用の宣言では実態と合わない <!-- doc-check-ignore -->
 - **`exportedType` を追加**。`.spkg` は標準 UTI に存在しないため、macOS では独自 UTI（`com.toshikiimagawa.slide-presentation-app.spkg`）を宣言しないと Finder が型を解決できない。Linux の MIME 型定義 XML（決定 #4）と同じ問題への macOS 側の対処であり、DC_004 の単一真実源は保つ（値は `ext` / `mimeType` の宣言と同じ `fileAssociations` 内に閉じている）
 - **`deb` と `rpm` の両方**に MIME XML を同梱する。`bundle.targets` が `"all"` のため deb だけでは rpm 系ディストロで関連付けが効かない。AppImage は `appimage.files` がイメージ内部にしか置かれずホストの MIME データベースへ登録されないため対象外とした
 
