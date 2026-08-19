@@ -145,7 +145,7 @@ function MasterDecorationElement({ decoration, ctx }: { decoration: MasterDecora
   switch (decoration.type) {
     case 'logo':
       return (
-        <div style={decorationStyle(decoration)}>
+        <div style={decorationStyle(decoration)} data-testid="slide-logo">
           <FallbackImage src={decoration.src} width={decoration.width ?? 120} height={decoration.height ?? 40} alt="Logo" />
         </div>
       )
