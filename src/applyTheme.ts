@@ -419,7 +419,7 @@ export function mergeThemeData(brand?: ThemeData, theme?: ThemeData): ThemeData 
 
 /** フォントサイズ比率（body1 = 1.0 基準）の既定値。キーは theme.fonts.fontSizeRatios と共通で、
  * `--theme-font-size-<キー>` として CSS 変数化される。既定にないキーを追加すると型階層に段を増やせる（#187） */
-const DEFAULT_FONT_SIZE_RATIOS: Record<string, number> = {
+const DEFAULT_FONT_SIZE_RATIOS = {
   h1: 3.6,
   h2: 2.4,
   h3: 1.2,
@@ -427,7 +427,12 @@ const DEFAULT_FONT_SIZE_RATIOS: Record<string, number> = {
   subtitle1: 1.4,
   body1: 1.0,
   body2: 0.8,
-}
+} satisfies Record<string, number>
+
+/** 既定の型階層の段キー（#333）。`brand/compile.ts` の枠→段の対応や `BrandConfirmDialog.tsx` の表示ラベルは
+ * ここから import し、独自に列挙しない（単一真実源）。`fontSizeRatios` 自体は実行時に既定外のキーを
+ * 追加できる（#187）ため、この型はあくまで「既定にある段」の集合であり、値の受け皿には使わない */
+export type FontSizeStepKey = keyof typeof DEFAULT_FONT_SIZE_RATIOS
 
 /** CSS 変数名のプレフィックス（`--theme-font-size-base` 自身もこれに含まれる） */
 const FONT_SIZE_CSS_VAR_PREFIX = '--theme-font-size-'

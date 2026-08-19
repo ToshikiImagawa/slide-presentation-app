@@ -1,4 +1,4 @@
-import { getContrastRatio, hexToRgbTuple, mergeRecord, normalizeHex, relativeLuminance, rgbTupleToHex, THEME_COLOR_TOKENS, WCAG_AA_THRESHOLD } from '../applyTheme'
+import { getContrastRatio, hexToRgbTuple, mergeRecord, normalizeHex, relativeLuminance, rgbTupleToHex, THEME_COLOR_TOKENS, WCAG_AA_THRESHOLD, type FontSizeStepKey } from '../applyTheme'
 import { SLIDE_WIDTH, SLIDE_HEIGHT } from '../hooks/useReveal'
 import { slugify } from '../slugify'
 import type { FontFamilySpec, FontSource, MasterAnchor, MasterDecoration, MasterDefinition, SafeArea, ThemeData } from '../data'
@@ -310,8 +310,9 @@ function colorDistance(a: string, b: string): number {
  * どの段として採るかを表し、`null` は段として採らない枠。**全枠を網羅する型**にしているのは、枠を追加した
  * ときに「その枠は型階層のどの段か」を型が書かせるため（無言で新枠が無視されるのを防ぐ）。
  * 抽出元を slideLayout のプレースホルダに限るのは、slideMaster の `p:txStyles` が Office 既定値のまま
- * ＝全段同一サイズで手がかりにならない場合があるため */
-const SLOT_TO_FONT_SIZE_STEP: Record<LayoutAssignmentSlot, string | null> = {
+ * ＝全段同一サイズで手がかりにならない場合があるため。段キーは `applyTheme.ts` の `FontSizeStepKey`
+ * （既定の型階層）を単一真実源として引く（#333。`THEME_COLOR_TOKENS` と同じ扱い） */
+const SLOT_TO_FONT_SIZE_STEP: Record<LayoutAssignmentSlot, FontSizeStepKey | null> = {
   center: 'h1', // 表紙タイトル
   'center/section': 'h2', // 章タイトル
   'center/message-inverse': null,
