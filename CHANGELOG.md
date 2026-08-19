@@ -6,6 +6,43 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-08-19
+
+### Added
+
+- Added brand theme import: extract master colors, fonts, logos, page numbers, and fixed text deterministically from PowerPoint/Google Slides–derived theme files, with a side-by-side comparison and confirmation dialog before importing
+  - Supports multiple slide masters/layouts, explicit light/dark designation, bundling embedded fonts, extracting brand mark candidates from small shapes on masters, and deterministic layout-assignment suggestions
+- Added a standalone distribution format for brand themes, independent of the slide package
+- Expanded master background decoration vocabulary: background patterns, watermarks, opacity, image backgrounds, fixed text and page numbers, and section footers
+- Added the concept of sections, with chapter numbering and per-section accent colors
+- Added many new slide types: table; charts (bar, line, pie, horizontal bar, big-number trend, KPI, KPI row); diagram primitives (arrows, connectors, cards, badges); compare and horizontal flow; table of contents; structure diagrams (hierarchy, server, org chart, UML class diagram); process diagrams (flowchart, swimlane, date timeline, Gantt); analysis diagrams (2x2 matrix, funnel, SWOT, heatmap); images (auto-fit, captions, frames, grouping, category headings); profile; UML sequence diagram; inline SVG and text diagrams (Mermaid); quote, big message, and closing slides; checklist and numbered multi-column lists
+- Added a column count option (dateTimelineColumns) to date timelines so more than 8 items can wrap onto a single slide
+- Expanded theme design tokens: rounded corners/border width/accent/zebra striping for cards and rules, heading underline width, decorative thick lines (heading side bar, top band, dividers, node rings), explicit tint/shade ramps for series colors, rounded rectangle/circle decoration, canvas size and safe area theming, and full coverage of the 12 theme color keys (including series, status, and link colors)
+- Added in-app visual checks (overflow, safe-area intrusion, overlap with master decorations, insufficient contrast) that surface as warnings while editing
+- Added warnings for invalid values, such as KPI/chart color token names and out-of-range or non-integer row/col/startCol in diagrams
+- Added an error boundary so a rendering error on one slide no longer crashes the whole deck
+- Added lazy loading for slide images to reduce rendering load
+
+### Changed
+
+- Changed AI generation results so they can be applied partially, per theme or per slide
+- Changed AI generation to explicitly indicate whether an instruction is for new content or a modification of existing content
+- Changed AI generation to detect truncation caused by hitting the token limit and feed it into the auto-fix loop
+- Changed AI generation to reflect theme-derived design constraints (colors, fonts, etc.)
+- Changed how master backgrounds are generated, prioritized, and defaulted, unifying previously inconsistent behavior
+- Moved the brand theme import button to sit next to the "Theme" heading
+
+### Fixed
+
+- Fixed the auto-update check pointing at a draft, untagged asset URL and failing to find updates
+- Fixed 5 visual defects, the app's language setting being ignored, and a safe-area intrusion in the distributed sample (template guide)
+- Fixed PDF export where the entrance animation's final state wasn't committed inside the html2canvas clone, causing corrupted output
+- Fixed the slide title's bottom margin being overridden by MUI's dynamic CSS
+- Fixed diagram slides crashing when row/col/startCol was out of range or non-integer
+- Fixed brand theme import not honoring an explicit light/dark designation
+- Fixed typeface CSS variables being managed in two places, causing the wrong font to apply
+- Fixed the logo to render through the unified master decoration vocabulary (LogoMasterDecoration), resolving inconsistencies between meta.logo and master-level decoration
+
 ## [2.1.1] - 2026-08-02
 
 ### Added
