@@ -40,10 +40,18 @@ export const VIEWPORTS = {
   samples: { ...MAIN },
 }
 
-/** 撮影時のコンテンツ viewport 高さ（chrome 合成分を差し引く） */
-export function contentViewport(key) {
-  const v = VIEWPORTS[key]
+/** 撮影時のコンテンツ viewport 高さ（chrome 合成分を差し引く）。
+ * 任意の viewports マップに対して使える純粋関数（#125 Phase3: SCREENSHOT_SCENARIOS で
+ * 差し替えた外部シナリオの viewport にも同じ計算を適用するため VIEWPORTS への依存を外している）。
+ */
+export function contentViewportOf(viewports, key) {
+  const v = viewports[key]
   if (!v) throw new Error(`未定義の撮影キー: ${key}`)
   const height = v.chrome && !v.fullPage ? v.height - CHROME_BAR_LOGICAL_HEIGHT : v.height
   return { width: v.width, height, fullPage: v.fullPage, chrome: v.chrome }
+}
+
+/** 組み込みの VIEWPORTS を使う既定版 */
+export function contentViewport(key) {
+  return contentViewportOf(VIEWPORTS, key)
 }

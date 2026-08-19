@@ -10,6 +10,9 @@
  *   path     goto するパス（省略時は '/'）
  *   waitFor  goto 直後に出現を待つセレクタ（省略可）
  *   steps    撮影前の操作列（下記 step 語彙）
+ *   assert   任意。撮影直前に「目的の画面が写っているか」を検証する関数 (lang: 'ja'|'en') => 期待テキスト。
+ *            `.reveal .slides section.present` のテキストにこの文字列が含まれない場合は撮影を失敗させる
+ *            （待受セレクタは満たしたが目的の画面が写っていない事故を検出する。#125）
  *
  * step の語彙:
  *   { click: selector }      要素をクリック
@@ -22,16 +25,48 @@
  *   { wait: ms }             指定ms待機
  *   { scrollIntoView: sel }  要素までスクロール
  */
+import { readFileSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
+
+// assert の期待値をハードコードせず fixture から導出するため、ロケールごとに1回だけ読む
+const fixtureSlidesCache = new Map()
+
+/** ロケール別 fixture（撮影対象デッキ）からスライド一覧を読む */
+function fixtureSlides(lang) {
+  if (!fixtureSlidesCache.has(lang)) {
+    const path = resolve(ROOT, `scripts/screenshot/fixtures/slides.${lang}.json`)
+    fixtureSlidesCache.set(lang, JSON.parse(readFileSync(path, 'utf-8')).slides)
+  }
+  return fixtureSlidesCache.get(lang)
+}
+
+/** スライドの主タイトル（content.title、無ければ component.props.title。e2e/fixtures.ts の slideTitle と同じ規則） */
+function slideTitle(slide) {
+  const title = slide.content.title ?? slide.content.component?.props?.title
+  if (!title) throw new Error(`fixture slide has no title: ${slide.id}`)
+  return title
+}
+
+/** fixture の指定インデックスのスライドタイトルを期待値とする assert を作る */
+function titleAssert(index) {
+  return (lang) => slideTitle(fixtureSlides(lang)[index])
+}
 
 /** サンプルスライド（fixture デッキ）を開いてプレゼン画面を表示する共通ステップ */
 const OPEN_SAMPLE = [{ click: '[data-testid="home-sample"]' }, { waitFor: '.reveal .slides section' }, { wait: 500 }]
 
-/** fixture デッキの指定インデックスのスライドを表示して撮影するレイアウト用シナリオ */
-function layoutScenario(key, index, extraWait = 0) {
+/** fixture デッキの指定インデックスのスライドを表示して撮影するレイアウト用シナリオ。
+ * 既定でそのスライドのタイトルが写っていることを assert する（`assert: false` で無効化できる）。
+ */
+function layoutScenario(key, index, extraWait = 0, assert = true) {
   return {
     key,
     waitFor: '[data-testid="home-sample"]',
     steps: [...OPEN_SAMPLE, { hash: `#/${index}` }, { wait: 700 + extraWait }],
+    ...(assert ? { assert: titleAssert(index) } : {}),
   }
 }
 
@@ -108,6 +143,7 @@ export const scenarios = [
   layoutScenario('layout-bleed', 5, 1500),
   layoutScenario('layout-custom', 6, 1500),
 
-  // ロゴ表示（meta.logo。左下に表示される。まとめスライドで見せる）
-  layoutScenario('logo', 7),
+  // ロゴ表示（meta.logo。左下に表示される。まとめスライドで見せる）。
+  // 写り込み事故が起きた対象は layout-* 系のため、assert はまずそちらにだけ付ける（#125）
+  layoutScenario('logo', 7, 0, false),
 ]
