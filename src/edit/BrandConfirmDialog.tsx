@@ -17,7 +17,7 @@ import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { useTranslation } from '../i18n'
-import { getContrastRatio, WCAG_AA_THRESHOLD } from '../applyTheme'
+import { getContrastRatio, WCAG_AA_THRESHOLD, type FontSizeStepKey } from '../applyTheme'
 import type { LogoConfig, SafeArea, SlideData, ThemeData } from '../data'
 import { compile, mediaAssetToDataUrl, mergeCompiledBrandTheme } from '../brand/compile'
 import {
@@ -43,8 +43,9 @@ const HEX_PATTERN = /^#[0-9a-f]{6}$/i
 /** 型階層の段（`fonts.fontSizeRatios` のキー）の表示フォールバック（#316。`compile.ts` の
  * `SLOT_TO_FONT_SIZE_STEP` と対応。locale キーは `FONT_SLOT_ROWS`/`SAFE_AREA_ROWS` と同じく
  * `capitalize()` で導出する。#338 で `t()` 化）。既定比率にしかないキー（subtitle1 等）を
- * 人が上書きした場合はここに無いためキー名をそのまま見せる */
-const FONT_SIZE_STEP_LABEL_FALLBACKS: Record<string, string> = { h1: '表紙タイトル', h2: '章タイトル', h3: '本文見出し' }
+ * 人が上書きした場合はここに無いためキー名をそのまま見せる。キーの型は `applyTheme.ts` の
+ * `FontSizeStepKey`（単一真実源・#333）を引く */
+const FONT_SIZE_STEP_LABEL_FALLBACKS: Record<string, string> = { h1: '表紙タイトル', h2: '章タイトル', h3: '本文見出し' } satisfies Partial<Record<FontSizeStepKey, string>>
 
 /** 書体名の上書きキー（`BrandOverrides.fontOverrides` のうち文字列のスロット。#316） */
 type FontNameOverrideKey = 'heading' | 'headingEa' | 'body' | 'bodyEa'
