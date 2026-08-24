@@ -49,5 +49,16 @@
   "Implementation": "AI-SDD-PRINCIPLES.md 内の英語の一般名詞（\"Implementation is created based on...\"）で、コードシンボルの言及ではない",
   "designConstraint": ".sdd/CONSTITUTION.md・PRD_TEMPLATE.md が定義するドキュメント用語（PRD の「設計制約」を指す語）で、コードシンボルではない",
   "presenterView": "src/hooks/usePresenterView.ts の PRESENTER_WINDOW_LABEL に代入される文字列リテラル値で、識別子としての宣言・プロパティ名にならない",
-  "recentSlidePackages": "src/localSlideLoader.ts の RECENT_PACKAGES_KEY に代入される文字列リテラル値（localStorage キー名）で、識別子としての宣言・プロパティ名にならない"
+  "recentSlidePackages": "src/localSlideLoader.ts の RECENT_PACKAGES_KEY に代入される文字列リテラル値（localStorage キー名）で、識別子としての宣言・プロパティ名にならない",
+  "MediaRecorder": "Web 標準の組み込みコンストラクタ（`new MediaRecorder(...)`）で、src/** の import/宣言に現れない",
+  "MediaStream": "Web 標準の組み込みコンストラクタで、src/** の import/宣言に現れない",
+  "MediaStreamTrack": "Web 標準の組み込み型（getVideoTracks() 等が返す型）で、src/** の import/宣言に現れない",
+  "AudioContext": "Web 標準の組み込みコンストラクタ（Web Audio API）で、src/** の import/宣言に現れない",
+  "HTMLAudioElement": "DOM 標準の組み込み型で、src/** の import/宣言に現れない",
+  "MediaElementAudioSourceNode": "Web Audio API 標準の組み込み型（AudioContext.createMediaElementSource の戻り値型）で、src/** の import/宣言に現れない",
+  "MediaStreamAudioDestinationNode": "Web Audio API 標準の組み込み型（AudioContext.createMediaStreamDestination の戻り値型）で、src/** の import/宣言に現れない",
+  "createMediaElementSource": "Web Audio API 標準のメソッド名（AudioContext.prototype）で、src/** の宣言・プロパティ名パターンに現れない",
+  "createMediaStreamDestination": "Web Audio API 標準のメソッド名（AudioContext.prototype）で、src/** の宣言・プロパティ名パターンに現れない",
+  "Blob": "Web 標準の組み込みコンストラクタで、src/** の import/宣言に現れない",
+  "Uint8Array": "JS 標準の組み込み型付き配列コンストラクタで、src/** の import/宣言に現れない"
 }

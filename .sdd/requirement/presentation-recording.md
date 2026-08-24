@@ -2,7 +2,7 @@
 id: prd-presentation-recording
 title: プレゼンテーション録画（Presentation Recording）要求仕様書
 type: prd
-status: draft
+status: approved
 priority: high
 risk: high
 created: 2026-08-24

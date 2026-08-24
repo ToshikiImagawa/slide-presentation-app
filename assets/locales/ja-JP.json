@@ -158,6 +158,14 @@
       "autoSlideshowOn": "自動スライドショーをOFFにする",
       "autoSlideshowOff": "自動スライドショーをONにする"
     },
+    "recording": {
+      "start": "録画を開始",
+      "stop": "録画を停止",
+      "saving": "保存中…",
+      "unavailable": "この環境では録画を利用できません",
+      "permissionError": "画面共有を開始できませんでした。macOSの「システム設定 > プライバシーとセキュリティ > 画面録画」で許可されているか確認してください",
+      "saveError": "録画ファイルの保存に失敗しました"
+    },
     "aiGenerate": {
       "title": "AI 生成",
       "methodBuiltin": "内蔵（Vertex AI）",

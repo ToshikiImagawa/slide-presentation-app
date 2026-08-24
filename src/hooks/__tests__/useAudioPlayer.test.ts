@@ -156,6 +156,16 @@ describe('useAudioPlayer', () => {
     expect(mockAudioInstance.src).toBe('')
   })
 
+  it('audioElementRef.current が実際の再生に使われる HTMLAudioElement と同一インスタンスである', () => {
+    const { result } = renderHook(() => useAudioPlayer())
+
+    act(() => {
+      result.current.play('/audio/test.mp3')
+    })
+
+    expect(result.current.audioElementRef.current).toBe(mockAudioInstance)
+  })
+
   it('初期状態で currentTime=0, duration=0', () => {
     const { result } = renderHook(() => useAudioPlayer())
     expect(result.current.currentTime).toBe(0)

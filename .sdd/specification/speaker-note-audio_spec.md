@@ -5,7 +5,7 @@ type: spec
 status: approved
 sdd-phase: specify
 created: 2026-02-02
-updated: 2026-07-30
+updated: 2026-08-24
 depends-on:
   - prd-speaker-note-audio
 tags:
@@ -95,6 +95,7 @@ interface UseAudioPlayerReturn {
   onEndedRef: React.MutableRefObject<(() => void) | null> // 音声終了時に呼び出すコールバックを保持する ref
   currentTime: number // 現在の再生位置（秒）
   duration: number // 音声の総時間（秒）
+  audioElementRef: React.RefObject<HTMLAudioElement | null> // 内部で保持する HTMLAudioElement への参照（useRecording が Web Audio API 経由で音声を合成する際に使用する。presentation-recording_design.md 6章参照）
 }
 
 /** useAutoSlideshow の戻り値。scrollSpeed は controlled（Root の useScrollSpeed が所有）のため戻り値には含まない */
