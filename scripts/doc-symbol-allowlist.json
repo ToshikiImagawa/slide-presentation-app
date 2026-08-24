@@ -60,5 +60,7 @@
   "createMediaElementSource": "Web Audio API 標準のメソッド名（AudioContext.prototype）で、src/** の宣言・プロパティ名パターンに現れない",
   "createMediaStreamDestination": "Web Audio API 標準のメソッド名（AudioContext.prototype）で、src/** の宣言・プロパティ名パターンに現れない",
   "Blob": "Web 標準の組み込みコンストラクタで、src/** の import/宣言に現れない",
-  "Uint8Array": "JS 標準の組み込み型付き配列コンストラクタで、src/** の import/宣言に現れない"
+  "Uint8Array": "JS 標準の組み込み型付き配列コンストラクタで、src/** の import/宣言に現れない",
+  "NSCameraUsageDescription": "macOS 標準の Info.plist キー名で、src-tauri/Info.plist に存在する（既知集合の走査対象は src-tauri/src/** の Rust コードのみで Info.plist は対象外）",
+  "NSMicrophoneUsageDescription": "macOS 標準の Info.plist キー名で、src-tauri/Info.plist に存在する（既知集合の走査対象は src-tauri/src/** の Rust コードのみで Info.plist は対象外）"
 }
