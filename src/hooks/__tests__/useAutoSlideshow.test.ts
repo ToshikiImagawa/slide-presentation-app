@@ -26,6 +26,7 @@ function createMockAudioPlayer(): UseAudioPlayerReturn {
     onEndedRef: { current: null },
     currentTime: 0,
     duration: 0,
+    audioElementRef: { current: null },
   }
 }
 

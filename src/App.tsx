@@ -6,6 +6,7 @@ import { PdfExportButton } from './components/PdfExportButton'
 import type { PdfExportState } from './components/PdfExportButton'
 import { PdfExportOverlay } from './components/PdfExportOverlay'
 import { PresenterViewButton } from './components/PresenterViewButton'
+import { RecordingButton } from './components/RecordingButton'
 import { SettingsButton } from './components/SettingsButton'
 import { SlideRenderer } from './components/SlideRenderer'
 import { ToolbarVisibilityButton } from './components/ToolbarVisibilityButton'
@@ -19,6 +20,7 @@ import { useToast } from './toast'
 import { useAudioPlayer } from './hooks/useAudioPlayer'
 import { useAutoSlideshow } from './hooks/useAutoSlideshow'
 import { usePresenterView } from './hooks/usePresenterView'
+import { useRecording } from './hooks/useRecording'
 import { useCircularProgress } from './hooks/useCircularProgress'
 import { useReveal } from './hooks/useReveal'
 import { useVisualCheckWarnings } from './hooks/useVisualCheckWarnings'
@@ -62,6 +64,11 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
   const [pdfExportState, setPdfExportState] = useState<PdfExportState>('idle')
 
   const audioPlayer = useAudioPlayer()
+  const recording = useRecording({ audioElementRef: audioPlayer.audioElementRef })
+  const handleRecordingToggle = useCallback(() => {
+    if (recording.state === 'recording') recording.stop()
+    else recording.start()
+  }, [recording])
 
   // ref で最新値を保持（コールバックからの stale closure 回避）
   const goToNextRef = useRef<() => void>(() => {})
@@ -281,6 +288,7 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
           progressPaused={progressPaused}
         />
         <PdfExportButton onClick={handlePdfExport} state={pdfExportState} />
+        <RecordingButton state={recording.state} onToggle={handleRecordingToggle} />
         <PresenterViewButton onClick={openPresenterView} isOpen={isOpen} />
       </div>
       <PdfExportOverlay open={pdfExportState === 'exporting'} />

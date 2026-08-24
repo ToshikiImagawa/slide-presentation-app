@@ -158,6 +158,14 @@
       "autoSlideshowOn": "Désactiver le diaporama automatique",
       "autoSlideshowOff": "Activer le diaporama automatique"
     },
+    "recording": {
+      "start": "Démarrer l'enregistrement",
+      "stop": "Arrêter l'enregistrement",
+      "saving": "Enregistrement…",
+      "unavailable": "L'enregistrement n'est pas disponible dans cet environnement",
+      "permissionError": "Impossible de démarrer le partage d'écran. Vérifiez que l'enregistrement d'écran est autorisé dans Réglages système > Confidentialité et sécurité > Enregistrement de l'écran",
+      "saveError": "Échec de l'enregistrement du fichier vidéo"
+    },
     "aiGenerate": {
       "title": "Génération IA",
       "methodBuiltin": "Intégré (Vertex AI)",

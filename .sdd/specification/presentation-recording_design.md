@@ -2,9 +2,9 @@
 id: design-presentation-recording
 title: プレゼンテーション録画（Presentation Recording）技術設計書
 type: design
-status: draft
+status: approved
 sdd-phase: plan
-impl-status: not-implemented
+impl-status: implemented
 priority: high
 risk: high
 created: 2026-08-24
@@ -32,16 +32,27 @@ category: presentation
 
 # 1. 実装ステータス
 
-**ステータス:** 🔴 未実装
+**ステータス:** 🟢 実装済み
 
 ## 1.1. 実装進捗
 
 | モジュール/機能 | ステータス | 備考 |
 |----------|-------|------|
-| `useAudioPlayer` 拡張（audioElementRef公開） | 🔴 | 既存フックへの後方互換な拡張 |
-| `useRecording` フック | 🔴 | 画面/音声キャプチャ・MediaRecorder制御・保存 |
-| `RecordingButton` コンポーネント | 🔴 | SVGアイコン + CSS Modules |
-| App.tsx 統合 | 🔴 | フック接続とツールバーへの配置 |
+| `useAudioPlayer` 拡張（audioElementRef公開） | 🟢 | 既存フックへの後方互換な拡張。`src/hooks/useAudioPlayer.ts` |
+| `useRecording` フック | 🟢 | 画面/音声キャプチャ・MediaRecorder制御・保存。`src/hooks/useRecording.ts` |
+| `RecordingButton` コンポーネント | 🟢 | SVGアイコン + CSS Modules。`src/components/RecordingButton.tsx` |
+| App.tsx 統合 | 🟢 | フック接続とツールバーへの配置。`src/App.tsx` |
+
+## 1.2. 実機（macOS）確認状況
+
+| 項目 | 状態 | 備考 |
+|----------|-------|------|
+| 録画開始/停止・画面/音声の記録 | 🟢 確認済み | 画面遷移とvoice音声を記録した動画ファイルの生成をバイナリ解析・再生で確認 |
+| 動画ファイルの保存・再生 | 🟢 確認済み | QuickTime Playerで再生し、映像・音声を確認 |
+| 画面録画権限の初回許可フロー | ⚪ 未確認 | マージ前の完了を推奨するが実装のブロッカーではない |
+| 自動再生・自動スライドショー併用のハンズフリー録画（FR-PR-004） | ⚪ 未確認 | 同上 |
+| 録画あり/なしでのスライド遷移の視覚的コマ落ち比較（NFR-PR-003） | ⚪ 未確認 | 同上 |
+| 複数回録画時のメモリ確保・解放（リソースリーク） | ⚪ 未確認 | 同上 |
 
 ---
 
@@ -184,28 +195,39 @@ interface RecordingButtonProps {
 | `getDisplayMedia()` の音声取得 | `{ video: true, audio: true }`（画面/ウィンドウ自体の音声も取得） / `{ video: true, audio: false }`（映像トラックのみ） | `{ video: true, audio: false }` | 画面共有自体からの音声取得は行わず、録画対象の音声はWeb Audio API経由のvoice再生音のみに限定する（PRD「7. スコープ外」の「アプリ外のシステム音声の録音」除外との整合） |
 | ファイル保存方式 | 専用Rustコマンドを新設 / 既存の `pdfExport.ts` と同じ dialog+fs パターン | 既存パターンを再利用（`save()` + `writeFile()`） | 既存実装と一貫性があり、追加のTauri capability変更が不要 |
 | 保存先選択キャンセル時の扱い | 記録済みデータを保持し再保存を試行可能にする / 破棄してidleに戻す | 破棄してidleに戻す | `pdfExport.ts` の保存キャンセル時（`PdfExportResult: 'cancelled'`）と同じ簡潔な挙動に揃える。再保存機能はPRDのスコープ外 |
+| 動画コンテナ/MIMEタイプの決定方式 | `video/webm` に固定する / 対応形式の中から `video/mp4` を最優先する（`MediaRecorder.isTypeSupported()` で実行時に判定し、非対応時のみ `video/webm` にフォールバック） | MP4を最優先する実行時判定を採用（`useRecording.ts` の `MIME_TYPE_CANDIDATES`/`pickSupportedMimeType`/`extensionForMimeType`） | #381 実機確認（macOS）で判明: `mimeType` 未指定時のWKWebViewの既定出力はMP4（fragmented, `ftyp iso5/hlsf`）だが、`video/webm;codecs=vp9,opus` を明示指定すると実際に有効なWebM（EBML, `1A 45 DF A3`）も生成できる。しかしmacOSのQuickTime等OS標準プレイヤーはWebMを再生できないため、WebMに対応していても再生できるファイルにはならない。そのため対応可否に関わらずMP4を最優先し、MP4非対応のWebViewエンジンでのみWebMにフォールバックする方式にした（固定拡張子だと実体と食い違う問題も併せて解消） |
 
 ## 9.2. 原則準拠チェックリスト
 
-- [ ] A-002: レコーディングボタン・録画中インジケータのスタイリングはCSS変数経由でテーマカラーを参照する
-- [ ] A-004: レコーディングボタン・録画中インジケータはComponentRegistry管理の対象外とし、App.tsxで直接構成する
-- [ ] A-005: 共有選択キャンセル・録画エラー・共有停止時もプレゼンテーション表示自体は継続する
-- [ ] B-001: 録画機能の追加が既存の表示品質・操作性を損なわない
-- [ ] T-001: `useRecording`/`RecordingButton` はTypeScript strictモードで型安全に実装する
-- [ ] T-003: MediaRecorder/MediaStream/AudioContextのリソースをuseEffectのクリーンアップで解放する
+- [x] A-002: レコーディングボタン・録画中インジケータのスタイリングはCSS変数経由でテーマカラーを参照する
+- [x] A-004: レコーディングボタン・録画中インジケータはComponentRegistry管理の対象外とし、App.tsxで直接構成する
+- [x] A-005: 共有選択キャンセル・録画エラー・共有停止時もプレゼンテーション表示自体は継続する
+- [x] B-001: 録画機能の追加が既存の表示品質・操作性を損なわない
+- [x] T-001: `useRecording`/`RecordingButton` はTypeScript strictモードで型安全に実装する
+- [x] T-003: MediaRecorder/MediaStream/AudioContextのリソースをuseEffectのクリーンアップで解放する
 
 ## 9.3. 未解決の課題
 
 | 課題 | 影響度 | 対応方針 |
 |------|-----|------|
-| `MediaRecorder` の出力形式（webm）がOS標準の動画プレイヤーでそのまま開けない場合がある | 中 | 初期実装はwebmのまま提供する。mp4等への変換が必要になった場合は追加ライブラリの要否を含め別途検討する |
 | `<audio>` 要素を `createMediaElementSource` に接続した場合の通常再生（音量・ミュート等）への影響 | 低 | 実装時にmacOS実機で検証する。スピーカー出力用の接続（9.1参照）で通常再生を維持する方針とする |
 | WebViewごとの `getDisplayMedia`/`MediaRecorder` 対応差異（Windows WebView2等） | 中 | まずmacOS（WKWebView）での動作を優先実装する。他OSでの動作保証はPRDのスコープ外（[presentation-recording.md](../requirement/presentation-recording.md) 7. スコープ外）とする |
 | NFR-PR-001（macOS権限の事前案内）が初期実装では未対応 | 中 | 初期実装はエラー時フィードバックのみで暫定対応する（7章参照）。事前確認ダイアログ等の追加提示は本実装完了後に別途検討する |
 
+**解決済み（#381 実機確認により判明・対応済み）**:
+
+- `MediaRecorder` の出力形式が固定拡張子（webm）だと実体と食い違う課題、およびOS標準プレイヤーで再生できない課題: macOS実機確認の結果、①`mimeType`未指定時のWKWebViewの既定出力はMP4（fragmented）である、②`video/webm;codecs=vp9,opus`を明示指定すると実際に有効なWebMも生成できる（技術的にはサポートされている）、の両方が判明した。QuickTime等OS標準プレイヤーはWebMを再生できないため、対応可否に関わらずMP4を最優先し、非対応時のみWebMにフォールバックする方式（9.1参照）を実装して解決した
+
 ---
 
 # 10. 変更履歴
+
+## v1.1.0 (2026-08-24)
+
+**実機確認（macOS）に基づく修正（2回の実機確認を経て確定）:**
+
+- 1回目の実機確認: `mimeType`未指定でMediaRecorderを生成すると、WKWebViewの既定出力はMP4（fragmented, `ftyp iso5/hlsf`）であり、固定拡張子`.webm`のまま保存すると実体と食い違うことが判明。`MediaRecorder.isTypeSupported()`による実行時判定を実装し、対応形式に応じて拡張子を動的に決定する方式に変更した
+- 2回目の実機確認: 上記の実行時判定が`video/webm;codecs=vp9,opus`を対応形式として検出し、実際に有効なWebMファイルとして保存されることを確認（WKWebViewはWebM自体には対応している）。しかしmacOSのQuickTime等OS標準プレイヤーはWebMを再生できないため、対応可否に関わらずMP4を最優先する方式に変更した（`MIME_TYPE_CANDIDATES`の順序をMP4優先に変更。9.1決定事項に追記、9.3未解決課題から解決済みへ移動）
 
 ## v1.0.0 (2026-08-24)
 

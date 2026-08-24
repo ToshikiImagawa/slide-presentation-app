@@ -158,6 +158,14 @@
       "autoSlideshowOn": "Turn off auto-slideshow",
       "autoSlideshowOff": "Turn on auto-slideshow"
     },
+    "recording": {
+      "start": "Start recording",
+      "stop": "Stop recording",
+      "saving": "Saving…",
+      "unavailable": "Recording is not available in this environment",
+      "permissionError": "Could not start screen sharing. Check that screen recording is allowed in macOS System Settings > Privacy & Security > Screen Recording",
+      "saveError": "Failed to save the recording"
+    },
     "aiGenerate": {
       "title": "AI Generate",
       "methodBuiltin": "Built-in (Vertex AI)",

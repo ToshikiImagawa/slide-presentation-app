@@ -2,7 +2,7 @@
 id: spec-presentation-recording
 title: プレゼンテーション録画（Presentation Recording）抽象仕様書
 type: spec
-status: draft
+status: approved
 sdd-phase: specify
 priority: high
 risk: high

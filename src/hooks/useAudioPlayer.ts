@@ -18,6 +18,8 @@ export interface UseAudioPlayerReturn {
   currentTime: number
   /** 音声の総時間（秒） */
   duration: number
+  /** 内部で保持する HTMLAudioElement への参照。useRecording が Web Audio API 経由で音声を合成する際に使用する */
+  audioElementRef: React.RefObject<HTMLAudioElement | null>
 }
 
 export function useAudioPlayer(): UseAudioPlayerReturn {
@@ -146,5 +148,6 @@ export function useAudioPlayer(): UseAudioPlayerReturn {
     onEndedRef,
     currentTime,
     duration,
+    audioElementRef: audioRef,
   }
 }
