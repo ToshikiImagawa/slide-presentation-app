@@ -1,10 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  macOS の追加 Info.plist（#381）。tauri.conf.json と同じディレクトリに置くと Tauri バンドラが
+  既定の Info.plist へ自動マージするため、bundle.macOS.infoPlist での明示は不要。
+
+  カメラ・マイクは一切使用しない。WKWebView は NSCameraUsageDescription / NSMicrophoneUsageDescription
+  のいずれも無い場合、実際のアクセスとは無関係に navigator.mediaDevices 自体を JS 環境から非公開にする
+  （getDisplayMedia を含む）ため、プレゼンテーション録画機能を成立させる目的でのみ宣言している。
+  npm run tauri:dev は非バンドルの生バイナリを実行するためこの制約を受けず、dev では再現しない。
+  詳細は .sdd/specification/presentation-recording_design.md の 9.1 決定事項を参照。
+-->
 <plist version="1.0">
 <dict>
   <key>NSCameraUsageDescription</key>
-  <string>Not used directly. WKWebView requires this key to expose navigator.mediaDevices, which the presentation recording feature needs for screen capture (getDisplayMedia). Camera access is never requested.</string>
+  <string>Required to enable presentation screen recording. The camera is never accessed.</string>
   <key>NSMicrophoneUsageDescription</key>
-  <string>Not used directly. WKWebView requires this key to expose navigator.mediaDevices, which the presentation recording feature needs for screen capture (getDisplayMedia). Microphone access is never requested.</string>
+  <string>Required to enable presentation screen recording. The microphone is never accessed.</string>
 </dict>
 </plist>
