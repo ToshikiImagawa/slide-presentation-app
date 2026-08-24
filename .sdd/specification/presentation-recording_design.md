@@ -42,6 +42,7 @@ category: presentation
 | `useRecording` フック | 🟢 | 画面/音声キャプチャ・MediaRecorder制御・保存。`src/hooks/useRecording.ts` |
 | `RecordingButton` コンポーネント | 🟢 | SVGアイコン + CSS Modules。`src/components/RecordingButton.tsx` |
 | App.tsx 統合 | 🟢 | フック接続とツールバーへの配置。`src/App.tsx` |
+| `src-tauri/Info.plist`（`NSCameraUsageDescription`/`NSMicrophoneUsageDescription`） | 🟢 | macOSの本番appバンドルで `navigator.mediaDevices` を公開させるために必須（9.1参照）。実際のカメラ/マイクアクセスは行わない |
 
 ## 1.2. 実機（macOS）確認状況
 
@@ -49,6 +50,7 @@ category: presentation
 |----------|-------|------|
 | 録画開始/停止・画面/音声の記録 | 🟢 確認済み | 画面遷移とvoice音声を記録した動画ファイルの生成をバイナリ解析・再生で確認 |
 | 動画ファイルの保存・再生 | 🟢 確認済み | QuickTime Playerで再生し、映像・音声を確認 |
+| 本番appバンドル（`npm run tauri:build`）での動作確認 | 🟢 確認済み | `Info.plist` 追加前は `navigator.mediaDevices` が非公開になり録画ボタンが無効化される不具合があった。追加後に解消を確認（9.1・9.3参照） |
 | 画面録画権限の初回許可フロー | ⚪ 未確認 | マージ前の完了を推奨するが実装のブロッカーではない |
 | 自動再生・自動スライドショー併用のハンズフリー録画（FR-PR-004） | ⚪ 未確認 | 同上 |
 | 録画あり/なしでのスライド遷移の視覚的コマ落ち比較（NFR-PR-003） | ⚪ 未確認 | 同上 |
@@ -196,6 +198,7 @@ interface RecordingButtonProps {
 | ファイル保存方式 | 専用Rustコマンドを新設 / 既存の `pdfExport.ts` と同じ dialog+fs パターン | 既存パターンを再利用（`save()` + `writeFile()`） | 既存実装と一貫性があり、追加のTauri capability変更が不要 |
 | 保存先選択キャンセル時の扱い | 記録済みデータを保持し再保存を試行可能にする / 破棄してidleに戻す | 破棄してidleに戻す | `pdfExport.ts` の保存キャンセル時（`PdfExportResult: 'cancelled'`）と同じ簡潔な挙動に揃える。再保存機能はPRDのスコープ外 |
 | 動画コンテナ/MIMEタイプの決定方式 | `video/webm` に固定する / 対応形式の中から `video/mp4` を最優先する（`MediaRecorder.isTypeSupported()` で実行時に判定し、非対応時のみ `video/webm` にフォールバック） | MP4を最優先する実行時判定を採用（`useRecording.ts` の `MIME_TYPE_CANDIDATES`/`pickSupportedMimeType`/`extensionForMimeType`） | #381 実機確認（macOS）で判明: `mimeType` 未指定時のWKWebViewの既定出力はMP4（fragmented, `ftyp iso5/hlsf`）だが、`video/webm;codecs=vp9,opus` を明示指定すると実際に有効なWebM（EBML, `1A 45 DF A3`）も生成できる。しかしmacOSのQuickTime等OS標準プレイヤーはWebMを再生できないため、WebMに対応していても再生できるファイルにはならない。そのため対応可否に関わらずMP4を最優先し、MP4非対応のWebViewエンジンでのみWebMにフォールバックする方式にした（固定拡張子だと実体と食い違う問題も併せて解消） |
+| macOS本番appバンドルでの `navigator.mediaDevices` 公開方法 | 何もしない（追加設定なし） / `src-tauri/Info.plist` に `NSCameraUsageDescription`・`NSMicrophoneUsageDescription` を追加する | Info.plistに両キーを追加する（`src-tauri/Info.plist`。Tauriが `tauri.conf.json` と同じディレクトリの `Info.plist` を自動マージする仕様を利用） | v2.3.0リリース準備中の実機確認（`npm run tauri:build`）で判明: macOSのWKWebViewは、appバンドルのInfo.plistに `NSCameraUsageDescription`/`NSMicrophoneUsageDescription` のいずれも無い場合、実際のカメラ/マイクアクセスとは無関係に `navigator.mediaDevices` 自体をJS環境から完全に非公開にする（`getDisplayMedia` を含む）。`npm run tauri:dev` はバンドル化されていない生バイナリ（`target/debug/app`）を直接実行するためこの制約を受けず、動作確認では気づけなかった。カメラ・マイクは実際には一切使用しないが、`navigator.mediaDevices` を公開させる目的でのみこの2キーを宣言する |
 
 ## 9.2. 原則準拠チェックリスト
 
@@ -217,10 +220,18 @@ interface RecordingButtonProps {
 **解決済み（#381 実機確認により判明・対応済み）**:
 
 - `MediaRecorder` の出力形式が固定拡張子（webm）だと実体と食い違う課題、およびOS標準プレイヤーで再生できない課題: macOS実機確認の結果、①`mimeType`未指定時のWKWebViewの既定出力はMP4（fragmented）である、②`video/webm;codecs=vp9,opus`を明示指定すると実際に有効なWebMも生成できる（技術的にはサポートされている）、の両方が判明した。QuickTime等OS標準プレイヤーはWebMを再生できないため、対応可否に関わらずMP4を最優先し、非対応時のみWebMにフォールバックする方式（9.1参照）を実装して解決した
+- macOS本番appバンドルで録画機能が完全に利用不可（`navigator.mediaDevices`が非公開）だった課題: `npm run tauri:build` で生成した本番appバンドルで実機確認した結果、録画ボタンが常に無効化状態（`RecordingState: 'error'`）になっていた。原因はWKWebViewがappバンドルのInfo.plistに`NSCameraUsageDescription`/`NSMicrophoneUsageDescription`のいずれも無い場合に`navigator.mediaDevices`自体を非公開にする仕様だったため。`src-tauri/Info.plist`に両キーを追加して解決した（9.1参照。`npm run tauri:dev`はバンドル化されない生バイナリのためこの制約を受けず、開発時には検出できなかった）
 
 ---
 
 # 10. 変更履歴
+
+## v1.2.0 (2026-08-24)
+
+**v2.3.0リリース準備中の実機確認（本番appバンドル）に基づく修正:**
+
+- `npm run tauri:build` で生成した本番appバンドルで録画ボタンが常に無効化されている不具合を発見。原因はmacOSのWKWebViewが、Info.plistに`NSCameraUsageDescription`/`NSMicrophoneUsageDescription`のいずれも無い場合に`navigator.mediaDevices`自体を非公開にする仕様のため（`getDisplayMedia`を含む全メディアキャプチャAPIが影響を受ける）。`npm run tauri:dev`は非バンドルの生バイナリを実行するためこの制約を受けず、それまでの実機確認では発見できなかった
+- `src-tauri/Info.plist`を新規作成し、上記2キーを追加して解決（実際のカメラ・マイクアクセスは行わない。9.1決定事項に追記）
 
 ## v1.1.0 (2026-08-24)
 
