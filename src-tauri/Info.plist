@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>NSCameraUsageDescription</key>
+  <string>Not used directly. WKWebView requires this key to expose navigator.mediaDevices, which the presentation recording feature needs for screen capture (getDisplayMedia). Camera access is never requested.</string>
+  <key>NSMicrophoneUsageDescription</key>
+  <string>Not used directly. WKWebView requires this key to expose navigator.mediaDevices, which the presentation recording feature needs for screen capture (getDisplayMedia). Microphone access is never requested.</string>
+</dict>
+</plist>
