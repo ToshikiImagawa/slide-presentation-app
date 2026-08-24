@@ -159,6 +159,12 @@ function collectJsonSymbols(content, known) {
   }
 }
 
+// macOS の Info.plist のキー名（`NSCameraUsageDescription` 等）も tauri.conf.json と同じ宣言的な設定キーで、
+// ドキュメントが設定キーとして言及する。XML なので JSON 収集では拾えない
+function collectPlistSymbols(content, known) {
+  for (const match of content.matchAll(/<key>\s*([A-Za-z_$][A-Za-z0-9_$]*)\s*<\/key>/g)) known.add(match[1])
+}
+
 function listExtFiles(dir, exts) {
   return listFilesUnder(dir).filter((path) => exts.some((ext) => path.endsWith(ext)))
 }
@@ -167,6 +173,7 @@ function listExtFiles(dir, exts) {
 // その内部動作（関数名・変数名）を頻繁に説明するため、走査対象に含めないと allowlist が肥大化する
 const EXTRA_JS_FILES = ['vite.config.ts']
 const JSON_CONFIG_FILES = ['tsconfig.json', 'src-tauri/tauri.conf.json']
+const PLIST_CONFIG_FILES = ['src-tauri/Info.plist']
 
 function buildKnownSymbols() {
   const known = new Set()
@@ -181,6 +188,9 @@ function buildKnownSymbols() {
   for (const file of cssFiles) collectCssSymbols(readFileSync(resolve(ROOT, file), 'utf8'), known)
   for (const file of JSON_CONFIG_FILES.filter((path) => existsSync(resolve(ROOT, path)))) {
     collectJsonSymbols(readFileSync(resolve(ROOT, file), 'utf8'), known)
+  }
+  for (const file of PLIST_CONFIG_FILES.filter((path) => existsSync(resolve(ROOT, path)))) {
+    collectPlistSymbols(readFileSync(resolve(ROOT, file), 'utf8'), known)
   }
   collectFileNameSymbols([...jsFiles, ...rustFiles, ...scriptFiles], known)
   return known
@@ -447,7 +457,7 @@ function main() {
   const symbolFailures = []
   for (const ref of symbolCandidates) {
     if (knownSymbols.has(ref.text) || Object.hasOwn(allowlist, ref.text)) continue
-    symbolFailures.push(`${ref.doc}: \`${ref.text}\` という識別子が src/**・src-tauri/src/** に見つかりません`)
+    symbolFailures.push(`${ref.doc}: \`${ref.text}\` という識別子が実装（src/**・src-tauri/src/**・scripts/** と設定ファイル）に見つかりません`)
   }
   failures.push(...symbolFailures)
 
