@@ -6,6 +6,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.3.0] - 2026-08-24
+
 ### Added
 
 - Added presentation recording: a toolbar button records the screen/window share together with the speaker-note voice playback, and saves the result as a video file
