@@ -707,7 +707,7 @@ the presenter view's control bar.
 To get the toolbar out of the way entirely, use the **Hide toolbar** button in the top-left toolbar or press `T`. While
 hidden, the button itself is not clickable either, so press `T` again to bring the toolbar back.
 
-![Toolbar — left: Home / Edit / Hide toolbar / Settings, right: audio playback / auto-play / auto-slideshow / export as PDF / presenter view](resources/screenshots/en/toolbar.png)
+![Toolbar — left: Home / Edit / Hide toolbar / Settings, right: audio playback / auto-play / auto-slideshow / export as PDF / recording / presenter view](resources/screenshots/en/toolbar.png)
 
 ### Manual Playback
 
@@ -730,6 +730,25 @@ through all slides.
 Click the **Save as PDF** button in the top-right toolbar to export the current deck as a PDF, one page per slide.
 Pick a destination in the native save dialog; while the export is running, the button shows a busy state and is
 disabled.
+
+## Recording
+
+Click the record button in the top-right toolbar (next to **Save as PDF**) to record the screen/window you choose to
+share together with the current slide's speaker-note voice playback, and save the result as a video file.
+
+- Clicking it opens the OS screen/window sharing picker; recording starts once a selection is made. Canceling the
+  picker leaves the button in its original state.
+- While recording, the button's appearance changes to indicate that recording is in progress. It works alongside
+  auto-play and auto-slideshow, so an unattended, fully automated presentation can be recorded end to end.
+- Click the button again to stop; a native save dialog lets you choose where to write the video file (`.mp4`,
+  falling back to `.webm` on WebViews that don't support MP4 recording).
+- If screen sharing is lost or an error occurs mid-recording, the app safely stops recording and offers to save
+  whatever was captured, without interrupting the presentation itself.
+
+> **macOS note:** screen recording requires the **Screen Recording** permission under **System Settings → Privacy &
+> Security**. The app's `Info.plist` declares camera/microphone usage descriptions solely to satisfy WKWebView's
+> requirement for exposing `navigator.mediaDevices` (including `getDisplayMedia`) — the app itself never accesses
+> the camera or microphone.
 
 ## Keyboard Shortcuts
 
