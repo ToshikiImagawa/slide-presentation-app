@@ -1376,6 +1376,26 @@ describe('SlideRenderer', () => {
     })
   })
 
+  // content.title は subtitle/body/quote/message 等と同じ renderWithLineBreaks で \n を解釈する。
+  // title の描画経路は SlideHeading（表紙・bleed）、UnderlinedHeading（章扉）、ContentLayout
+  // （content/two-column）の3つに分かれるため、経路ごとに1件ずつ固定する
+  describe('タイトルの改行（\\n）対応', () => {
+    it('表紙（center・variant無指定）の title は改行（\\n）を br に展開する', () => {
+      const { container } = renderWithTheme(<SlideRenderer slides={[{ id: 'test-title-linebreak', layout: 'center', content: { title: '1行目\n2行目' } }]} />)
+      expect(container.querySelector('h1')!.querySelector('br')).not.toBeNull()
+    })
+
+    it('章扉（center・variant: section）の title は改行（\\n）を br に展開する', () => {
+      const { container } = renderWithTheme(<SlideRenderer slides={[{ id: 'test-section-linebreak', layout: 'center', content: { variant: 'section', title: '1行目\n2行目' } }]} />)
+      expect(container.querySelector('.section-title-layout h2')!.querySelector('br')).not.toBeNull()
+    })
+
+    it('contentレイアウトの title は改行（\\n）を br に展開する', () => {
+      const { container } = renderWithTheme(<SlideRenderer slides={[{ id: 'test-content-title-linebreak', layout: 'content', content: { title: '1行目\n2行目', body: '本文' } }]} />)
+      expect(container.querySelector('.slide-title')!.querySelector('br')).not.toBeNull()
+    })
+  })
+
   // #259: two-column のカラムに置いた「埋めるコンポーネント」の高さ解決。
   // 埋める要素（.content-area-fill-item）は fill ホスト（.content-area-fill）の中に置かれて初めて
   // 残り高さを受け取るため、カラム自身がホストを名乗る必要がある（ホストを .content-area 側に付けると
