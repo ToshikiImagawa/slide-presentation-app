@@ -3,7 +3,7 @@ import type { SxProps, Theme } from '@mui/material/styles'
 import Typography from '@mui/material/Typography'
 
 type Props = {
-  title: string
+  title: ReactNode
   variant?: 'h1' | 'h2' | 'h3'
   description?: ReactNode | ReactNode[]
   sx?: SxProps<Theme>

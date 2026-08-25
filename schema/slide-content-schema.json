@@ -4,7 +4,7 @@
     "center": {
       "description": "タイトルバーを持たない中央寄せレイアウト。variant 無指定は表紙・まとめ（title＋subtitle）で、variant で章扉（section）・引用（quote）・大メッセージ（message / message-inverse）・締め（closing）に切り替わる。1枚1メッセージの種別は章の切り替えや結びに使い、本文を詰め込まない（#197）",
       "contentFields": {
-        "title": { "type": "string" },
+        "title": { "type": "string", "description": "タイトル（改行は \\n）" },
         "subtitle": { "type": "string", "description": "サブタイトル（改行は \\n）" },
         "variant": {
           "type": "string",
@@ -22,7 +22,7 @@
     "content": {
       "description": "コンテンツ表示用レイアウト。子要素のフィールドで描画が決まる。優先順位: steps→Timeline / dateTimeline→日付付きマイルストーンタイムライン / checklist→チェックリスト / toc→目次 / tiles→FeatureTileGrid / profile→プロフィール（自己紹介）/ images→画像スライド / svg→インラインSVG / textDiagram→テキスト図法（Mermaid） / chart→チャート / table→表 / compare→比較 / flow→横フロー / hierarchyDiagram→階層構成図 / serverDiagram→サーバ/クラウド構成図 / orgChart→組織図 / classDiagram→UMLクラス図 / sequenceDiagram→UMLシーケンス図 / flowchart→フローチャート / swimlane→スイムレーン / gantt→ガント / twoByTwo→2×2マトリクス / funnel→ファネル / swot→SWOT / heatmap→ヒートマップ / component→カスタム。いずれも無指定の場合に限り body/items（プレーン本文）を描画する（#193・#200・#199・#195・#205・#206・#207・#203・#269・#324）",
       "contentFields": {
-        "title": { "type": "string" },
+        "title": { "type": "string", "description": "タイトル（改行は \\n）" },
         "steps": {
           "type": "array",
           "maxItems": 8,
@@ -164,7 +164,7 @@
     "two-column": {
       "description": "左右2カラムレイアウト。left/rightは columnContentFields を組み合わせて構成する",
       "contentFields": {
-        "title": { "type": "string" },
+        "title": { "type": "string", "description": "タイトル（改行は \\n）" },
         "left": { "type": "object", "ref": "columnContentFields" },
         "right": { "type": "object", "ref": "columnContentFields" }
       }
@@ -172,7 +172,7 @@
     "bleed": {
       "description": "2カラム全幅レイアウト。左にテキスト、右にコンポーネント",
       "contentFields": {
-        "title": { "type": "string" },
+        "title": { "type": "string", "description": "タイトル（改行は \\n）" },
         "titleDescription": { "type": "string" },
         "commands": {
           "type": "array",

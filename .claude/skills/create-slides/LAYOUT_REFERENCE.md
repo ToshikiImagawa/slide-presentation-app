@@ -13,7 +13,7 @@
   "id": "slide-id",
   "layout": "center",
   "content": {
-    "title": "タイトル",
+    "title": "タイトル（改行は \\n）",
     "subtitle": "サブタイトル（改行は \\n）"
   }
 }
@@ -27,7 +27,7 @@
   "layout": "center",
   "content": {
     "variant": "section",
-    "title": "まとめタイトル",
+    "title": "まとめタイトル（改行は \\n）",
     "body": "本文テキスト（改行は \\n）",
     "qrCode": "https://github.com/...",
     "githubRepo": "owner/repo"
@@ -99,7 +99,7 @@
   "id": "slide-id",
   "layout": "content",
   "content": {
-    "title": "タイトル",
+    "title": "タイトル（改行は \\n）",
     "body": "本文テキスト（改行は \\n）",
     "items": [
       { "text": "項目1", "emphasis": true },
@@ -122,7 +122,7 @@
   "id": "slide-id",
   "layout": "content",
   "content": {
-    "title": "ワークフロー",
+    "title": "ワークフロー（改行は \\n）",
     "steps": [
       { "number": 1, "title": "Step 1", "description": "説明", "command": "/optional" },
       { "number": 2, "title": "Step 2", "description": "説明" }
@@ -139,7 +139,7 @@
   "id": "slide-id",
   "layout": "content",
   "content": {
-    "title": "作業手順",
+    "title": "作業手順（改行は \\n）",
     "stepColumns": 2,
     "steps": [
       { "number": 1, "title": "Step 1", "description": "説明" },
@@ -158,7 +158,7 @@
   "id": "slide-id",
   "layout": "content",
   "content": {
-    "title": "リリース前チェック",
+    "title": "リリース前チェック（改行は \\n）",
     "checklist": [{ "title": "テストが通った", "description": "説明（<br/>等HTMLタグ利用可）", "checked": true }, { "title": "CI が緑になった" }]
   }
 }
@@ -171,7 +171,7 @@
   "id": "slide-id",
   "layout": "content",
   "content": {
-    "title": "機能一覧",
+    "title": "機能一覧（改行は \\n）",
     "tileColumns": 3,
     "tiles": [
       {
@@ -199,7 +199,7 @@
   "id": "slide-id",
   "layout": "content",
   "content": {
-    "title": "タイトル",
+    "title": "タイトル（改行は \\n）",
     "images": [
       {
         "src": "image/screenshot.png",
@@ -222,7 +222,7 @@
   "id": "slide-id",
   "layout": "content",
   "content": {
-    "title": "タイトル",
+    "title": "タイトル（改行は \\n）",
     "svg": {
       "markup": "<svg viewBox=\"0 0 100 100\"><circle cx=\"50\" cy=\"50\" r=\"40\" fill=\"currentColor\" /></svg>",
       "color": "primary",
@@ -245,7 +245,7 @@ Mermaid記法でダイアグラムをソースとして書ける。
   "id": "slide-id",
   "layout": "content",
   "content": {
-    "title": "タイトル",
+    "title": "タイトル（改行は \\n）",
     "textDiagram": {
       "source": "flowchart LR\n  A[開始] --> B{判断}\n  B -->|Yes| C[完了]\n  B -->|No| A",
       "caption": "図の下に表示するキャプション"
@@ -277,7 +277,7 @@ mermaidはd3/dagre/katex/cytoscape等の重い依存を持ち込むため、コ�
   "id": "slide-id",
   "layout": "content",
   "content": {
-    "title": "タイトル",
+    "title": "タイトル（改行は \\n）",
     "chart": {
       "type": "bar",
       "unit": "%",
@@ -298,7 +298,7 @@ mermaidはd3/dagre/katex/cytoscape等の重い依存を持ち込むため、コ�
   "id": "slide-id",
   "layout": "content",
   "content": {
-    "title": "タイトル",
+    "title": "タイトル（改行は \\n）",
     "chart": {
       "type": "kpi",
       "label": "月間アクティブユーザー",
@@ -317,7 +317,7 @@ mermaidはd3/dagre/katex/cytoscape等の重い依存を持ち込むため、コ�
   "id": "slide-id",
   "layout": "content",
   "content": {
-    "title": "タイトル",
+    "title": "タイトル（改行は \\n）",
     "chart": {
       "type": "kpi",
       "items": [
@@ -350,7 +350,7 @@ mermaidはd3/dagre/katex/cytoscape等の重い依存を持ち込むため、コ�
   "id": "slide-id",
   "layout": "content",
   "content": {
-    "title": "タイトル",
+    "title": "タイトル（改行は \\n）",
     "table": {
       "columns": [
         { "label": "項目", "align": "left", "width": 2 },
@@ -375,7 +375,7 @@ mermaidはd3/dagre/katex/cytoscape等の重い依存を持ち込むため、コ�
   "id": "slide-id",
   "layout": "content",
   "content": {
-    "title": "タイトル",
+    "title": "タイトル（改行は \\n）",
     "component": {
       "name": "ComponentName",
       "props": {},
@@ -398,7 +398,7 @@ mermaidはd3/dagre/katex/cytoscape等の重い依存を持ち込むため、コ�
   "id": "slide-id",
   "layout": "content",
   "content": {
-    "title": "タイトル",
+    "title": "タイトル（改行は \\n）",
     "compare": {
       "left": {
         "heading": "採用する",
@@ -434,7 +434,7 @@ mermaidはd3/dagre/katex/cytoscape等の重い依存を持ち込むため、コ�
   "id": "slide-id",
   "layout": "content",
   "content": {
-    "title": "タイトル",
+    "title": "タイトル（改行は \\n）",
     "flow": [{ "title": "要件定義", "description": "課題を洗い出す" }, { "title": "実装" }, { "title": "レビュー" }, { "title": "リリース", "description": "本番反映" }]
   }
 }
@@ -453,7 +453,7 @@ mermaidはd3/dagre/katex/cytoscape等の重い依存を持ち込むため、コ�
   "id": "slide-id",
   "layout": "content",
   "content": {
-    "title": "3層アーキテクチャ",
+    "title": "3層アーキテクチャ（改行は \\n）",
     "hierarchyDiagram": {
       "layers": [
         { "title": "プレゼンテーション層", "description": "Web UI・モバイルアプリ" },
@@ -474,7 +474,7 @@ mermaidはd3/dagre/katex/cytoscape等の重い依存を持ち込むため、コ�
   "id": "slide-id",
   "layout": "content",
   "content": {
-    "title": "サーバ構成",
+    "title": "サーバ構成（改行は \\n）",
     "serverDiagram": {
       "zones": [
         { "title": "パブリックサブネット", "nodes": [{ "id": "lb", "label": "ロードバランサ" }] },
@@ -507,7 +507,7 @@ mermaidはd3/dagre/katex/cytoscape等の重い依存を持ち込むため、コ�
   "id": "slide-id",
   "layout": "content",
   "content": {
-    "title": "組織図",
+    "title": "組織図（改行は \\n）",
     "orgChart": {
       "nodes": [
         { "id": "ceo", "label": "CEO" },
@@ -529,7 +529,7 @@ mermaidはd3/dagre/katex/cytoscape等の重い依存を持ち込むため、コ�
   "id": "slide-id",
   "layout": "content",
   "content": {
-    "title": "クラス図",
+    "title": "クラス図（改行は \\n）",
     "classDiagram": {
       "classes": [
         { "id": "user", "label": "User", "attributes": ["id: string", "name: string"], "methods": ["login(): void"] },
@@ -552,7 +552,7 @@ mermaidはd3/dagre/katex/cytoscape等の重い依存を持ち込むため、コ�
   "id": "slide-id",
   "layout": "content",
   "content": {
-    "title": "ログイン処理",
+    "title": "ログイン処理（改行は \\n）",
     "sequenceDiagram": {
       "lifelines": [
         { "id": "user", "label": "User" },
@@ -581,7 +581,7 @@ mermaidはd3/dagre/katex/cytoscape等の重い依存を持ち込むため、コ�
   "id": "slide-id",
   "layout": "two-column",
   "content": {
-    "title": "スライドタイトル",
+    "title": "スライドタイトル（改行は \\n）",
     "left": {},
     "right": {}
   }
@@ -626,7 +626,7 @@ mermaidはd3/dagre/katex/cytoscape等の重い依存を持ち込むため、コ�
   "id": "slide-id",
   "layout": "bleed",
   "content": {
-    "title": "タイトル",
+    "title": "タイトル（改行は \\n）",
     "titleDescription": "タイトル補足",
     "commands": [
       { "text": "$ コマンド", "color": "var(--theme-text-heading)" },
@@ -832,7 +832,7 @@ mermaidはd3/dagre/katex/cytoscape等の重い依存を持ち込むため、コ�
   "id": "slide-id",
   "layout": "content",
   "content": {
-    "title": "目次",
+    "title": "目次（改行は \\n）",
     "toc": {}
   }
 }
@@ -878,7 +878,7 @@ mermaidはd3/dagre/katex/cytoscape等の重い依存を持ち込むため、コ�
   "id": "slide-id",
   "layout": "content",
   "content": {
-    "title": "マイルストーン",
+    "title": "マイルストーン（改行は \\n）",
     "dateTimeline": [
       { "date": "2026/01", "title": "要件確定", "description": "スコープを固定" },
       { "date": "2026/03", "title": "実装完了" },
@@ -897,7 +897,7 @@ mermaidはd3/dagre/katex/cytoscape等の重い依存を持ち込むため、コ�
   "id": "slide-id",
   "layout": "content",
   "content": {
-    "title": "承認フロー",
+    "title": "承認フロー（改行は \\n）",
     "flowchart": {
       "nodes": [
         { "id": "start", "label": "申請", "shape": "start", "row": 0, "col": 1 },
@@ -927,7 +927,7 @@ mermaidはd3/dagre/katex/cytoscape等の重い依存を持ち込むため、コ�
   "id": "slide-id",
   "layout": "content",
   "content": {
-    "title": "リリースプロセス",
+    "title": "リリースプロセス（改行は \\n）",
     "swimlane": {
       "phases": ["設計", "実装", "レビュー", "リリース"],
       "lanes": [
@@ -967,7 +967,7 @@ mermaidはd3/dagre/katex/cytoscape等の重い依存を持ち込むため、コ�
   "id": "slide-id",
   "layout": "content",
   "content": {
-    "title": "スケジュール",
+    "title": "スケジュール（改行は \\n）",
     "gantt": {
       "axis": ["1月", "2月", "3月", "4月"],
       "tasks": [
@@ -994,7 +994,7 @@ mermaidはd3/dagre/katex/cytoscape等の重い依存を持ち込むため、コ�
   "id": "slide-id",
   "layout": "content",
   "content": {
-    "title": "施策の優先順位",
+    "title": "施策の優先順位（改行は \\n）",
     "twoByTwo": {
       "quadrants": [
         { "title": "強い / 難しい" },
@@ -1026,7 +1026,7 @@ mermaidはd3/dagre/katex/cytoscape等の重い依存を持ち込むため、コ�
   "id": "slide-id",
   "layout": "content",
   "content": {
-    "title": "コンバージョンファネル",
+    "title": "コンバージョンファネル（改行は \\n）",
     "funnel": {
       "unit": "件",
       "stages": [
@@ -1049,7 +1049,7 @@ SWOT の慣習に従い S=左上 / W=右上 / O=左下 / T=右下 の4ペイン�
   "id": "slide-id",
   "layout": "content",
   "content": {
-    "title": "SWOT 分析",
+    "title": "SWOT 分析（改行は \\n）",
     "swot": {
       "labels": { "strengths": "強み", "weaknesses": "弱み", "opportunities": "機会", "threats": "脅威" },
       "strengths": { "items": ["ブランド認知", "熟練エンジニア", "既存顧客基盤"] },
@@ -1070,7 +1070,7 @@ SWOT の慣習に従い S=左上 / W=右上 / O=左下 / T=右下 の4ペイン�
   "id": "slide-id",
   "layout": "content",
   "content": {
-    "title": "四半期別プロダクト成長率",
+    "title": "四半期別プロダクト成長率（改行は \\n）",
     "heatmap": {
       "rows": ["Product A", "Product B", "Product C", "Product D"],
       "cols": ["Q1", "Q2", "Q3", "Q4"],

@@ -4,7 +4,7 @@ import { SlideFrame } from './SlideFrame'
 import type { SlideFrameCommonProps } from './SlideFrame'
 
 type Props = SlideFrameCommonProps & {
-  title: string
+  title: React.ReactNode
   /** 本文領域を .content-area の fill 変種にする（#225）。残り高さいっぱいに広がる子（画像・表・チャート・
    * 図解など）を置くときに指定し、埋める側の要素は .content-area-fill-item を付けて高さを受け取る */
   fill?: boolean

@@ -89,7 +89,7 @@ function getVariant(content: SlideData['content']): string | undefined {
 function renderSectionBody(content: SlideContent): ReactNode {
   return (
     <>
-      <UnderlinedHeading sx={{ mb: '30px' }}>{content.title}</UnderlinedHeading>
+      <UnderlinedHeading sx={{ mb: '30px' }}>{renderWithLineBreaks(content.title ?? '')}</UnderlinedHeading>
       {content.body && (
         <Typography variant="body1" sx={{ fontSize: '24px', maxWidth: '800px', mb: '40px' }}>
           {renderWithLineBreaks(content.body)}
@@ -105,7 +105,7 @@ function renderSectionBody(content: SlideContent): ReactNode {
 function renderTitleBody(content: SlideContent): ReactNode {
   return (
     <>
-      <SlideHeading title={content.title ?? ''} variant="h1" sx={{ color: 'var(--theme-text-heading)' }} />
+      <SlideHeading title={renderWithLineBreaks(content.title ?? '')} variant="h1" sx={{ color: 'var(--theme-text-heading)' }} />
       {content.subtitle && <SubtitleText>{renderWithLineBreaks(content.subtitle)}</SubtitleText>}
     </>
   )
@@ -179,7 +179,7 @@ function renderTwoColumnSlide(slide: SlideData, logo: LogoConfig | undefined, th
   const variant = getVariant(content)
 
   return (
-    <ContentLayout id={slide.id} layout={slide.layout} variant={variant} title={content.title ?? ''} meta={slide.meta} logo={logo} theme={theme} ctx={ctx}>
+    <ContentLayout id={slide.id} layout={slide.layout} variant={variant} title={renderWithLineBreaks(content.title ?? '')} meta={slide.meta} logo={logo} theme={theme} ctx={ctx}>
       <TwoColumnGrid left={renderColumnContent(leftData)} right={renderColumnContent(rightData)} />
     </ContentLayout>
   )
@@ -564,7 +564,7 @@ function renderContentSlide(slide: SlideData, logo: LogoConfig | undefined, them
   const { content } = slide
   const variant = getVariant(content)
   return (
-    <ContentLayout id={slide.id} layout={slide.layout} variant={variant} title={content.title ?? ''} meta={slide.meta} logo={logo} theme={theme} ctx={ctx} fill={fillsContentArea(content)}>
+    <ContentLayout id={slide.id} layout={slide.layout} variant={variant} title={renderWithLineBreaks(content.title ?? '')} meta={slide.meta} logo={logo} theme={theme} ctx={ctx} fill={fillsContentArea(content)}>
       {renderContentChildren(content, ctx)}
     </ContentLayout>
   )
@@ -578,7 +578,7 @@ function renderBleedSlide(slide: SlideData, logo: LogoConfig | undefined, theme:
 
   const leftContent = (
     <>
-      <SlideHeading title={content.title ?? ''} description={content.titleDescription as string | undefined} />
+      <SlideHeading title={renderWithLineBreaks(content.title ?? '')} description={content.titleDescription as string | undefined} />
       <CommandList commands={commands} sx={{ mt: '20px' }} />
     </>
   )
