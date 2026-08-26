@@ -46,9 +46,56 @@ if (register) {
 }
 ```
 
+### 共有モジュール（複数コンポーネントで共通コードを使う場合）
+
+複数コンポーネントがアイコン等の共通コードを参照する場合、`entry.ts` に登録しない共有モジュールをアドオン内に置いて import する。アドオンは `react`/`react/jsx-runtime` 以外の外部パッケージを使えないため、アイコンセット等を個別に自前実装しつつコンポーネント間で再利用するにはこの方法が現実的な解決策になる。
+
+- **配置**: `addons/src/{アドオン名}/` 直下に他のコンポーネントと同じ階層で置く（サブディレクトリを切る必要はない）
+- **命名**: コンポーネントではないことが分かるよう、内容を表す名詞をキャメルケース（またはロワーケース）で付ける（例: `icons.tsx`）。パスカルケースはコンポーネント専用の命名規約なので使わない
+- **登録**: `entry.ts` には登録しない。登録するのは実際にスライドから参照するコンポーネントのみ
+
+```
+addons/src/my-addon/
+├── entry.ts             # ComponentA / ComponentB のみ登録
+├── icons.tsx            # 共有モジュール（非登録）
+├── ComponentA.tsx
+├── ComponentA.module.css
+├── ComponentB.tsx
+└── ComponentB.module.css
+```
+
+```tsx
+// icons.tsx（共有モジュール。entry.ts に登録しない）
+import type { CSSProperties } from 'react'
+
+export function CheckIcon({ style }: { style?: CSSProperties }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style={style}>
+      <path d="/* アイコンのpathデータ */" />
+    </svg>
+  )
+}
+```
+
+```tsx
+// ComponentA.tsx（icons.tsx を相対パスで import する）
+import { CheckIcon } from './icons.tsx'
+import styles from './ComponentA.module.css'
+
+export function ComponentA() {
+  return (
+    <div className={styles.wrapper}>
+      <CheckIcon style={{ fontSize: '20px' }} />
+    </div>
+  )
+}
+```
+
 ## コンポーネントテンプレート
 
-### 基本形（props なし）
+### 基本形（props なし・自己完結型）
+
+外部から値を渡さず、内部の CSS アニメーションだけで完結するビジュアルコンポーネント。スライド JSON 側で `style` を指定しても、それはこのコンポーネントの props としては渡らず、呼び出し元（`SlideRenderer`）がラップする `<div>` に適用される。
 
 ```tsx
 import styles from './MyComponent.module.css'
@@ -56,9 +103,34 @@ import styles from './MyComponent.module.css'
 export function MyComponent() {
   return (
     <div className={styles.wrapper}>
-      {/* コンテンツ */}
+      <div className={styles.pulseIcon} />
+      <div className={styles.label}>Status: OK</div>
     </div>
   )
+}
+```
+
+```css
+.wrapper {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+}
+
+.pulseIcon {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--theme-success);
+    animation: pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(1.3); }
 }
 ```
 
