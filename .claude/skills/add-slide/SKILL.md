@@ -29,6 +29,7 @@ allowed-tools: Read, Edit, Glob, Grep, Bash(npm run typecheck), Bash(npm run tes
 |---------|---------------------------------|---------------|
 | 表紙      | `center`                        | タイトル + サブタイトル |
 | まとめ・締め  | `center` + `variant: "section"` | 本文 + QRコード等   |
+| 目次・章立て  | `content` (toc) + `meta.section` | 章立ての先頭近くに配置 |
 | 手順・フロー  | `content` (steps)               | ステップ形式        |
 | 機能・特徴紹介 | `content` (tiles)               | アイコン付きタイル     |
 | 画像・スクショ | `content` (images)              | 画像＋キャプション     |
