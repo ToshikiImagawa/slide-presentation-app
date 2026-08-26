@@ -36,7 +36,18 @@ allowed-tools: Read, Write, Glob, Grep, Bash(npm run typecheck), Bash(npm run te
     "colors": { "primary": "#6c63ff" }
   },
   "slides": [
-    { "id": "intro", "layout": "center", "content": { "title": "..." } }
+    {
+      "id": "intro",
+      "layout": "center",
+      "content": { "title": "..." },
+      "meta": {
+        "notes": {
+          "speakerNotes": "発表者向けのメモや台本",
+          "summary": ["要点1", "要点2"],
+          "voice": "/voice/intro.wav"
+        }
+      }
+    }
   ]
 }
 ```
@@ -50,6 +61,7 @@ allowed-tools: Read, Write, Glob, Grep, Bash(npm run typecheck), Bash(npm run te
 | 引用 | `center` + `variant: "quote"` | 引用文＋出典。引用符は自動で付く |
 | 章の切り替え・強い主張 | `center` + `variant: "message"` / `"message-inverse"` | 全画面に短い主張を1つ。`message-inverse` は全面塗り（塗り色はテーマのマスターが持つ） |
 | 締め | `center` + `variant: "closing"` | 最後のスライドに使用。結びの一言＋連絡先 |
+| 目次・章立て | `content` (toc) + `meta.section` | 章立てするデッキで先頭近くに配置。各スライドに `meta.section` を設定すると章番号・開始ページを自動導出 |
 | 手順・フロー | `content` (steps) | ステップ形式で表示 |
 | 機能・特徴紹介 | `content` (tiles) | アイコン付きタイルグリッド |
 | 画像・スクリーンショット | `content` (images) | 画像＋キャプション（自動フィット） |

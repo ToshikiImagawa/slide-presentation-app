@@ -88,11 +88,11 @@
 
 ## content
 
-コンテンツ表示用レイアウト。子要素のフィールドで描画が決まる。優先順位: `steps` → `checklist` → `toc` → `tiles` → `images` → `svg` → `textDiagram` → `chart` → `table` → `compare` → `flow` → `component` → `body`/`items`（いずれかが指定されていたら以降は評価しない）。`toc`（目次）は末尾の節を参照。
+コンテンツ表示用レイアウト。子要素のフィールドで描画が決まる。優先順位: `steps` → `checklist` → `toc` → `tiles` → `profile` → `images` → `svg` → `textDiagram` → `chart` → `table` → `compare` → `flow` → `component` → `body`/`items`（いずれかが指定されていたら以降は評価しない）。`toc`（目次）は末尾の節を参照。
 
 ### body / items（プレーン本文）
 
-`steps`/`checklist`/`tiles`/`images`/`svg`/`textDiagram`/`chart`/`table`/`compare`/`flow`/`component` のいずれも指定しない場合に描画される、タイトル＋左寄せ本文の基本形。`body`（段落）と `items`（箇条書き、ネスト可）は併用できる。
+`steps`/`checklist`/`tiles`/`profile`/`images`/`svg`/`textDiagram`/`chart`/`table`/`compare`/`flow`/`component` のいずれも指定しない場合に描画される、タイトル＋左寄せ本文の基本形。`body`（段落）と `items`（箇条書き、ネスト可）は併用できる。
 
 ```json
 {
@@ -189,6 +189,34 @@
 `accentColor` はアイコン背景・枠のアクセント色トークン名（`primary`/`accent`/`series1`〜`series6`/`success`/`warning`/`danger`/`neutral`等。省略時は`primary`）。
 
 `icon` はComponentRegistryに `Icon:<name>` として登録済みの任意アイコン名を指定できる（アドオン・ブランドテーマ提供分を含む）。推奨（デフォルト登録済み）アイコン: `Description`, `PlaylistAddCheck`, `Traffic`, `FactCheck`, `Memory`, `Search`。未登録名は破線枠フォールバック表示＋利用者への警告になる。
+
+### profile（プロフィール・自己紹介・#324）
+
+自己紹介スライド専用。1人分の写真・氏名・肩書き・所属・自己紹介文・連絡先を、写真とテキストの2区画で見せる（複数人のチーム紹介は扱わない）。QRコードは `center` の `qrCode`/`githubRepo` と重複するため持たない。
+
+```json
+{
+  "id": "slide-id",
+  "layout": "content",
+  "content": {
+    "title": "自己紹介（改行は \\n）",
+    "profile": {
+      "image": "image/avatar.png",
+      "name": "氏名",
+      "nameSub": "ローマ字表記・読み等",
+      "role": "役割・肩書き",
+      "org": "所属",
+      "body": "自己紹介文（改行は \\n）",
+      "links": [
+        { "icon": "Description", "label": "example@example.com" },
+        { "icon": "Search", "label": "@github-account" }
+      ]
+    }
+  }
+}
+```
+
+`image` を省略すると写真の区画を描かずテキストだけの1カラムになる。`links` は表示文字列をそのまま並べリンク化はしない（発表資料は投影が主でクリック不要のため）。`icon` は `tiles[].icon` と同じ登録済みアイコン名の制約を受ける。推奨上限5件。
 
 ### images（画像スライド）
 
@@ -757,7 +785,8 @@ mermaidはd3/dagre/katex/cytoscape等の重い依存を持ち込むため、コ�
     "tokens": {
       "*": { "theme-radius-lg": "4px", "theme-border-width": "2px" },
       "standard": { "band-color": "#6c63ff" }
-    }
+    },
+    "sectionAccents": ["primary", "series3", "series4"]
   }
 }
 ```
@@ -822,6 +851,20 @@ mermaidはd3/dagre/katex/cytoscape等の重い依存を持ち込むため、コ�
 | `theme-card-accent-width`       | `0px`   | カード左端のアクセントバーの幅（`0` でバーなし。色は `tiles[].accentColor`） |
 | `theme-shadow-strength`         | `1`     | 影の濃さの倍率（`0` で影なし・`2` で倍）                                     |
 | `theme-zebra-opacity`           | `0.04`  | 表の偶数行の背景の濃さ                                                       |
+
+### theme.sectionAccents（章ごとのアクセント色・#319）
+
+章（`meta.section` から導出）ごとに巡回させるアクセント色をカラートークン名の配列で指定する。
+
+```json
+{
+  "theme": {
+    "sectionAccents": ["primary", "series3", "series4"]
+  }
+}
+```
+
+章番号 N（1始まり）には `sectionAccents[(N-1) % 個数]` を使うため、章数と色数が一致しなくてよく（全章同じ色でもよい）、章の途中にスライドを挿入しても割り当ては崩れない。要素はカラートークン名（`primary`/`accent`/`series1`〜`series6`/`success`等）で、生の色（hex）は受けない。上書きするのはその章の見出し・強調・図の主色（`theme-primary` と `theme-series-1`）だけで、`accent` と `series2`〜`series6` は変えない（系列色はデータ系列の識別に使うため変更しない）。省略時は章による色替えを行わない。コントラストは WCAG AA で自動検証される。
 
 ### content.toc（目次・#195）
 
