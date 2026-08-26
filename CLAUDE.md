@@ -17,6 +17,7 @@ npm run build:addons # アドオンのみビルド
 npm run preview      # ビルド済みファイルのプレビュー
 npm run format       # Prettier でコード整形（src/**/*.{ts,tsx,css}）
 npm run format:check # Prettier の整形チェック（CI 用・書き換えなし）
+npm run lint:css     # stylelint（src/**/*.css・addons/src/**/*.css）。html2canvas が非対応な CSS Color 4 関数（color-mix/oklch/oklab/lab/lch/color()/light-dark/相対カラー構文）の混入を検出する
 npm run typecheck    # TypeScript 型チェック
 npm run test         # テスト実行（Vitest 単体テスト）
 npm run test:watch   # テスト監視モード
