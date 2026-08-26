@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { emit, listen } from '@tauri-apps/api/event'
 import type { UnlistenFn } from '@tauri-apps/api/event'
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
-import type { SlideData, PresenterViewMessage, PresenterControlState, PresenterProgressState, ThemeData, LogoConfig } from '../data'
+import type { SlideData, PresenterViewMessage, PresenterControlState, PresenterProgressState, ThemeData, LogoConfig, ConfidentialConfig } from '../data'
 import { useTranslation } from '../i18n'
 import { useToast } from '../toast'
 
@@ -25,6 +25,8 @@ export interface UsePresenterViewOptions {
   brand?: ThemeData
   /** 本編に適用中のロゴ設定（発表者ビューへ伝搬して同じロゴを表示させる） */
   logo?: LogoConfig
+  /** 本編に適用中のConfidential透かし設定（発表者ビューへ伝搬して同じ透かしを表示させる） */
+  confidential?: ConfidentialConfig
   onNavigate?: (direction: 'prev' | 'next') => void
   onAudioToggle?: () => void
   onAutoPlayToggle?: () => void
@@ -49,6 +51,7 @@ export function usePresenterView({
   theme,
   brand,
   logo,
+  confidential,
   onNavigate,
   onAudioToggle,
   onAutoPlayToggle,
@@ -88,7 +91,7 @@ export function usePresenterView({
 
   // 現在のテーマ・アドオンを発表者ビューへ伝搬する（マウント時・presenterViewReady 受信時の両方で使う）
   const emitThemeAndAddons = () => {
-    const themeMessage: PresenterViewMessage = { type: 'themeChanged', payload: { themeColors, theme, brand, logo } }
+    const themeMessage: PresenterViewMessage = { type: 'themeChanged', payload: { themeColors, theme, brand, logo, confidential } }
     void emit(EVENT_NAME, themeMessage)
     const addonMessage: PresenterViewMessage = { type: 'addonsChanged', payload: { owner: addonOwner, scripts: addonScripts } }
     void emit(EVENT_NAME, addonMessage)
@@ -136,7 +139,7 @@ export function usePresenterView({
   // 発表者ビューが未オープンならこの emit は無視され、後続の presenterViewReady 受信時に改めて伝搬される。
   useEffect(() => {
     emitThemeAndAddons()
-    // マウント時に一度だけ実行する（themeColors/theme/logo/addonOwner/addonScripts はマウント単位で固定）
+    // マウント時に一度だけ実行する（themeColors/theme/logo/confidential/addonOwner/addonScripts はマウント単位で固定）
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

@@ -515,6 +515,7 @@ export function SlideEditor({
             initialOverrides={brandImport.overrides}
             previewSlide={currentSlide}
             previewLogo={previewData.meta?.logo}
+            previewConfidential={previewData.meta?.confidential}
             previewTheme={effectiveTheme}
             onApply={confirmImportBrandTheme}
             onCancel={cancelImportBrandTheme}
@@ -678,7 +679,7 @@ export function SlideEditor({
                     {currentSlide ? (
                       // プレビューだけはプレゼン用テーマ（スライド本来のフォントサイズ）で描画する。編集 chrome は editorUiTheme のまま
                       <ThemeProvider theme={theme}>
-                        <SlidePreview slide={currentSlide} logo={previewData.meta?.logo} theme={effectiveTheme} index={clampedIndex} total={slides.length} sections={sections} />
+                        <SlidePreview slide={currentSlide} logo={previewData.meta?.logo} confidential={previewData.meta?.confidential} theme={effectiveTheme} index={clampedIndex} total={slides.length} sections={sections} />
                       </ThemeProvider>
                     ) : (
                       <Box sx={{ p: 2, color: 'var(--fixed-text-muted)' }}>{t('edit.noSlides', 'スライドがありません')}</Box>

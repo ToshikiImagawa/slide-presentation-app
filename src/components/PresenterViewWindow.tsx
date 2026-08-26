@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { SlideData, PresenterControlState, PresenterProgressState, LogoConfig, SectionInfo, ThemeData } from '../data'
+import type { SlideData, PresenterControlState, PresenterProgressState, LogoConfig, ConfidentialConfig, SectionInfo, ThemeData } from '../data'
 import { getSpeakerNotes, getSlideSummary } from '../data'
 import { buildSections } from '../sections'
 import { useTranslation } from '../i18n'
@@ -66,6 +66,7 @@ type PresenterViewWindowProps = {
   slides: SlideData[]
   currentIndex: number
   logo?: LogoConfig
+  confidential?: ConfidentialConfig
   theme?: ThemeData
   controlState: PresenterControlState | null
   progressState?: PresenterProgressState
@@ -76,7 +77,7 @@ type PresenterViewWindowProps = {
   onScrollSpeedChange?: (speed: number) => void
 }
 
-export function PresenterViewWindow({ slides, currentIndex, logo, theme, controlState, progressState, onNavigate, onAudioToggle, onAutoPlayToggle, onAutoSlideshowToggle }: PresenterViewWindowProps) {
+export function PresenterViewWindow({ slides, currentIndex, logo, confidential, theme, controlState, progressState, onNavigate, onAudioToggle, onAutoPlayToggle, onAutoSlideshowToggle }: PresenterViewWindowProps) {
   const { t } = useTranslation()
   const currentSlide = slides[currentIndex]
   const previousSlide = currentIndex > 0 ? slides[currentIndex - 1] : null
@@ -193,7 +194,11 @@ export function PresenterViewWindow({ slides, currentIndex, logo, theme, control
           <div className={styles.previewPanel}>
             <h2>{t('presenterView.nextSlide')}</h2>
             <div className={styles.previewFrame} style={{ height: previewHeight > 0 ? previewHeight : undefined, aspectRatio: canvasAspectRatio }}>
-              {nextSlide ? <PreviewSlide slide={nextSlide} logo={logo} theme={theme} index={currentIndex + 1} total={slides.length} sections={sections} /> : <div className={styles.boundaryMessage}>{t('presenterView.lastSlide')}</div>}
+              {nextSlide ? (
+                <PreviewSlide slide={nextSlide} logo={logo} confidential={confidential} theme={theme} index={currentIndex + 1} total={slides.length} sections={sections} />
+              ) : (
+                <div className={styles.boundaryMessage}>{t('presenterView.lastSlide')}</div>
+              )}
             </div>
           </div>
 
@@ -202,7 +207,7 @@ export function PresenterViewWindow({ slides, currentIndex, logo, theme, control
             <h2>{t('presenterView.previousSlide')}</h2>
             <div className={styles.previewFrame} style={{ height: previewHeight > 0 ? previewHeight : undefined, aspectRatio: canvasAspectRatio }}>
               {previousSlide ? (
-                <PreviewSlide slide={previousSlide} logo={logo} theme={theme} index={currentIndex - 1} total={slides.length} sections={sections} />
+                <PreviewSlide slide={previousSlide} logo={logo} confidential={confidential} theme={theme} index={currentIndex - 1} total={slides.length} sections={sections} />
               ) : (
                 <div className={styles.boundaryMessage}>{t('presenterView.firstSlide')}</div>
               )}
@@ -230,7 +235,7 @@ export function PresenterViewWindow({ slides, currentIndex, logo, theme, control
 
 /** スライドの縮小プレビュー。Reveal インスタンスを持たないため viewDistance による
  * data-src → src 昇格が走らず、LazyImageContext で即時読み込みに切り替える（#224） */
-function PreviewSlide({ slide, logo, theme, index, total, sections }: { slide: SlideData; logo?: LogoConfig; theme?: ThemeData; index: number; total: number; sections: SectionInfo[] }) {
+function PreviewSlide({ slide, logo, confidential, theme, index, total, sections }: { slide: SlideData; logo?: LogoConfig; confidential?: ConfidentialConfig; theme?: ThemeData; index: number; total: number; sections: SectionInfo[] }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [scale, setScale] = useState(0.3)
   const { width: canvasWidth, height: canvasHeight } = resolveCanvasSize(theme?.canvas)
@@ -261,7 +266,7 @@ function PreviewSlide({ slide, logo, theme, index, total, sections }: { slide: S
       <div className={`reveal ${styles.previewReveal}`}>
         <div className="slides">
           <LazyImageContext.Provider value={false}>
-            <SlideRenderer.Slide slide={slide} logo={logo} theme={theme} index={index} total={total} sections={sections} />
+            <SlideRenderer.Slide slide={slide} logo={logo} confidential={confidential} theme={theme} index={index} total={total} sections={sections} />
           </LazyImageContext.Provider>
         </div>
       </div>

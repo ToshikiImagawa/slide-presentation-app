@@ -1,7 +1,7 @@
 import type { ComponentType, ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
-import type { ContentItem, LogoConfig, MasterRenderContext, SectionInfo, SlideContent, SlideData, ThemeData } from '../data'
+import type { ConfidentialConfig, ContentItem, LogoConfig, MasterRenderContext, SectionInfo, SlideContent, SlideData, ThemeData } from '../data'
 import { buildSections, findSectionAt } from '../sections'
 import { renderMasterText } from '../masters'
 import { componentFillsContentArea, renderRegisteredComponent, resolveComponent } from './ComponentRegistry'
@@ -42,6 +42,7 @@ import { GitHubLink } from './GitHubLink'
 type SlideRendererProps = {
   slides: SlideData[]
   logo?: LogoConfig
+  confidential?: ConfidentialConfig
   theme?: ThemeData
 }
 
@@ -159,27 +160,27 @@ const CENTER_VARIANTS: Record<string, { wrapper: CenterWrapper; render: (content
 export const CENTER_VARIANT_NAMES: readonly string[] = Object.keys(CENTER_VARIANTS)
 
 /** centerスライドをレンダリング（variant で章扉・引用・大メッセージ・締めに切り替わる） */
-function renderCenterSlide(slide: SlideData, logo: LogoConfig | undefined, theme: ThemeData | undefined, ctx: MasterRenderContext): ReactNode {
+function renderCenterSlide(slide: SlideData, logo: LogoConfig | undefined, confidential: ConfidentialConfig | undefined, theme: ThemeData | undefined, ctx: MasterRenderContext): ReactNode {
   const { content } = slide
   const variant = getVariant(content)
   const { wrapper: Wrapper, render } = (variant && CENTER_VARIANTS[variant]) || { wrapper: TitleLayout, render: renderTitleBody }
 
   return (
-    <Wrapper id={slide.id} layout={slide.layout} variant={variant} meta={slide.meta} logo={logo} theme={theme} ctx={ctx}>
+    <Wrapper id={slide.id} layout={slide.layout} variant={variant} meta={slide.meta} logo={logo} confidential={confidential} theme={theme} ctx={ctx}>
       {render(content)}
     </Wrapper>
   )
 }
 
 /** 2カラムスライドをレンダリング */
-function renderTwoColumnSlide(slide: SlideData, logo: LogoConfig | undefined, theme: ThemeData | undefined, ctx: MasterRenderContext): ReactNode {
+function renderTwoColumnSlide(slide: SlideData, logo: LogoConfig | undefined, confidential: ConfidentialConfig | undefined, theme: ThemeData | undefined, ctx: MasterRenderContext): ReactNode {
   const { content } = slide
   const leftData = content.left as Record<string, unknown> | undefined
   const rightData = content.right as Record<string, unknown> | undefined
   const variant = getVariant(content)
 
   return (
-    <ContentLayout id={slide.id} layout={slide.layout} variant={variant} title={renderWithLineBreaks(content.title ?? '')} meta={slide.meta} logo={logo} theme={theme} ctx={ctx}>
+    <ContentLayout id={slide.id} layout={slide.layout} variant={variant} title={renderWithLineBreaks(content.title ?? '')} meta={slide.meta} logo={logo} confidential={confidential} theme={theme} ctx={ctx}>
       <TwoColumnGrid left={renderColumnContent(leftData)} right={renderColumnContent(rightData)} />
     </ContentLayout>
   )
@@ -560,18 +561,18 @@ function fillsContentArea(content: SlideContent): boolean {
 }
 
 /** contentスライドをレンダリング */
-function renderContentSlide(slide: SlideData, logo: LogoConfig | undefined, theme: ThemeData | undefined, ctx: MasterRenderContext): ReactNode {
+function renderContentSlide(slide: SlideData, logo: LogoConfig | undefined, confidential: ConfidentialConfig | undefined, theme: ThemeData | undefined, ctx: MasterRenderContext): ReactNode {
   const { content } = slide
   const variant = getVariant(content)
   return (
-    <ContentLayout id={slide.id} layout={slide.layout} variant={variant} title={renderWithLineBreaks(content.title ?? '')} meta={slide.meta} logo={logo} theme={theme} ctx={ctx} fill={fillsContentArea(content)}>
+    <ContentLayout id={slide.id} layout={slide.layout} variant={variant} title={renderWithLineBreaks(content.title ?? '')} meta={slide.meta} logo={logo} confidential={confidential} theme={theme} ctx={ctx} fill={fillsContentArea(content)}>
       {renderContentChildren(content, ctx)}
     </ContentLayout>
   )
 }
 
 /** bleedスライドをレンダリング */
-function renderBleedSlide(slide: SlideData, logo: LogoConfig | undefined, theme: ThemeData | undefined, ctx: MasterRenderContext): ReactNode {
+function renderBleedSlide(slide: SlideData, logo: LogoConfig | undefined, confidential: ConfidentialConfig | undefined, theme: ThemeData | undefined, ctx: MasterRenderContext): ReactNode {
   const { content } = slide
   const commands = content.commands as Array<{ text: string; color: string }>
   const variant = getVariant(content)
@@ -586,42 +587,42 @@ function renderBleedSlide(slide: SlideData, logo: LogoConfig | undefined, theme:
   const terminalRef = content.component as { name: string; props?: Record<string, unknown>; style?: Record<string, string | number> } | undefined
   const rightContent = terminalRef ? renderComponent(terminalRef) : null
 
-  return <BleedLayout id={slide.id} layout={slide.layout} variant={variant} meta={slide.meta} logo={logo} theme={theme} ctx={ctx} left={leftContent} right={rightContent} />
+  return <BleedLayout id={slide.id} layout={slide.layout} variant={variant} meta={slide.meta} logo={logo} confidential={confidential} theme={theme} ctx={ctx} left={leftContent} right={rightContent} />
 }
 
 /** 単一スライドをレイアウト種別に応じてレンダリング */
-function renderSlide(slide: SlideData, logo: LogoConfig | undefined, theme: ThemeData | undefined, ctx: MasterRenderContext): ReactNode {
+function renderSlide(slide: SlideData, logo: LogoConfig | undefined, confidential: ConfidentialConfig | undefined, theme: ThemeData | undefined, ctx: MasterRenderContext): ReactNode {
   switch (slide.layout) {
     case 'center':
-      return renderCenterSlide(slide, logo, theme, ctx)
+      return renderCenterSlide(slide, logo, confidential, theme, ctx)
     case 'two-column':
-      return renderTwoColumnSlide(slide, logo, theme, ctx)
+      return renderTwoColumnSlide(slide, logo, confidential, theme, ctx)
     case 'content':
-      return renderContentSlide(slide, logo, theme, ctx)
+      return renderContentSlide(slide, logo, confidential, theme, ctx)
     case 'bleed':
-      return renderBleedSlide(slide, logo, theme, ctx)
+      return renderBleedSlide(slide, logo, confidential, theme, ctx)
     case 'custom': {
       const ref = slide.content.component
       if (ref)
         return (
-          <SlideFrame id={slide.id} layout={slide.layout} variant={getVariant(slide.content)} meta={slide.meta} logo={logo} theme={theme} ctx={ctx}>
+          <SlideFrame id={slide.id} layout={slide.layout} variant={getVariant(slide.content)} meta={slide.meta} logo={logo} confidential={confidential} theme={theme} ctx={ctx}>
             {renderComponent(ref)}
           </SlideFrame>
         )
       return null
     }
     default:
-      return renderCenterSlide(slide, logo, theme, ctx)
+      return renderCenterSlide(slide, logo, confidential, theme, ctx)
   }
 }
 
 /** スライドデータ配列からReact要素を生成するレンダラー */
-export function SlideRenderer({ slides, logo, theme }: SlideRendererProps) {
+export function SlideRenderer({ slides, logo, confidential, theme }: SlideRendererProps) {
   const sections = buildSections(slides)
   return (
     <>
       {slides.map((slide, index) => (
-        <SlideRenderer.Slide key={slide.id} slide={slide} index={index} total={slides.length} sections={sections} logo={logo} theme={theme} />
+        <SlideRenderer.Slide key={slide.id} slide={slide} index={index} total={slides.length} sections={sections} logo={logo} confidential={confidential} theme={theme} />
       ))}
     </>
   )
@@ -633,8 +634,8 @@ export function SlideRenderer({ slides, logo, theme }: SlideRendererProps) {
  * 直接呼ぶと、その場で投げられた例外は境界に届かず素通りする。SlideErrorBoundary の子として
  * このコンポーネントを置くことで、renderSlide の呼び出し自体がReactの描画フェーズ内（境界の
  * 子孫の実行）で行われるようにし、同期例外も確実に捕捉できるようにする（#280） */
-function SlideBody({ slide, logo, theme, ctx }: { slide: SlideData; logo?: LogoConfig; theme?: ThemeData; ctx: MasterRenderContext }) {
-  return <>{renderSlide(slide, logo, theme, ctx)}</>
+function SlideBody({ slide, logo, confidential, theme, ctx }: { slide: SlideData; logo?: LogoConfig; confidential?: ConfidentialConfig; theme?: ThemeData; ctx: MasterRenderContext }) {
+  return <>{renderSlide(slide, logo, confidential, theme, ctx)}</>
 }
 
 /** 個別スライドコンポーネント。index/total/sections は masterMap 装飾のページ番号・章情報・only 判定に使う
@@ -646,11 +647,27 @@ function SlideBody({ slide, logo, theme, ctx }: { slide: SlideData; logo?: LogoC
  * 同一の SlideRenderer.Slide インスタンスを再利用したまま slide だけ差し替える経路のため。
  * key を付けないと、あるスライドで一度例外が起きた後、別の正常なスライドに切り替えても
  * フォールバックが表示され続ける（Reactのエラーバウンダリは props 変化で自動リセットしない） */
-SlideRenderer.Slide = function SlideRendererSlide({ slide, index, total, sections, logo, theme }: { slide: SlideData; index: number; total: number; sections: SectionInfo[]; logo?: LogoConfig; theme?: ThemeData }) {
+SlideRenderer.Slide = function SlideRendererSlide({
+  slide,
+  index,
+  total,
+  sections,
+  logo,
+  confidential,
+  theme,
+}: {
+  slide: SlideData
+  index: number
+  total: number
+  sections: SectionInfo[]
+  logo?: LogoConfig
+  confidential?: ConfidentialConfig
+  theme?: ThemeData
+}) {
   const ctx: MasterRenderContext = { index, total, section: findSectionAt(sections, index), sections }
   return (
     <SlideErrorBoundary key={slide.id}>
-      <SlideBody slide={slide} logo={logo} theme={theme} ctx={ctx} />
+      <SlideBody slide={slide} logo={logo} confidential={confidential} theme={theme} ctx={ctx} />
     </SlideErrorBoundary>
   )
 }

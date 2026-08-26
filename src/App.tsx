@@ -56,6 +56,7 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
   const defaultData = useMemo(() => getFallbackPresentationData(locale), [locale])
   const data = loadPresentationData(presentationData, defaultData)
   const logo = data.meta.logo
+  const confidential = data.meta.confidential
   // SlideRenderer は masters/masterMap を直接参照するため、CSS 変数適用（applyThemeData）だけでなく
   // 描画に渡す theme 自体も brand→deck の順で合成する（本編・PDF の2経路。発表者ビュー・編集プレビューは別途合成）
   const effectiveTheme = useMemo(() => mergeThemeData(brandTheme, data.theme), [brandTheme, data.theme])
@@ -116,6 +117,7 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
     theme: data.theme,
     brand: brandTheme,
     logo,
+    confidential,
     onNavigate: handleNavigate,
     onAudioToggle: handleAudioToggle,
     onAutoPlayToggle: handleAutoPlayToggle,
@@ -265,7 +267,7 @@ export function App({ presentationData, onGoHome, onStartEdit, addonOwner, addon
     <>
       <div className="reveal" ref={deckRef}>
         <div className="slides">
-          <SlideRenderer slides={data.slides} logo={logo} theme={effectiveTheme} />
+          <SlideRenderer slides={data.slides} logo={logo} confidential={confidential} theme={effectiveTheme} />
         </div>
       </div>
       <div className={`toolbar toolbar-left${toolbarHiddenClass}`}>

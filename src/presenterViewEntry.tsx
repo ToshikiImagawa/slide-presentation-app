@@ -14,7 +14,7 @@ import { unregisterOwner } from './components/ComponentRegistry'
 import { PresenterViewWindow } from './components/PresenterViewWindow'
 import { I18nProvider, loadLocales, useTranslation } from './i18n'
 import { theme } from './theme'
-import type { SlideData, PresenterViewMessage, PresenterControlState, PresenterProgressState, LogoConfig, ThemeData } from './data'
+import type { SlideData, PresenterViewMessage, PresenterControlState, PresenterProgressState, LogoConfig, ConfidentialConfig, ThemeData } from './data'
 
 const EVENT_NAME = 'presenter-view'
 
@@ -27,6 +27,7 @@ function PresenterViewApp() {
   const [controlState, setControlState] = useState<PresenterControlState | null>(null)
   const [progressState, setProgressState] = useState<PresenterProgressState>({ progress: 0, visible: false })
   const [logo, setLogo] = useState<LogoConfig | undefined>(undefined)
+  const [confidential, setConfidential] = useState<ConfidentialConfig | undefined>(undefined)
   const [slideTheme, setSlideTheme] = useState<ThemeData | undefined>(undefined)
 
   // 現在登録済みのパッケージアドオンの owner（切替時のアンロード対象）
@@ -40,10 +41,11 @@ function PresenterViewApp() {
 
     listen<PresenterViewMessage>(EVENT_NAME, async (event) => {
       if (event.payload.type === 'themeChanged') {
-        const { themeColors, theme: themeData, brand, logo } = event.payload.payload
+        const { themeColors, theme: themeData, brand, logo, confidential } = event.payload.payload
         // 本編とテーマの上書きが食い違わないよう、本編と同じ手順（reset→brand→themeColors→theme）で再適用する
         await applyPresentationTheme(themeColors, themeData, brand)
         setLogo(logo)
+        setConfidential(confidential)
         // SlideRenderer は masters/masterMap を直接参照するため、本編と同様に合成済み theme を渡す
         setSlideTheme(mergeThemeData(brand, themeData))
       } else if (event.payload.type === 'addonsChanged') {
@@ -134,6 +136,7 @@ function PresenterViewApp() {
         slides={slides}
         currentIndex={currentIndex}
         logo={logo}
+        confidential={confidential}
         theme={slideTheme}
         controlState={controlState}
         progressState={progressState}

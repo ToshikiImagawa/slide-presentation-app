@@ -1,5 +1,5 @@
 import { hasComponent } from './components/ComponentRegistry'
-import type { LogoConfig, LogoMasterDecoration, MasterBackground, MasterDecoration, MasterDecorationOnly, MasterDefinition, MasterGradient, MasterRenderContext, SlideData, ThemeData } from './data'
+import type { ConfidentialConfig, LogoConfig, LogoMasterDecoration, MasterBackground, MasterDecoration, MasterDecorationOnly, MasterDefinition, MasterGradient, MasterRenderContext, SlideData, TextMasterDecoration, ThemeData } from './data'
 
 // schema/slide-content-schema.json の theme.masters 配下の同名 enum と手作業で同期している。
 // slideContentSchema.ts の SCHEMA は AI生成専用の厳格検証のためのモジュールであり、汎用の
@@ -33,6 +33,25 @@ export function logoToDecoration(logo: LogoConfig): LogoMasterDecoration {
     anchor: logo.anchor ?? 'bottom-left',
     offset: logo.offset ?? { x: 30, y: -20 },
     only: logo.only,
+    layer: 'front',
+  }
+}
+
+/** meta.confidential（ConfidentialConfig）を TextMasterDecoration へ合成する（#394）。meta.logo と対称な
+ * 語彙・既定値（anchor/offset は logoToDecoration と同じ既定値）にしており、opacity/rotate/anchor を
+ * 指定すれば斜め・半透明の典型的な透かし表現にできる。layer は front 固定（meta.logo と同じ扱い）。
+ * SlideFrame（描画）と getMasterWarnings（decorationWarnings 経由の検証）の両方がこの1箇所を共有する */
+export function confidentialToDecoration(confidential: ConfidentialConfig): TextMasterDecoration {
+  return {
+    type: 'text',
+    content: confidential.text,
+    fontSize: confidential.fontSize,
+    color: confidential.color,
+    anchor: confidential.anchor ?? 'bottom-left',
+    offset: confidential.offset ?? { x: 30, y: -20 },
+    only: confidential.only,
+    opacity: confidential.opacity,
+    rotate: confidential.rotate,
     layer: 'front',
   }
 }
@@ -314,20 +333,29 @@ function logoConfigWarnings(logo: LogoConfig | undefined): string[] {
   return decorationWarnings(logoToDecoration(logo), 'meta.logo')
 }
 
+/** meta.confidential の値検証（#394）。logoConfigWarnings と同様、confidentialToDecoration で合成した
+ * 実際の描画形（TextMasterDecoration）を decorationWarnings にそのまま渡すことで、
+ * theme.masters[].decorations[] と同じ検証（anchor/only の綴りミス等）を重複実装せずに共有する */
+function confidentialConfigWarnings(confidential: ConfidentialConfig | undefined): string[] {
+  if (!confidential) return []
+  return decorationWarnings(confidentialToDecoration(confidential), 'meta.confidential')
+}
+
 /**
- * masters/masterMap/tokens、slides[].meta.master（スライド個別指定）、meta.logo（#350）の値検証エラー
- * （綴りミス等）を警告として返す。getThemeWarnings と同じ方針: 検証エラーではなく警告として扱い、
- * 描画は継続する（resolveMaster は循環・未解決を静かに次の候補へフォールバックするため、
- * その事実をここで利用者に伝える）。slides/logo は省略可能（省略時は該当する検証をスキップする）。
+ * masters/masterMap/tokens、slides[].meta.master（スライド個別指定）、meta.logo（#350）・meta.confidential
+ * （#394）の値検証エラー（綴りミス等）を警告として返す。getThemeWarnings と同じ方針: 検証エラーではなく
+ * 警告として扱い、描画は継続する（resolveMaster は循環・未解決を静かに次の候補へフォールバックするため、
+ * その事実をここで利用者に伝える）。slides/logo/confidential は省略可能（省略時は該当する検証をスキップする）。
  */
-export function getMasterWarnings(theme?: ThemeData, slides?: SlideData[], logo?: LogoConfig): string[] {
+export function getMasterWarnings(theme?: ThemeData, slides?: SlideData[], logo?: LogoConfig, confidential?: ConfidentialConfig): string[] {
   const logoWarnings = logoConfigWarnings(logo)
-  if (!theme) return logoWarnings
+  const confidentialWarnings = confidentialConfigWarnings(confidential)
+  if (!theme) return [...logoWarnings, ...confidentialWarnings]
 
   const masters = theme.masters ?? {}
   const masterKeys = new Set(Object.keys(masters))
 
-  return [logoWarnings, masterMapWarnings(theme.masterMap, masterKeys), slideMasterWarnings(slides, masterKeys), definitionWarnings(masters, masterKeys), tokenWarnings(theme.tokens, masterKeys)].flat()
+  return [logoWarnings, confidentialWarnings, masterMapWarnings(theme.masterMap, masterKeys), slideMasterWarnings(slides, masterKeys), definitionWarnings(masters, masterKeys), tokenWarnings(theme.tokens, masterKeys)].flat()
 }
 
 function isCircular(masters: Record<string, MasterDefinition>, startKey: string): boolean {

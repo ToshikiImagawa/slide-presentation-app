@@ -266,6 +266,28 @@ describe('getMasterWarnings', () => {
     })
   })
 
+  // #394: meta.confidential（TextMasterDecoration へ合成される）の anchor/only の値検証
+  describe('meta.confidential の検証（#394）', () => {
+    it('theme 未指定でも meta.confidential.anchor の綴りミスを警告する', () => {
+      const warnings = getMasterWarnings(undefined, undefined, undefined, { text: 'Confidential', anchor: 'top-lft' as never })
+      expect(warnings).toContain('meta.confidential.anchor: 不明な値 "top-lft" です')
+    })
+
+    it('meta.confidential.only の綴りミスを警告する', () => {
+      const warnings = getMasterWarnings({}, undefined, undefined, { text: 'Confidential', only: 'furst' as never })
+      expect(warnings).toContain('meta.confidential.only: 不明な値 "furst" です')
+    })
+
+    it('anchor/only が正しい値なら警告しない', () => {
+      const warnings = getMasterWarnings({}, undefined, undefined, { text: 'Confidential', anchor: 'top-left', only: 'not-first' })
+      expect(warnings).toEqual([])
+    })
+
+    it('confidential 未指定なら警告しない', () => {
+      expect(getMasterWarnings(undefined, undefined, undefined, undefined)).toEqual([])
+    })
+  })
+
   it('extends が存在しない masterKey を参照する場合に警告する', () => {
     const warnings = getMasterWarnings({ masters: { standard: { extends: 'missing', decorations: [] } } })
     expect(warnings).toContain('theme.masters.standard.extends: 存在しない masterKey "missing" を参照しています')

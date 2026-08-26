@@ -17,6 +17,8 @@ export interface PresentationMeta {
   description?: string
   author?: string
   logo?: LogoConfig
+  /** Confidential等の透かし文言。描画は内部的に TextMasterDecoration へ合成される（#394） */
+  confidential?: ConfidentialConfig
   themeColors?: string
   /** 組織/ブランドテーマ（外部 ThemeData への参照パスまたは URL）。4段カスケードの下地として適用される */
   brandTheme?: string
@@ -34,6 +36,25 @@ export interface LogoConfig {
   offset?: { x?: number; y?: number }
   /** 本文領域全体を使うコンポーネント（hierarchyDiagram/flow等）と重なるスライドをロゴから除外する等に使う */
   only?: MasterDecorationOnly
+}
+
+/** Confidential等の透かし設定。描画は内部的に TextMasterDecoration へ合成される（#394）。
+ * meta.logo（LogoConfig）と対称な語彙にしており、anchor/offset の既定値も同じ（bottom-left・
+ * { x: 30, y: -20 }）。opacity/rotate/anchor を指定すれば斜め・半透明の典型的な透かし表現にできる */
+export interface ConfidentialConfig {
+  text: string
+  fontSize?: number
+  color?: string
+  /** 省略時 'bottom-left'（meta.logo と同じ既定位置） */
+  anchor?: MasterAnchor
+  /** 省略時 { x: 30, y: -20 }（meta.logo と同じ既定オフセット） */
+  offset?: { x?: number; y?: number }
+  /** 本文領域全体を使うコンポーネント（hierarchyDiagram/flow等）と重なるスライドを除外する等に使う */
+  only?: MasterDecorationOnly
+  /** 不透明度（0〜1）。省略時は 1（透かしにする場合は 0.1〜0.2 程度を指定する） */
+  opacity?: number
+  /** 回転角（deg・時計回り）。省略時は 0（斜めの透かしにする場合は -30 等を指定する） */
+  rotate?: number
 }
 
 /** 個別スライドのデータ */
@@ -153,8 +174,8 @@ export type PresenterViewMessage =
   | { type: 'scrollSpeedChange'; payload: { speed: number } }
   // メインウィンドウ → 発表者ビュー（パッケージ切替に伴う同梱アドオンの変更を伝搬する）
   | { type: 'addonsChanged'; payload: { owner: string; scripts: string[] } }
-  // メインウィンドウ → 発表者ビュー（本編に適用中のテーマ・ロゴを伝搬する）
-  | { type: 'themeChanged'; payload: { themeColors?: string; theme?: ThemeData; brand?: ThemeData; logo?: LogoConfig } }
+  // メインウィンドウ → 発表者ビュー（本編に適用中のテーマ・ロゴ・Confidential透かしを伝搬する）
+  | { type: 'themeChanged'; payload: { themeColors?: string; theme?: ThemeData; brand?: ThemeData; logo?: LogoConfig; confidential?: ConfidentialConfig } }
   // 双方向
   | { type: 'presenterViewReady' }
   | { type: 'presenterViewClosed' }

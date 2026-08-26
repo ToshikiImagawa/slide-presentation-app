@@ -1,5 +1,5 @@
 import { createElement } from 'react'
-import type { CanvasData, ColorPalette, FontDefinition, FontFamilySpec, FontSource, LogoConfig, SafeArea, SlideContent, SlideData, ThemeData } from './data'
+import type { CanvasData, ColorPalette, ConfidentialConfig, FontDefinition, FontFamilySpec, FontSource, LogoConfig, SafeArea, SlideContent, SlideData, ThemeData } from './data'
 import { buildMasterCss, getMasterWarnings } from './masters'
 import { hasComponent, registerComponent, unregisterOwner } from './components/ComponentRegistry'
 import { FallbackImage } from './components/FallbackImage'
@@ -816,9 +816,10 @@ function getSectionAccentWarnings(theme: ThemeData): string[] {
  * コントラスト検証（WCAG AA・#168 の閾値/算出関数を再利用）は theme.colors 直書き・tokens（masterKey
  * スコープ）・masters の全面塗り背景・sectionAccents（章スコープ・#319）の4経路すべてに適用する
  * （#209。取り込み時収束は brand/compile.ts が別途担う）。
- * logo（meta.logo）を渡すと anchor/only の不正値も getMasterWarnings 経由で検出する（省略可・#350）。
+ * logo（meta.logo）・confidential（meta.confidential）を渡すと anchor/only の不正値も getMasterWarnings
+ * 経由で検出する（省略可・#350・#394）。
  */
-export function getThemeWarnings(theme?: ThemeData, slides?: SlideData[], logo?: LogoConfig): string[] {
+export function getThemeWarnings(theme?: ThemeData, slides?: SlideData[], logo?: LogoConfig, confidential?: ConfidentialConfig): string[] {
   const warnings: string[] = []
 
   if (theme) {
@@ -855,7 +856,7 @@ export function getThemeWarnings(theme?: ThemeData, slides?: SlideData[], logo?:
     }
   }
 
-  warnings.push(...getMasterWarnings(theme, slides, logo))
+  warnings.push(...getMasterWarnings(theme, slides, logo, confidential))
   warnings.push(...getTileIconWarnings(slides))
   warnings.push(...getDiagramWarnings(slides))
   warnings.push(...getChartWarnings(slides))
