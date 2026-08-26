@@ -6,6 +6,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.3.1] - 2026-08-26
+
+### Added
+
+- Added support for explicit line breaks (`\n`) in slide titles, so authors can control where a long title wraps
+
+### Fixed
+
+- Fixed PDF export failing on slides that contain a table
+
 ## [2.3.0] - 2026-08-24
 
 ### Added
