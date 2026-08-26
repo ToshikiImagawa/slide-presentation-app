@@ -18,7 +18,7 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { useTranslation } from '../i18n'
 import { getContrastRatio, WCAG_AA_THRESHOLD, type FontSizeStepKey } from '../applyTheme'
-import type { LogoConfig, SafeArea, SlideData, ThemeData } from '../data'
+import type { ConfidentialConfig, LogoConfig, SafeArea, SlideData, ThemeData } from '../data'
 import { compile, mediaAssetToDataUrl, mergeCompiledBrandTheme } from '../brand/compile'
 import { mergeLayoutAssignments, recommendLayoutAssignments } from '../brand/layoutAssignmentHints'
 import {
@@ -102,6 +102,7 @@ export interface BrandConfirmDialogProps {
   /** 右パネルのライブプレビューに使う、現在編集中のスライド 1 枚 */
   previewSlide: SlideData
   previewLogo?: LogoConfig
+  previewConfidential?: ConfidentialConfig
   /** 現在のデッキのテーマ（既存の masters 等を保持したまま `brand` master だけ上書きしてプレビューする） */
   previewTheme?: ThemeData
   onApply: (result: { overrides: BrandOverrides; compiled: CompiledBrandTheme }) => void
@@ -129,7 +130,7 @@ function statusChipColor(status: BrandFieldStatus): 'success' | 'info' | 'warnin
  * ヒューリスティクス（ロゴ候補ランキング・帯検出）は誤爆しうる前提のため、[取り込む] するまでは
  * `compile` の結果をプレビューに反映するだけで、デッキの実データには一切書き込まない。
  */
-export function BrandConfirmDialog({ open, profile, initialOverrides, previewSlide, previewLogo, previewTheme, onApply, onCancel }: BrandConfirmDialogProps) {
+export function BrandConfirmDialog({ open, profile, initialOverrides, previewSlide, previewLogo, previewConfidential, previewTheme, onApply, onCancel }: BrandConfirmDialogProps) {
   const { t } = useTranslation()
   const [overrides, setOverrides] = useState<BrandOverrides>(initialOverrides)
   const [colorDrafts, setColorDrafts] = useState<Partial<Record<MappedColorKey, string>>>({})
@@ -296,7 +297,7 @@ export function BrandConfirmDialog({ open, profile, initialOverrides, previewSli
             </Typography>
             <Box sx={{ aspectRatio: previewAspectRatio, position: 'relative', border: '1px solid var(--fixed-border)', borderRadius: 1, overflow: 'hidden' }}>
               {/* 単票のサンプル1枚なので章はない（sections は空配列） */}
-              <SlidePreview slide={previewSlide} logo={previewLogo} theme={previewMergedTheme} index={0} total={1} sections={[]} />
+              <SlidePreview slide={previewSlide} logo={previewLogo} confidential={previewConfidential} theme={previewMergedTheme} index={0} total={1} sections={[]} />
             </Box>
           </Box>
         </Stack>

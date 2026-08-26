@@ -2,6 +2,7 @@ export type {
   PresentationData,
   PresentationMeta,
   LogoConfig,
+  ConfidentialConfig,
   SlideData,
   SlideContent,
   ContentItem,

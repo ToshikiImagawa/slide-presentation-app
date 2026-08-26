@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
-import type { LogoConfig, MasterRenderContext, SlideMeta, ThemeData } from '../data'
+import type { ConfidentialConfig, LogoConfig, MasterRenderContext, SlideMeta, ThemeData } from '../data'
 import { resolveSectionAccent } from '../applyTheme'
-import { logoToDecoration, resolveMaster } from '../masters'
+import { confidentialToDecoration, logoToDecoration, resolveMaster } from '../masters'
 import { SlideMasterLayer } from './SlideMasterLayer'
 
 /** 4つのレイアウトラッパー（TitleLayout等）と SlideFrame が共通で受け取るprops。SlideFrame にpropsを
@@ -14,6 +14,7 @@ export type SlideFrameCommonProps = {
   variant?: string
   meta?: SlideMeta
   logo?: LogoConfig
+  confidential?: ConfidentialConfig
   theme?: ThemeData
   ctx: MasterRenderContext
 }
@@ -27,8 +28,8 @@ type Props = SlideFrameCommonProps & {
 /** 5レイアウト共通の section 生成を担う。.master-layer-back/front の中身は resolveMaster が解決した
  * master を渡して SlideMasterLayer に任せる（優先順: meta.master → masterMap["layout/variant"] →
  * masterMap["layout"]）。master が未解決（未指定・masterKey不明・extends循環）の場合は現行と完全同一の
- * DOMになる。meta.logo は独自描画を持たず、LogoMasterDecoration に合成してマスター装飾の末尾（前面）に
- * 追加することで同じ描画経路に載せる（#350）。
+ * DOMになる。meta.logo/meta.confidential は独自描画を持たず、LogoMasterDecoration/TextMasterDecoration に
+ * 合成してマスター装飾の末尾（前面）に追加することで同じ描画経路に載せる（#350・#394）。
  * meta.backgroundColor/backgroundImage は SlideMasterLayer の back レイヤーで描く（#236）。Reveal.js の
  * 背景レイヤー（data-background-*・.backgrounds）は本編でしか効かないため使わない。
  * 余白は section ではなく .master-body に持たせることで、本編・発表者ビュー・編集プレビュー・PDF書き出しの
@@ -37,12 +38,13 @@ type Props = SlideFrameCommonProps & {
  * data-section-accent（章色のカラートークン名）を付ける。後者は buildSectionAccentCss（applyTheme.ts）が
  * 出力する章スコープの CSS 変数上書きが効くスコープになる（#319）。章に属さないスライドは属性を持たないため
  * 章色の上書きも効かない */
-export function SlideFrame({ id, layout, variant, meta, logo, theme, ctx, bleed, children }: Props) {
+export function SlideFrame({ id, layout, variant, meta, logo, confidential, theme, ctx, bleed, children }: Props) {
   const resolved = resolveMaster(theme, layout, { master: meta?.master, variant })
   const sectionNumber = ctx.section?.number
   const sectionAccent = sectionNumber === undefined ? undefined : resolveSectionAccent(theme?.sectionAccents, sectionNumber)
 
-  const effectiveMaster = logo ? { decorations: [...(resolved?.decorations ?? []), logoToDecoration(logo)], background: resolved?.background } : resolved
+  const effectiveMaster =
+    !logo && !confidential ? resolved : { decorations: [...(resolved?.decorations ?? []), ...(logo ? [logoToDecoration(logo)] : []), ...(confidential ? [confidentialToDecoration(confidential)] : [])], background: resolved?.background }
 
   return (
     <section className="slide-container" id={id} data-master={resolved?.masterKey} data-section-number={sectionNumber} data-section-accent={sectionAccent} data-transition={meta?.transition}>

@@ -289,6 +289,31 @@ describe('SlideRenderer', () => {
     })
   })
 
+  // #394: meta.confidential は独自描画を持たず、TextMasterDecoration に合成されて
+  // .master-layer-front に描画される（SlideFrame.test.tsx が合成ロジック自体の詳細は検証する）
+  describe('Confidential透かし（meta.confidential → TextMasterDecoration への合成）', () => {
+    const confidential = { text: 'Confidential' }
+
+    it('confidential指定時、section内側の.master-layer-frontに透かし文言が描画される', () => {
+      const { container } = renderWithTheme(<SlideRenderer slides={[testSlides[0]]} confidential={confidential} />)
+      const section = container.querySelector('section.slide-container')!
+      expect(section.querySelector('.master-layer-front .master-decoration-text')?.textContent).toBe('Confidential')
+    })
+
+    it('confidential未指定時は透かし文言が描画されない（現行と完全同一）', () => {
+      const { container } = renderWithTheme(<SlideRenderer slides={[testSlides[0]]} />)
+      expect(container.querySelector('.master-decoration-text')).toBeNull()
+    })
+
+    it('全レイアウトで透かしがsection内側に描画される（PDF書き出し・発表者ビュー・編集プレビューに写る前提）', () => {
+      const { container } = renderWithTheme(<SlideRenderer slides={testSlides} confidential={confidential} />)
+      const sections = container.querySelectorAll('section.slide-container')
+      sections.forEach((section) => {
+        expect(section.querySelector('.master-layer-front .master-decoration-text')?.textContent).toBe('Confidential')
+      })
+    })
+  })
+
   // #193: contentレイアウトのプレーン本文対応（body/items）
   describe('contentスライド(body/items)', () => {
     it('bodyのみを指定すると本文テキストが描画される', () => {

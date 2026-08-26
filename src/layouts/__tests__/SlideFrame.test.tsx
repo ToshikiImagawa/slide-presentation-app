@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { render } from '@testing-library/react'
 import { SlideFrame } from '../SlideFrame'
 import { buildSectionAccentCss } from '../../applyTheme'
-import type { LogoConfig, MasterRenderContext, SectionInfo, ThemeData } from '../../data'
+import type { ConfidentialConfig, LogoConfig, MasterRenderContext, SectionInfo, ThemeData } from '../../data'
 
 // 5枚のデッキ: [0]表紙（章なし） [1][2]第1章 [3][4]第2章
 const section1: SectionInfo = { title: '導入', number: 1, startIndex: 1, slideCount: 2 }
@@ -31,6 +31,59 @@ function renderFrameWithLogo(logo: LogoConfig, ctx: MasterRenderContext = at(0),
   )
   return container.querySelector('section.slide-container') as HTMLElement
 }
+
+/** confidential 付きの section を描画して返す（#394: meta.confidential → TextMasterDecoration 合成の検証用） */
+function renderFrameWithConfidential(confidential: ConfidentialConfig, ctx: MasterRenderContext = at(0), theme?: ThemeData): HTMLElement {
+  const { container } = render(
+    <SlideFrame id="s1" layout="content" confidential={confidential} theme={theme} ctx={ctx}>
+      <div>body</div>
+    </SlideFrame>,
+  )
+  return container.querySelector('section.slide-container') as HTMLElement
+}
+
+describe('meta.confidential の TextMasterDecoration への合成（#394）', () => {
+  it('confidential未指定時は前面レイヤーに何も描画しない', () => {
+    const section = renderFrame(at(0))
+    expect(section.querySelector('.master-layer-front')?.innerHTML).toBe('')
+  })
+
+  it('anchor/offset未指定時はmeta.logoと同じ既定位置（bottom:0/left:0 + translate(30px,-20px)相当）に描画される', () => {
+    const section = renderFrameWithConfidential({ text: 'Confidential' })
+    const textEl = section.querySelector('.master-layer-front .master-decoration-text') as HTMLElement
+    expect(textEl.style.bottom).toBe('0px')
+    expect(textEl.style.left).toBe('0px')
+    expect(textEl.style.transform).toBe('translate(0%, 0%) translate(30px, -20px)')
+    expect(textEl.textContent).toBe('Confidential')
+  })
+
+  it('anchor/opacity/rotateを指定すると斜め・半透明の透かし表現になる', () => {
+    const section = renderFrameWithConfidential({ text: 'Confidential', anchor: 'middle-center', offset: { x: 0, y: 0 }, opacity: 0.15, rotate: -30 })
+    const textEl = section.querySelector('.master-layer-front .master-decoration-text') as HTMLElement
+    expect(textEl.style.top).toBe('50%')
+    expect(textEl.style.left).toBe('50%')
+    expect(textEl.style.opacity).toBe('0.15')
+    expect(textEl.style.transform).toBe('translate(-50%, -50%) translate(0px, 0px) rotate(-30deg)')
+  })
+
+  it('onlyで特定スライドから除外できる', () => {
+    const excluded = renderFrameWithConfidential({ text: 'Confidential', only: 'not-first' }, at(0))
+    expect(excluded.querySelector('.master-layer-front .master-decoration-text')).toBeNull()
+
+    const included = renderFrameWithConfidential({ text: 'Confidential', only: 'not-first' }, at(1, section1))
+    expect(included.querySelector('.master-layer-front .master-decoration-text')).not.toBeNull()
+  })
+
+  it('meta.logoとmeta.confidentialの両方を指定した場合に両方描画される', () => {
+    const section = render(
+      <SlideFrame id="s1" layout="content" logo={{ src: '/meta-logo.png' }} confidential={{ text: 'Confidential' }} ctx={at(0)}>
+        <div>body</div>
+      </SlideFrame>,
+    ).container.querySelector('section.slide-container') as HTMLElement
+    expect(section.querySelector('.master-layer-front img')).not.toBeNull()
+    expect(section.querySelector('.master-layer-front .master-decoration-text')?.textContent).toBe('Confidential')
+  })
+})
 
 describe('meta.logo の LogoMasterDecoration への合成（#350）', () => {
   it('logo未指定時は前面レイヤーに何も描画しない', () => {

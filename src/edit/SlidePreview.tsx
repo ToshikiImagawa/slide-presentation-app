@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { LogoConfig, SectionInfo, SlideData, ThemeData } from '../data'
+import type { ConfidentialConfig, LogoConfig, SectionInfo, SlideData, ThemeData } from '../data'
 import { SlideRenderer } from '../components/SlideRenderer'
 import { LazyImageContext } from '../components/FallbackImage'
 import { resolveCanvasSize } from '../hooks/useReveal'
@@ -14,7 +14,23 @@ import styles from './SlidePreview.module.css'
  * FallbackImage の遅延読み込みに乗せると画像が永久に表示されない。LazyImageContext で
  * 即時読み込みに切り替える（#224）。
  */
-export function SlidePreview({ slide, logo, theme, index, total, sections }: { slide: SlideData; logo?: LogoConfig; theme?: ThemeData; index: number; total: number; sections: SectionInfo[] }) {
+export function SlidePreview({
+  slide,
+  logo,
+  confidential,
+  theme,
+  index,
+  total,
+  sections,
+}: {
+  slide: SlideData
+  logo?: LogoConfig
+  confidential?: ConfidentialConfig
+  theme?: ThemeData
+  index: number
+  total: number
+  sections: SectionInfo[]
+}) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [scale, setScale] = useState(0.3)
   const { width: canvasWidth, height: canvasHeight } = resolveCanvasSize(theme?.canvas)
@@ -43,7 +59,7 @@ export function SlidePreview({ slide, logo, theme, index, total, sections }: { s
       <div className={`reveal ${styles.previewReveal}`}>
         <div className="slides">
           <LazyImageContext.Provider value={false}>
-            <SlideRenderer.Slide slide={slide} logo={logo} theme={theme} index={index} total={total} sections={sections} />
+            <SlideRenderer.Slide slide={slide} logo={logo} confidential={confidential} theme={theme} index={index} total={total} sections={sections} />
           </LazyImageContext.Provider>
         </div>
       </div>
