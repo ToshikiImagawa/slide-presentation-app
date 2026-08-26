@@ -39,10 +39,12 @@
   border-bottom: none;
 }
 
-/* ゼブラ（偶数行）。rgba(var(--theme-*-rgb)) は色によって -rgb companion の有無が異なるため使わず、
-   color-mix で「テーマ色を透明に混ぜる」ことで --theme-zebra-opacity の濃さをそのまま反映する */
+/* ゼブラ（偶数行）。color-mix() は WebKit で getComputedStyle() の解決結果が CSS Color 4 の
+   color() 関数構文になり、html2canvas（PDF書き出し時のスライド撮影）がこれを未サポート関数として
+   例外を投げるため使わない（structureDiagram/colors.ts の shadeSeries と同じ rgba + -rgb companion
+   方式に統一する。--theme-background-alt は applyTheme.ts が -rgb companion を必ず設定する色なので使える） */
 .tr:nth-child(even) .td {
-  background: color-mix(in srgb, var(--theme-background-alt) calc(var(--theme-zebra-opacity) * 100%), transparent);
+  background: rgba(var(--theme-background-alt-rgb), var(--theme-zebra-opacity));
 }
 
 /* 行数・列数が多いスライド向けの縮小段階 */

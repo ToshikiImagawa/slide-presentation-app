@@ -1,0 +1,8 @@
+{
+  "rules": {
+    "function-disallowed-list": ["color-mix", "oklch", "oklab", "lab", "lch", "color", "light-dark"],
+    "declaration-property-value-disallowed-list": {
+      "/^/": ["/\\(\\s*from\\s/i"]
+    }
+  }
+}
