@@ -267,6 +267,29 @@ are used respectively. The logo is shown in the bottom-left corner of every slid
 
 ![Logo shown in the bottom-left corner](resources/screenshots/en/logo.png)
 
+### Confidential/Watermark
+
+Place a watermark such as "CONFIDENTIAL" or "DRAFT" across the whole deck via the `meta.confidential` field.
+
+| Field      | Type   | Default        | Description                                          |
+|------------|--------|----------------|-------------------------------------------------------|
+| `text`     | string | (required)     | Watermark text                                       |
+| `anchor`   | string | `bottom-left`  | One of 9 positions (e.g. `top-right`, `center`)       |
+| `offset`   | object | `{x:30,y:-20}` | Pixel offset `{ x, y }` from the anchor               |
+| `fontSize` | number | -              | Font size (px)                                        |
+| `color`    | string | -              | Text color                                            |
+| `opacity`  | number | `1`            | Opacity (0-1); use around `0.1`-`0.2` for a watermark |
+| `rotate`   | number | `0`            | Rotation angle (deg, clockwise); e.g. `-30` for a diagonal watermark |
+| `only`     | object | -              | Restrict which slides the watermark is drawn on       |
+
+If `meta.confidential` is omitted, no watermark is displayed. `text` is the only required field. Note that the default
+`offset` is tuned for `bottom-left`, so when using another `anchor` you should specify `offset` explicitly (otherwise
+it may end up off-screen).
+
+Both `meta.logo` and `meta.confidential` can be overridden per slide via `slides[].meta.logo` /
+`slides[].meta.confidential`. Unspecified fields inherit the top-level setting, and `{ "hidden": true }` hides the
+logo/watermark on that slide only.
+
 ### Layouts
 
 Each slide's `layout` field determines which layout is used.
