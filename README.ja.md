@@ -261,6 +261,29 @@ xattr -dr com.apple.quarantine "/Applications/Slide Presentation App.app"
 
 ![左下に表示されるロゴ](resources/screenshots/ja/logo.png)
 
+### Confidential設定
+
+`meta.confidential` フィールドで「CONFIDENTIAL」「DRAFT」等の透かし文言をデッキ全体に配置できます。
+
+| フィールド  | 型     | 既定値           | 説明                                                         |
+|-------------|--------|------------------|--------------------------------------------------------------|
+| `text`      | string | （必須）         | 透かし文言                                                   |
+| `anchor`    | string | `bottom-left`    | 9方向のいずれか（例: `top-right`、`center`）                 |
+| `offset`    | object | `{x:30,y:-20}`   | アンカーからのpxオフセット `{ x, y }`                         |
+| `fontSize`  | number | -                | フォントサイズ（px）                                          |
+| `color`     | string | -                | 文字色                                                        |
+| `opacity`   | number | `1`              | 不透明度（0〜1）。透かしにする場合は `0.1`〜`0.2` 程度を指定  |
+| `rotate`    | number | `0`              | 回転角（deg・時計回り）。斜めの透かしにする場合は `-30` 等    |
+| `only`      | object | -                | 透かしを描画するスライドの絞り込み                             |
+
+`meta.confidential` を省略すると透かしは表示されません。必須フィールドは `text` のみです。`offset` の既定値は
+`bottom-left` 専用の値なので、他の `anchor` を使う場合は必ず `offset` を指定してください（指定しないと画面外に出て
+見えなくなります）。
+
+`meta.logo` / `meta.confidential` はいずれも `slides[].meta.logo` / `slides[].meta.confidential` でスライド個別に
+上書きできます。未指定のフィールドはトップレベル設定を継承し、`{ "hidden": true }` を指定するとそのスライドだけ
+ロゴ・透かしを非表示にできます。
+
 ### レイアウト
 
 各スライドの `layout` フィールドで使用するレイアウトが決まります。
