@@ -91,6 +91,19 @@ export interface ComponentReference {
   style?: Record<string, string | number>
 }
 
+/** slides[].meta.logo（このスライドだけの上書き・#393）。meta.logo（PresentationMeta.logo）をフィールド単位で
+ * 部分上書きする。個別スライド指定が優先する（meta.backgroundColor/backgroundImage と同型の優先順位）。
+ * 未指定のフィールドは meta.logo の値を継承する。hidden: true を指定するとこのスライドだけロゴを非表示にする */
+export interface SlideLogoOverride extends Partial<LogoConfig> {
+  hidden?: boolean
+}
+
+/** slides[].meta.confidential（このスライドだけの上書き・#393）。meta.confidential
+ * （PresentationMeta.confidential）を SlideLogoOverride と同じ規則で部分上書きする */
+export interface SlideConfidentialOverride extends Partial<ConfidentialConfig> {
+  hidden?: boolean
+}
+
 /** スライドのノート情報 */
 export interface SlideNotes {
   /** スピーカーノート（発表者メモ・台本） */
@@ -115,6 +128,12 @@ export interface SlideMeta {
   /** このスライドが属する章のタイトル。同じ値が連続するスライドを1つの章として扱い、章番号・開始ページは
    * 宣言順から導出する（buildSections・#191）。未指定のスライドは章に属さない（表紙・締め等） */
   section?: string
+  /** meta.logo（プレゼンテーション全体設定）をこのスライドだけ上書きする（#393）。個別スライド指定が優先する
+   * （meta.backgroundColor/backgroundImage と同型の優先順位）。未指定のスライドは現行と完全同一の見た目になる */
+  logo?: SlideLogoOverride
+  /** meta.confidential（プレゼンテーション全体設定）をこのスライドだけ上書きする（#393）。logo と同じ優先順位・
+   * 部分上書き規則 */
+  confidential?: SlideConfidentialOverride
 }
 
 /** slides[].meta.section の連続ブロックから導出した章（#191）。装飾テキストへの章番号・章タイトルの差し込みと、
