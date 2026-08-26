@@ -30,6 +30,7 @@ allowed-tools: Read, Write, Glob, Grep, Bash(npm run build:addons), Bash(npm run
 | コンポーネントファイル名 | パスカルケース | `CountdownTimer.tsx` |
 | コンポーネント登録名 | パスカルケース | `CountdownTimer` |
 | CSSモジュールファイル名 | パスカルケース + `.module.css` | `CountdownTimer.module.css` |
+| 共有モジュールファイル名（`entry.ts` に非登録） | キャメルケース（パスカルケースは避け、コンポーネントと区別する） | `icons.tsx` |
 
 ## 技術制約
 
