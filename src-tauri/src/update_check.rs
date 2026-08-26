@@ -1,18 +1,10 @@
 use serde::Serialize;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tauri_plugin_store::StoreExt;
-use tauri_plugin_updater::{Update, UpdaterExt};
+use tauri_plugin_updater::{Update, Updater, UpdaterExt};
 use url::Url;
 
-/// latest.json の配信元リポジトリ（#121）。当初は GitHub Releases API 経由でアセット URL を解決していたが、
-/// 未認証アクセスは IP あたり60リクエスト/時までしかなく、同一ネットワークの他ユーザー（自分のツール呼び出しを
-/// 含む）と枠を共有して枯渇し、リリース直後に更新検出できない事象が発生した（v2.3.1）。
-/// 静的ダウンロードURL（`github.com/.../releases/latest/download/...`）は `api.github.com` とは別カウンタで
-/// （`github.com` 側のリダイレクト → 署名付きCDN URL。レート制限ヘッダも付かない）、両方式とも常に
-/// `releases/latest`（prerelease除外）を見る点で挙動は同じなので、レート制限を受けないこちらに一本化する
-/// （API経由でのプレリリース配信制御は将来必要になった時点で再検討する）。
-/// `tauri.conf.json` の `plugins.updater.endpoints` はプラグイン初期化時の静的スキーマ要件を満たすための
-/// 値に過ぎず、実行時は必ずこのモジュールが解決した URL で上書きされる（endpoints の真実源はここ）
+/// latest.json の配信元リポジトリ（#121）。
 const REPO: &str = "ToshikiImagawa/slide-presentation-app";
 const LATEST_JSON_ASSET_NAME: &str = "latest.json";
 
@@ -31,24 +23,38 @@ pub struct UpdateInfo {
   pub body: Option<String>,
 }
 
-/// 最新リリースの latest.json への静的ダウンロードURL（`api.github.com` のレート制限を受けない）。
+/// 最新リリースの latest.json への静的ダウンロードURL。当初は GitHub Releases API 経由でアセット URL を
+/// 解決していたが、未認証アクセスは IP あたり60リクエスト/時までしかなく、同一ネットワークの他ユーザー
+/// （自分のツール呼び出しを含む）と枠を共有して枯渇し、リリース直後に更新検出できない事象が発生した（v2.3.1）。
+/// この静的URL（`github.com/.../releases/latest/download/...`）は `api.github.com` とは別カウンタで
+/// （`github.com` 側のリダイレクト → 署名付きCDN URL。レート制限ヘッダも付かない）、両方式とも常に
+/// `releases/latest`（prerelease除外）を見る点で挙動は同じなので、レート制限を受けないこちらに一本化した
+/// （API経由でのプレリリース配信制御は将来必要になった時点で再検討する）。
+/// `tauri.conf.json` の `plugins.updater.endpoints` はプラグイン初期化時の静的スキーマ要件を満たすための
+/// 値に過ぎず、実行時は必ずこのモジュールが解決した URL で上書きされる（endpoints の真実源はここ）
 fn latest_json_url() -> String {
   format!("https://github.com/{REPO}/releases/latest/download/{LATEST_JSON_ASSET_NAME}")
 }
 
-/// 静的URLを updater の endpoints に設定し check() する。check_for_update・install_update の双方が使う
-/// 共通処理（install 時に再度呼ぶことで、確認済みの更新をまたぐ状態を持たずに済む）
-async fn resolve_update(app: &tauri::AppHandle) -> Result<Option<Update>, String> {
+/// 静的URLを updater の endpoints に設定して構築する。ここで失敗するのは URL 解析等のローカルな
+/// 問題（`REPO`/`LATEST_JSON_ASSET_NAME` の誤り等）であり、ネットワークへは一切到達していない。
+/// check_for_update のクールダウン記録（`CHECK_COOLDOWN_SECS` はレート制限枠の消費を防ぐためのもの）は
+/// この段の失敗では行わない（ローカルな不具合を「ネットワーク済み」として24時間隠してしまうため）
+fn build_updater(app: &tauri::AppHandle) -> Result<Updater, String> {
   let endpoint = Url::parse(&latest_json_url()).map_err(|e| e.to_string())?;
 
-  let updater = app
+  app
     .updater_builder()
     .endpoints(vec![endpoint])
     .map_err(|e| e.to_string())?
     .build()
-    .map_err(|e| e.to_string())?;
+    .map_err(|e| e.to_string())
+}
 
-  updater.check().await.map_err(|e| e.to_string())
+/// updater を構築して check() する。check_for_update・install_update の双方が使う共通処理
+/// （install 時に再度呼ぶことで、確認済みの更新をまたぐ状態を持たずに済む）
+async fn resolve_update(app: &tauri::AppHandle) -> Result<Option<Update>, String> {
+  build_updater(app)?.check().await.map_err(|e| e.to_string())
 }
 
 fn now_epoch_secs() -> u64 {
@@ -92,7 +98,8 @@ fn record_checked_now(app: &tauri::AppHandle) {
 /// 更新の有無を確認する。開発ビルド（`npm run tauri:dev` 等）では常に確認せず `None` を返す
 /// （dev では起動が頻繁なうえ配布物とバージョン整合の意味がないため。他の dev 限定機能と同じ
 /// `cfg!(debug_assertions)` 規約）。前回チェックから24時間以内なら（同一ネットワーク内でのレート制限枠の
-/// 消費を抑えるため）実際には確認せず `None` を返す。latest.json 未添付・オフラインなどはすべて Err にし、
+/// 消費を抑えるため）実際には確認せず `None` を返す（`build_updater` のローカルな失敗はこの記録の対象外。
+/// `record_checked_now` のコメント参照）。latest.json 未添付・オフラインなどはすべて Err にし、
 /// 呼び出し側（フロント）はこれを無言で諦める（利用を妨げない・issue #121 の受け入れ基準）
 #[tauri::command]
 pub async fn check_for_update(app: tauri::AppHandle) -> Result<Option<UpdateInfo>, String> {
@@ -108,7 +115,8 @@ pub async fn check_for_update(app: tauri::AppHandle) -> Result<Option<UpdateInfo
     return Ok(None);
   }
 
-  let result = resolve_update(&app).await;
+  let updater = build_updater(&app)?;
+  let result = updater.check().await.map_err(|e| e.to_string());
   record_checked_now(&app);
   let update = result?;
   Ok(update.map(|u| UpdateInfo {
