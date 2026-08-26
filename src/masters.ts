@@ -1,5 +1,20 @@
 import { hasComponent } from './components/ComponentRegistry'
-import type { ConfidentialConfig, LogoConfig, LogoMasterDecoration, MasterBackground, MasterDecoration, MasterDecorationOnly, MasterDefinition, MasterGradient, MasterRenderContext, SlideData, TextMasterDecoration, ThemeData } from './data'
+import type {
+  ConfidentialConfig,
+  LogoConfig,
+  LogoMasterDecoration,
+  MasterBackground,
+  MasterDecoration,
+  MasterDecorationOnly,
+  MasterDefinition,
+  MasterGradient,
+  MasterRenderContext,
+  SlideConfidentialOverride,
+  SlideData,
+  SlideLogoOverride,
+  TextMasterDecoration,
+  ThemeData,
+} from './data'
 
 // schema/slide-content-schema.json の theme.masters 配下の同名 enum と手作業で同期している。
 // slideContentSchema.ts の SCHEMA は AI生成専用の厳格検証のためのモジュールであり、汎用の
@@ -54,6 +69,59 @@ export function confidentialToDecoration(confidential: ConfidentialConfig): Text
     rotate: confidential.rotate,
     layer: 'front',
   }
+}
+
+/** meta.logo を slides[].meta.logo（SlideLogoOverride）でフィールド単位にマージする（#393。hidden は
+ * 見ない。値の綴りミス検証（getMasterWarnings）が hidden 指定時も含めて機能できるよう、マージ自体は常に
+ * 行う）。マージ結果に src が無い場合（グローバル未指定かつ override も src を指定していない）は undefined
+ * を返す（LogoConfig.src は必須のため描画できない） */
+function mergeLogoOverride(logo: LogoConfig | undefined, override: SlideLogoOverride): LogoConfig | undefined {
+  const src = override.src ?? logo?.src
+  if (!src) return undefined
+  return {
+    src,
+    width: override.width ?? logo?.width,
+    height: override.height ?? logo?.height,
+    anchor: override.anchor ?? logo?.anchor,
+    offset: override.offset ?? logo?.offset,
+    only: override.only ?? logo?.only,
+  }
+}
+
+/** meta.confidential を slides[].meta.confidential（SlideConfidentialOverride）でフィールド単位にマージする
+ * （#393）。mergeLogoOverride と同じ規則。マージ結果に text が無い場合（グローバル未指定かつ override も
+ * text を指定していない）は undefined を返す（ConfidentialConfig.text は必須のため描画できない） */
+function mergeConfidentialOverride(confidential: ConfidentialConfig | undefined, override: SlideConfidentialOverride): ConfidentialConfig | undefined {
+  const text = override.text ?? confidential?.text
+  if (!text) return undefined
+  return {
+    text,
+    fontSize: override.fontSize ?? confidential?.fontSize,
+    color: override.color ?? confidential?.color,
+    anchor: override.anchor ?? confidential?.anchor,
+    offset: override.offset ?? confidential?.offset,
+    only: override.only ?? confidential?.only,
+    opacity: override.opacity ?? confidential?.opacity,
+    rotate: override.rotate ?? confidential?.rotate,
+  }
+}
+
+/** meta.logo（プレゼンテーション全体設定）を、このスライドの meta.logo（SlideLogoOverride）で解決する
+ * （#393）。個別スライド指定が優先する部分上書き（meta.backgroundColor/backgroundImage と同型の優先順位）。
+ * override 未指定ならそのまま meta.logo を返す（現行と完全同一の見た目）。override.hidden が true の場合は
+ * このスライドでロゴを描画しない */
+export function resolveSlideLogo(logo: LogoConfig | undefined, override?: SlideLogoOverride): LogoConfig | undefined {
+  if (!override) return logo
+  if (override.hidden) return undefined
+  return mergeLogoOverride(logo, override)
+}
+
+/** meta.confidential を、このスライドの meta.confidential（SlideConfidentialOverride）で解決する（#393）。
+ * resolveSlideLogo と同じ優先順位・部分上書き規則 */
+export function resolveSlideConfidential(confidential: ConfidentialConfig | undefined, override?: SlideConfidentialOverride): ConfidentialConfig | undefined {
+  if (!override) return confidential
+  if (override.hidden) return undefined
+  return mergeConfidentialOverride(confidential, override)
 }
 
 /**
@@ -341,21 +409,65 @@ function confidentialConfigWarnings(confidential: ConfidentialConfig | undefined
   return decorationWarnings(confidentialToDecoration(confidential), 'meta.confidential')
 }
 
+/** override オブジェクトに hidden 以外のフィールドがあるか。hidden のみの指定（例: `{ hidden: true }`）は
+ * 値の綴りミスが発生し得ないため、slide{Logo,Confidential}OverrideWarnings の検証対象から外す判定に使う */
+function hasOverrideFields(override: SlideLogoOverride | SlideConfidentialOverride): boolean {
+  return Object.keys(override).some((key) => key !== 'hidden')
+}
+
+/** slides[].meta.logo（スライド個別上書き・#393）の値検証。meta.logo とマージした実際の描画形
+ * （LogoMasterDecoration）を decorationWarnings にそのまま渡すことで、theme.masters[].decorations[] と
+ * 同じ検証（anchor/only の綴りミス等）を重複実装せずに共有する */
+function slideLogoOverrideWarnings(slides: SlideData[] | undefined, logo: LogoConfig | undefined): string[] {
+  const warnings: string[] = []
+  for (const [index, slide] of (slides ?? []).entries()) {
+    const override = slide.meta?.logo
+    if (!override || !hasOverrideFields(override)) continue
+    const merged = mergeLogoOverride(logo, override)
+    if (merged) warnings.push(...decorationWarnings(logoToDecoration(merged), `slides[${index}].meta.logo`))
+  }
+  return warnings
+}
+
+/** slides[].meta.confidential（スライド個別上書き・#393）の値検証。slideLogoOverrideWarnings と同様の方針 */
+function slideConfidentialOverrideWarnings(slides: SlideData[] | undefined, confidential: ConfidentialConfig | undefined): string[] {
+  const warnings: string[] = []
+  for (const [index, slide] of (slides ?? []).entries()) {
+    const override = slide.meta?.confidential
+    if (!override || !hasOverrideFields(override)) continue
+    const merged = mergeConfidentialOverride(confidential, override)
+    if (merged) warnings.push(...decorationWarnings(confidentialToDecoration(merged), `slides[${index}].meta.confidential`))
+  }
+  return warnings
+}
+
 /**
  * masters/masterMap/tokens、slides[].meta.master（スライド個別指定）、meta.logo（#350）・meta.confidential
- * （#394）の値検証エラー（綴りミス等）を警告として返す。getThemeWarnings と同じ方針: 検証エラーではなく
- * 警告として扱い、描画は継続する（resolveMaster は循環・未解決を静かに次の候補へフォールバックするため、
- * その事実をここで利用者に伝える）。slides/logo/confidential は省略可能（省略時は該当する検証をスキップする）。
+ * （#394）、slides[].meta.logo・slides[].meta.confidential（スライド個別上書き・#393）の値検証エラー
+ * （綴りミス等）を警告として返す。getThemeWarnings と同じ方針: 検証エラーではなく警告として扱い、描画は
+ * 継続する（resolveMaster は循環・未解決を静かに次の候補へフォールバックするため、その事実をここで
+ * 利用者に伝える）。slides/logo/confidential は省略可能（省略時は該当する検証をスキップする）。
  */
 export function getMasterWarnings(theme?: ThemeData, slides?: SlideData[], logo?: LogoConfig, confidential?: ConfidentialConfig): string[] {
   const logoWarnings = logoConfigWarnings(logo)
   const confidentialWarnings = confidentialConfigWarnings(confidential)
-  if (!theme) return [...logoWarnings, ...confidentialWarnings]
+  const slideLogoWarnings = slideLogoOverrideWarnings(slides, logo)
+  const slideConfidentialWarnings = slideConfidentialOverrideWarnings(slides, confidential)
+  if (!theme) return [...logoWarnings, ...confidentialWarnings, ...slideLogoWarnings, ...slideConfidentialWarnings]
 
   const masters = theme.masters ?? {}
   const masterKeys = new Set(Object.keys(masters))
 
-  return [logoWarnings, confidentialWarnings, masterMapWarnings(theme.masterMap, masterKeys), slideMasterWarnings(slides, masterKeys), definitionWarnings(masters, masterKeys), tokenWarnings(theme.tokens, masterKeys)].flat()
+  return [
+    logoWarnings,
+    confidentialWarnings,
+    slideLogoWarnings,
+    slideConfidentialWarnings,
+    masterMapWarnings(theme.masterMap, masterKeys),
+    slideMasterWarnings(slides, masterKeys),
+    definitionWarnings(masters, masterKeys),
+    tokenWarnings(theme.tokens, masterKeys),
+  ].flat()
 }
 
 function isCircular(masters: Record<string, MasterDefinition>, startKey: string): boolean {

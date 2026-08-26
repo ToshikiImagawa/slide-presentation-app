@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { render } from '@testing-library/react'
 import { SlideFrame } from '../SlideFrame'
 import { buildSectionAccentCss } from '../../applyTheme'
-import type { ConfidentialConfig, LogoConfig, MasterRenderContext, SectionInfo, ThemeData } from '../../data'
+import type { ConfidentialConfig, LogoConfig, MasterRenderContext, SectionInfo, SlideMeta, ThemeData } from '../../data'
 
 // 5枚のデッキ: [0]表紙（章なし） [1][2]第1章 [3][4]第2章
 const section1: SectionInfo = { title: '導入', number: 1, startIndex: 1, slideCount: 2 }
@@ -22,20 +22,22 @@ function renderFrame(ctx: MasterRenderContext, theme?: ThemeData): HTMLElement {
   return container.querySelector('section.slide-container') as HTMLElement
 }
 
-/** logo 付きの section を描画して返す（#350: meta.logo → LogoMasterDecoration 合成の検証用） */
-function renderFrameWithLogo(logo: LogoConfig, ctx: MasterRenderContext = at(0), theme?: ThemeData): HTMLElement {
+/** logo 付きの section を描画して返す（#350: meta.logo → LogoMasterDecoration 合成の検証用）。
+ * meta は slides[].meta.logo（スライド個別上書き・#393）の検証用 */
+function renderFrameWithLogo(logo: LogoConfig, ctx: MasterRenderContext = at(0), theme?: ThemeData, meta?: SlideMeta): HTMLElement {
   const { container } = render(
-    <SlideFrame id="s1" layout="content" logo={logo} theme={theme} ctx={ctx}>
+    <SlideFrame id="s1" layout="content" logo={logo} theme={theme} meta={meta} ctx={ctx}>
       <div>body</div>
     </SlideFrame>,
   )
   return container.querySelector('section.slide-container') as HTMLElement
 }
 
-/** confidential 付きの section を描画して返す（#394: meta.confidential → TextMasterDecoration 合成の検証用） */
-function renderFrameWithConfidential(confidential: ConfidentialConfig, ctx: MasterRenderContext = at(0), theme?: ThemeData): HTMLElement {
+/** confidential 付きの section を描画して返す（#394: meta.confidential → TextMasterDecoration 合成の検証用）。
+ * meta は slides[].meta.confidential（スライド個別上書き・#393）の検証用 */
+function renderFrameWithConfidential(confidential: ConfidentialConfig, ctx: MasterRenderContext = at(0), theme?: ThemeData, meta?: SlideMeta): HTMLElement {
   const { container } = render(
-    <SlideFrame id="s1" layout="content" confidential={confidential} theme={theme} ctx={ctx}>
+    <SlideFrame id="s1" layout="content" confidential={confidential} theme={theme} meta={meta} ctx={ctx}>
       <div>body</div>
     </SlideFrame>,
   )
@@ -130,6 +132,42 @@ describe('meta.logo の LogoMasterDecoration への合成（#350）', () => {
     const section = renderFrameWithLogo({ src: '/meta-logo.png' }, at(0), theme)
     const imgs = [...section.querySelectorAll('.master-layer-front img')] as HTMLImageElement[]
     expect(imgs.map((img) => img.getAttribute('data-src'))).toEqual(['/brand.png', '/meta-logo.png'])
+  })
+})
+
+describe('slides[].meta.logo / meta.confidential によるスライド個別上書き（#393）', () => {
+  it('override 未指定のスライドは meta.logo と完全同一の見た目になる', () => {
+    const withEmptyMeta = renderFrameWithLogo({ src: '/logo.png' }, at(0), undefined, {})
+    const without = renderFrameWithLogo({ src: '/logo.png' })
+    expect(withEmptyMeta.querySelector('.master-layer-front')?.innerHTML).toBe(without.querySelector('.master-layer-front')?.innerHTML)
+  })
+
+  it('meta.logo.hidden: true を指定したスライドだけロゴを非表示にできる', () => {
+    const section = renderFrameWithLogo({ src: '/logo.png' }, at(0), undefined, { logo: { hidden: true } })
+    expect(section.querySelector('.master-layer-front img')).toBeNull()
+  })
+
+  it('meta.logo.anchor/offset を指定したスライドだけロゴの配置を上書きできる', () => {
+    const section = renderFrameWithLogo({ src: '/logo.png', anchor: 'bottom-left' }, at(0), undefined, { logo: { anchor: 'top-right', offset: { x: 5, y: 5 } } })
+    const logoEl = section.querySelector('.master-layer-front > div') as HTMLElement
+    expect(logoEl.style.top).toBe('0px')
+    expect(logoEl.style.right).toBe('0px')
+    expect(logoEl.style.transform).toBe('translate(0%, 0%) translate(5px, 5px)')
+    const img = section.querySelector('.master-layer-front img') as HTMLImageElement
+    expect(img.getAttribute('data-src')).toBe('/logo.png')
+  })
+
+  it('meta.confidential.hidden: true を指定したスライドだけ透かしを非表示にできる', () => {
+    const section = renderFrameWithConfidential({ text: 'Confidential' }, at(0), undefined, { confidential: { hidden: true } })
+    expect(section.querySelector('.master-layer-front .master-decoration-text')).toBeNull()
+  })
+
+  it('meta.confidential.content/anchor を指定したスライドだけ透かしの内容・配置を上書きできる', () => {
+    const section = renderFrameWithConfidential({ text: 'Confidential' }, at(0), undefined, { confidential: { text: 'Draft', anchor: 'middle-center' } })
+    const textEl = section.querySelector('.master-layer-front .master-decoration-text') as HTMLElement
+    expect(textEl.textContent).toBe('Draft')
+    expect(textEl.style.top).toBe('50%')
+    expect(textEl.style.left).toBe('50%')
   })
 })
 

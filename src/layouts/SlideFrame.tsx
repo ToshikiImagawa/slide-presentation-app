@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import type { ConfidentialConfig, LogoConfig, MasterRenderContext, SlideMeta, ThemeData } from '../data'
 import { resolveSectionAccent } from '../applyTheme'
-import { confidentialToDecoration, logoToDecoration, resolveMaster } from '../masters'
+import { confidentialToDecoration, logoToDecoration, resolveMaster, resolveSlideConfidential, resolveSlideLogo } from '../masters'
 import { SlideMasterLayer } from './SlideMasterLayer'
 
 /** 4つのレイアウトラッパー（TitleLayout等）と SlideFrame が共通で受け取るprops。SlideFrame にpropsを
@@ -34,6 +34,9 @@ type Props = SlideFrameCommonProps & {
  * 背景レイヤー（data-background-*・.backgrounds）は本編でしか効かないため使わない。
  * 余白は section ではなく .master-body に持たせることで、本編・発表者ビュー・編集プレビュー・PDF書き出しの
  * 4経路の見た目を一致させる。
+ * meta.logo/meta.confidential は slides[].meta.logo/meta.confidential（スライド個別上書き・#393）で
+ * フィールド単位に上書きできる。個別スライド指定が優先する（meta.backgroundColor/backgroundImage と
+ * 同型の優先順位）。resolveSlideLogo/resolveSlideConfidential が hidden 判定とマージを担う（masters.ts）。
  * 章（meta.section から導出）に属するスライドには data-section-number（章番号。customCSS から章を狙う用途）と
  * data-section-accent（章色のカラートークン名）を付ける。後者は buildSectionAccentCss（applyTheme.ts）が
  * 出力する章スコープの CSS 変数上書きが効くスコープになる（#319）。章に属さないスライドは属性を持たないため
@@ -43,8 +46,13 @@ export function SlideFrame({ id, layout, variant, meta, logo, confidential, them
   const sectionNumber = ctx.section?.number
   const sectionAccent = sectionNumber === undefined ? undefined : resolveSectionAccent(theme?.sectionAccents, sectionNumber)
 
+  const effectiveLogo = resolveSlideLogo(logo, meta?.logo)
+  const effectiveConfidential = resolveSlideConfidential(confidential, meta?.confidential)
+
   const effectiveMaster =
-    !logo && !confidential ? resolved : { decorations: [...(resolved?.decorations ?? []), ...(logo ? [logoToDecoration(logo)] : []), ...(confidential ? [confidentialToDecoration(confidential)] : [])], background: resolved?.background }
+    !effectiveLogo && !effectiveConfidential
+      ? resolved
+      : { decorations: [...(resolved?.decorations ?? []), ...(effectiveLogo ? [logoToDecoration(effectiveLogo)] : []), ...(effectiveConfidential ? [confidentialToDecoration(effectiveConfidential)] : [])], background: resolved?.background }
 
   return (
     <section className="slide-container" id={id} data-master={resolved?.masterKey} data-section-number={sectionNumber} data-section-accent={sectionAccent} data-transition={meta?.transition}>

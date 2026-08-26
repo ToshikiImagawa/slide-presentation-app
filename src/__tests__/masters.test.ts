@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { resolveMaster, buildMasterCss, getMasterWarnings, renderMasterText } from '../masters'
+import { resolveMaster, buildMasterCss, getMasterWarnings, renderMasterText, resolveSlideLogo, resolveSlideConfidential } from '../masters'
 import { clearRegistry, registerDefaultComponent } from '../components/ComponentRegistry'
 import type { MasterRenderContext, SectionInfo, ThemeData } from '../data'
 
@@ -151,6 +151,52 @@ describe('resolveMaster', () => {
   })
 })
 
+// #393: slides[].meta.logo / meta.confidential によるスライド個別上書き
+describe('resolveSlideLogo（#393）', () => {
+  it('override 未指定なら meta.logo をそのまま返す（現行と完全同一の見た目）', () => {
+    const logo = { src: '/logo.png' }
+    expect(resolveSlideLogo(logo, undefined)).toBe(logo)
+    expect(resolveSlideLogo(undefined, undefined)).toBeUndefined()
+  })
+
+  it('hidden: true を指定したスライドではロゴを描画しない', () => {
+    expect(resolveSlideLogo({ src: '/logo.png' }, { hidden: true })).toBeUndefined()
+  })
+
+  it('未指定のフィールドは meta.logo の値を継承し、指定したフィールドだけ上書きする', () => {
+    const merged = resolveSlideLogo({ src: '/logo.png', anchor: 'bottom-left', offset: { x: 30, y: -20 } }, { anchor: 'top-right' })
+    expect(merged).toEqual({ src: '/logo.png', width: undefined, height: undefined, anchor: 'top-right', offset: { x: 30, y: -20 }, only: undefined })
+  })
+
+  it('meta.logo が無くても override 単体で src を指定すれば新規のロゴになる', () => {
+    expect(resolveSlideLogo(undefined, { src: '/slide-only.png' })).toEqual({ src: '/slide-only.png', width: undefined, height: undefined, anchor: undefined, offset: undefined, only: undefined })
+  })
+
+  it('meta.logo も override も src を持たなければ描画しない', () => {
+    expect(resolveSlideLogo(undefined, { anchor: 'top-right' })).toBeUndefined()
+  })
+})
+
+describe('resolveSlideConfidential（#393）', () => {
+  it('override 未指定なら meta.confidential をそのまま返す（現行と完全同一の見た目）', () => {
+    const confidential = { text: 'Confidential' }
+    expect(resolveSlideConfidential(confidential, undefined)).toBe(confidential)
+  })
+
+  it('hidden: true を指定したスライドでは透かしを描画しない', () => {
+    expect(resolveSlideConfidential({ text: 'Confidential' }, { hidden: true })).toBeUndefined()
+  })
+
+  it('content・配置だけを上書きできる（text は継承）', () => {
+    const merged = resolveSlideConfidential({ text: 'Confidential', opacity: 0.15 }, { anchor: 'middle-center' })
+    expect(merged).toMatchObject({ text: 'Confidential', anchor: 'middle-center', opacity: 0.15 })
+  })
+
+  it('meta.confidential も override も text を持たなければ描画しない', () => {
+    expect(resolveSlideConfidential(undefined, { anchor: 'middle-center' })).toBeUndefined()
+  })
+})
+
 describe('buildMasterCss', () => {
   it('tokens 未指定なら空文字を返す', () => {
     expect(buildMasterCss(undefined)).toBe('')
@@ -285,6 +331,40 @@ describe('getMasterWarnings', () => {
 
     it('confidential 未指定なら警告しない', () => {
       expect(getMasterWarnings(undefined, undefined, undefined, undefined)).toEqual([])
+    })
+  })
+
+  // #393: slides[].meta.logo / slides[].meta.confidential（スライド個別上書き）の値検証
+  describe('slides[].meta.logo の検証（#393）', () => {
+    it('meta.logo とマージ後の anchor の綴りミスを警告する', () => {
+      const warnings = getMasterWarnings(undefined, [{ id: 's1', layout: 'center', content: {}, meta: { logo: { anchor: 'top-lft' as never } } }], { src: '/logo.png' })
+      expect(warnings).toContain('slides[0].meta.logo.anchor: 不明な値 "top-lft" です')
+    })
+
+    it('グローバル未指定でも override 単体で src を持てば検証する', () => {
+      const warnings = getMasterWarnings(undefined, [{ id: 's1', layout: 'center', content: {}, meta: { logo: { src: '/slide-logo.png', only: 'furst' as never } } }])
+      expect(warnings).toContain('slides[0].meta.logo.only: 不明な値 "furst" です')
+    })
+
+    it('hidden のみの指定（他フィールド無し）は検証をスキップする（綴りミスの余地が無い）', () => {
+      const warnings = getMasterWarnings(undefined, [{ id: 's1', layout: 'center', content: {}, meta: { logo: { hidden: true } } }], { src: '/logo.png', anchor: 'top-lft' as never })
+      expect(warnings.filter((w) => w.startsWith('slides[0].meta.logo'))).toEqual([])
+    })
+
+    it('override が無いスライドは検証しない', () => {
+      expect(getMasterWarnings(undefined, [{ id: 's1', layout: 'center', content: {}, meta: {} }], { src: '/logo.png' })).toEqual([])
+    })
+  })
+
+  describe('slides[].meta.confidential の検証（#393）', () => {
+    it('meta.confidential とマージ後の anchor の綴りミスを警告する', () => {
+      const warnings = getMasterWarnings(undefined, [{ id: 's1', layout: 'center', content: {}, meta: { confidential: { anchor: 'top-lft' as never } } }], undefined, { text: 'Confidential' })
+      expect(warnings).toContain('slides[0].meta.confidential.anchor: 不明な値 "top-lft" です')
+    })
+
+    it('hidden のみの指定は検証をスキップする', () => {
+      const warnings = getMasterWarnings(undefined, [{ id: 's1', layout: 'center', content: {}, meta: { confidential: { hidden: true } } }], undefined, { text: 'Confidential', anchor: 'top-lft' as never })
+      expect(warnings.filter((w) => w.startsWith('slides[0].meta.confidential'))).toEqual([])
     })
   })
 

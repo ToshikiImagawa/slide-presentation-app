@@ -3,6 +3,8 @@ export type {
   PresentationMeta,
   LogoConfig,
   ConfidentialConfig,
+  SlideLogoOverride,
+  SlideConfidentialOverride,
   SlideData,
   SlideContent,
   ContentItem,
