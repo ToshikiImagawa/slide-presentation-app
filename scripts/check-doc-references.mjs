@@ -135,6 +135,12 @@ function collectRustSymbols(content, known) {
     const base = match[1].split('::').pop()
     if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(base)) known.add(base)
   }
+  // use せずフルパスで直接使う型（`std::sync::OnceLock<...>` 等）も拾う。use 文の regex は import 文だけを
+  // 対象にするため、これらは既存の regex では拾えない（#390 で update_check.rs の `use std::sync::OnceLock;`
+  // を削除した際、他ファイルでフルパス参照されている OnceLock が既知集合から消えドキュメント検証が壊れた）
+  for (const match of content.matchAll(/(?:[A-Za-z_][A-Za-z0-9_]*::)+([A-Z][A-Za-z0-9_]*)/g)) {
+    known.add(match[1])
+  }
 }
 
 // JSON 設定ファイル（tauri.conf.json / tsconfig.json）のキー名・識別子形の値を拾う。
