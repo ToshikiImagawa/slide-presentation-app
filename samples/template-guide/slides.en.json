@@ -512,6 +512,52 @@
       }
     },
     {
+      "id": "guide-confidential",
+      "layout": "two-column",
+      "content": {
+        "title": "Confidential Watermark",
+        "left": {
+          "heading": "meta.confidential",
+          "headingDescription": "Show a Confidential watermark across the deck",
+          "items": [
+            {"text": "text:", "emphasis": true, "description": " Required. Watermark text"},
+            {"text": "anchor / offset:", "emphasis": true, "description": " Position and offset (default: bottom-left)"},
+            {"text": "opacity / rotate:", "emphasis": true, "description": " Opacity and rotation angle"},
+            {"text": "slides[].meta:", "emphasis": true, "description": " Override logo and confidential per slide"},
+            {"text": "When omitted:", "emphasis": true, "description": " No watermark is shown"}
+          ]
+        },
+        "right": {
+          "codeBlock": {
+            "header": "> JSON specification",
+            "items": [
+              "\"meta\": {",
+              "\u00a0\u00a0\"confidential\": { \"text\": \"CONFIDENTIAL\" }",
+              "},",
+              "\"slides\": [",
+              "\u00a0\u00a0{",
+              "\u00a0\u00a0\u00a0\u00a0\"meta\": {",
+              "\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"confidential\": { \"text\": \"DRAFT\" },",
+              "\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"logo\": { \"hidden\": true }",
+              "\u00a0\u00a0\u00a0\u00a0}",
+              "\u00a0\u00a0}",
+              "]"
+            ]
+          }
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "Set a deck-wide Confidential watermark with meta.confidential. text is required, and anchor / offset control the position while opacity / rotate adjust the look. You can override logo and confidential per slide with slides[].meta.confidential and slides[].meta.logo, including hiding just the logo with hidden: true.",
+          "summary": [
+            "Show a deck-wide watermark with meta.confidential",
+            "text required; anchor/offset/opacity/rotate to adjust",
+            "Override logo/confidential per slide with slides[].meta"
+          ]
+        }
+      }
+    },
+    {
       "id": "guide-fonts",
       "layout": "two-column",
       "content": {
