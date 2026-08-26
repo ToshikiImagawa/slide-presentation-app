@@ -624,6 +624,28 @@
         }
       }
     },
+    "confidential": {
+      "type": "object",
+      "description": "Confidential等の透かし文言。内部的にTextMasterDecorationへ合成される（#394）。meta.logoと対称な語彙で、anchor/offsetの既定値も同じ（bottom-left・{x:30,y:-20}）。他のanchorを使う場合はoffsetを明示しないと画面外に出るので注意",
+      "fields": {
+        "text": { "type": "string" },
+        "fontSize": { "type": "number" },
+        "color": { "type": "string" },
+        "anchor": {
+          "type": "string",
+          "enum": ["top-left", "top-center", "top-right", "middle-left", "middle-center", "middle-right", "bottom-left", "bottom-center", "bottom-right"],
+          "description": "9方向のアンカー位置。省略時bottom-left"
+        },
+        "offset": { "type": "object", "description": "{ x, y } でアンカーからのpxオフセット。省略時 { x: 30, y: -20 }（bottom-left以外のanchorを使う場合は明示すること）" },
+        "only": {
+          "type": "string",
+          "enum": ["first", "last", "not-first", "all", "middle", "section-first", "not-section-first"],
+          "description": "透かしを描画するスライドの絞り込み。省略時all"
+        },
+        "opacity": { "type": "number", "description": "0〜1。省略時1。透かしにする場合は0.1〜0.2程度を指定する" },
+        "rotate": { "type": "number", "description": "回転角（deg・時計回り）。省略時0。斜めの透かしにする場合は-30等を指定する" }
+      }
+    },
     "themeColors": { "type": "string" },
     "brandTheme": { "type": "string", "description": "組織/ブランドテーマ（外部 ThemeData JSON への参照パス）。reset→brandTheme→themeColors→theme の順で下地として適用される" }
   },
@@ -645,6 +667,46 @@
     "section": {
       "type": "string",
       "description": "このスライドが属する章のタイトル。同じ値が隣接して続くスライドを1つの章として扱い、章番号（宣言順の1始まり）・開始ページ・章内枚数は自動導出される。省略したスライドは章に属さない（表紙・締め等）"
+    },
+    "logo": {
+      "type": "object",
+      "description": "presentationMeta.logoをこのスライドだけ上書きする（#393）。個別スライド指定が優先する（backgroundColor/backgroundImageと同型の優先順位）。未指定のフィールドはpresentationMeta.logoの値を継承し、未指定のスライドは現行と完全同一の見た目になる",
+      "fields": {
+        "src": { "type": "string" },
+        "width": { "type": "number" },
+        "height": { "type": "number" },
+        "anchor": {
+          "type": "string",
+          "enum": ["top-left", "top-center", "top-right", "middle-left", "middle-center", "middle-right", "bottom-left", "bottom-center", "bottom-right"]
+        },
+        "offset": { "type": "object", "description": "{ x, y } でアンカーからのpxオフセット" },
+        "only": {
+          "type": "string",
+          "enum": ["first", "last", "not-first", "all", "middle", "section-first", "not-section-first"]
+        },
+        "hidden": { "type": "boolean", "description": "trueを指定するとこのスライドだけロゴを非表示にする" }
+      }
+    },
+    "confidential": {
+      "type": "object",
+      "description": "presentationMeta.confidentialをこのスライドだけ上書きする（#393）。logoと同じ優先順位・部分上書き規則",
+      "fields": {
+        "text": { "type": "string" },
+        "fontSize": { "type": "number" },
+        "color": { "type": "string" },
+        "anchor": {
+          "type": "string",
+          "enum": ["top-left", "top-center", "top-right", "middle-left", "middle-center", "middle-right", "bottom-left", "bottom-center", "bottom-right"]
+        },
+        "offset": { "type": "object", "description": "{ x, y } でアンカーからのpxオフセット" },
+        "only": {
+          "type": "string",
+          "enum": ["first", "last", "not-first", "all", "middle", "section-first", "not-section-first"]
+        },
+        "opacity": { "type": "number", "description": "0〜1" },
+        "rotate": { "type": "number", "description": "回転角（deg・時計回り）" },
+        "hidden": { "type": "boolean", "description": "trueを指定するとこのスライドだけConfidential等の透かしを非表示にする" }
+      }
     }
   },
   "theme": {

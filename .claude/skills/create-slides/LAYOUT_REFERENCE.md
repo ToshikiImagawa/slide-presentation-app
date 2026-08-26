@@ -718,6 +718,30 @@ mermaidはd3/dagre/katex/cytoscape等の重い依存を持ち込むため、コ�
 }
 ```
 
+`logo`/`confidential` を指定すると、トップレベル `meta.logo`/`meta.confidential`（後述）をこのスライドだけ上書きできる（#393。`backgroundColor`/`backgroundImage` と同型の優先順位）。フィールド単位の部分上書きで、未指定のフィールドはトップレベル設定を継承する。`hidden: true` を指定するとこのスライドだけ非表示にできる:
+
+```json
+{
+  "meta": {
+    "confidential": {
+      "text": "DRAFT",
+      "anchor": "top-right",
+      "offset": { "x": -30, "y": 20 }
+    }
+  }
+}
+```
+
+```json
+{
+  "meta": {
+    "logo": { "hidden": true }
+  }
+}
+```
+
+未指定のスライドは現行と完全同一の見た目になる。
+
 ## 共通: meta フィールド（トップレベル）
 
 トップレベルの `meta` にはプレゼン全体の設定を記載する。
@@ -738,6 +762,22 @@ mermaidはd3/dagre/katex/cytoscape等の重い依存を持ち込むため、コ�
 ```
 
 `logo` を指定するとプレゼン内にロゴが表示される。`width`（デフォルト: 120）と `height`（デフォルト: 40）は省略可能。
+
+`confidential` を指定するとConfidential等の透かし文言をデッキ全体に配置できる（`logo` と対称な語彙。#394）:
+
+```json
+{
+  "meta": {
+    "confidential": {
+      "text": "CONFIDENTIAL",
+      "opacity": 0.15,
+      "rotate": -30
+    }
+  }
+}
+```
+
+`text` のみ必須。`anchor`（9方向、デフォルト: `bottom-left`）・`offset`（アンカーからのpxオフセット、デフォルト: `{ x: 30, y: -20 }`）・`fontSize`・`color`・`opacity`（0〜1）・`rotate`（deg）・`only`（描画対象スライドの絞り込み）は省略可能。**`offset` のデフォルトは `bottom-left` 専用の値なので、他の `anchor` を使う場合は必ず `offset` を指定する**（指定しないと画面外に出て見えなくなる）。未指定時は現行と完全同一（透かし無し）。
 
 ## 共通: theme フィールド（プレゼン全体、トップレベル）
 
