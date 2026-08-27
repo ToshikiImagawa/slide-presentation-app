@@ -17,6 +17,7 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Typography from '@mui/material/Typography'
 import { useTranslation } from '../i18n'
 import { theme as presentationTheme } from '../theme'
+import { getThemeWarnings } from '../applyTheme'
 import type { ThemeData } from '../data'
 import { resolveCanvasSize } from '../hooks/useReveal'
 import { SlideRenderer } from '../components/SlideRenderer'
@@ -37,13 +38,13 @@ import {
   setVertexConfig,
   toGeneratedCandidate,
 } from '../aiGenerate'
-import { checkAllSlidesVisually, deriveCheckableDeck, summarizeVisualCheckWarnings, type CheckableDeck, type SlideVisualCheckResult } from './checkAllSlidesVisually'
+import { checkAllSlidesVisually, deriveCheckableDeck, formatSlideVisualWarnings, type CheckableDeck } from './checkAllSlidesVisually'
 
 /** 見た目チェック→AI修正ループの上限（generateSlides自身の MAX_GENERATE_ATTEMPTS とは別軸。
  * 1ラウンド=AI呼び出し1回+再チェック1回。上限に達しても警告が残る場合はその時点の候補をそのまま差分確認へ渡す */
 const MAX_VISUAL_FIX_ROUNDS = 2
 
-const VISUAL_FIX_PROMPT = '以下の見た目の問題を、スライドの文言や構成の調整だけで解消してください。レイアウトの実装やコンポーネントの使い方は変えず、各スライドの意味や趣旨も変えないでください。'
+const VISUAL_FIX_PROMPT = '以下の見た目の問題を解消してください。スライドの文言や構成の調整、またはtheme設定（色・フォント等）の調整で対応し、レイアウトの実装やコンポーネントの使い方は変えず、各スライドの意味や趣旨も変えないでください。'
 
 type PanelStatus = { kind: 'idle' | 'ok' | 'warn' | 'error'; message: string }
 
@@ -252,16 +253,22 @@ export function AiGeneratePanel({
     }
   }
 
-  // 指定した slides.json テキストを全スライド分オフスクリーンに描画し、警告があるスライドを集めて返す。
+  /** DOM実測の見た目警告（slideResults）とテーマ設定の静的検証警告（themeWarnings。getThemeWarnings・applyTheme.ts）
+   * をまとめて返す型。検証の種類は異なるが、AI修正の対象という点では同じ repairFeedback にまとめて渡す */
+  type VisualCheckResult = { slideResults: Awaited<ReturnType<typeof checkAllSlidesVisually>>; themeWarnings: string[] }
+
+  // 指定した slides.json テキストを全スライド分オフスクリーンに描画し、警告があるスライドとテーマ設定の警告を集めて返す。
   // deriveCheckableDeck が null（JSON構文/構造エラー）の場合はチェック不能として null を返す
-  // （「警告0件」と区別する。空デッキ＝0スライドは警告があり得ないため意図的に空配列を返す）
-  const runVisualCheck = async (text: string): Promise<SlideVisualCheckResult[] | null> => {
+  // （「警告0件」と区別する。空デッキ＝0スライドでもテーマ警告はあり得るため slideResults のみ空配列にする）
+  const runVisualCheck = async (text: string): Promise<VisualCheckResult | null> => {
     const deck = deriveCheckableDeck(text, baseDir, brandTheme)
     if (!deck) return null
-    if (deck.slides.length === 0) return []
+    const themeWarnings = getThemeWarnings(deck.theme, deck.slides, deck.logo, deck.confidential)
+    if (deck.slides.length === 0) return { slideResults: [], themeWarnings }
     flushSync(() => setOffscreenDeck(deck))
     try {
-      return await checkAllSlidesVisually(deck.slides, setOffscreenIndex, () => offscreenContainerRef.current?.querySelector<HTMLElement>('section.slide-container') ?? null)
+      const slideResults = await checkAllSlidesVisually(deck.slides, setOffscreenIndex, () => offscreenContainerRef.current?.querySelector<HTMLElement>('section.slide-container') ?? null)
+      return { slideResults, themeWarnings }
     } finally {
       flushSync(() => {
         setOffscreenDeck(null)
@@ -280,19 +287,20 @@ export function AiGeneratePanel({
         setStatus({ kind: 'error', message: t('aiGenerate.visualCheckInvalidJson', 'JSON に構文エラーがあるため見た目チェックを実行できません') })
         return
       }
-      if (results.length === 0) {
+      if (results.slideResults.length === 0 && results.themeWarnings.length === 0) {
         setStatus({ kind: 'ok', message: t('aiGenerate.visualCheckNoIssues', '見た目の問題は見つかりませんでした') })
         return
       }
 
       let baseSlides = currentText
-      let repairFeedback = summarizeVisualCheckWarnings(results)
+      let visualWarnings = formatSlideVisualWarnings(results.slideResults)
+      let themeWarnings = results.themeWarnings
       let finalCandidate: GeneratedCandidate | null = null
-      let remainingWarnings = results.length
+      let remainingWarnings = results.slideResults.length + results.themeWarnings.length
 
       for (let round = 1; round <= MAX_VISUAL_FIX_ROUNDS; round++) {
         setVisualFixPhase(t('aiGenerate.visualCheckFixing', 'AI に修正を依頼中'))
-        const result = await generateSlides({ prompt: VISUAL_FIX_PROMPT, kind, baseSlides, repairFeedback, promptIntent: 'change-instruction' }, (p) => setProgress(p))
+        const result = await generateSlides({ prompt: VISUAL_FIX_PROMPT, kind, baseSlides, visualWarnings, themeWarnings, promptIntent: 'change-instruction' }, (p) => setProgress(p))
 
         if (result.outcome === 'cancelled') {
           setStatus({ kind: 'warn', message: t('aiGenerate.cancelled', '生成を中断しました') })
@@ -324,10 +332,11 @@ export function AiGeneratePanel({
           remainingWarnings = -2 // AI修正結果自体が再チェック不能だったことを示す特別値
           break
         }
-        remainingWarnings = results.length
-        if (results.length === 0) break
+        remainingWarnings = results.slideResults.length + results.themeWarnings.length
+        if (remainingWarnings === 0) break
         baseSlides = candidate.slidesJson
-        repairFeedback = summarizeVisualCheckWarnings(results)
+        visualWarnings = formatSlideVisualWarnings(results.slideResults)
+        themeWarnings = results.themeWarnings
       }
 
       if (finalCandidate) {

@@ -8,7 +8,7 @@ impl-status: implemented
 priority: high
 risk: high
 created: 2026-07-25
-updated: 2026-07-27
+updated: 2026-08-28
 depends-on:
   - spec-ai-slide-generation
 tags:
@@ -25,7 +25,7 @@ category: authoring
 
 **ドキュメント種別:** 技術設計書 (Design Doc)
 **SDDフェーズ:** Plan (計画/設計)
-**最終更新日:** 2026-07-27
+**最終更新日:** 2026-08-28
 **関連 Spec:** [ai-slide-generation_spec.md](./ai-slide-generation_spec.md)
 **関連 PRD:** [ai-slide-generation.md](../requirement/ai-slide-generation.md)
 
@@ -33,7 +33,7 @@ category: authoring
 
 # 1. 実装ステータス
 
-**ステータス:** ✅ 実装済み（Issue #14・ブランチ `feature/ai-slide-generation-impl`）。器（#13 [slide-edit-mode_design.md](./slide-edit-mode_design.md)）の上に生成・ネットワーク・GCP 認証の各層を新設した。内蔵生成は **Vertex AI（GCP ADC）** 直。全ゲート green（`cargo test`/`clippy -D warnings`/`fmt` ・ `npm run typecheck`/`test`/`format:check`/`build`）。実機 macOS の手動検証（GCP ログイン→project/region/model 設定→Vertex 生成疎通・トークン非露出・ゲート）は完了条件に残る（tasks 4.5）。
+**ステータス:** ✅ 実装済み（Issue #14・ブランチ `feature/ai-slide-generation-impl`）。器（#13 [slide-edit-mode_design.md](./slide-edit-mode_design.md)）の上に生成・ネットワーク・GCP 認証の各層を新設した。内蔵生成は **Vertex AI（GCP ADC）** 直。全ゲート green（`cargo test`/`clippy -D warnings`/`fmt` ・ `npm run typecheck`/`test`/`format:check`/`build`）。実機 macOS の手動検証（GCP ログイン→project/region/model 設定→Vertex 生成疎通・トークン非露出・ゲート）は完了条件に残る（tasks 4.5）。後続で `promptIntent`（#302）・`themeConstraints`（#211）・`visualWarnings`/`themeWarnings`（見た目チェック機能・§9.1参照）を`GenerateRequest`に追加したが、本ドキュメントは§10 v0.7まで反映が漏れていた。
 
 ## 1.1. 実装進捗
 
@@ -49,6 +49,9 @@ category: authoring
 | 生成パネル UI（`AiGeneratePanel`・事前ゲート・進捗・中断） | ✅ | FR-001/007/010。editorUiTheme・`--theme-*` |
 | 進捗イベント＋中断＋同時実行1件 | ✅ | FR-010。Tauri event＋`AtomicBool`＋`Mutex` busy |
 | i18n（`aiGenerate.*`） | ✅ | ja/en/fr の生成 UI 文言。方式別の課金/オンライン依存注意書き（`aiGenerate.billingNoticeBuiltin` / `.billingNoticeExternal`。i18n の `t()` が 2 階層までのため平坦キー）を含む（PRD §5.2） |
+| プロンプト意味論の明示（`promptIntent`） | ✅ | #302。`prompt`が新規内容か変更指示かをUIで選択させ`user_prompt()`が明示ラベルを付与（本ドキュメント§10 v0.7で反映） |
+| 意匠制約プロンプト（`themeConstraints`/`buildThemeConstraintsPrompt`） | ✅ | #211。適用中テーマ・登録済みコンポーネント/アイコン名・書体をsystem prompt末尾に追記（本ドキュメント§10 v0.7で反映） |
+| 見た目チェック警告の別レール送信＋逸脱防止ガードレール（`visualWarnings`/`themeWarnings`） | ✅ | 「見た目をチェックして修正」ボタン専用（[ai-visual-check-and-fix_design.md](./ai-visual-check-and-fix_design.md) v0.4）。`repairFeedback`とは別フィールドで警告種別を保ち、Rust`user_prompt()`が種別ごとの指示文＋ガードレールを生成（本ドキュメント§9.1/§10 v0.7で反映） |
 
 ---
 
@@ -166,8 +169,15 @@ graph TD
 pub struct GenerateRequest {
     pub prompt: String,
     pub kind: SlideGeneratorKind,
-    pub base_slides: Option<String>,      // 編集起点時の現行 slides.json（NFR-004 の送出対象に限定）
-    pub repair_feedback: Option<String>,  // 自動修正の再試行時に JS が積む検証エラー要約（FR-005）
+    pub base_slides: Option<String>,        // 編集起点時の現行 slides.json（NFR-004 の送出対象に限定）
+    pub repair_feedback: Option<String>,    // 自動修正の再試行時に JS が積む検証エラー要約（FR-005）
+    // v1.1（#302）: prompt が新規内容か変更指示かの明示。未指定は後方互換のためラベルなし
+    pub prompt_intent: Option<PromptIntent>,
+    // v1.1（#211）: JS 側 buildThemeConstraintsPrompt が組み立てる意匠制約テキスト。system prompt 末尾に追記
+    pub theme_constraints: Option<String>,
+    // v1.2（見た目チェック機能）: DOM実測警告／テーマ静的検証警告。repair_feedbackとは別レール（§9.1参照）
+    pub visual_warnings: Option<Vec<String>>,
+    pub theme_warnings: Option<Vec<String>>,
 }
 
 // TS 側は同一ワイヤー値（'builtin-vertex' / 'external-claude-code'）を GeneratorKind として定義（spec §4.1）。
@@ -175,6 +185,11 @@ pub struct GenerateRequest {
 #[derive(serde::Serialize, serde::Deserialize, Clone, Copy, PartialEq)]
 #[serde(rename_all = "kebab-case")]
 pub enum SlideGeneratorKind { BuiltinVertex, ExternalClaudeCode }
+
+// v1.1（#302）: TS 側は同一ワイヤー値（'new-content' / 'change-instruction'）を PromptIntent として定義
+#[derive(serde::Serialize, serde::Deserialize, Clone, Copy, PartialEq)]
+#[serde(rename_all = "kebab-case")]
+pub enum PromptIntent { NewContent, ChangeInstruction }
 
 // 生成器は「プロンプト → slides.json 候補 1 件」の単一契約（生成器単位で抽象化）。
 // 検証・自動修正ループ・outcome 判定は JS 側（aiGenerate.ts）が駆動する（§9.1 の決定事項）。
@@ -214,7 +229,16 @@ pub(crate) async fn invalidate_token_cache();  // 再ログイン後・401 検�
 ```typescript
 // src/aiGenerate.ts — 生成・Vertex 設定の invoke ラッパ＆オーケストレータ（型は spec §4.1 と一致）
 export type GeneratorKind = 'builtin-vertex' | 'external-claude-code'
-export interface GenerateRequest { prompt: string; kind: GeneratorKind; baseSlides?: string; repairFeedback?: string }
+export type PromptIntent = 'new-content' | 'change-instruction'  // v1.1（#302）
+export interface GenerateRequest {
+  prompt: string
+  kind: GeneratorKind
+  baseSlides?: string
+  repairFeedback?: string
+  visualWarnings?: string[]   // v1.2。DOM実測警告（見た目チェック機能専用。repairFeedbackとは別レール）
+  themeWarnings?: string[]    // v1.2。テーマ静的検証警告（同上）
+  promptIntent?: PromptIntent // v1.1（#302）
+}
 export type GenerateOutcome = 'succeeded' | 'exhausted' | 'cancelled' | 'failed'
 // GenerateResult は JS オーケストレータ generateSlides() が組み立てる（Rust の generate_slides は候補 1 件を返すのみ）
 export interface GenerateResult { outcome: GenerateOutcome; slidesJson: string | null; validationErrors: ValidationError[]; attempts: number }
@@ -325,6 +349,8 @@ HTTP エラー分類は原因に対応させ、UI の案内が誤誘導になら
 | タイムアウト・自動修正上限 N | (A) 実装フェーズへ全送り / (B) 設計で暫定確定 | **(B) 内蔵タイムアウト 120 秒・N=3（暫定確定・実測見直し可）** | PRD NFR-005 は「設計フェーズで確定」を要求。無制限リトライ/生成を避けコストを境界付ける。実測で見直す |
 | 事前ゲート判定条件（初期セット） | — | **内蔵=`getVertexStatus().configured`（project/region/model 充足）／外部=`claude --version` の終了コード 0＋PATH 解決可否（タイムアウトは未検出扱い）** | FR-007「判定条件は設計フェーズで確定」。GCP 未ログイン時は生成失敗→再ログイン文言で手動編集へ退避（FR-008） |
 | Rust↔TS ワイヤーフォーマット | (A) serde 属性で変換 / (B) 手動整合 | **(A) serde `rename_all`（struct=camelCase・enum=kebab/lowercase）** | Tauri `invoke` の既定は Rust 表記のままシリアライズされ、属性なしだと TS 契約（`slidesJson` 等）と実行時に不一致になり `tsc` で検出できない |
+| 見た目チェック警告（`visualWarnings`/`themeWarnings`）の投入経路（v1.2） | (A) 既存`repair_feedback`にそのまま乗せる / (B) 専用のAI呼び出し口を新設する / (C) `repair_feedback`とは別の専用フィールドを`GenerateRequest`に追加する | **(C) 専用フィールドを追加** | 実機検証で、(A)（当初採用）だと`user_prompt()`の「前回の出力には次の検証エラーがありました」という構造/スキーマ検証エラー専用の文脈でテーマ警告がラップされ、AIが指摘外の`speakerNotes`だけを書き換える不具合が生じた。(B)は事前ゲート・中断・差分確認・安全退避の二重実装が必要になり過剰。(C)により`user_prompt()`が警告種別ごとに適切な指示文を生成できるようにした。詳細は [ai-visual-check-and-fix_design.md](./ai-visual-check-and-fix_design.md) §9.1参照 |
+| 検証対象外フィールドへの逸脱書き換えの防止（v1.2） | (A) 指示文のみで統制（ガードレールなし） / (B) 「指摘箇所以外は変更しない」ガードレール文を`user_prompt()`に追加 | **(B) ガードレール追加** | `speakerNotes`等、構造/スキーマ/テーマのいずれの検証対象にもならないフィールドへの書き換えは後段バリデーションで検出できない。`visual_warnings`/`theme_warnings`が1件以上あるときのみガードレールを追加し、警告が無い通常の生成（新規作成等）には影響を与えない設計とした |
 
 ## 9.2. 未解決の課題
 
@@ -338,6 +364,18 @@ HTTP エラー分類は原因に対応させ、UI の案内が誤誘導になら
 ---
 
 # 10. 変更履歴
+
+## v0.7（2026-08-28・後続拡張（#302/#211/見た目チェック機能）の反映漏れをまとめて解消＋実機不具合対応）
+
+**背景:** v0.6以降、`promptIntent`（#302）・`themeConstraints`（#211）が実装されたが本ドキュメントには反映されておらず、`GenerateRequest`の定義が実装から取り残されていた。加えて、見た目チェック機能（[ai-visual-check-and-fix_design.md](./ai-visual-check-and-fix_design.md)）が実機で「AIが指摘外の`speakerNotes`だけを書き換える」不具合を起こし、`GenerateRequest`に新規フィールドを追加する対応が発生した。本v0.7でこれらをまとめて反映する。
+
+**変更内容:**
+
+- §1.1実装進捗に`promptIntent`・`themeConstraints`・`visualWarnings`/`themeWarnings`の3行を追加。
+- §5データモデルのRust`GenerateRequest`構造体に`prompt_intent: Option<PromptIntent>`・`theme_constraints: Option<String>`・`visual_warnings: Option<Vec<String>>`・`theme_warnings: Option<Vec<String>>`を追加。`PromptIntent` enum定義を追加。
+- §5データモデルのTS`GenerateRequest`インターフェースに`visualWarnings`/`themeWarnings`/`promptIntent`を追加（`PromptIntent`型定義も追加）。`themeConstraints`は実装上`generateSlides()`内部で動的に付与されるためTS側interfaceには含めない（実装と一致）。
+- §9.1決定事項に2行追加: 「見た目チェック警告の投入経路」（`repair_feedback`とは別の専用フィールドを新設した理由）・「検証対象外フィールドへの逸脱書き換えの防止」（ガードレール追加の理由）。
+- 詳細は [ai-slide-generation_spec.md](./ai-slide-generation_spec.md) §10 v1.1、[ai-visual-check-and-fix_design.md](./ai-visual-check-and-fix_design.md) §9.1/§10 v0.4を参照。
 
 ## v0.6（2026-07-27・生成精度改善: 参照スキーマの単一ソース化）
 

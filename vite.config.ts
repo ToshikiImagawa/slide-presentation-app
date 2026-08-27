@@ -351,6 +351,10 @@ export default defineConfig(({ mode }) => {
       setupFiles: ['./src/test-setup.ts'],
       // Vitest 対象は単体/統合テストのみ。e2e/ の Playwright spec（*.spec.ts）は除外する
       include: ['src/**/*.{test,spec}.{ts,tsx}', 'scripts/**/*.test.mjs'],
+      // 既定の5000msはCI（GitHub Actions runner）の実行速度変動に対して脆弱で、ローカルでは
+      // 1000ms程度で終わるテストがCI上では2000-2700ms程度かかることがある（実測）。ロジックの
+      // 遅延検出用途ではないため、CI環境の速度変動を吸収できる余裕を持たせる
+      testTimeout: 15000,
     },
   }
 })

@@ -64,6 +64,12 @@ pub struct GenerateRequest {
   pub base_slides: Option<String>,
   /// 自動修正の再試行時に JS オーケストレータが積む検証エラー要約（初回は `None`。FR-005）
   pub repair_feedback: Option<String>,
+  /// 見た目チェック（DOM実測。`getVisualCheckWarnings` 由来）で検出された警告。「見た目をチェックして
+  /// 修正」ボタン専用（#405/#407）。`repair_feedback`（自動修正ループ専用・構造/スキーマ検証エラー）
+  /// とは異質な内容のため別レールで持つ（意味論のズレでAIが指摘外のフィールドを書き換える不具合の修正）。
+  pub visual_warnings: Option<Vec<String>>,
+  /// テーマ設定の静的検証（`getThemeWarnings` 由来）で検出された警告。同ボタン専用。
+  pub theme_warnings: Option<Vec<String>>,
   /// 適用中テーマ・登録済みコンポーネント/アイコンから JS 側が組み立てた意匠制約テキスト（#211）。
   /// 色トークン名・コンポーネント/アイコン名はランタイム（ComponentRegistry・THEME_COLOR_TOKENS）に
   /// しか存在しないため Rust 側では持たず、JS から都度渡してもらう（`aiGenerate.ts` の
@@ -252,13 +258,28 @@ pub(crate) fn system_prompt(theme_constraints: Option<&str>) -> String {
   prompt
 }
 
+/// `Vec<String>` を `- ` 箇条書き行に整形して結合する（`visual_warnings`/`theme_warnings` 共通）。
+fn format_warning_lines(warnings: &[String]) -> String {
+  warnings
+    .iter()
+    .map(|w| format!("- {w}"))
+    .collect::<Vec<_>>()
+    .join("\n")
+}
+
 /// 生成リクエストからユーザープロンプトを構築する純関数（機密最小化の単一チョークポイント・NFR-004）。
 ///
-/// 送出はプロンプト・（編集起点時の）`base_slides`・自動修正の `repair_feedback` のみ。
+/// 送出はプロンプト・（編集起点時の）`base_slides`・自動修正の `repair_feedback`・
+/// 見た目チェックの `visual_warnings`/`theme_warnings` のみ。
 /// キー本体・任意ローカルファイル・他パッケージの内容は **引数に存在しない**ため構造的に混入し得ない。
 ///
 /// `prompt_intent` が指定されていれば、`req.prompt` が「新規内容」なのか「変更指示」なのかを
 /// 明示するラベルを先頭に付与する（#302）。未指定（`None`）はラベルなし（後方互換）。
+///
+/// `visual_warnings`（DOM実測）・`theme_warnings`（テーマ静的検証）は種別ごとに専用セクションを設け、
+/// `repair_feedback`（構造/スキーマ検証エラー専用の別文脈）とは混ぜない（意味論のズレの防止）。
+/// いずれか非空なら末尾に「指摘箇所以外は変更しない」ガードレールを1回だけ追加する（逸脱防止。
+/// 検証対象外フィールド（`speakerNotes`等）への無関係な書き換えがすり抜けていた不具合の修正）。
 pub(crate) fn user_prompt(req: &GenerateRequest) -> String {
   let mut parts = Vec::new();
   if let Some(intent) = req.prompt_intent {
@@ -284,6 +305,30 @@ pub(crate) fn user_prompt(req: &GenerateRequest) -> String {
       "\n前回の出力には次の検証エラーがありました。修正してください:\n{feedback}"
     ));
   }
+
+  let visual_warnings: &[String] = req.visual_warnings.as_deref().unwrap_or(&[]);
+  let theme_warnings: &[String] = req.theme_warnings.as_deref().unwrap_or(&[]);
+  if !visual_warnings.is_empty() {
+    parts.push(format!(
+      "\n以下は実際の画面表示で検出された見た目の問題です（レイアウトの実測結果。JSONのスキーマ検証とは別種）。\
+       文言や構成の調整で解消してください:\n{}",
+      format_warning_lines(visual_warnings)
+    ));
+  }
+  if !theme_warnings.is_empty() {
+    parts.push(format!(
+      "\n以下はテーマ設定（theme.colors・theme.masters等）の静的検証で検出された警告です。\
+       theme設定の値（色コード・アイコン参照名等）を調整して解消してください:\n{}",
+      format_warning_lines(theme_warnings)
+    ));
+  }
+  if !visual_warnings.is_empty() || !theme_warnings.is_empty() {
+    parts.push(
+      "\n上記で指摘された箇所以外（speakerNotes等の指摘されていないフィールド）は変更しないでください。"
+        .to_string(),
+    );
+  }
+
   parts.push("\n出力は slides.json の JSON オブジェクトのみを返してください。".to_string());
   parts.join("\n")
 }
@@ -328,6 +373,8 @@ mod tests {
       kind,
       base_slides: None,
       repair_feedback: None,
+      visual_warnings: None,
+      theme_warnings: None,
       theme_constraints: None,
       prompt_intent: None,
     }
@@ -355,16 +402,21 @@ mod tests {
     assert_eq!(req.kind, SlideGeneratorKind::BuiltinVertex);
     assert!(req.base_slides.is_none());
     assert!(req.repair_feedback.is_none());
+    assert!(req.visual_warnings.is_none());
+    assert!(req.theme_warnings.is_none());
     assert!(req.theme_constraints.is_none());
     assert!(req.prompt_intent.is_none());
 
-    // camelCase のキーで往復する（themeConstraints も含む・#211／promptIntent も含む・#302）
+    // camelCase のキーで往復する（themeConstraints も含む・#211／promptIntent も含む・#302／
+    // visualWarnings・themeWarnings も含む・見た目チェックの警告種別分離）
     let req2: GenerateRequest = serde_json::from_str(
-      r#"{"prompt":"p","kind":"external-claude-code","baseSlides":"{}","repairFeedback":"err","themeConstraints":"色トークン名: primary","promptIntent":"change-instruction"}"#,
+      r#"{"prompt":"p","kind":"external-claude-code","baseSlides":"{}","repairFeedback":"err","visualWarnings":["a"],"themeWarnings":["b"],"themeConstraints":"色トークン名: primary","promptIntent":"change-instruction"}"#,
     )
     .unwrap();
     assert_eq!(req2.base_slides.as_deref(), Some("{}"));
     assert_eq!(req2.repair_feedback.as_deref(), Some("err"));
+    assert_eq!(req2.visual_warnings, Some(vec!["a".to_string()]));
+    assert_eq!(req2.theme_warnings, Some(vec!["b".to_string()]));
     assert_eq!(
       req2.theme_constraints.as_deref(),
       Some("色トークン名: primary")
@@ -456,6 +508,62 @@ mod tests {
     assert!(p.contains("現在のスライド"));
     assert!(p.contains("{\"meta\":{\"title\":\"t\"}}"));
     assert!(p.contains("meta.title が空です"));
+  }
+
+  #[test]
+  fn user_prompt_includes_visual_warnings_with_guardrail() {
+    // 見た目チェック（DOM実測）警告は専用セクション＋逸脱防止ガードレール付きで追加される
+    let mut req = sample_request(SlideGeneratorKind::BuiltinVertex);
+    req.visual_warnings = Some(vec![
+      "slides[0]（id: s1）: はみ出し: 見出しがスライド外に出ています".to_string(),
+    ]);
+    let p = user_prompt(&req);
+    assert!(p.contains("実際の画面表示で検出された見た目の問題"));
+    assert!(p.contains("- slides[0]（id: s1）: はみ出し: 見出しがスライド外に出ています"));
+    assert!(p.contains("上記で指摘された箇所以外"));
+    assert!(!p.contains("テーマ設定"));
+  }
+
+  #[test]
+  fn user_prompt_includes_theme_warnings_with_guardrail() {
+    // テーマ設定の静的検証警告は専用セクション＋逸脱防止ガードレール付きで追加される
+    let mut req = sample_request(SlideGeneratorKind::BuiltinVertex);
+    req.theme_warnings = Some(vec![
+      "theme.colors.unknownKey: 不明なキーです（無視されます）".to_string(),
+    ]);
+    let p = user_prompt(&req);
+    assert!(p.contains("テーマ設定"));
+    assert!(p.contains("- theme.colors.unknownKey: 不明なキーです（無視されます）"));
+    assert!(p.contains("上記で指摘された箇所以外"));
+    assert!(!p.contains("実際の画面表示で検出された見た目の問題"));
+  }
+
+  #[test]
+  fn user_prompt_includes_both_warning_sections_with_single_guardrail() {
+    // 両方指定時は両セクションが独立して現れ、ガードレールは重複しない（1回のみ）
+    let mut req = sample_request(SlideGeneratorKind::BuiltinVertex);
+    req.visual_warnings = Some(vec!["はみ出し".to_string()]);
+    req.theme_warnings = Some(vec!["コントラスト不足".to_string()]);
+    let p = user_prompt(&req);
+    assert!(p.contains("実際の画面表示で検出された見た目の問題"));
+    assert!(p.contains("テーマ設定"));
+    assert_eq!(p.matches("上記で指摘された箇所以外").count(), 1);
+  }
+
+  #[test]
+  fn user_prompt_omits_warning_sections_when_absent_or_empty() {
+    // None・空配列のいずれもセクション・ガードレールを追加しない
+    let req_none = sample_request(SlideGeneratorKind::BuiltinVertex);
+    let p_none = user_prompt(&req_none);
+    assert!(!p_none.contains("上記で指摘された箇所以外"));
+
+    let mut req_empty = sample_request(SlideGeneratorKind::BuiltinVertex);
+    req_empty.visual_warnings = Some(vec![]);
+    req_empty.theme_warnings = Some(vec![]);
+    let p_empty = user_prompt(&req_empty);
+    assert!(!p_empty.contains("上記で指摘された箇所以外"));
+    assert!(!p_empty.contains("実際の画面表示で検出された見た目の問題"));
+    assert!(!p_empty.contains("テーマ設定"));
   }
 
   #[test]
