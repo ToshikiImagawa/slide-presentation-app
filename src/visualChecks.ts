@@ -1,5 +1,6 @@
 /**
- * スライド1枚分の DOM 実測に基づく見た目の破綻検出（はみ出し・セーフエリア侵入・マスター装飾との重なり・#209）。
+ * スライド1枚分の DOM 実測に基づく見た目の破綻検出（はみ出し・セーフエリア侵入・マスター装飾との重なり・
+ * 内部クリッピング・#209）。
  * getThemeWarnings（applyTheme.ts）等の静的な JSON 検証とは異なり、実際にレイアウトされた
  * getBoundingClientRect を読むため、レンダリング済みの `<section class="slide-container">` を渡して呼ぶ。
  * 既存の警告方針（検証エラーではなく警告。描画は継続する）を維持し、例外を投げない。
@@ -79,6 +80,33 @@ function getCollapsedFillItems(rects: Map<Element, DOMRect>): HTMLElement[] {
   return [...rects].filter(([el, rect]) => el.classList.contains('content-area-fill-item') && rect.width > 0 && rect.height <= COLLAPSED_HEIGHT_PX).map(([el]) => el as HTMLElement)
 }
 
+/** `overflow` が内容を隠す設定になっている値（`visible` は含まない） */
+const CLIPPING_OVERFLOW_VALUES = new Set(['hidden', 'auto', 'scroll', 'clip'])
+
+/**
+ * `overflow`（-x/-y）が hidden/auto/scroll/clip の要素で、`scrollHeight`/`scrollWidth` が
+ * `clientHeight`/`clientWidth` を超えている（= 見える範囲より内容が大きく、隠れている部分がある）ものを集める。
+ *
+ * はみ出し/セーフエリア判定は要素の位置をスライド全体・セーフエリアの境界と比較する方式のため、
+ * 「内側のコンテナ自身の overflow によってそのコンテナの中でコンテンツが隠れている」状態
+ * （例: `TwoColumnGrid.tsx` の `Column` が `justifyContent:center` + `overflow:hidden` を持ち、
+ * カラム内容がカラム高さを超えると中央寄せの結果上端が見切れる。クリップされた見出しの座標自体は
+ * スライド内・セーフエリア内に収まるため、位置比較では検知できない）を検知できない盲点だった。
+ * `scrollHeight`/`scrollWidth` はブラウザが計算するスクロール可能な全内容のサイズなので、
+ * 個別のレイアウト実装を知らずに汎用的に検知できる。
+ */
+function getClippedContainers(masterBody: HTMLElement): HTMLElement[] {
+  const out: HTMLElement[] = []
+  for (const el of masterBody.querySelectorAll<HTMLElement>('*')) {
+    const style = getComputedStyle(el)
+    if (!CLIPPING_OVERFLOW_VALUES.has(style.overflowY) && !CLIPPING_OVERFLOW_VALUES.has(style.overflowX)) continue
+    if (el.scrollHeight - el.clientHeight > BOUNDS_TOLERANCE_PX || el.scrollWidth - el.clientWidth > BOUNDS_TOLERANCE_PX) {
+      out.push(el)
+    }
+  }
+  return out
+}
+
 /** マスター装飾の要素（.master-layer-back/.master-layer-front の直下。全面塗りの背景要素は対象外） */
 function getDecorationElements(section: HTMLElement): HTMLElement[] {
   const elements: HTMLElement[] = []
@@ -142,7 +170,8 @@ export function finishSettlingAnimations(section: HTMLElement): void {
 /**
  * レンダリング済みのスライド1枚（`<section class="slide-container">`）を実測し、
  * ①はみ出し（スライド領域の外）②セーフエリア侵入（余白への侵入）③マスター装飾との重なり
- * ④高さを受け取れていない「埋める要素」（#259）、を警告として返す。
+ * ④高さを受け取れていない「埋める要素」（#259）⑤内部クリッピング（内側コンテナ自身の overflow による見切れ）、
+ * を警告として返す。
  * `.master-body` が無い（現行と完全同一のフォールバック等）場合は検査対象がないため空配列を返す。
  *
  * 実測前に finishSettlingAnimations で entrance animation を最終状態へ強制する（理由は同関数の doc 参照）。
@@ -189,6 +218,11 @@ export function getVisualCheckWarnings(section: HTMLElement): string[] {
         warnings.push(`装飾との重なり: ${describeElement(leaf)} がマスター装飾（${describeElement(decoration)}）と重なっています`)
       }
     }
+  }
+
+  for (const el of getClippedContainers(masterBody)) {
+    const overflowPx = Math.max(el.scrollHeight - el.clientHeight, el.scrollWidth - el.clientWidth)
+    warnings.push(`内部クリッピング: ${describeElement(el)} が overflow で内容を隠しています（${overflowPx.toFixed(1)}px 超過）`)
   }
 
   return warnings

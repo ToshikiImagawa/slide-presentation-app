@@ -49,6 +49,14 @@ function addLeaf(parent: HTMLElement, rect: { left: number; top: number; width: 
   return el
 }
 
+/** テスト用に scrollHeight/clientHeight・scrollWidth/clientWidth を固定する（jsdom はレイアウトを計算しないため） */
+function setScrollSize(el: HTMLElement, size: { scrollHeight?: number; clientHeight?: number; scrollWidth?: number; clientWidth?: number }): void {
+  if (size.scrollHeight !== undefined) Object.defineProperty(el, 'scrollHeight', { value: size.scrollHeight, configurable: true })
+  if (size.clientHeight !== undefined) Object.defineProperty(el, 'clientHeight', { value: size.clientHeight, configurable: true })
+  if (size.scrollWidth !== undefined) Object.defineProperty(el, 'scrollWidth', { value: size.scrollWidth, configurable: true })
+  if (size.clientWidth !== undefined) Object.defineProperty(el, 'clientWidth', { value: size.clientWidth, configurable: true })
+}
+
 describe('getVisualCheckWarnings（#209）', () => {
   it('.master-body が無い場合は空配列を返す', () => {
     const section = document.createElement('section')
@@ -157,6 +165,45 @@ describe('getVisualCheckWarnings（#209）', () => {
 
     const warnings = getVisualCheckWarnings(section)
     expect(warnings.some((w) => w.includes('装飾との重なり'))).toBe(false)
+  })
+
+  // TwoColumnGrid.tsx の Column（justifyContent:center + overflow:hidden）でカラム内容がカラム高さを
+  // 超えると中央寄せの結果上端が見切れる問題が、はみ出し/セーフエリア判定（位置比較）では検知できず
+  // 見逃されていた。scrollHeight/clientHeight（overflowで隠れている内容の有無を示すネイティブ信号）で検知する
+  it('overflow:hidden の要素で scrollHeight が clientHeight を超える場合に内部クリッピングを警告する', () => {
+    const { section, body } = buildSection()
+    const column = document.createElement('div')
+    column.style.overflowY = 'hidden'
+    body.appendChild(column)
+    setRect(column, { left: 100, top: 100, width: 400, height: 300 })
+    setScrollSize(column, { scrollHeight: 340, clientHeight: 300 })
+
+    const warnings = getVisualCheckWarnings(section)
+    expect(warnings.some((w) => w.includes('内部クリッピング'))).toBe(true)
+  })
+
+  it('overflow:visible の要素は scrollHeight が clientHeight を超えても警告しない', () => {
+    const { section, body } = buildSection()
+    const column = document.createElement('div')
+    column.style.overflowY = 'visible'
+    body.appendChild(column)
+    setRect(column, { left: 100, top: 100, width: 400, height: 300 })
+    setScrollSize(column, { scrollHeight: 340, clientHeight: 300 })
+
+    const warnings = getVisualCheckWarnings(section)
+    expect(warnings.some((w) => w.includes('内部クリッピング'))).toBe(false)
+  })
+
+  it('overflow:hidden でも差が許容誤差（1px）以内なら内部クリッピングを警告しない', () => {
+    const { section, body } = buildSection()
+    const column = document.createElement('div')
+    column.style.overflowY = 'hidden'
+    body.appendChild(column)
+    setRect(column, { left: 100, top: 100, width: 400, height: 300 })
+    setScrollSize(column, { scrollHeight: 300.5, clientHeight: 300 })
+
+    const warnings = getVisualCheckWarnings(section)
+    expect(warnings.some((w) => w.includes('内部クリッピング'))).toBe(false)
   })
 
   // #297: fadeInUp の途中（translateY 分だけずれた座標）を実測してしまう誤検知の再発防止。
