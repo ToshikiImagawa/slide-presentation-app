@@ -26,7 +26,7 @@ import type { BrandOverrides, BrandProfile, CompiledBrandTheme } from '../brand/
 import { delegateThemeColors } from '../brandMigration'
 import { parseSlides, serializeSlides, prettyPrintJson } from './slidesSerialize'
 import { applySelectedChanges, type DiffSelection } from './slidesDiff'
-import { AiGeneratePanel } from './AiGeneratePanel'
+import { AiGeneratePanel, type AiGeneratePanelHandle } from './AiGeneratePanel'
 import { BrandConfirmDialog } from './BrandConfirmDialog'
 import { GeneratedDiffDialog } from './GeneratedDiffDialog'
 import { ConfirmDialog } from './ConfirmDialog'
@@ -114,6 +114,8 @@ export function SlideEditor({
   // AI 生成結果の適用待ち候補（差分確認ダイアログで承認するまで器に触れない・①/FR-008）。
   // validationErrors は exhausted で非空になりうる残存検証エラー（差分確認ダイアログへ渡す・#47）
   const [pendingGenerated, setPendingGenerated] = useState<GeneratedCandidate | null>(null)
+  // AiGeneratePanel への命令的ハンドル（[再生成する] から regenerate() を呼ぶため・#47）
+  const aiPanelRef = useRef<AiGeneratePanelHandle>(null)
   // 層B: パッケージ自身の同梱可能アドオン（baseDir/addons/manifest.json）と、export に含める選択
   const [packageAddons, setPackageAddons] = useState<string[]>([])
   const [selectedAddons, setSelectedAddons] = useState<string[]>([])
@@ -384,6 +386,14 @@ export function SlideEditor({
     setPendingGenerated(null)
   }
 
+  // 差分確認で [再生成する]（検証エラーが残る候補のみ表示・#47）。候補を破棄してダイアログを閉じ、
+  // AiGeneratePanel に直前と同じ設定での再実行を委ねる（器には触れない・FR-008）
+  const regenerateGenerated = () => {
+    if (pendingGenerated === null) return
+    setPendingGenerated(null)
+    aiPanelRef.current?.regenerate()
+  }
+
   // 「ブランドテーマを取り込む」導線（#168）。テンプレートを選んで抽出し、同一テンプレートの
   // 前回の上書きがあれば読み込んでから確認ダイアログを開く（ここではまだ器に触れない）
   const handleImportBrandTheme = async () => {
@@ -505,6 +515,7 @@ export function SlideEditor({
           validationErrors={pendingGenerated?.validationErrors ?? []}
           onApply={confirmApplyGenerated}
           onCancel={cancelApplyGenerated}
+          onRegenerate={regenerateGenerated}
         />
 
         {/* ブランド抽出（#167）の並置比較・取り込み確認ダイアログ（#168）。currentSlide が無ければボタン自体を無効化しているため必ず存在する */}
@@ -638,7 +649,7 @@ export function SlideEditor({
                 生成結果は applyGeneratedSlides で差分確認ダイアログへ渡す（①） */}
             <Box sx={{ minWidth: 0, minHeight: 0, overflow: 'auto' }}>
               {themeColorsPalette && <ThemeColorsMigrationNotice themeColorsPalette={themeColorsPalette} brandColors={brandTheme?.colors} onDelegate={handleDelegateThemeColors} />}
-              <AiGeneratePanel currentText={text} onApply={applyGeneratedSlides} defaultExpanded={source.aiPanelExpanded} baseDir={source.baseDir} brandTheme={brandTheme} />
+              <AiGeneratePanel ref={aiPanelRef} currentText={text} onApply={applyGeneratedSlides} defaultExpanded={source.aiPanelExpanded} baseDir={source.baseDir} brandTheme={brandTheme} />
               {hasSyntaxError ? (
                 <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 0.5, m: 1 }}>
                   <Typography variant="body2" sx={{ color: 'var(--fixed-primary)' }}>

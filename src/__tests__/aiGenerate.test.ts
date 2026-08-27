@@ -166,6 +166,43 @@ describe('aiGenerate オーケストレータ（generateSlides）', () => {
     expect(result.slidesJson).toBeNull()
   })
 
+  it('invoke 失敗が retryable な構造化エラーなら試行回数内で再試行し、成功すれば succeeded になる（#47）', async () => {
+    h.invoke.mockRejectedValueOnce({ message: '生成結果が不正です: text ブロックが空です', retryable: true }).mockResolvedValueOnce({ text: VALID, truncated: false })
+    const result = await generateSlides(REQ)
+    expect(result.outcome).toBe('succeeded')
+    expect(result.slidesJson).toBe(VALID)
+    expect(result.attempts).toBe(2)
+    expect(h.invoke).toHaveBeenCalledTimes(2)
+  })
+
+  it('invoke 失敗が retryable: false の構造化エラーなら試行を消費せず即座に failed になる（#47）', async () => {
+    h.invoke.mockRejectedValue({ message: 'Vertex AI の設定（project/region/model）が未完了です', retryable: false })
+    const result = await generateSlides(REQ)
+    expect(result.outcome).toBe('failed')
+    expect(result.errorMessage).toBe('Vertex AI の設定（project/region/model）が未完了です')
+    expect(h.invoke).toHaveBeenCalledTimes(1)
+  })
+
+  it('全試行が invoke 失敗（retryable）で候補が一度も得られなければ failed になる（#47）', async () => {
+    h.invoke.mockRejectedValue({ message: '生成結果が不正です: text ブロックが空です', retryable: true })
+    const result = await generateSlides(REQ)
+    expect(result.outcome).toBe('failed')
+    expect(result.slidesJson).toBeNull()
+    expect(result.errorMessage).toBe('生成結果が不正です: text ブロックが空です')
+    expect(h.invoke).toHaveBeenCalledTimes(MAX_GENERATE_ATTEMPTS)
+  })
+
+  it('検証エラー付き候補を得た後、残り試行が invoke 失敗（retryable）でも best を退避して exhausted になる（#47）', async () => {
+    h.invoke
+      .mockResolvedValueOnce({ text: LESS_INVALID, truncated: false })
+      .mockRejectedValueOnce({ message: '生成結果が不正です: text ブロックが空です', retryable: true })
+      .mockRejectedValueOnce({ message: '生成結果が不正です: text ブロックが空です', retryable: true })
+    const result = await generateSlides(REQ)
+    expect(result.outcome).toBe('exhausted')
+    expect(result.slidesJson).toBe(LESS_INVALID)
+    expect(result.attempts).toBe(MAX_GENERATE_ATTEMPTS)
+  })
+
   it('onProgress に generating→validating（→repairing）のフェーズを通知する', async () => {
     h.invoke.mockResolvedValueOnce({ text: INVALID, truncated: false }).mockResolvedValueOnce({ text: VALID, truncated: false })
     const phases: GenerateProgress['phase'][] = []

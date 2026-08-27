@@ -26,6 +26,8 @@ import { ValidationErrorList } from './ValidationErrorList'
  * 構造解析不能（構文不正・id 欠落/重複）のときは「全体置換」のフォールバック表示にする。
  * テーマ・スライド単位はチェックボックスで選択できる（初期値は全選択）。[適用する] で `onApply`（選択された
  * DiffSelection を渡す。フォールバック時は null で全体置換）、[キャンセル] で `onCancel`（器に触れない・FR-008）。
+ * `validationErrors` が非空（自動修正の上限到達＝exhausted）のときは、壊れた候補を誤って保存できないよう
+ * [適用する] を無効化し、代わりに [再生成する] で同じプロンプト・設定のまま再試行できる（`onRegenerate`）。
  */
 export interface GeneratedDiffDialogProps {
   open: boolean
@@ -38,6 +40,8 @@ export interface GeneratedDiffDialogProps {
   /** 選択された適用範囲。構造解析不能（フォールバック＝全体置換）のときは null */
   onApply: (selection: DiffSelection | null) => void
   onCancel: () => void
+  /** 検証エラーが残る候補を破棄し、同じプロンプト・設定で再生成する（AiGeneratePanel.regenerate 経由） */
+  onRegenerate: () => void
 }
 
 /** 変更種別 → MUI パレット色（追加=success/変更=warning/削除=error）。 */
@@ -99,8 +103,10 @@ function renderLineDiff(before: unknown, after: unknown) {
   })
 }
 
-export function GeneratedDiffDialog({ open, beforeText, afterText, validationErrors, onApply, onCancel }: GeneratedDiffDialogProps) {
+export function GeneratedDiffDialog({ open, beforeText, afterText, validationErrors, onApply, onCancel, onRegenerate }: GeneratedDiffDialogProps) {
   const { t } = useTranslation()
+  // 検証エラーが残る候補（exhausted）は構造解析可否に関わらず誤保存を防ぐ（[適用する]無効化＋[再生成する]表示）
+  const hasValidationErrors = validationErrors.length > 0
   // 閉じているときは差分計算をスキップ（開いたときだけ算出）
   const diff = useMemo(() => (open ? computeSlidesDiff(beforeText, afterText) : null), [open, beforeText, afterText])
 
@@ -242,6 +248,11 @@ export function GeneratedDiffDialog({ open, beforeText, afterText, validationErr
       </DialogTitle>
       <DialogContent dividers>
         <ValidationErrorList errors={validationErrors} sx={{ mb: 1.5 }} />
+        {hasValidationErrors && (
+          <Typography variant="body2" sx={{ color: 'var(--fixed-primary)', mb: 1.5 }}>
+            {t('diff.applyBlocked', '検証エラーが残っているため適用できません。再生成するか、内容を手動で修正してください。')}
+          </Typography>
+        )}
         {diff && diff.parseable ? (
           <Stack spacing={1.5}>
             {/* 集計サマリ */}
@@ -305,7 +316,12 @@ export function GeneratedDiffDialog({ open, beforeText, afterText, validationErr
         <Button onClick={onCancel} color="inherit">
           {t('diff.cancel', 'キャンセル')}
         </Button>
-        <Button onClick={() => onApply(diff && diff.parseable ? selection : null)} variant="contained">
+        {hasValidationErrors && (
+          <Button onClick={onRegenerate} color="inherit">
+            {t('diff.regenerate', '再生成する')}
+          </Button>
+        )}
+        <Button onClick={() => onApply(diff && diff.parseable ? selection : null)} variant="contained" disabled={hasValidationErrors}>
           {t('diff.apply', '適用する')}
         </Button>
       </DialogActions>

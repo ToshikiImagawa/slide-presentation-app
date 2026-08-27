@@ -15,7 +15,9 @@ use std::time::Duration;
 /// Vertex の Anthropic バージョン（body フィールド。HTTP ヘッダの anthropic-version は使わない）。
 const VERTEX_ANTHROPIC_VERSION: &str = "vertex-2023-10-16";
 /// 生成の最大トークン（slides.json 全体置換に十分な余裕）。
-const DEFAULT_MAX_TOKENS: u32 = 8192;
+/// 拡張思考（thinking）を明示的に disabled にしているため通常は消費されないが、モデル側の
+/// 仕様変化に対する保険として、素の出力に必要な量より余裕を持たせている（#47）。
+const DEFAULT_MAX_TOKENS: u32 = 16_000;
 /// リトライ回数（初回＋3 リトライ）。
 const MAX_RETRIES: usize = 3;
 /// 初回バックオフ（ms）。
@@ -167,10 +169,15 @@ pub(crate) fn build_url(region: &str, project_id: &str, model: &str) -> String {
 /// 送出 body を構築する純関数（機密最小化の単一チョークポイント・NFR-004）。
 /// Vertex では `anthropic_version` を body に入れ、`model` は URL 側なので body には入れない。
 /// `tools` は使わないため省略する（空 tools＋tool_choice は 400 になるため）。
+/// `thinking` は明示的に disabled にする: 拡張思考が有効だと、その思考過程だけで `max_tokens` を
+/// 使い切り、本来の JSON 本文（`content[].text`）が 0 文字のまま `stop_reason=max_tokens` で終わる
+/// 不正応答（`extract_text_from_response` の "text ブロックが空です"）が起きる（#47。モデルの既定動作に
+/// 依存すると、モデル変更等で再発しうるため明示指定する）。
 pub(crate) fn build_request_body(req: &GenerateRequest, max_tokens: u32) -> Value {
   serde_json::json!({
       "anthropic_version": VERTEX_ANTHROPIC_VERSION,
       "max_tokens": max_tokens,
+      "thinking": { "type": "disabled" },
       "system": super::system_prompt(req.theme_constraints.as_deref()),
       "messages": [ { "role": "user", "content": super::user_prompt(req) } ],
   })
@@ -257,6 +264,8 @@ mod tests {
     assert_eq!(body["anthropic_version"], VERTEX_ANTHROPIC_VERSION);
     assert!(body.get("model").is_none());
     assert_eq!(body["max_tokens"], 8192);
+    // 拡張思考を明示的に無効化する（thinking が max_tokens を食い尽くし本文が0文字になる不正応答の防止・#47）
+    assert_eq!(body["thinking"]["type"], "disabled");
     assert_eq!(body["messages"][0]["role"], "user");
     assert!(body["messages"][0]["content"]
       .as_str()

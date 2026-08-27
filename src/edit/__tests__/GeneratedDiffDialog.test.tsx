@@ -26,7 +26,7 @@ const AFTER = JSON.stringify({
 
 describe('GeneratedDiffDialog（①構造サマリ差分）', () => {
   it('構造サマリ（追加/変更/削除/メタ）を表示する', () => {
-    render(wrap(<GeneratedDiffDialog open beforeText={BEFORE} afterText={AFTER} validationErrors={[]} onApply={() => {}} onCancel={() => {}} />))
+    render(wrap(<GeneratedDiffDialog open beforeText={BEFORE} afterText={AFTER} validationErrors={[]} onApply={() => {}} onCancel={() => {}} onRegenerate={() => {}} />))
     // 集計チップ（単一文字列ラベル）
     expect(screen.getByText('追加 1')).toBeTruthy()
     expect(screen.getByText('変更 1')).toBeTruthy()
@@ -40,7 +40,7 @@ describe('GeneratedDiffDialog（①構造サマリ差分）', () => {
   it('[適用する]/[キャンセル] で各コールバックを呼ぶ。既定は全選択で onApply される', () => {
     const onApply = vi.fn()
     const onCancel = vi.fn()
-    render(wrap(<GeneratedDiffDialog open beforeText={BEFORE} afterText={AFTER} validationErrors={[]} onApply={onApply} onCancel={onCancel} />))
+    render(wrap(<GeneratedDiffDialog open beforeText={BEFORE} afterText={AFTER} validationErrors={[]} onApply={onApply} onCancel={onCancel} onRegenerate={() => {}} />))
     fireEvent.click(screen.getByRole('button', { name: '適用する' }))
     expect(onApply).toHaveBeenCalledTimes(1)
     expect(onApply).toHaveBeenCalledWith({ theme: true, slideIds: new Set(['s1', 's2']) })
@@ -50,7 +50,7 @@ describe('GeneratedDiffDialog（①構造サマリ差分）', () => {
 
   it('構造解析不能ならフォールバック（全体置換）表示になり、[適用する] は selection=null で呼ばれる', () => {
     const onApply = vi.fn()
-    render(wrap(<GeneratedDiffDialog open beforeText={BEFORE} afterText={'{ broken json'} validationErrors={[]} onApply={onApply} onCancel={() => {}} />))
+    render(wrap(<GeneratedDiffDialog open beforeText={BEFORE} afterText={'{ broken json'} validationErrors={[]} onApply={onApply} onCancel={() => {}} onRegenerate={() => {}} />))
     expect(screen.getByText(/構造を解析できない/)).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: '適用する' }))
     expect(onApply).toHaveBeenCalledTimes(1)
@@ -59,7 +59,7 @@ describe('GeneratedDiffDialog（①構造サマリ差分）', () => {
 
   it('スライドのチェックボックスを外すと、そのスライドを除外した selection で onApply される（②・#301）', () => {
     const onApply = vi.fn()
-    render(wrap(<GeneratedDiffDialog open beforeText={BEFORE} afterText={AFTER} validationErrors={[]} onApply={onApply} onCancel={() => {}} />))
+    render(wrap(<GeneratedDiffDialog open beforeText={BEFORE} afterText={AFTER} validationErrors={[]} onApply={onApply} onCancel={() => {}} onRegenerate={() => {}} />))
     // s1（変更）の詳細カード内チェックボックスを外す
     const s1Checkbox = screen.getByText('s1').closest('summary')!.querySelector('input[type="checkbox"]') as HTMLInputElement
     fireEvent.click(s1Checkbox)
@@ -71,7 +71,7 @@ describe('GeneratedDiffDialog（①構造サマリ差分）', () => {
     const onApply = vi.fn()
     const beforeWithTheme = JSON.stringify({ meta: { title: 'x' }, theme: { colors: { primary: '#111' } }, slides: [{ id: 's1', layout: 'center', content: {} }] })
     const afterWithTheme = JSON.stringify({ meta: { title: 'x' }, theme: { colors: { primary: '#222' } }, slides: [{ id: 's1', layout: 'center', content: {} }] })
-    render(wrap(<GeneratedDiffDialog open beforeText={beforeWithTheme} afterText={afterWithTheme} validationErrors={[]} onApply={onApply} onCancel={() => {}} />))
+    render(wrap(<GeneratedDiffDialog open beforeText={beforeWithTheme} afterText={afterWithTheme} validationErrors={[]} onApply={onApply} onCancel={() => {}} onRegenerate={() => {}} />))
     const themeCheckbox = screen.getByText('テーマ').closest('summary')!.querySelector('input[type="checkbox"]') as HTMLInputElement
     fireEvent.click(themeCheckbox)
     fireEvent.click(screen.getByRole('button', { name: '適用する' }))
@@ -80,21 +80,50 @@ describe('GeneratedDiffDialog（①構造サマリ差分）', () => {
   })
 
   it('open=false のときは中身をレンダリングしない', () => {
-    render(wrap(<GeneratedDiffDialog open={false} beforeText={BEFORE} afterText={AFTER} validationErrors={[]} onApply={() => {}} onCancel={() => {}} />))
+    render(wrap(<GeneratedDiffDialog open={false} beforeText={BEFORE} afterText={AFTER} validationErrors={[]} onApply={() => {}} onCancel={() => {}} onRegenerate={() => {}} />))
     expect(screen.queryByRole('button', { name: '適用する' })).toBeNull()
   })
 
   it('validationErrors があれば検証エラーの内容を表示する（自動修正の上限到達＝exhausted・#47）', () => {
     const errors = [{ path: 'slides[0].content.title', message: '必須項目です', expected: 'string', actual: 'undefined' }]
-    render(wrap(<GeneratedDiffDialog open beforeText={BEFORE} afterText={AFTER} validationErrors={errors} onApply={() => {}} onCancel={() => {}} />))
+    render(wrap(<GeneratedDiffDialog open beforeText={BEFORE} afterText={AFTER} validationErrors={errors} onApply={() => {}} onCancel={() => {}} onRegenerate={() => {}} />))
     expect(screen.getByText('検証エラー (1)')).toBeTruthy()
     expect(screen.getByText(/slides\[0\]\.content\.title/)).toBeTruthy()
     expect(screen.getByText(/必須項目です/)).toBeTruthy()
   })
 
   it('validationErrors が空なら検証エラーのセクションを表示しない', () => {
-    render(wrap(<GeneratedDiffDialog open beforeText={BEFORE} afterText={AFTER} validationErrors={[]} onApply={() => {}} onCancel={() => {}} />))
+    render(wrap(<GeneratedDiffDialog open beforeText={BEFORE} afterText={AFTER} validationErrors={[]} onApply={() => {}} onCancel={() => {}} onRegenerate={() => {}} />))
     expect(screen.queryByText(/検証エラー/)).toBeNull()
+  })
+
+  it('validationErrors があると [適用する] が無効化され、[再生成する] が表示される（#47）', () => {
+    const errors = [{ path: 'slides[0].content.title', message: '必須項目です', expected: 'string', actual: 'undefined' }]
+    render(wrap(<GeneratedDiffDialog open beforeText={BEFORE} afterText={AFTER} validationErrors={errors} onApply={() => {}} onCancel={() => {}} onRegenerate={() => {}} />))
+    expect((screen.getByRole('button', { name: '適用する' }) as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.getByRole('button', { name: '再生成する' })).toBeTruthy()
+  })
+
+  it('[再生成する] クリックで onRegenerate が呼ばれる（#47）', () => {
+    const errors = [{ path: 'slides[0].content.title', message: '必須項目です', expected: 'string', actual: 'undefined' }]
+    const onRegenerate = vi.fn()
+    render(wrap(<GeneratedDiffDialog open beforeText={BEFORE} afterText={AFTER} validationErrors={errors} onApply={() => {}} onCancel={() => {}} onRegenerate={onRegenerate} />))
+    fireEvent.click(screen.getByRole('button', { name: '再生成する' }))
+    expect(onRegenerate).toHaveBeenCalledTimes(1)
+  })
+
+  it('validationErrors が空なら [再生成する] は表示されず [適用する] は有効（#47）', () => {
+    render(wrap(<GeneratedDiffDialog open beforeText={BEFORE} afterText={AFTER} validationErrors={[]} onApply={() => {}} onCancel={() => {}} onRegenerate={() => {}} />))
+    expect(screen.queryByRole('button', { name: '再生成する' })).toBeNull()
+    expect((screen.getByRole('button', { name: '適用する' }) as HTMLButtonElement).disabled).toBe(false)
+  })
+
+  it('構造解析不能なフォールバック表示でも validationErrors があれば [適用する] を無効化する（#47）', () => {
+    const errors = [{ path: '', message: 'JSON 構文エラー: unexpected token', expected: 'json', actual: 'string' }]
+    render(wrap(<GeneratedDiffDialog open beforeText={BEFORE} afterText={'{ broken json'} validationErrors={errors} onApply={() => {}} onCancel={() => {}} onRegenerate={() => {}} />))
+    expect(screen.getByText(/構造を解析できない/)).toBeTruthy()
+    expect((screen.getByRole('button', { name: '適用する' }) as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.getByRole('button', { name: '再生成する' })).toBeTruthy()
   })
 
   it('テーマの変更は before → after の色見本とWCAGコントラスト比を展開表示する（#166）', () => {
@@ -108,7 +137,7 @@ describe('GeneratedDiffDialog（①構造サマリ差分）', () => {
       theme: { colors: { textBody: '#dddddd', background: '#ffffff' } },
       slides: [{ id: 's1', layout: 'center', content: { title: '旧' } }],
     })
-    render(wrap(<GeneratedDiffDialog open beforeText={beforeWithTheme} afterText={afterWithTheme} validationErrors={[]} onApply={() => {}} onCancel={() => {}} />))
+    render(wrap(<GeneratedDiffDialog open beforeText={beforeWithTheme} afterText={afterWithTheme} validationErrors={[]} onApply={() => {}} onCancel={() => {}} onRegenerate={() => {}} />))
 
     // theme 変更は「メタ情報」の Chip 一覧ではなく専用の展開表示になる
     expect(screen.queryByText('theme: 変更')).toBeNull()
@@ -121,7 +150,7 @@ describe('GeneratedDiffDialog（①構造サマリ差分）', () => {
 
   it('changed のスライドは git diff 風の行単位表示（追加=+/削除=-）になる', () => {
     // MUI Dialog は Portal で document.body 直下に描画されるため container ではなく document から探す
-    render(wrap(<GeneratedDiffDialog open beforeText={BEFORE} afterText={AFTER} validationErrors={[]} onApply={() => {}} onCancel={() => {}} />))
+    render(wrap(<GeneratedDiffDialog open beforeText={BEFORE} afterText={AFTER} validationErrors={[]} onApply={() => {}} onCancel={() => {}} onRegenerate={() => {}} />))
     const pre = document.body.querySelector('pre')
     // JSON インデントの空白がそのまま残るため、prefix 直後の空白量は問わずに判定する
     expect(pre?.textContent).toMatch(/-\s+"title": "旧"/)

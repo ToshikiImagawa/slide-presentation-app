@@ -398,13 +398,30 @@ async fn generate_slides(
   edit_mode: tauri::State<'_, EditMode>,
   generation: tauri::State<'_, GenerationEnabled>,
   active: tauri::State<'_, ActiveGeneration>,
-) -> Result<generation::GenerateCandidate, String> {
-  // ゲート: 編集モード かつ 生成有効（どちらか欠けたら keyring/network に到達しない）
+) -> Result<generation::GenerateCandidate, generation::GenerateErrorPayload> {
+  // ゲート: 編集モード かつ 生成有効（どちらか欠けたら keyring/network に到達しない）。
+  // ゲート拒否・同時実行拒否・ロック失敗はいずれも UI バグの兆候か一時的な状態不整合であり、
+  // 同じ入力のまま再試行しても解消しないため retryable: false とする（#47）
   {
-    let edit = *edit_mode.0.lock().map_err(|e| e.to_string())?;
-    let gen = *generation.0.lock().map_err(|e| e.to_string())?;
+    let edit = *edit_mode
+      .0
+      .lock()
+      .map_err(|e| generation::GenerateErrorPayload {
+        message: e.to_string(),
+        retryable: false,
+      })?;
+    let gen = *generation
+      .0
+      .lock()
+      .map_err(|e| generation::GenerateErrorPayload {
+        message: e.to_string(),
+        retryable: false,
+      })?;
     if !generation_command_allowed(edit, gen) {
-      return Err("生成が有効化されていません".to_string());
+      return Err(generation::GenerateErrorPayload {
+        message: "生成が有効化されていません".to_string(),
+        retryable: false,
+      });
     }
   }
 
@@ -412,9 +429,18 @@ async fn generate_slides(
   // Some = 生成中。既に Some なら別の生成が実行中
   let cancel = generation::CancelToken::new();
   {
-    let mut slot = active.0.lock().map_err(|e| e.to_string())?;
+    let mut slot = active
+      .0
+      .lock()
+      .map_err(|e| generation::GenerateErrorPayload {
+        message: e.to_string(),
+        retryable: false,
+      })?;
     if slot.is_some() {
-      return Err("別の生成が実行中です".to_string());
+      return Err(generation::GenerateErrorPayload {
+        message: "別の生成が実行中です".to_string(),
+        retryable: false,
+      });
     }
     *slot = Some(cancel.clone());
   }
@@ -427,7 +453,10 @@ async fn generate_slides(
     *slot = None;
   }
 
-  result.map_err(|e| e.to_string())
+  result.map_err(|e| generation::GenerateErrorPayload {
+    message: e.to_string(),
+    retryable: e.is_retryable(),
+  })
 }
 
 /// 実行中の生成を中断する（in-flight の生成器へ協調的に伝える。FR-010）。

@@ -231,6 +231,8 @@
       "subtitle": "Compare the AI-generated slides with the current content",
       "apply": "Apply",
       "cancel": "Cancel",
+      "regenerate": "Regenerate",
+      "applyBlocked": "The result cannot be applied because validation errors remain. Regenerate it or fix the content manually.",
       "added": "Added",
       "changed": "Changed",
       "removed": "Removed",
