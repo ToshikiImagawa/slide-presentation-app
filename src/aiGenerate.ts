@@ -48,6 +48,11 @@ export interface GenerateRequest {
   baseSlides?: string
   /** 自動修正の再試行時に JS オーケストレータが積む検証エラー要約（初回は省略。FR-005） */
   repairFeedback?: string
+  /** 見た目チェック（DOM実測。getVisualCheckWarnings由来）で検出された警告。「見た目をチェックして
+   * 修正」ボタン専用（#405/#407）。repairFeedback（自動修正ループ専用）とは別レール */
+  visualWarnings?: string[]
+  /** テーマ設定の静的検証（getThemeWarnings由来）で検出された警告。同ボタン専用 */
+  themeWarnings?: string[]
   /** `prompt` が新規内容か変更指示かの明示（#302） */
   promptIntent?: PromptIntent
 }

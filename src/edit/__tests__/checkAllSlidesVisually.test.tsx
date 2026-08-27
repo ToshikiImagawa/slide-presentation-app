@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { useEffect, useRef, useState } from 'react'
 import { render, act } from '@testing-library/react'
-import { checkAllSlidesVisually, deriveCheckableDeck, summarizeVisualCheckWarnings } from '../checkAllSlidesVisually'
+import { checkAllSlidesVisually, deriveCheckableDeck, formatSlideVisualWarnings } from '../checkAllSlidesVisually'
 import type { SlideData } from '../../data'
 
 // checkAllSlidesVisually 自体は DOM 実測（waitForImagesToSettle/waitForLayoutToSettle/getVisualCheckWarnings）を
@@ -76,17 +76,15 @@ describe('checkAllSlidesVisually', () => {
   })
 })
 
-describe('summarizeVisualCheckWarnings', () => {
-  it('index/slideId/警告を "- slides[N]（id: X）: 警告" 形式の行に整形する', () => {
-    const text = summarizeVisualCheckWarnings([{ index: 2, slideId: 'guide-image', warnings: ['はみ出し: 見出しがスライド外に出ています', '内部クリッピング: 本文が隠れています'] }])
+describe('formatSlideVisualWarnings', () => {
+  it('index/slideId/警告を "slides[N]（id: X）: 警告" 形式の配列に整形する（見出し・箇条書き記号はRust側が付与するため付けない）', () => {
+    const lines = formatSlideVisualWarnings([{ index: 2, slideId: 'guide-image', warnings: ['はみ出し: 見出しがスライド外に出ています', '内部クリッピング: 本文が隠れています'] }])
 
-    expect(text).toContain('- slides[2]（id: guide-image）: はみ出し: 見出しがスライド外に出ています')
-    expect(text).toContain('- slides[2]（id: guide-image）: 内部クリッピング: 本文が隠れています')
+    expect(lines).toEqual(['slides[2]（id: guide-image）: はみ出し: 見出しがスライド外に出ています', 'slides[2]（id: guide-image）: 内部クリッピング: 本文が隠れています'])
   })
 
-  it('結果が空なら見出し文のみを返す', () => {
-    const text = summarizeVisualCheckWarnings([])
-    expect(text.split('\n')).toHaveLength(1)
+  it('結果が空なら空配列を返す', () => {
+    expect(formatSlideVisualWarnings([])).toEqual([])
   })
 })
 

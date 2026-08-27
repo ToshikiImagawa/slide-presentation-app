@@ -472,7 +472,7 @@ describe('全スライドVisualCheck→AI修正ボタン', () => {
     expect(h.generateSlides).not.toHaveBeenCalled()
   })
 
-  it('警告があれば repairFeedback 付きで generateSlides を呼び、再チェックで0件になれば onApply して完了を表示する', async () => {
+  it('警告があれば visualWarnings 付きで generateSlides を呼び、再チェックで0件になれば onApply して完了を表示する', async () => {
     const fixed = JSON.stringify({ meta: { title: 'FIXED' }, slides: [{ id: 's1', layout: 'center', content: {} }] })
     v.checkAllSlidesVisually.mockResolvedValueOnce([{ index: 0, slideId: 's1', warnings: ['内部クリッピング: 見出しが隠れています'] }]).mockResolvedValueOnce([])
     h.generateSlides.mockResolvedValue({ outcome: 'succeeded', slidesJson: fixed, validationErrors: [], attempts: 1 })
@@ -491,7 +491,7 @@ describe('全スライドVisualCheck→AI修正ボタン', () => {
     const call = h.generateSlides.mock.calls[0][0]
     expect(call.baseSlides).toBe(VALID)
     expect(call.promptIntent).toBe('change-instruction')
-    expect(call.repairFeedback).toContain('内部クリッピング: 見出しが隠れています')
+    expect(call.visualWarnings).toContain('slides[0]（id: s1）: 内部クリッピング: 見出しが隠れています')
 
     await waitFor(() => expect(onApply).toHaveBeenCalledWith({ slidesJson: fixed, validationErrors: [] }))
     expect(screen.getByText('見た目の問題を修正しました。差分を確認して適用してください')).toBeTruthy()
@@ -538,5 +538,36 @@ describe('全スライドVisualCheck→AI修正ボタン', () => {
 
     await waitFor(() => expect(screen.getByText(/生成に失敗しました/)).toBeTruthy())
     expect(onApply).not.toHaveBeenCalled()
+  })
+
+  // getThemeWarnings（applyTheme.ts）は importOriginal 経由で実装のまま使われる（DOM描画を伴わない
+  // 静的検証のため jsdom でも実際のロジックが動く）。DOM実測（checkAllSlidesVisually）側は0件でも
+  // テーマ警告があれば見た目チェックの対象に合流することを確認する
+  const THEME_UNKNOWN_KEY = JSON.stringify({
+    meta: { title: 'T' },
+    slides: [{ id: 's1', layout: 'center', content: {} }],
+    theme: { colors: { unknownColorKey: '#ffffff' } },
+  })
+
+  it('DOM実測の警告が0件でもテーマ設定の警告があれば themeWarnings 付きで generateSlides を呼ぶ', async () => {
+    // 再チェック（2回目のrunVisualCheck）でテーマ警告が解消された状態を返すようにし、1ラウンドで完了させる
+    v.checkAllSlidesVisually.mockResolvedValueOnce([]).mockResolvedValueOnce([])
+    h.generateSlides.mockResolvedValue({ outcome: 'succeeded', slidesJson: VALID, validationErrors: [], attempts: 1 })
+    const onApply = vi.fn()
+
+    render(
+      <Wrapper>
+        <AiGeneratePanel currentText={THEME_UNKNOWN_KEY} onApply={onApply} />
+      </Wrapper>,
+    )
+    expandPanel()
+    await waitFor(() => expect(visualCheckButton().disabled).toBe(false))
+    fireEvent.click(visualCheckButton())
+
+    await waitFor(() => expect(h.generateSlides).toHaveBeenCalled())
+    const call = h.generateSlides.mock.calls[0][0]
+    expect(call.visualWarnings).toEqual([])
+    expect(call.themeWarnings).toContain('theme.colors.unknownColorKey: 不明なキーです（無視されます）')
+    await waitFor(() => expect(onApply).toHaveBeenCalled())
   })
 })

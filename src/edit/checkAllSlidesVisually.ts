@@ -60,9 +60,9 @@ export async function checkAllSlidesVisually(slides: SlideData[], setCheckIndex:
   return results
 }
 
-/** VisualCheck の警告を、既存の検証エラー要約（aiGenerate.ts の summarizeValidationErrors）と同型の
- * `- ` 行に整形し、AI への repairFeedback としてそのまま渡せる文字列にする */
-export function summarizeVisualCheckWarnings(results: SlideVisualCheckResult[]): string {
-  const lines = results.flatMap((r) => r.warnings.map((w) => `- slides[${r.index}]（id: ${r.slideId}）: ${w}`))
-  return ['以下は実際の画面表示で検出された見た目の問題です（スキーマ検証とは別種）。内容の調整で解消してください。', ...lines].join('\n')
+/** VisualCheck の警告を、GenerateRequest.visualWarnings（aiGenerate.ts）に渡す "slides[N]（id: X）: 警告"
+ * 形式の文字列配列に整形する。見出し文・箇条書き記号（`- `）は Rust 側 user_prompt() が付与するため、
+ * ここでは付けない（プロンプト構築の単一チョークポイントをRust側に集約し、意味論のズレを防ぐ） */
+export function formatSlideVisualWarnings(results: SlideVisualCheckResult[]): string[] {
+  return results.flatMap((r) => r.warnings.map((w) => `slides[${r.index}]（id: ${r.slideId}）: ${w}`))
 }

@@ -227,6 +227,8 @@ mod tests {
       kind: SlideGeneratorKind::BuiltinVertex,
       base_slides: base.map(|s| s.to_string()),
       repair_feedback: feedback.map(|s| s.to_string()),
+      visual_warnings: None,
+      theme_warnings: None,
       theme_constraints: None,
       prompt_intent: None,
     }
