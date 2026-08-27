@@ -70,6 +70,9 @@ export interface SlideData {
 /** スライドのコンテンツ */
 export interface SlideContent {
   title?: string
+  /** タイトルの文字サイズ(px)を明示指定する（center レイアウトの表紙・章扉のみ有効）。省略時はコンテンツの
+   * 長さに応じて自動的に縮小する（はみ出さない範囲で最大サイズを保つ。useAutoFitHeadingFontSize） */
+  titleFontSize?: number
   subtitle?: string
   body?: string
   items?: ContentItem[]

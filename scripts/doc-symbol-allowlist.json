@@ -9,6 +9,7 @@
   "onError": "React/HTML 標準の DOM イベント props 名で、コンポーネント固有の宣言に現れない",
   "BroadcastChannel": "Web 標準の組み込みコンストラクタで、src/** の import/宣言に現れない",
   "ResizeObserver": "Web 標準の組み込みコンストラクタで、src/** の import/宣言に現れない",
+  "MutationObserver": "Web 標準の組み込みコンストラクタで、src/** の import/宣言に現れない",
   "getBoundingClientRect": "DOM 標準のメソッド名（Range.prototype への代入等）で、src/** の宣言に現れない",
   "preventDefault": "DOM 標準のイベントメソッド名で、src/** の宣言に現れない",
   "getByLabel": "@tauri-apps/api/webviewWindow が提供する外部ライブラリのメソッド名で、src/** の宣言に現れない",

@@ -18,14 +18,17 @@ const COLLAPSED_HEIGHT_PX = 1
 /** テキストが確認できる程度の抜粋（警告文で対象要素を識別するため） */
 const EXCERPT_MAX_LENGTH = 24
 
-type Bounds = { left: number; right: number; top: number; bottom: number }
+export type Bounds = { left: number; right: number; top: number; bottom: number }
 
 function toBounds(rect: DOMRect): Bounds {
   return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom }
 }
 
-/** rect が bounds をどれだけ超えて出ているか（px）。内側（許容誤差込み）なら 0 */
-function overshootPx(rect: DOMRect, bounds: Bounds): number {
+/** rect が bounds をどれだけ超えて出ているか（px）。内側（許容誤差込み）なら 0
+ *
+ * `useAutoFitHeadingFontSize`（`src/hooks/`）もこの関数と `getSafeBounds` を使って、見出しがセーフエリアに
+ * 収まるまで縮小するかどうかを判定する（判定ロジックの重複を避ける）。 */
+export function overshootPx(rect: DOMRect, bounds: Bounds): number {
   return Math.max(0, bounds.left - rect.left, rect.right - bounds.right, bounds.top - rect.top, rect.bottom - bounds.bottom)
 }
 
@@ -129,7 +132,7 @@ function getDecorationElements(section: HTMLElement): HTMLElement[] {
  * offsetWidth/Height（transform 前のローカル border-box）と rect（transform 後）の比から実効スケールを求め、
  * padding をビジュアル座標系に変換してから rect に適用する。
  */
-function getSafeBounds(masterBody: HTMLElement): Bounds {
+export function getSafeBounds(masterBody: HTMLElement): Bounds {
   const rect = masterBody.getBoundingClientRect()
   const style = getComputedStyle(masterBody)
   const scaleX = masterBody.offsetWidth > 0 ? rect.width / masterBody.offsetWidth : 1

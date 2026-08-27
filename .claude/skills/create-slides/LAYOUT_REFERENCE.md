@@ -19,6 +19,8 @@
 }
 ```
 
+`titleFontSize`（px数値）を指定すると、`title` の文字サイズを明示できる。省略時はコンテンツの長さに応じて自動的に縮小する（variant無指定・`variant: "section"` の両方で有効）。
+
 `variant: "section"` を指定すると SectionLayout に切り替わる:
 
 ```json
@@ -66,6 +68,8 @@
   }
 }
 ```
+
+`messageFontSize`（px数値）を指定すると、`message` の文字サイズを明示できる。省略時はコンテンツの長さに応じて自動的に縮小する（`message` / `message-inverse` / `closing` のいずれでも有効）。
 
 `variant: "message-inverse"` — 大メッセージの全面塗り。**塗り色と文字色はスライド側では指定せず、テーマの `masters[].background`（`type: "fill"`）と `tokens` の masterKey スコープで持つ**（`masterMap` の `"center/message-inverse"` から解決する）。両者のコントラストは WCAG AA で自動検証されるため、この組み合わせで指定する（スライド側やコンポーネント CSS で塗ると検証から外れる）。
 

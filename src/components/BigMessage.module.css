@@ -12,7 +12,9 @@
 .text {
   margin: 0;
   font-family: var(--theme-font-heading);
-  font-size: var(--theme-font-size-h1);
+  /* 手動指定は --message-font-size 経由（useAutoFitHeadingFontSize がインラインの font-size を
+     直接操作するため、手動指定と同じプロパティを inline style で奪い合わないようにする） */
+  font-size: var(--message-font-size, var(--theme-font-size-h1));
   font-weight: var(--theme-font-weight-heading);
   line-height: 1.25;
   color: var(--theme-text-body);

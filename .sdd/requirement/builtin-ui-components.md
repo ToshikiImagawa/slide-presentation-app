@@ -6,7 +6,7 @@ status: approved
 priority: high
 risk: medium
 created: 2026-02-02
-updated: 2026-07-29
+updated: 2026-08-27
 tags:
   - ui-components
   - component-registry
@@ -215,7 +215,7 @@ requirementDiagram
 
     functionalRequirement SlideHeadingReq {
         id: FR_1101
-        text: "バリアント（h1/h2/h3）を指定でき、オプションの説明テキストを添えられるスライド見出しコンポーネントを提供すること"
+        text: "バリアント（h1/h2/h3）を指定でき、オプションの説明テキストを添えられるスライド見出しコンポーネントを提供すること。variant=h1（表紙スライド）は文字サイズを明示指定でき、未指定時はコンテンツの長さに応じて自動的に縮小すること"
         risk: medium
         verifymethod: demonstration
     }
@@ -229,7 +229,7 @@ requirementDiagram
 
     functionalRequirement UnderlinedHeadingReq {
         id: FR_1103
-        text: "下線装飾付きの見出しコンポーネントを提供すること"
+        text: "下線装飾付きの見出しコンポーネントを提供すること。文字サイズを明示指定でき、未指定時はコンテンツの長さに応じて自動的に縮小すること"
         risk: low
         verifymethod: demonstration
     }
@@ -438,9 +438,9 @@ requirementDiagram
 
 | サブ要求    | 優先度    | 説明                      |
 |:--------|:-------|:------------------------|
-| FR_1101 | Must   | バリアント対応・説明テキスト付きスライド見出し |
+| FR_1101 | Must   | バリアント対応・説明テキスト付きスライド見出し（h1は文字サイズ明示指定 or コンテンツに応じた自動縮小） |
 | FR_1102 | Should | サブタイトル表示                |
-| FR_1103 | Could  | 下線付き見出し                 |
+| FR_1103 | Could  | 下線付き見出し（文字サイズ明示指定 or コンテンツに応じた自動縮小） |
 | FR_1104 | Could  | プライマリカラー強調テキスト          |
 
 ### FR_1200: リストコンポーネント
