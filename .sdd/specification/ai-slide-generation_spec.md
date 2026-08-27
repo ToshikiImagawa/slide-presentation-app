@@ -7,7 +7,7 @@ sdd-phase: specify
 priority: high
 risk: high
 created: 2026-07-25
-updated: 2026-07-25
+updated: 2026-08-28
 depends-on:
   - prd-ai-slide-generation
 tags:
@@ -24,7 +24,7 @@ category: authoring
 
 **ドキュメント種別:** 抽象仕様書 (Spec)
 **SDDフェーズ:** Specify (仕様化)
-**最終更新日:** 2026-07-25
+**最終更新日:** 2026-08-28
 **関連 Design Doc:** [ai-slide-generation_design.md](./ai-slide-generation_design.md)
 **関連 PRD:** [ai-slide-generation.md](../requirement/ai-slide-generation.md)
 
@@ -87,7 +87,7 @@ category: authoring
 |--------|-------|--------|------|
 | `src/edit` | `SlideEditor.tsx` | `<SlideEditor source onExit />`（受け口拡張） | 生成結果を単一真実源 `text` へ流し込む受け口を追加（現状はマウント後の外部再注入経路がない）（FR-004） |
 | `src/edit` | `AiGeneratePanel.tsx` | `<AiGeneratePanel onGenerated onError />` | 生成パネル UI。プロンプト入力・方式選択・進捗表示・中断・事前ゲート表示（FR-001/002/007/010） |
-| `src` | `aiGenerate.ts` | `generateSlides(request)` / `cancelGenerate()` / `setVertexConfig` / `clearVertexConfig` / `getVertexConfig` / `getVertexStatus` / `gcloudLogin` / `setGenerationEnabled` | Rust コマンドの呼び出し口。生成/中断（`generateSlides`/`cancelGenerate`）は編集モード かつ 生成有効時のみ成功。Vertex 設定/ログイン（`setVertexConfig`/`clearVertexConfig`/`getVertexConfig`/`getVertexStatus`/`gcloudLogin`）と `setGenerationEnabled` は編集モードのみ必須（生成有効化前のセットアップ・事前ゲート表示のため）（FR-003/006/007/009/010） |
+| `src` | `aiGenerate.ts` | `generateSlides(request)` / `cancelGenerate()` / `setVertexConfig` / `clearVertexConfig` / `getVertexConfig` / `getVertexStatus` / `gcloudLogin` / `setGenerationEnabled` / `buildThemeConstraintsPrompt()` | Rust コマンドの呼び出し口。生成/中断（`generateSlides`/`cancelGenerate`）は編集モード かつ 生成有効時のみ成功。Vertex 設定/ログイン（`setVertexConfig`/`clearVertexConfig`/`getVertexConfig`/`getVertexStatus`/`gcloudLogin`）と `setGenerationEnabled` は編集モードのみ必須（生成有効化前のセットアップ・事前ゲート表示のため）（FR-003/006/007/009/010）。`buildThemeConstraintsPrompt()` は適用中テーマ・登録済みコンポーネント/アイコンから意匠制約テキストを組み立て、`generateSlides` が試行ごとに `themeConstraints` として送出する（v1.1・#211） |
 | `src/edit` | `slidesSerialize.ts` | `parseSlides`（再利用） | 生成 JSON の取り込み・無損失往復（FR-004/005・NFR-002） |
 | `src/data` | `loader.ts` | `getValidationErrors`（再利用） | 生成結果の取り込み前バリデーション（FR-005） |
 | `src-tauri` | `lib.rs` | `generate_slides`（Rust コマンド） | 生成器経由で `slides.json` 候補を**1件**生成。編集モード＋生成有効 state でゲート。自動修正ループと構造化バリデーションは JS 側 `aiGenerate.ts` が駆動する（FR-003/009） |
@@ -101,6 +101,10 @@ category: authoring
 // 生成の論理契約（詳細な内部構造は Design Doc 参照）
 export type GeneratorKind = 'builtin-vertex' | 'external-claude-code'
 
+// `prompt` が「新規スライドの内容そのもの」なのか「既存スライドへの変更依頼（差分指示）」なのかの明示（v1.1・#302）。
+// AI がプロンプトの意味を取り違えやすいため、UI で選択させ Rust 側 user_prompt() に明示ラベルを付与させる
+export type PromptIntent = 'new-content' | 'change-instruction'
+
 export interface GenerateRequest {
   prompt: string
   kind: GeneratorKind
@@ -108,6 +112,17 @@ export interface GenerateRequest {
   baseSlides?: string
   /** 自動修正の再試行時に JS オーケストレータが積む検証エラー要約（初回は省略。FR-005。Rust の repair_feedback と一致） */
   repairFeedback?: string
+  /** 見た目チェック（DOM実測。getVisualCheckWarnings由来）で検出された警告。「見た目をチェックして修正」
+   * ボタン専用（v1.2・[ai-visual-check-and-fix_spec.md](./ai-visual-check-and-fix_spec.md)）。
+   * repairFeedback（自動修正ループ専用・構造/スキーマ検証エラー）とは別レール */
+  visualWarnings?: string[]
+  /** テーマ設定の静的検証（getThemeWarnings由来）で検出された警告。同ボタン専用（v1.2） */
+  themeWarnings?: string[]
+  /** 適用中テーマ・登録済みコンポーネント/アイコンから JS 側（buildThemeConstraintsPrompt）が組み立てた
+   * 意匠制約テキスト（v1.1・#211）。試行ごとに一度だけ組み立て、各試行の request に付与される */
+  themeConstraints?: string
+  /** `prompt` が新規内容か変更指示かの明示（v1.1・#302）。未指定は後方互換のためラベルなし */
+  promptIntent?: PromptIntent
 }
 
 export type GenerateOutcome = 'succeeded' | 'exhausted' | 'cancelled' | 'failed'
@@ -171,6 +186,9 @@ async fn gcloud_login() -> Result<(), String>  // GCP ADC ログイン（初回�
 | 生成有効フラグ | Rust 側で保持する生成許可 state。編集モード state と併せて生成/ネットワーク/キー操作をゲートする |
 | capability 分離 | ネットワーク通信・秘密情報を編集モード かつ 生成有効時のみ有効化し権限を最小化する設計 |
 | 器（うつわ） | 生成機能を差し込む先の編集・保存・書き出しの基盤（[slide-edit-mode_spec.md](./slide-edit-mode_spec.md) が提供） |
+| promptIntent | `prompt` が「新規スライドの内容そのもの」か「既存スライドへの変更依頼」かの明示（v1.1・#302）。UI で選択させ Rust `user_prompt()` に明示ラベルを付与させる |
+| themeConstraints | 適用中テーマ・登録済みコンポーネント/アイコン名・現在の書体から JS 側（`buildThemeConstraintsPrompt`）が組み立てる意匠制約テキスト。system prompt 末尾に追記される（v1.1・#211） |
+| visualWarnings／themeWarnings | 「見た目をチェックして修正」ボタン（[ai-visual-check-and-fix_spec.md](./ai-visual-check-and-fix_spec.md)）専用の警告フィールド。DOM実測警告／テーマ静的検証警告をそれぞれ保持し、`repairFeedback`とは別レールで扱う（v1.2） |
 
 # 6. 使用例
 
@@ -258,3 +276,24 @@ sequenceDiagram
 | 非機能要件の反映 | ✅ PRD の NFR-001〜005 を spec の NFR-001〜005 に反映 |
 | 設計制約の反映 | ✅ DC-001〜006 を制約事項・各 FR で参照 |
 | 用語整合性 | ✅ 内蔵生成／外部生成／生成インターフェース／自動修正ループ／事前ゲート／capability 分離／器 を PRD と統一 |
+| PRD未記載の拡張 | ⚠️ `GenerateRequest`の`promptIntent`（#302）・`themeConstraints`（#211）・`visualWarnings`/`themeWarnings`（[ai-visual-check-and-fix_spec.md](./ai-visual-check-and-fix_spec.md)）は、いずれも本PRDの初版後に実装された拡張で、対応するFR/DCが無い（§10 変更履歴参照）。PRD自体の改訂は本更新のスコープ外とした |
+
+---
+
+# 10. 変更履歴
+
+本spec.mdは実装完了後に作成されたv1.0（PRD初版時点の`GenerateRequest`契約のみを記載）から、後続の拡張実装を反映していない状態が続いていた。本v1.1（2026-08-28）で以下をまとめて反映した。
+
+## v1.1（2026-08-28・後続拡張の反映漏れをまとめて解消）
+
+**変更内容:**
+
+- `GenerateRequest`に`promptIntent?: PromptIntent`（`prompt`が新規内容か変更指示かの明示。#302）・`themeConstraints?: string`（意匠制約テキスト。#211）を追加。§4.1型定義・§4 API表（`buildThemeConstraintsPrompt`）・§5用語集に反映。
+- `GenerateRequest`に`visualWarnings?: string[]`・`themeWarnings?: string[]`（「見た目をチェックして修正」ボタン専用の警告種別フィールド）を追加。[ai-visual-check-and-fix_spec.md](./ai-visual-check-and-fix_spec.md) v0.4と対応。
+- 上記3拡張はいずれも本PRD（[ai-slide-generation.md](../requirement/ai-slide-generation.md)）に対応するFR/DCが無いため、§9に「PRD未記載の拡張」として明記した。
+
+## v1.0（2026-07-25）
+
+**変更内容:**
+
+- 初版。
