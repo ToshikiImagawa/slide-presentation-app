@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Slide Presentation App",
-  "version": "2.3.1",
+  "version": "2.4.0",
   "identifier": "com.toshikiimagawa.slide-presentation-app",
   "build": {
     "frontendDist": "../dist",
