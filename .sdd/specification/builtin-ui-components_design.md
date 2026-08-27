@@ -6,7 +6,7 @@ status: approved
 sdd-phase: plan
 impl-status: implemented
 created: 2026-02-02
-updated: 2026-07-30
+updated: 2026-08-27
 depends-on:
   - spec-builtin-ui-components
 tags:
@@ -36,7 +36,7 @@ category: ui-components
 
 | モジュール/機能                   | ステータス | 備考                            |
 |:---------------------------|:------|:------------------------------|
-| テキスト・見出し系（FR_1100）         | 🟢    | SlideHeading, SubtitleText, UnderlinedHeading, AccentText |
+| テキスト・見出し系（FR_1100）         | 🟢    | SlideHeading, SubtitleText, UnderlinedHeading, AccentText。SlideHeading（h1）・UnderlinedHeadingはuseAutoFitHeadingFontSizeでコンテンツ長に応じた文字サイズ自動縮小に対応 |
 | リスト系（FR_1200）              | 🟢    | BulletList, BulletListItem, TitledBulletList |
 | レイアウト系（FR_1300）            | 🟢    | TwoColumnGrid, FeatureTileGrid |
 | インタラクティブ系（FR_1400）         | 🟢    | TerminalAnimation, CommandList |
@@ -144,10 +144,12 @@ graph TD
 |:----------------------|:----------------------------------|:------------------------------|:-----------------------------------|
 | ComponentRegistry     | コンポーネント名前解決、登録管理                  | なし（依存ゼロ）                      | `src/components/ComponentRegistry.tsx` |
 | registerDefaults      | デフォルトコンポーネントの一括登録                 | ComponentRegistry, TerminalAnimation, MUI icons | `src/components/registerDefaults.tsx` |
-| SlideHeading          | バリアント対応スライド見出し                    | MUI Typography                | `src/components/SlideHeading.tsx`  |
+| SlideHeading          | バリアント対応スライド見出し（h1はオートフィット対象）      | MUI Typography, useAutoFitHeadingFontSize | `src/components/SlideHeading.tsx`  |
 | SubtitleText          | サブタイトル表示                          | MUI Typography                | `src/components/SubtitleText.tsx`  |
-| UnderlinedHeading     | 下線付き見出し                           | MUI Typography                | `src/components/UnderlinedHeading.tsx` |
+| UnderlinedHeading     | 下線付き見出し（オートフィット対象）               | MUI Typography, useAutoFitHeadingFontSize | `src/components/UnderlinedHeading.tsx` |
+| useAutoFitHeadingFontSize | 見出しを`.master-body`のセーフエリアに収まるまで段階的に縮小するフック（ResizeObserver/MutationObserverで再計測タイミングを検知） | visualChecks.ts（getSafeBounds/overshootPx/finishSettlingAnimations） | `src/hooks/useAutoFitHeadingFontSize.ts` |
 | AccentText            | プライマリカラー強調テキスト                    | MUI Typography                | `src/components/AccentText.tsx`    |
+| BigMessage            | 1枚1メッセージの本体（本PRD対象外だがuseAutoFitHeadingFontSizeを共有） | CSS Modules, useAutoFitHeadingFontSize | `src/components/BigMessage.tsx`    |
 | BulletList            | 箇条書きリストコンテナ                       | MUI List, BulletListItem      | `src/components/BulletList.tsx`    |
 | BulletListItem        | シェブロンアイコン付きリスト項目                  | MUI ListItem, ChevronRight    | `src/components/BulletListItem.tsx` |
 | TitledBulletList      | タイトル付き箇条書きリスト                     | MUI Box, BulletList           | `src/components/TitledBulletList.tsx` |

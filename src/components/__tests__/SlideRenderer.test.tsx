@@ -1421,6 +1421,35 @@ describe('SlideRenderer', () => {
     })
   })
 
+  // titleFontSize/messageFontSize は手動指定時にオートフィット（useAutoFitHeadingFontSize）をスキップし、
+  // 指定サイズをそのまま使う。jsdom はレイアウトを計算しないため、ここでは「指定値が反映されること」のみを検証する
+  describe('文字サイズの明示指定（titleFontSize/messageFontSize）', () => {
+    it('表紙（center・variant無指定）は titleFontSize を h1 の文字サイズに反映する', () => {
+      const { container } = renderWithTheme(<SlideRenderer slides={[{ id: 'test-title-fontsize', layout: 'center', content: { title: 'タイトル', titleFontSize: 40 } }]} />)
+      expect(getComputedStyle(container.querySelector('h1')!).fontSize).toBe('40px')
+    })
+
+    it('titleFontSize を省略した場合は明示指定しない（テーマ既定のフォントサイズのまま）', () => {
+      const { container } = renderWithTheme(<SlideRenderer slides={[{ id: 'test-title-fontsize-auto', layout: 'center', content: { title: 'タイトル' } }]} />)
+      expect(getComputedStyle(container.querySelector('h1')!).fontSize).not.toBe('40px')
+    })
+
+    it('章扉（center・variant: section）は titleFontSize を見出しの文字サイズに反映する', () => {
+      const { container } = renderWithTheme(<SlideRenderer slides={[{ id: 'test-section-fontsize', layout: 'center', content: { variant: 'section', title: '章扉タイトル', titleFontSize: 36 } }]} />)
+      expect(getComputedStyle(container.querySelector('.section-title-layout h2')!).fontSize).toBe('36px')
+    })
+
+    it.each(['message', 'message-inverse', 'closing'] as const)('variant: %s は messageFontSize を主張の文字サイズに反映する', (variant) => {
+      const { container } = renderWithTheme(<SlideRenderer slides={[{ id: `test-message-fontsize-${variant}`, layout: 'center', content: { variant, message: '主張', messageFontSize: 44 } }]} />)
+      expect(container.querySelector<HTMLElement>('[data-testid="big-message"] p')!.style.getPropertyValue('--message-font-size')).toBe('44px')
+    })
+
+    it('messageFontSize を省略した場合は --message-font-size を設定しない', () => {
+      const { container } = renderWithTheme(<SlideRenderer slides={[{ id: 'test-message-fontsize-auto', layout: 'center', content: { variant: 'message', message: '主張' } }]} />)
+      expect(container.querySelector<HTMLElement>('[data-testid="big-message"] p')!.style.getPropertyValue('--message-font-size')).toBe('')
+    })
+  })
+
   // #259: two-column のカラムに置いた「埋めるコンポーネント」の高さ解決。
   // 埋める要素（.content-area-fill-item）は fill ホスト（.content-area-fill）の中に置かれて初めて
   // 残り高さを受け取るため、カラム自身がホストを名乗る必要がある（ホストを .content-area 側に付けると

@@ -5,6 +5,7 @@
       "description": "タイトルバーを持たない中央寄せレイアウト。variant 無指定は表紙・まとめ（title＋subtitle）で、variant で章扉（section）・引用（quote）・大メッセージ（message / message-inverse）・締め（closing）に切り替わる。1枚1メッセージの種別は章の切り替えや結びに使い、本文を詰め込まない（#197）",
       "contentFields": {
         "title": { "type": "string", "description": "タイトル（改行は \\n）" },
+        "titleFontSize": { "type": "number", "description": "titleの文字サイズ(px)。variant無指定（表紙・まとめ）とvariant=section（章扉）でのみ有効。省略時はコンテンツの長さに応じて自動的に縮小する" },
         "subtitle": { "type": "string", "description": "サブタイトル（改行は \\n）" },
         "variant": {
           "type": "string",
@@ -14,6 +15,7 @@
         "quote": { "type": "string", "description": "variant=quote 時の引用文（改行は \\n）。引用符は装飾として自動で付くので本文に書かない" },
         "citation": { "type": "string", "description": "variant=quote 時の出典（人名・書名等）。区切りの \"—\" は装飾として自動で付く" },
         "message": { "type": "string", "description": "variant=message / message-inverse / closing 時の主張・結びの文（改行は \\n）。全画面に1つだけ置くので短くする" },
+        "messageFontSize": { "type": "number", "description": "messageの文字サイズ(px)。省略時はコンテンツの長さに応じて自動的に縮小する" },
         "body": { "type": "string", "description": "variant=section 時の本文、variant=message / message-inverse / closing 時の補足（いずれも改行は \\n）" },
         "qrCode": { "type": "string", "description": "variant=section / closing 時のQRコード対象URL" },
         "githubRepo": { "type": "string", "description": "variant=section / closing 時の owner/repo 表記" }

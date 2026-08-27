@@ -26,6 +26,11 @@ class MockResizeObserver {
 
 globalThis.ResizeObserver = MockResizeObserver as unknown as typeof ResizeObserver
 
+// jsdom は document.fonts（FontFaceSet）を実装しない（useAutoFitHeadingFontSize が Web フォント読み込み完了を待つのに使用）
+if (!document.fonts) {
+  Object.defineProperty(document, 'fonts', { configurable: true, value: { ready: Promise.resolve() } })
+}
+
 // jsdom は Range のレイアウト計測 API を実装しないため、CodeMirror（SlideJsonEditor）の座標計算が例外を投げる
 Range.prototype.getBoundingClientRect = () => ({ x: 0, y: 0, width: 0, height: 0, top: 0, left: 0, right: 0, bottom: 0, toJSON: () => '' })
 Range.prototype.getClientRects = () => Object.assign([], { item: () => null }) as unknown as DOMRectList

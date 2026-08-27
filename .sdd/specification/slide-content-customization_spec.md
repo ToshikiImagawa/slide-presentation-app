@@ -5,7 +5,7 @@ type: spec
 status: approved
 sdd-phase: specify
 created: 2026-02-02
-updated: 2026-07-30
+updated: 2026-08-27
 depends-on:
   - prd-slide-content-customization
 tags:
@@ -133,6 +133,8 @@ interface SlideData {
 /** スライドのコンテンツ */
 interface SlideContent {
     title?: string;
+    /** titleの文字サイズ(px)を明示指定する（centerレイアウトのみ有効）。省略時はコンテンツ長に応じて自動縮小する */
+    titleFontSize?: number;
     subtitle?: string;
     body?: string;
     items?: ContentItem[];

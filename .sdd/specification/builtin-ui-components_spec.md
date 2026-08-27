@@ -5,7 +5,7 @@ type: spec
 status: approved
 sdd-phase: specify
 created: 2026-02-02
-updated: 2026-07-30
+updated: 2026-08-27
 depends-on:
   - prd-builtin-ui-components
 tags:
@@ -50,9 +50,9 @@ category: ui-components
 | ID      | 要件                                                       | 優先度    | 根拠                                     |
 |:--------|:---------------------------------------------------------|:-------|:---------------------------------------|
 | FR_1100 | テキスト・見出しコンポーネント（見出し、サブタイトル、強調テキスト等）を提供する              | Must   | スライドの基本的なテキスト表現に不可欠（UR_300）            |
-| FR_1101 | バリアント（h1/h2/h3）対応・説明テキスト付きスライド見出しコンポーネント               | Must   | スライドの視覚的階層を構成する中核要素                    |
+| FR_1101 | バリアント（h1/h2/h3）対応・説明テキスト付きスライド見出しコンポーネント。h1は文字サイズ明示指定 or コンテンツ長に応じた自動縮小 | Must   | スライドの視覚的階層を構成する中核要素                    |
 | FR_1102 | サブタイトル表示コンポーネント                                          | Should | タイトルスライドの補足情報表示                        |
-| FR_1103 | 下線付き見出しコンポーネント                                           | Could  | セクション区切りの視覚的強調                         |
+| FR_1103 | 下線付き見出しコンポーネント。文字サイズ明示指定 or コンテンツ長に応じた自動縮小              | Could  | セクション区切りの視覚的強調                         |
 | FR_1104 | プライマリカラー強調テキストコンポーネント                                    | Could  | テキスト内の重要語句の強調                          |
 | FR_1200 | リストコンポーネント（箇条書きリスト、タイトル付きリスト）を提供する                      | Must   | 情報の構造化表示に不可欠（UR_300）                   |
 | FR_1201 | アイコン付き箇条書きリストコンポーネント                                     | Must   | コンテンツの列挙表示の基本パーツ                       |
@@ -93,7 +93,9 @@ category: ui-components
 | `components/`  | `SlideHeading.tsx`      | `SlideHeading`                 | バリアント対応・説明テキスト付きスライド見出し                   |
 | `components/`  | `SubtitleText.tsx`      | `SubtitleText`                 | サブタイトル表示                                  |
 | `components/`  | `UnderlinedHeading.tsx` | `UnderlinedHeading`            | 下線付き見出し                                   |
+| `hooks/`       | `useAutoFitHeadingFontSize.ts` | `useAutoFitHeadingFontSize` | 見出し要素を祖先の `.master-body` に収まるまで段階的に縮小するフック。`SlideHeading`（variant=h1）・`UnderlinedHeading` が使用 |
 | `components/`  | `AccentText.tsx`        | `AccentText`                   | プライマリカラー強調テキスト                            |
+| `components/`  | `BigMessage.tsx`        | `BigMessage`                   | 1枚1メッセージ（center の variant: message / message-inverse / closing）の本体。本コンポーネント自体は本PRD（FR_1100系）の対象外だが、useAutoFitHeadingFontSizeを共有するため型定義をここに記載する |
 | `components/`  | `BulletList.tsx`        | `BulletList`                   | 箇条書きリストコンテナ                               |
 | `components/`  | `BulletListItem.tsx`    | `BulletListItem`               | シェブロンアイコン付きリスト項目                          |
 | `components/`  | `TitledBulletList.tsx`  | `TitledBulletList`             | タイトル付き箇条書きリスト                             |
@@ -120,6 +122,8 @@ interface SlideHeadingProps {
   variant?: 'h1' | 'h2' | 'h3';
   description?: ReactNode | ReactNode[];
   sx?: SxProps<Theme>;
+  /** 文字サイズ(px)の明示指定。variant="h1" のみ有効。省略時はコンテンツの長さに応じて自動的に縮小する */
+  fontSize?: number;
 }
 
 interface SubtitleTextProps {
@@ -130,6 +134,15 @@ interface SubtitleTextProps {
 interface UnderlinedHeadingProps {
   children: ReactNode;
   sx?: SxProps<Theme>;
+  /** 文字サイズ(px)の明示指定。省略時はコンテンツの長さに応じて自動的に縮小する */
+  fontSize?: number;
+}
+
+interface BigMessageProps {
+  children: ReactNode;
+  note?: ReactNode;
+  /** 文字サイズ(px)の明示指定。省略時はコンテンツの長さに応じて自動的に縮小する */
+  fontSize?: number;
 }
 
 interface AccentTextProps {
@@ -137,6 +150,8 @@ interface AccentTextProps {
   sx?: SxProps<Theme>;
 }
 ```
+
+> 補足（オートフィット・#SlideHeading/#UnderlinedHeading/#BigMessage 文字サイズ）: `fontSize` 省略時は `useAutoFitHeadingFontSize`（`src/hooks/`）が、見出し要素**自身**の矩形が祖先 `.master-body` のセーフエリア（`getVisualCheckWarnings` と同じ `getSafeBounds`/`overshootPx`）に収まるまでフォントサイズを4px刻み・下限32pxまで段階的に縮小する。包む箱（`.title-layout` 等）ではなく見出し要素自身を測るのは、`.section-title-layout`/`.message-layout` が `height: 100%`（global.css）で常に `.master-body` を埋めるため、箱の矩形だけでは中身のオーバーフローを検知できないため。Reveal.js は現在表示中でないスライドの `<section>` に `past`/`future` クラスを付与し3D回転で画面外へ配置するため、その間は測定せず（矩形が回転で歪む）、`class` の `MutationObserver` で `present` になった時点に測り直す。`present` 直後は entrance アニメーション（`fadeInUp`）が動いているため `finishSettlingAnimations`（#297/#299 と同じ関数）で最終状態へ強制してから測る。Web フォント（`display=swap`）の差し替えにも `document.fonts.ready` で追従する。セーフエリアに収まっていても2行以上に折り返っている場合は、`estimateLineCount`（実測高さ ÷ line-height）で行数を概算し、1行に収まるサイズまで追加で縮小する（`.title-layout` の `max-width: 900px` により、縦方向には余裕があっても文字数次第で折り返るため。下限まで縮小しても1行に収まらない場合はその折り返りを許容する）。ただし `title` の `\n` による明示的な改行（`renderWithLineBreaks` が生成する `<br>`。`hasExplicitLineBreak`）がある場合はこの「1行化のための縮小」の対象外にする。執筆者が意図して分けた行を縮小で潰すと、自動折り返りより短い1行のタイトルの方が不自然に小さく表示されてしまう。明示的な改行がある場合は従来通りセーフエリアに収まるかどうかだけを見る。`fontSize` を明示指定した場合はオートフィットを行わない。`BigMessage` は CSS Modules（emotion クラスではない）で文字サイズを持つため、手動指定は `style` の CSS カスタムプロパティ `--message-font-size` 経由で与え、オートフィットが直接操作する `style.fontSize`（インラインスタイル）と競合しないようにしている。
 
 ### リスト系
 

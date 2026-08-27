@@ -90,7 +90,9 @@ function getVariant(content: SlideData['content']): string | undefined {
 function renderSectionBody(content: SlideContent): ReactNode {
   return (
     <>
-      <UnderlinedHeading sx={{ mb: '30px' }}>{renderWithLineBreaks(content.title ?? '')}</UnderlinedHeading>
+      <UnderlinedHeading sx={{ mb: '30px' }} fontSize={content.titleFontSize as number | undefined}>
+        {renderWithLineBreaks(content.title ?? '')}
+      </UnderlinedHeading>
       {content.body && (
         <Typography variant="body1" sx={{ fontSize: '24px', maxWidth: '800px', mb: '40px' }}>
           {renderWithLineBreaks(content.body)}
@@ -106,7 +108,7 @@ function renderSectionBody(content: SlideContent): ReactNode {
 function renderTitleBody(content: SlideContent): ReactNode {
   return (
     <>
-      <SlideHeading title={renderWithLineBreaks(content.title ?? '')} variant="h1" sx={{ color: 'var(--theme-text-heading)' }} />
+      <SlideHeading title={renderWithLineBreaks(content.title ?? '')} variant="h1" fontSize={content.titleFontSize as number | undefined} sx={{ color: 'var(--theme-text-heading)' }} />
       {content.subtitle && <SubtitleText>{renderWithLineBreaks(content.subtitle)}</SubtitleText>}
     </>
   )
@@ -122,7 +124,12 @@ function renderQuoteBody(content: SlideContent): ReactNode {
 /** 大メッセージ（variant: "message" / "message-inverse"）の中身。全面塗りかどうかはマスターが決めるので描画は共通（#197） */
 function renderMessageBody(content: SlideContent): ReactNode {
   const message = content.message as string | undefined
-  return <BigMessage note={content.body ? renderWithLineBreaks(content.body) : undefined}>{renderWithLineBreaks(message ?? '')}</BigMessage>
+  const messageFontSize = content.messageFontSize as number | undefined
+  return (
+    <BigMessage note={content.body ? renderWithLineBreaks(content.body) : undefined} fontSize={messageFontSize}>
+      {renderWithLineBreaks(message ?? '')}
+    </BigMessage>
+  )
 }
 
 /** 締め（variant: "closing"）の中身。結びの一言に連絡先（QR・リポジトリ）を添えられる（#197） */
