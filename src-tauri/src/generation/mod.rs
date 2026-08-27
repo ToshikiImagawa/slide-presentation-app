@@ -157,8 +157,13 @@ impl GenerateError {
   /// 自動修正ループに一時的失敗を乗せるための粒度）。
   pub fn is_retryable(&self) -> bool {
     match self {
-      GenerateError::Cancelled | GenerateError::NotConfigured | GenerateError::Credential(_) | GenerateError::Cli(_) => false,
-      GenerateError::Timeout | GenerateError::Network(_) | GenerateError::InvalidResponse(_) => true,
+      GenerateError::Cancelled
+      | GenerateError::NotConfigured
+      | GenerateError::Credential(_)
+      | GenerateError::Cli(_) => false,
+      GenerateError::Timeout | GenerateError::Network(_) | GenerateError::InvalidResponse(_) => {
+        true
+      }
       GenerateError::Api { status, .. } => *status >= 500,
     }
   }
@@ -704,11 +709,31 @@ mod tests {
   #[test]
   fn is_retryable_for_api_error_depends_on_status() {
     // 5xx はサーバー側の一時的障害の可能性があるため再試行対象、4xx は再送しても変わらない
-    assert!(GenerateError::Api { status: 500, message: "internal error".to_string() }.is_retryable());
-    assert!(GenerateError::Api { status: 503, message: "unavailable".to_string() }.is_retryable());
-    assert!(!GenerateError::Api { status: 400, message: "bad request".to_string() }.is_retryable());
-    assert!(!GenerateError::Api { status: 401, message: "unauthorized".to_string() }.is_retryable());
-    assert!(!GenerateError::Api { status: 429, message: "rate limited".to_string() }.is_retryable());
+    assert!(GenerateError::Api {
+      status: 500,
+      message: "internal error".to_string()
+    }
+    .is_retryable());
+    assert!(GenerateError::Api {
+      status: 503,
+      message: "unavailable".to_string()
+    }
+    .is_retryable());
+    assert!(!GenerateError::Api {
+      status: 400,
+      message: "bad request".to_string()
+    }
+    .is_retryable());
+    assert!(!GenerateError::Api {
+      status: 401,
+      message: "unauthorized".to_string()
+    }
+    .is_retryable());
+    assert!(!GenerateError::Api {
+      status: 429,
+      message: "rate limited".to_string()
+    }
+    .is_retryable());
   }
 
   #[test]
