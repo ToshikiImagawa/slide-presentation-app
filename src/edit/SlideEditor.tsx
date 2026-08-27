@@ -638,7 +638,7 @@ export function SlideEditor({
                 生成結果は applyGeneratedSlides で差分確認ダイアログへ渡す（①） */}
             <Box sx={{ minWidth: 0, minHeight: 0, overflow: 'auto' }}>
               {themeColorsPalette && <ThemeColorsMigrationNotice themeColorsPalette={themeColorsPalette} brandColors={brandTheme?.colors} onDelegate={handleDelegateThemeColors} />}
-              <AiGeneratePanel currentText={text} onApply={applyGeneratedSlides} defaultExpanded={source.aiPanelExpanded} />
+              <AiGeneratePanel currentText={text} onApply={applyGeneratedSlides} defaultExpanded={source.aiPanelExpanded} baseDir={source.baseDir} brandTheme={brandTheme} />
               {hasSyntaxError ? (
                 <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 0.5, m: 1 }}>
                   <Typography variant="body2" sx={{ color: 'var(--fixed-primary)' }}>
