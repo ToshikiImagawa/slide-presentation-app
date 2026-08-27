@@ -6,9 +6,23 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.4.0] - 2026-08-27
+
+### Added
+
+- Added `meta.confidential`, a deck-wide watermark/confidential-text setting symmetric to `meta.logo`
+- Added per-slide overrides for `meta.logo`/`meta.confidential` via `slides[].meta`, so a single slide can change or hide the logo/watermark without switching to a different master
+- Added a "Check appearance and fix" button next to Generate in the AI Generation panel, which runs the same visual checks used by CI across every slide and asks the AI to fix any issues through the existing auto-repair loop
+
 ### Changed
 
 - Changed the default position of `meta.confidential` from `bottom-left` to `top-right`, so a logo and a watermark placed together with no explicit `anchor`/`offset` no longer overlap by default (`meta.logo` still defaults to `bottom-left`)
+- Strengthened the visual check to also detect content clipped by an inner container's own overflow, in addition to the existing overflow/safe-area/decoration-overlap/collapsed-fill-item checks
+
+### Fixed
+
+- Fixed the automatic update check silently failing when GitHub API rate limits were hit
+- Fixed clipped content in a few sample deck guide slides
 
 ## [2.3.1] - 2026-08-26
 
