@@ -32,7 +32,7 @@ category: authoring
 
 # 1. 実装ステータス
 
-**ステータス:** ✅ 実装済み。既存のVisualCheck機構（`src/visualChecks.ts`）と既存のAI生成機能（`src/aiGenerate.ts`・#14）の上に、編集画面から両者を橋渡しする一括チェック→修正フローを追加した。`npm run typecheck` / `npm run format:check` / `npm run lint:css`（本機能はCSS変更なしのため対象外の確認のみ）/ `npx vitest run`（98ファイル・1679テスト）が green。実機（Playwright・screenshot モード）でボタンの配置・ラベル・事前ゲート連動を確認済み。実際のAI往復（Vertex AI / 外部CLIへの実呼び出し）は、開発サンドボックスにTauriランタイム・GCP認証・Claude CLIが無いため未検証で、利用者環境での実機確認が完了条件として残る。
+**ステータス:** ✅ 実装済み。既存のVisualCheck機構（`src/visualChecks.ts`）と既存のAI生成機能（`src/aiGenerate.ts`・#14）の上に、編集画面から両者を橋渡しする一括チェック→修正フローを追加した。`npm run typecheck` / `npm run format:check` / `npm run lint:css`（本機能はCSS変更なしのため対象外の確認のみ）/ `npx vitest run`（98ファイル・1680テスト）が green。実機（Playwright・screenshot モード）でボタンの配置・ラベル・事前ゲート連動を確認済み。実際のAI往復（Vertex AI / 外部CLIへの実呼び出し）は、開発サンドボックスにTauriランタイム・GCP認証・Claude CLIが無いため未検証で、利用者環境での実機確認が完了条件として残る。
 
 ## 1.1. 実装進捗
 
@@ -42,8 +42,8 @@ category: authoring
 | オフスクリーン描画（`AiGeneratePanel.tsx` 内） | ✅ | FR-002。`SlideRenderer.Slide` を非表示コンテナで1枚ずつ描画し `flushSync` で同期コミット |
 | 一括チェック→AI修正→再チェックのオーケストレーション | ✅ | FR-003/004/005/006/007/008。`handleVisualCheckFix`（`AiGeneratePanel.tsx`） |
 | `SlideEditor.tsx` からの `baseDir`/`brandTheme` 伝播 | ✅ | NFR-002。ライブプレビューと同じ実測規則にするための1行（2 props追加） |
-| i18n（`aiGenerate.visualCheck*`） | ✅ | ja-JP/en-US/fr-FR の3ロケールに7キーを追加（フラットな2階層命名） |
-| 単体テスト | ✅ | `checkAllSlidesVisually.test.tsx`（7件）・`AiGeneratePanel.test.tsx` 追加分（5件） |
+| i18n（`aiGenerate.visualCheck*`） | ✅ | ja-JP/en-US/fr-FR の3ロケールに8キーを追加（フラットな2階層命名。v0.2で`visualCheckInvalidJson`を追加） |
+| 単体テスト | ✅ | `checkAllSlidesVisually.test.tsx`（8件）・`AiGeneratePanel.test.tsx` 追加分（6件） |
 | 実機（Vertex AI / 外部CLIへの実際のAI往復） | 🔴 | 開発サンドボックスでは検証不可。利用者環境での確認が必要（§9.3） |
 
 ---
@@ -199,12 +199,12 @@ function AiGeneratePanel({
 
 | テストレベル | 対象 | カバレッジ目標 |
 |:---|:---|:---|
-| Vitest 単体 | `checkAllSlidesVisually`（警告あり/なしスライドの混在・sectionが取得できないindexのスキップ）、`summarizeVisualCheckWarnings`（整形書式・空配列時）、`deriveCheckableDeck`（正常系・JSON構文エラー時null） | 分岐網羅（`checkAllSlidesVisually.test.tsx` 7件） |
-| Vitest component | `AiGeneratePanel` の新規ボタン（事前ゲート連動）、警告0件時にAIを呼ばない、警告ありでrepairFeedback付きでgenerateSlidesを呼ぶ、再チェックで警告が残る場合の表示、generateSlides失敗時にonApplyを呼ばない | `checkAllSlidesVisually` をモックしオーケストレーションのみ検証（`AiGeneratePanel.test.tsx` 追加5件） |
+| Vitest 単体 | `checkAllSlidesVisually`（警告あり/なしスライドの混在・sectionが取得できないindexのスキップ）、`summarizeVisualCheckWarnings`（整形書式・空配列時）、`deriveCheckableDeck`（正常系・JSON構文エラー時null・構造エラー時null） | 分岐網羅（`checkAllSlidesVisually.test.tsx` 8件） |
+| Vitest component | `AiGeneratePanel` の新規ボタン（事前ゲート連動）、JSON構文エラー時に「問題なし」とは異なるエラーを表示しgenerateSlidesを呼ばない、警告0件時にAIを呼ばない、警告ありでrepairFeedback付きでgenerateSlidesを呼ぶ、再チェックで警告が残る場合の表示、generateSlides失敗時にonApplyを呼ばない | `checkAllSlidesVisually` をモックしオーケストレーションのみ検証（`AiGeneratePanel.test.tsx` 追加6件） |
 | 手動（実ブラウザ・Playwright screenshot モード） | ボタンの配置・ラベル・事前ゲートによる無効化状態の目視確認 | 実施済み（本ドキュメント執筆時点） |
 | 手動（実機・利用者環境） | Vertex AI / 外部CLIへの実際のAI呼び出し・修正・差分確認ダイアログでの適用の一連 | 未実施（§9.3の未解決課題） |
 
-**実装結果**: Vitest 98ファイル・1679テスト（本機能追加分13件を含む）で green（テスト件数は実行結果に基づく。将来のテスト追加でドリフトし得るため、正の情報源は `npx vitest run` の実行結果とする）。
+**実装結果**: Vitest 98ファイル・1680テスト（本機能追加分14件を含む）で green（テスト件数は実行結果に基づく。将来のテスト追加でドリフトし得るため、正の情報源は `npx vitest run` の実行結果とする）。
 
 ---
 
@@ -245,8 +245,24 @@ function AiGeneratePanel({
 
 # 10. 変更履歴
 
+## v0.3（2026-08-27・/check-spec --full の[recommend]指摘反映）
+
+**変更内容:**
+
+- §1.1のi18nキー数記載を「7キー」→「8キー」に修正（v0.2で追加した`visualCheckInvalidJson`を反映漏れしていた）。
+- `deriveCheckableDeck`の「構文的には妥当だが構造エラー（`slides`欠落等）ならnull」分岐を検証する単体テストを追加（`checkAllSlidesVisually.test.tsx`）。テスト件数を実測に合わせて更新（8件・本機能追加分14件・全体1680件）。
+- spec.md §4 API表の`AiGeneratePanel.tsx`行を、他行と体裁を揃えて`<AiGeneratePanel ... />`のシグネチャ表記に修正。
+
+## v0.2（2026-08-27・spec-reviewerの[must]指摘反映）
+
+**変更内容:**
+
+- `runVisualCheck`（`AiGeneratePanel.tsx`）が、JSON構文エラーで実測不能な場合に空配列を返し「警告0件（問題なし）」と誤って同一視していた不具合を修正（D-002違反）。戻り値型を`SlideVisualCheckResult[] | null`に変更し、`null`（チェック不能）を専用のエラー表示（`aiGenerate.visualCheckInvalidJson`）で区別するようにした。AI修正後の再チェック時に同様のケースが起きた場合の扱いも同様に修正した。
+- 単体テストを1件追加（`currentText`がJSON構文エラーの場合の挙動）。i18n 3ロケールに`visualCheckInvalidJson`キーを追加。
+- 本v0.2の指摘は本ドキュメントのspec-reviewerレビューで検出された（§9.1「チェック不能時の扱い」参照）。
+
 ## v0.1（2026-08-27）
 
 **変更内容:**
 
-- 初版。既存のVisualCheck機構と既存のAI生成機能（自動修正ループ・差分確認ダイアログ）を橋渡しする「全スライドVisualCheck→AI修正」機能を実装（`checkAllSlidesVisually.ts`新規・`AiGeneratePanel.tsx`/`SlideEditor.tsx`改修・i18n3ロケール追加・単体テスト12件追加）。本ドキュメントは実装完了後に遡及的に作成した（PRDレビューで指摘済み。§1.1参照）。
+- 初版。既存のVisualCheck機構と既存のAI生成機能（自動修正ループ・差分確認ダイアログ）を橋渡しする「全スライドVisualCheck→AI修正」機能を実装（`checkAllSlidesVisually.ts`新規・`AiGeneratePanel.tsx`/`SlideEditor.tsx`改修・i18n3ロケール追加・単体テスト12件追加）。本ドキュメントは実装完了後に遡及的に作成した（PRDレビューで指摘済み。§9.2のD-001チェックリスト参照）。

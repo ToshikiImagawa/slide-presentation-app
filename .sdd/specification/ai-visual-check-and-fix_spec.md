@@ -80,7 +80,7 @@ category: authoring
 | ディレクトリ | ファイル名 | エクスポート | 概要 |
 |:---|:---|:---|:---|
 | `src/edit` | `checkAllSlidesVisually.ts`（新規） | `deriveCheckableDeck` / `checkAllSlidesVisually` / `summarizeVisualCheckWarnings` | 全スライドのオフスクリーン実測と警告集約、既存repairFeedback形式への整形（FR-002/004） |
-| `src/edit` | `AiGeneratePanel.tsx`（改修） | props に `baseDir` / `brandTheme` を追加 | 新規ボタン・オフスクリーン描画・実行フローの追加。既存 `currentText` / `onApply` はそのまま再利用（FR-001/003/004/005/006/007/008） |
+| `src/edit` | `AiGeneratePanel.tsx`（改修） | `<AiGeneratePanel currentText onApply defaultExpanded baseDir brandTheme />`（`baseDir`/`brandTheme` を新規追加） | 新規ボタン・オフスクリーン描画・実行フローの追加。既存 `currentText` / `onApply` はそのまま再利用（FR-001/003/004/005/006/007/008） |
 | `src/edit` | `SlideEditor.tsx`（改修） | `<AiGeneratePanel>` 呼び出しへ `baseDir`/`brandTheme` を渡す2行のみ | オフスクリーン実測をライブプレビューと同じ規則にするための情報を渡す（NFR-002）。`onApply`/差分確認ダイアログ側は無改修 |
 | `src/aiGenerate` | `aiGenerate.ts`（再利用・無改修） | `generateSlides` / `GenerateRequest.repairFeedback` | 既存の自動修正ループをそのまま呼び出す（FR-004） |
 | `src` | `visualChecks.ts`（再利用・無改修） | `getVisualCheckWarnings` / `waitForImagesToSettle` / `waitForLayoutToSettle` | 既存のVisualCheck機構をオフスクリーン描画に対しても呼び出す（FR-002） |
