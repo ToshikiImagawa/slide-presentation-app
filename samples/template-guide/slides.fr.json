@@ -31,7 +31,7 @@
           "headingDescription": "Ajoutez un sous-texte avec headingDescription",
           "paragraphs": [
             "Rédigez le corps du texte avec paragraphs. Les <strong>balises HTML</strong> sont aussi prises en charge.",
-            "Vous pouvez indiquer plusieurs paragraphes à l'aide d'un tableau."
+            "Plusieurs paragraphes via un tableau."
           ],
           "items": [
             {"text": "items:", "emphasis": true, "description": " emphasis: true pour du texte en gras"},
@@ -76,7 +76,7 @@
         "title": "layout: \"two-column\" — Placement de composants",
         "left": {
           "paragraphs": [
-            "Indiquez <code>component</code> dans left / right pour intégrer des visuels enregistrés."
+            "Un <code>component</code> dans left/right affiche un visuel."
           ],
           "codeBlock": {
             "header": "> Spécification JSON",
@@ -245,8 +245,7 @@
         "title": "component: \"Image\" — Afficher des images",
         "left": {
           "paragraphs": [
-            "Indiquez <code>Image</code> comme <code>component</code> pour afficher des images.",
-            "Il encapsule <code>FallbackImage</code> et affiche une interface de repli en cas d'erreur de chargement."
+            "Le composant <code>Image</code> affiche des images, avec un repli automatique en cas d'erreur."
           ],
           "codeBlock": {
             "header": "> Spécification JSON",
@@ -332,11 +331,11 @@
         "title": "Composants des modules complémentaires",
         "left": {
           "paragraphs": [
-            "Placez des composants dans <code>addons/src/</code> pour les enregistrer dynamiquement et les utiliser dans les diapositives."
+            "Placez vos composants dans <code>addons/src/</code> pour un enregistrement dynamique."
           ],
           "items": [
             {"text": "Enregistrement automatique :", "emphasis": true, "description": " enregistrés dans ComponentRegistry au démarrage"},
-            {"text": "Lorsqu'ils ne sont pas chargés :", "emphasis": true, "description": " affichage de repli (nom du composant affiché)"}
+            {"text": "Si non chargé :", "emphasis": true, "description": " affichage de repli (nom affiché)"}
           ],
           "codeBlock": {
             "header": "> Exemple de spécification JSON",
@@ -423,21 +422,17 @@
       "content": {
         "title": "Détails de la configuration du thème",
         "left": {
-          "heading": "Toutes les clés de theme.colors",
+          "heading": "Principales clés de theme.colors",
           "codeBlock": {
             "header": "> theme.colors dans slides.json",
             "items": [
               "\"colors\": {",
               "\u00a0\u00a0\"primary\": \"#6c63ff\",",
               "\u00a0\u00a0\"background\": \"#0f0e17\",",
-              "\u00a0\u00a0\"surface\": \"#1a1a2e\",",
               "\u00a0\u00a0\"textHeading\": \"#ffffff\",",
               "\u00a0\u00a0\"textBody\": \"#a0a0b0\",",
               "\u00a0\u00a0\"accent\": \"#ff6b6b\",",
-              "\u00a0\u00a0\"success\": \"#4ecdc4\",",
-              "\u00a0\u00a0\"border\": \"#2a2a4a\"",
               "}",
-              "",
               "\"customCSS\": \".reveal { ... }\""
             ]
           }
@@ -518,7 +513,7 @@
         "title": "Paramètres de filigrane",
         "left": {
           "heading": "meta.confidential",
-          "headingDescription": "Afficher un filigrane Confidential sur toute la présentation",
+          "headingDescription": "Afficher un filigrane sur toute la présentation",
           "items": [
             {"text": "text:", "emphasis": true, "description": " obligatoire. Texte du filigrane"},
             {"text": "anchor / offset:", "emphasis": true, "description": " position et décalage (par défaut : bottom-left)"},
@@ -694,7 +689,7 @@
             ]
           },
           "paragraphs": [
-            "Placez les fichiers audio sous <code>public/</code>. La barre d'outils est activée sur les diapositives où <code>voice</code> est défini."
+            "Placez les fichiers audio sous <code>public/</code>."
           ]
         },
         "right": {

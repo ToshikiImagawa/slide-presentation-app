@@ -245,8 +245,7 @@
         "title": "component: \"Image\" — Display Images",
         "left": {
           "paragraphs": [
-            "Specify <code>Image</code> as the <code>component</code> to display images.",
-            "It wraps <code>FallbackImage</code> and shows a fallback UI on load errors."
+            "The <code>Image</code> component displays images, with an automatic fallback on load errors."
           ],
           "codeBlock": {
             "header": "> JSON specification",
@@ -423,21 +422,17 @@
       "content": {
         "title": "Theme Configuration Details",
         "left": {
-          "heading": "All theme.colors Keys",
+          "heading": "Key theme.colors Fields",
           "codeBlock": {
             "header": "> theme.colors in slides.json",
             "items": [
               "\"colors\": {",
               "\u00a0\u00a0\"primary\": \"#6c63ff\",",
               "\u00a0\u00a0\"background\": \"#0f0e17\",",
-              "\u00a0\u00a0\"surface\": \"#1a1a2e\",",
               "\u00a0\u00a0\"textHeading\": \"#ffffff\",",
               "\u00a0\u00a0\"textBody\": \"#a0a0b0\",",
               "\u00a0\u00a0\"accent\": \"#ff6b6b\",",
-              "\u00a0\u00a0\"success\": \"#4ecdc4\",",
-              "\u00a0\u00a0\"border\": \"#2a2a4a\"",
               "}",
-              "",
               "\"customCSS\": \".reveal { ... }\""
             ]
           }
@@ -694,7 +689,7 @@
             ]
           },
           "paragraphs": [
-            "Place audio files under <code>public/</code>. The toolbar is enabled on slides where <code>voice</code> is defined."
+            "Place audio files under <code>public/</code>."
           ]
         },
         "right": {

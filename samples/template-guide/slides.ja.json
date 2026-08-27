@@ -245,8 +245,7 @@
         "title": "component: \"Image\" — 画像表示",
         "left": {
           "paragraphs": [
-            "<code>component</code> に <code>Image</code> を指定すると、画像を表示できます。",
-            "<code>FallbackImage</code> をラップしており、読み込みエラー時はフォールバック UI を表示します。"
+            "<code>Image</code> コンポーネントで画像を表示します。エラー時は自動でフォールバック表示します。"
           ],
           "codeBlock": {
             "header": "> JSON での指定方法",
@@ -423,21 +422,17 @@
       "content": {
         "title": "テーマ設定の詳細",
         "left": {
-          "heading": "theme.colors 全キー",
+          "heading": "theme.colors の主要キー",
           "codeBlock": {
             "header": "> slides.json 内の theme.colors",
             "items": [
               "\"colors\": {",
               "\u00a0\u00a0\"primary\": \"#6c63ff\",",
               "\u00a0\u00a0\"background\": \"#0f0e17\",",
-              "\u00a0\u00a0\"surface\": \"#1a1a2e\",",
               "\u00a0\u00a0\"textHeading\": \"#ffffff\",",
               "\u00a0\u00a0\"textBody\": \"#a0a0b0\",",
-              "\u00a0\u00a0\"accent\": \"#ff6b6b\",",
-              "\u00a0\u00a0\"success\": \"#4ecdc4\",",
-              "\u00a0\u00a0\"border\": \"#2a2a4a\"",
+              "\u00a0\u00a0\"accent\": \"#ff6b6b\"",
               "}",
-              "",
               "\"customCSS\": \".reveal { ... }\""
             ]
           }
@@ -694,7 +689,7 @@
             ]
           },
           "paragraphs": [
-            "音声ファイルは <code>public/</code> 配下に配置してください。<code>voice</code> が定義されたスライドでツールバーが有効になります。"
+            "音声ファイルは <code>public/</code> 配下に配置してください。"
           ]
         },
         "right": {
