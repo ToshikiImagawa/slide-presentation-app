@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
+import { createRef } from 'react'
 import type { ReactNode } from 'react'
 
 // aiGenerate（invoke ラッパ＆オーケストレータ）をモックし、ゲート状態と生成結果を制御する
@@ -65,7 +66,7 @@ vi.mock('../checkAllSlidesVisually', async (importOriginal) => ({
   checkAllSlidesVisually: v.checkAllSlidesVisually,
 }))
 
-import { AiGeneratePanel } from '../AiGeneratePanel'
+import { AiGeneratePanel, type AiGeneratePanelHandle } from '../AiGeneratePanel'
 import { SlideEditor } from '../SlideEditor'
 import { I18nProvider } from '../../i18n'
 import type { LocaleResource } from '../../i18n'
@@ -569,5 +570,94 @@ describe('全スライドVisualCheck→AI修正ボタン', () => {
     expect(call.visualWarnings).toEqual([])
     expect(call.themeWarnings).toContain('theme.colors.unknownColorKey: 不明なキーです（無視されます）')
     await waitFor(() => expect(onApply).toHaveBeenCalled())
+  })
+})
+
+describe('AiGeneratePanelHandle.regenerate（[再生成する] からの命令的再実行・#47）', () => {
+  beforeEach(() => {
+    h.setGenerationEnabled.mockClear()
+    h.getVertexConfig.mockReset().mockResolvedValue(null)
+    h.getVertexStatus.mockReset().mockResolvedValue({ configured: true })
+    h.checkExternalAvailable.mockReset().mockResolvedValue(false)
+    h.generateSlides.mockReset()
+    h.getClaudeCliConfig.mockReset().mockResolvedValue(null)
+    v.checkAllSlidesVisually.mockReset()
+  })
+
+  it('直前が通常生成なら、折りたたみ状態からでも展開して同じ設定で generateSlides を再実行する', async () => {
+    const errors = [{ path: 'slides[0].content.title', message: '必須項目です', expected: 'string', actual: 'undefined' }]
+    h.generateSlides.mockResolvedValue({ outcome: 'exhausted', slidesJson: VALID, validationErrors: errors, attempts: 3 })
+    const ref = createRef<AiGeneratePanelHandle>()
+    render(
+      <Wrapper>
+        <AiGeneratePanel ref={ref} currentText={VALID} onApply={() => {}} />
+      </Wrapper>,
+    )
+    expandPanel()
+    fireEvent.change(promptField(), { target: { value: 'AI の歴史' } })
+    await waitFor(() => expect(generateButton().disabled).toBe(false))
+    fireEvent.click(generateButton())
+    await waitFor(() => expect(h.generateSlides).toHaveBeenCalledTimes(1))
+    // running が false に戻る（finally 実行済み）までステータス表示を待つ
+    await waitFor(() => expect(screen.getByText(/自動修正の上限に達しました/)).toBeTruthy())
+
+    // 折りたたんでから regenerate() を呼ぶと再展開され、同じ prompt/kind で再度呼ばれる
+    fireEvent.click(screen.getByRole('button', { name: 'AI 生成' }))
+    expect(screen.getByRole('button', { name: 'AI 生成' }).getAttribute('aria-expanded')).toBe('false')
+    act(() => ref.current?.regenerate())
+    expect(screen.getByRole('button', { name: 'AI 生成' }).getAttribute('aria-expanded')).toBe('true')
+    await waitFor(() => expect(h.generateSlides).toHaveBeenCalledTimes(2))
+    const [firstArgs] = h.generateSlides.mock.calls[0]
+    const [secondArgs] = h.generateSlides.mock.calls[1]
+    expect(secondArgs.prompt).toBe(firstArgs.prompt)
+    expect(secondArgs.kind).toBe(firstArgs.kind)
+  })
+
+  it('直前が見た目チェック修正なら、regenerate() で同じ経路（見た目チェック→AI修正）が再実行される', async () => {
+    const errors = [{ path: 'slides[0].content.title', message: '必須項目です', expected: 'string', actual: 'undefined' }]
+    v.checkAllSlidesVisually.mockResolvedValue([{ index: 0, slideId: 's1', warnings: ['はみ出し'] }])
+    h.generateSlides.mockResolvedValue({ outcome: 'exhausted', slidesJson: VALID, validationErrors: errors, attempts: 3 })
+    const ref = createRef<AiGeneratePanelHandle>()
+    render(
+      <Wrapper>
+        <AiGeneratePanel ref={ref} currentText={VALID} onApply={() => {}} />
+      </Wrapper>,
+    )
+    expandPanel()
+    await waitFor(() => expect(visualCheckButton().disabled).toBe(false))
+    fireEvent.click(visualCheckButton())
+    await waitFor(() => expect(h.generateSlides).toHaveBeenCalledTimes(1))
+    expect(v.checkAllSlidesVisually).toHaveBeenCalledTimes(1)
+
+    act(() => ref.current?.regenerate())
+    await waitFor(() => expect(h.generateSlides).toHaveBeenCalledTimes(2))
+    expect(v.checkAllSlidesVisually).toHaveBeenCalledTimes(2)
+  })
+
+  it('running 中に regenerate() を呼んでも無視される（多重実行防止）', async () => {
+    let resolveGenerate: (value: unknown) => void = () => {}
+    h.generateSlides.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveGenerate = resolve
+        }),
+    )
+    const ref = createRef<AiGeneratePanelHandle>()
+    render(
+      <Wrapper>
+        <AiGeneratePanel ref={ref} currentText={VALID} onApply={() => {}} />
+      </Wrapper>,
+    )
+    expandPanel()
+    fireEvent.change(promptField(), { target: { value: 'p' } })
+    await waitFor(() => expect(generateButton().disabled).toBe(false))
+    fireEvent.click(generateButton())
+    await waitFor(() => expect(h.generateSlides).toHaveBeenCalledTimes(1))
+
+    act(() => ref.current?.regenerate())
+    expect(h.generateSlides).toHaveBeenCalledTimes(1)
+
+    resolveGenerate({ outcome: 'succeeded', slidesJson: VALID, validationErrors: [], attempts: 1 })
+    await waitFor(() => expect(screen.getByText('生成が完了しました。差分を確認して適用してください')).toBeTruthy())
   })
 })

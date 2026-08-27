@@ -231,6 +231,8 @@
       "subtitle": "Comparer les diapositives générées par l'IA avec le contenu actuel",
       "apply": "Appliquer",
       "cancel": "Annuler",
+      "regenerate": "Régénérer",
+      "applyBlocked": "Impossible d'appliquer le résultat car des erreurs de validation subsistent. Régénérez-le ou corrigez le contenu manuellement.",
       "added": "Ajouté",
       "changed": "Modifié",
       "removed": "Supprimé",

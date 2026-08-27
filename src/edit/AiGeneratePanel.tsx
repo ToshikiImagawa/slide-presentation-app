@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { ThemeProvider } from '@mui/material/styles'
 import Box from '@mui/material/Box'
@@ -48,6 +48,28 @@ const VISUAL_FIX_PROMPT = '以下の見た目の問題を解消してくださ�
 
 type PanelStatus = { kind: 'idle' | 'ok' | 'warn' | 'error'; message: string }
 
+/** `GeneratedDiffDialog` の「再生成する」から命令的に呼び出すためのハンドル（#47）。
+ * 生成ロジック（prompt/kind/promptIntent/useBase 等）はパネル内部に閉じたまま、親（SlideEditor）から
+ * 「直前と同じ設定で再実行」だけを呼べるようにする。 */
+export interface AiGeneratePanelHandle {
+  /** 検証エラーが残る候補の再生成。直前に実行したのと同じ経路（通常生成 or 見た目チェック修正）を
+   * 同じプロンプト・設定で再実行する。折りたたまれていれば展開し、いずれかの生成が実行中なら無視する */
+  regenerate: () => void
+}
+
+interface AiGeneratePanelProps {
+  currentText: string
+  onApply: (candidate: GeneratedCandidate) => void
+  /** マウント時にパネルを展開済みにするか（ホーム画面の「AIで新規作成」導線から遷移した場合に使用） */
+  defaultExpanded?: boolean
+  /** 相対アセットの基準ディレクトリ（SlideEditor.tsx の source.baseDir と同じ値。見た目チェックの
+   * オフスクリーン描画をライブプレビューと同じ規則でアセット解決するために必要） */
+  baseDir?: string
+  /** meta.brandTheme の解決済みテーマ（SlideEditor.tsx の brandTheme state と同じ値。見た目チェックの
+   * オフスクリーン描画をライブプレビューと同じ規則でブランドテーマ合成するために必要） */
+  brandTheme?: ThemeData
+}
+
 /**
  * 編集モード内の AI 生成パネル（#14・FR-001/007/010）。
  *
@@ -60,24 +82,7 @@ type PanelStatus = { kind: 'idle' | 'ok' | 'warn' | 'error'; message: string }
  * マウント時に生成を有効化し、アンマウントで無効化する（capability ゲート・DC-003）。
  * 色は editorUiTheme と `--fixed-*`（プレゼンのテーマ変更から独立した固定パレット。§9.1 のテーマ波及対策）経由。
  */
-export function AiGeneratePanel({
-  currentText,
-  onApply,
-  defaultExpanded = false,
-  baseDir = '',
-  brandTheme,
-}: {
-  currentText: string
-  onApply: (candidate: GeneratedCandidate) => void
-  /** マウント時にパネルを展開済みにするか（ホーム画面の「AIで新規作成」導線から遷移した場合に使用） */
-  defaultExpanded?: boolean
-  /** 相対アセットの基準ディレクトリ（SlideEditor.tsx の source.baseDir と同じ値。見た目チェックの
-   * オフスクリーン描画をライブプレビューと同じ規則でアセット解決するために必要） */
-  baseDir?: string
-  /** meta.brandTheme の解決済みテーマ（SlideEditor.tsx の brandTheme state と同じ値。見た目チェックの
-   * オフスクリーン描画をライブプレビューと同じ規則でブランドテーマ合成するために必要） */
-  brandTheme?: ThemeData
-}) {
+export const AiGeneratePanel = forwardRef<AiGeneratePanelHandle, AiGeneratePanelProps>(function AiGeneratePanel({ currentText, onApply, defaultExpanded = false, baseDir = '', brandTheme }, ref) {
   const { t } = useTranslation()
   const [expanded, setExpanded] = useState(defaultExpanded)
   const [prompt, setPrompt] = useState('')
@@ -99,6 +104,8 @@ export function AiGeneratePanel({
   // 独立させ、実行中は両ボタンを相互排他にする（cancelGenerate の対象が module 内で単一のため）
   const [visualFixRunning, setVisualFixRunning] = useState(false)
   const [visualFixPhase, setVisualFixPhase] = useState<string | null>(null)
+  // [再生成する]（AiGeneratePanelHandle.regenerate）がどちらの経路を再実行すべきか判断するための記録（#47）
+  const [lastRunKind, setLastRunKind] = useState<'generate' | 'visualFix' | null>(null)
   // オフスクリーン描画対象（チェック実行中だけ非nullになる）。実DOM実測のため隠しコンテナに随時コミットする
   const [offscreenDeck, setOffscreenDeck] = useState<CheckableDeck | null>(null)
   const [offscreenIndex, setOffscreenIndex] = useState<number | null>(null)
@@ -217,6 +224,7 @@ export function AiGeneratePanel({
   }
 
   const handleGenerate = async () => {
+    setLastRunKind('generate')
     setRunning(true)
     setProgress(null)
     setStatus({ kind: 'idle', message: '' })
@@ -278,6 +286,7 @@ export function AiGeneratePanel({
   }
 
   const handleVisualCheckFix = async () => {
+    setLastRunKind('visualFix')
     setVisualFixRunning(true)
     setStatus({ kind: 'idle', message: '' })
     try {
@@ -360,6 +369,17 @@ export function AiGeneratePanel({
       setProgress(null)
     }
   }
+
+  // [再生成する] から命令的に呼ばれるハンドル（#47）。実行中は多重実行を避けて無視し、
+  // 折りたたまれていても進捗（LinearProgress・phase 文言）が見えるよう展開する
+  useImperativeHandle(ref, () => ({
+    regenerate: () => {
+      if (running || visualFixRunning) return
+      setExpanded(true)
+      if (lastRunKind === 'visualFix') void handleVisualCheckFix()
+      else void handleGenerate()
+    },
+  }))
 
   const canRunVisualCheckFix = kind === 'builtin-vertex' ? configured : externalAvailable
   const { width: offscreenWidth, height: offscreenHeight } = resolveCanvasSize(offscreenDeck?.theme?.canvas)
@@ -575,4 +595,6 @@ export function AiGeneratePanel({
       </div>
     </Box>
   )
-}
+})
+
+AiGeneratePanel.displayName = 'AiGeneratePanel'
