@@ -216,7 +216,15 @@
       "succeeded": "Generation complete. Review the diff and apply.",
       "exhausted": "Reached the auto-repair limit. The candidate still has validation errors — review the diff (manual fixes may be needed).",
       "cancelled": "Generation cancelled",
-      "failed": "Generation failed. Please continue editing manually."
+      "failed": "Generation failed. Please continue editing manually.",
+      "visualCheckButton": "Check appearance and fix",
+      "visualCheckChecking": "Checking all slides",
+      "visualCheckFixing": "Asking AI to fix",
+      "visualCheckRechecking": "Re-checking the fix",
+      "visualCheckNoIssues": "No appearance issues found",
+      "visualCheckInvalidJson": "Cannot run the appearance check because the JSON has a syntax error",
+      "visualCheckFixed": "Fixed the appearance issues. Review the diff and apply.",
+      "visualCheckRemaining": "{count} appearance warning(s) remain. Please review the diff."
     },
     "diff": {
       "title": "Apply the generated result?",

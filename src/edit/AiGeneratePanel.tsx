@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
+import { ThemeProvider } from '@mui/material/styles'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Checkbox from '@mui/material/Checkbox'
@@ -14,6 +16,11 @@ import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import Typography from '@mui/material/Typography'
 import { useTranslation } from '../i18n'
+import { theme as presentationTheme } from '../theme'
+import type { ThemeData } from '../data'
+import { resolveCanvasSize } from '../hooks/useReveal'
+import { SlideRenderer } from '../components/SlideRenderer'
+import { LazyImageContext } from '../components/FallbackImage'
 import type { ClaudeCliEnvVar, GenerateProgress, GeneratedCandidate, GeneratorKind, PromptIntent } from '../aiGenerate'
 import {
   cancelGenerate,
@@ -30,6 +37,13 @@ import {
   setVertexConfig,
   toGeneratedCandidate,
 } from '../aiGenerate'
+import { checkAllSlidesVisually, deriveCheckableDeck, summarizeVisualCheckWarnings, type CheckableDeck, type SlideVisualCheckResult } from './checkAllSlidesVisually'
+
+/** 見た目チェック→AI修正ループの上限（generateSlides自身の MAX_GENERATE_ATTEMPTS とは別軸。
+ * 1ラウンド=AI呼び出し1回+再チェック1回。上限に達しても警告が残る場合はその時点の候補をそのまま差分確認へ渡す */
+const MAX_VISUAL_FIX_ROUNDS = 2
+
+const VISUAL_FIX_PROMPT = '以下の見た目の問題を、スライドの文言や構成の調整だけで解消してください。レイアウトの実装やコンポーネントの使い方は変えず、各スライドの意味や趣旨も変えないでください。'
 
 type PanelStatus = { kind: 'idle' | 'ok' | 'warn' | 'error'; message: string }
 
@@ -49,11 +63,19 @@ export function AiGeneratePanel({
   currentText,
   onApply,
   defaultExpanded = false,
+  baseDir = '',
+  brandTheme,
 }: {
   currentText: string
   onApply: (candidate: GeneratedCandidate) => void
   /** マウント時にパネルを展開済みにするか（ホーム画面の「AIで新規作成」導線から遷移した場合に使用） */
   defaultExpanded?: boolean
+  /** 相対アセットの基準ディレクトリ（SlideEditor.tsx の source.baseDir と同じ値。見た目チェックの
+   * オフスクリーン描画をライブプレビューと同じ規則でアセット解決するために必要） */
+  baseDir?: string
+  /** meta.brandTheme の解決済みテーマ（SlideEditor.tsx の brandTheme state と同じ値。見た目チェックの
+   * オフスクリーン描画をライブプレビューと同じ規則でブランドテーマ合成するために必要） */
+  brandTheme?: ThemeData
 }) {
   const { t } = useTranslation()
   const [expanded, setExpanded] = useState(defaultExpanded)
@@ -72,6 +94,14 @@ export function AiGeneratePanel({
   const [running, setRunning] = useState(false)
   const [progress, setProgress] = useState<GenerateProgress | null>(null)
   const [status, setStatus] = useState<PanelStatus>({ kind: 'idle', message: '' })
+  // 見た目チェック→AI修正（全スライドVisualCheckボタン）専用の状態。既存の生成状態（running/progress）とは
+  // 独立させ、実行中は両ボタンを相互排他にする（cancelGenerate の対象が module 内で単一のため）
+  const [visualFixRunning, setVisualFixRunning] = useState(false)
+  const [visualFixPhase, setVisualFixPhase] = useState<string | null>(null)
+  // オフスクリーン描画対象（チェック実行中だけ非nullになる）。実DOM実測のため隠しコンテナに随時コミットする
+  const [offscreenDeck, setOffscreenDeck] = useState<CheckableDeck | null>(null)
+  const [offscreenIndex, setOffscreenIndex] = useState<number | null>(null)
+  const offscreenContainerRef = useRef<HTMLDivElement>(null)
 
   // 編集モード内で生成を有効化し、離脱で無効化する（capability ゲート・DC-003）。失敗は UI をブロックしない
   useEffect(() => {
@@ -222,6 +252,110 @@ export function AiGeneratePanel({
     }
   }
 
+  // 指定した slides.json テキストを全スライド分オフスクリーンに描画し、警告があるスライドを集めて返す。
+  // deriveCheckableDeck が null（JSON構文/構造エラー）の場合はチェック不能として null を返す
+  // （「警告0件」と区別する。空デッキ＝0スライドは警告があり得ないため意図的に空配列を返す）
+  const runVisualCheck = async (text: string): Promise<SlideVisualCheckResult[] | null> => {
+    const deck = deriveCheckableDeck(text, baseDir, brandTheme)
+    if (!deck) return null
+    if (deck.slides.length === 0) return []
+    flushSync(() => setOffscreenDeck(deck))
+    try {
+      return await checkAllSlidesVisually(deck.slides, setOffscreenIndex, () => offscreenContainerRef.current?.querySelector<HTMLElement>('section.slide-container') ?? null)
+    } finally {
+      flushSync(() => {
+        setOffscreenDeck(null)
+        setOffscreenIndex(null)
+      })
+    }
+  }
+
+  const handleVisualCheckFix = async () => {
+    setVisualFixRunning(true)
+    setStatus({ kind: 'idle', message: '' })
+    try {
+      setVisualFixPhase(t('aiGenerate.visualCheckChecking', '全スライドをチェック中'))
+      let results = await runVisualCheck(currentText)
+      if (results === null) {
+        setStatus({ kind: 'error', message: t('aiGenerate.visualCheckInvalidJson', 'JSON に構文エラーがあるため見た目チェックを実行できません') })
+        return
+      }
+      if (results.length === 0) {
+        setStatus({ kind: 'ok', message: t('aiGenerate.visualCheckNoIssues', '見た目の問題は見つかりませんでした') })
+        return
+      }
+
+      let baseSlides = currentText
+      let repairFeedback = summarizeVisualCheckWarnings(results)
+      let finalCandidate: GeneratedCandidate | null = null
+      let remainingWarnings = results.length
+
+      for (let round = 1; round <= MAX_VISUAL_FIX_ROUNDS; round++) {
+        setVisualFixPhase(t('aiGenerate.visualCheckFixing', 'AI に修正を依頼中'))
+        const result = await generateSlides({ prompt: VISUAL_FIX_PROMPT, kind, baseSlides, repairFeedback, promptIntent: 'change-instruction' }, (p) => setProgress(p))
+
+        if (result.outcome === 'cancelled') {
+          setStatus({ kind: 'warn', message: t('aiGenerate.cancelled', '生成を中断しました') })
+          return
+        }
+        if (result.outcome !== 'succeeded' && result.outcome !== 'exhausted') {
+          const base = t('aiGenerate.failed', '生成に失敗しました。手動編集を続けてください')
+          setStatus({ kind: 'error', message: result.errorMessage ? `${base}: ${result.errorMessage}` : base })
+          return
+        }
+
+        const candidate = toGeneratedCandidate(result)
+        if (!candidate) {
+          setStatus({ kind: 'error', message: t('aiGenerate.failed', '生成に失敗しました。手動編集を続けてください') })
+          return
+        }
+        finalCandidate = candidate
+
+        if (result.outcome === 'exhausted') {
+          remainingWarnings = -1 // スキーマ自動修正の上限到達を「見た目の残警告」と区別するための特別値
+          break
+        }
+
+        setVisualFixPhase(t('aiGenerate.visualCheckRechecking', '修正結果を再チェック中'))
+        results = await runVisualCheck(candidate.slidesJson)
+        if (results === null) {
+          // succeeded は generateSlides 自身が parseSlides で検証済みのため通常発生しないが、
+          // 万一発生した場合も「残警告0件」に丸めず区別する
+          remainingWarnings = -2 // AI修正結果自体が再チェック不能だったことを示す特別値
+          break
+        }
+        remainingWarnings = results.length
+        if (results.length === 0) break
+        baseSlides = candidate.slidesJson
+        repairFeedback = summarizeVisualCheckWarnings(results)
+      }
+
+      if (finalCandidate) {
+        onApply(finalCandidate)
+        if (remainingWarnings === -1) {
+          setStatus({ kind: 'warn', message: t('aiGenerate.exhausted', '自動修正の上限に達しました。検証エラーが残る候補です。差分を確認してください（手動修正が必要な場合があります）') })
+        } else if (remainingWarnings === -2) {
+          setStatus({ kind: 'warn', message: t('aiGenerate.visualCheckInvalidJson', 'JSON に構文エラーがあるため見た目チェックを実行できません') })
+        } else if (remainingWarnings === 0) {
+          setStatus({ kind: 'ok', message: t('aiGenerate.visualCheckFixed', '見た目の問題を修正しました。差分を確認して適用してください') })
+        } else {
+          setStatus({
+            kind: 'warn',
+            message: t('aiGenerate.visualCheckRemaining', '{count} 件の見た目の警告が残っています。差分を確認してください').replace('{count}', String(remainingWarnings)),
+          })
+        }
+      }
+    } finally {
+      setVisualFixRunning(false)
+      setVisualFixPhase(null)
+      setProgress(null)
+    }
+  }
+
+  const canRunVisualCheckFix = kind === 'builtin-vertex' ? configured : externalAvailable
+  const { width: offscreenWidth, height: offscreenHeight } = resolveCanvasSize(offscreenDeck?.theme?.canvas)
+  const offscreenSlide = offscreenDeck && offscreenIndex !== null ? offscreenDeck.slides[offscreenIndex] : undefined
+
   return (
     <Box sx={{ borderBottom: '1px solid var(--fixed-border)' }}>
       <Stack direction="row" spacing={1} alignItems="center" sx={{ px: 1, py: 0.5 }}>
@@ -363,14 +497,25 @@ export function AiGeneratePanel({
           />
 
           {/* 実行/中断 */}
-          <Stack direction="row" spacing={1} alignItems="center">
+          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
             {running ? (
               <Button size="small" variant="outlined" color="inherit" onClick={() => void cancelGenerate()}>
                 {t('aiGenerate.cancel', '中断')}
               </Button>
             ) : (
-              <Button size="small" variant="contained" onClick={() => void handleGenerate()} disabled={!canGenerate}>
+              <Button size="small" variant="contained" onClick={() => void handleGenerate()} disabled={!canGenerate || visualFixRunning}>
                 {t('aiGenerate.generate', '生成')}
+              </Button>
+            )}
+            {/* 全スライドVisualCheック→AI修正（今回の見切れ修正の手順を自動化）。プロンプト不要で、
+                対象スライドの妥当性のみをゲートにする */}
+            {visualFixRunning ? (
+              <Button size="small" variant="outlined" color="inherit" onClick={() => void cancelGenerate()}>
+                {t('aiGenerate.cancel', '中断')}
+              </Button>
+            ) : (
+              <Button size="small" variant="outlined" onClick={() => void handleVisualCheckFix()} disabled={running || !canRunVisualCheckFix}>
+                {t('aiGenerate.visualCheckButton', '見た目をチェックして修正')}
               </Button>
             )}
             {running && progress && (
@@ -378,8 +523,14 @@ export function AiGeneratePanel({
                 {phaseLabel(progress.phase)} · {t('aiGenerate.attempt', '試行 {current}/{max}').replace('{current}', String(progress.attempt)).replace('{max}', String(progress.maxAttempts))}
               </Typography>
             )}
+            {visualFixRunning && (
+              <Typography variant="caption" sx={{ color: 'var(--fixed-text-muted)' }}>
+                {visualFixPhase}
+                {progress ? ` · ${phaseLabel(progress.phase)} · ${t('aiGenerate.attempt', '試行 {current}/{max}').replace('{current}', String(progress.attempt)).replace('{max}', String(progress.maxAttempts))}` : ''}
+              </Typography>
+            )}
           </Stack>
-          {running && <LinearProgress />}
+          {(running || visualFixRunning) && <LinearProgress />}
 
           {status.kind !== 'idle' && (
             <Typography variant="body2" role="status" sx={{ wordBreak: 'break-word', color: statusColor }}>
@@ -388,6 +539,31 @@ export function AiGeneratePanel({
           )}
         </Stack>
       )}
+
+      {/* 見た目チェックのオフスクリーン描画先（画面外・非表示）。SlideRenderer.Slide をキャンバス実寸
+          （transform scale なし）で1枚だけ描画し、実DOMのgetBoundingClientRect等で実測する（DC-001流用）。
+          LazyImageContext を false にして即時読み込みにするのは SlidePreview と同じ理由（#224） */}
+      <div ref={offscreenContainerRef} aria-hidden="true" style={{ position: 'fixed', top: 0, left: -100000, width: offscreenWidth, height: offscreenHeight, overflow: 'hidden', pointerEvents: 'none' }}>
+        {offscreenDeck && offscreenSlide && (
+          <ThemeProvider theme={presentationTheme}>
+            <div className="reveal">
+              <div className="slides">
+                <LazyImageContext.Provider value={false}>
+                  <SlideRenderer.Slide
+                    slide={offscreenSlide}
+                    logo={offscreenDeck.logo}
+                    confidential={offscreenDeck.confidential}
+                    theme={offscreenDeck.theme}
+                    index={offscreenIndex ?? 0}
+                    total={offscreenDeck.slides.length}
+                    sections={offscreenDeck.sections}
+                  />
+                </LazyImageContext.Provider>
+              </div>
+            </div>
+          </ThemeProvider>
+        )}
+      </div>
     </Box>
   )
 }

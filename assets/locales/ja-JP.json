@@ -216,7 +216,15 @@
       "succeeded": "生成が完了しました。差分を確認して適用してください",
       "exhausted": "自動修正の上限に達しました。検証エラーが残る候補です。差分を確認してください（手動修正が必要な場合があります）",
       "cancelled": "生成を中断しました",
-      "failed": "生成に失敗しました。手動編集を続けてください"
+      "failed": "生成に失敗しました。手動編集を続けてください",
+      "visualCheckButton": "見た目をチェックして修正",
+      "visualCheckChecking": "全スライドをチェック中",
+      "visualCheckFixing": "AI に修正を依頼中",
+      "visualCheckRechecking": "修正結果を再チェック中",
+      "visualCheckNoIssues": "見た目の問題は見つかりませんでした",
+      "visualCheckInvalidJson": "JSON に構文エラーがあるため見た目チェックを実行できません",
+      "visualCheckFixed": "見た目の問題を修正しました。差分を確認して適用してください",
+      "visualCheckRemaining": "{count} 件の見た目の警告が残っています。差分を確認してください"
     },
     "diff": {
       "title": "生成結果を適用しますか？",

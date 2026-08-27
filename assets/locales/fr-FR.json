@@ -216,7 +216,15 @@
       "succeeded": "Génération terminée. Vérifiez le diff et appliquez.",
       "exhausted": "Limite de réparation automatique atteinte. Le candidat comporte encore des erreurs de validation — vérifiez le diff (des corrections manuelles peuvent être nécessaires).",
       "cancelled": "Génération annulée",
-      "failed": "Échec de la génération. Continuez l'édition manuellement."
+      "failed": "Échec de la génération. Continuez l'édition manuellement.",
+      "visualCheckButton": "Vérifier l'apparence et corriger",
+      "visualCheckChecking": "Vérification de toutes les diapositives",
+      "visualCheckFixing": "Demande de correction à l'IA",
+      "visualCheckRechecking": "Nouvelle vérification de la correction",
+      "visualCheckNoIssues": "Aucun problème d'apparence détecté",
+      "visualCheckInvalidJson": "Impossible d'exécuter la vérification d'apparence car le JSON contient une erreur de syntaxe",
+      "visualCheckFixed": "Les problèmes d'apparence ont été corrigés. Vérifiez le diff et appliquez.",
+      "visualCheckRemaining": "{count} avertissement(s) d'apparence subsistent. Vérifiez le diff."
     },
     "diff": {
       "title": "Appliquer le résultat généré ?",
