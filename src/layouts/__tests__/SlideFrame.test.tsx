@@ -50,12 +50,12 @@ describe('meta.confidential の TextMasterDecoration への合成（#394）', ()
     expect(section.querySelector('.master-layer-front')?.innerHTML).toBe('')
   })
 
-  it('anchor/offset未指定時はmeta.logoと同じ既定位置（bottom:0/left:0 + translate(30px,-20px)相当）に描画される', () => {
+  it('anchor/offset未指定時は既定でtop-right（bottom:0/left:0 + translate(-30px,20px)相当）に描画される（meta.logoの既定位置bottom-leftと重ならないようにするため）', () => {
     const section = renderFrameWithConfidential({ text: 'Confidential' })
     const textEl = section.querySelector('.master-layer-front .master-decoration-text') as HTMLElement
-    expect(textEl.style.bottom).toBe('0px')
-    expect(textEl.style.left).toBe('0px')
-    expect(textEl.style.transform).toBe('translate(0%, 0%) translate(30px, -20px)')
+    expect(textEl.style.top).toBe('0px')
+    expect(textEl.style.right).toBe('0px')
+    expect(textEl.style.transform).toBe('translate(0%, 0%) translate(-30px, 20px)')
     expect(textEl.textContent).toBe('Confidential')
   })
 

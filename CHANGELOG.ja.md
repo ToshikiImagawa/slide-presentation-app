@@ -6,6 +6,10 @@
 
 ## [Unreleased]
 
+### 変更
+
+- `meta.confidential` の既定位置を `bottom-left` から `top-right` に変更し、`anchor`/`offset` を指定せずにロゴと透かしを両方使っても既定で重ならないように（`meta.logo` の既定位置は `bottom-left` のまま）
+
 ## [2.3.1] - 2026-08-26
 
 ### 追加

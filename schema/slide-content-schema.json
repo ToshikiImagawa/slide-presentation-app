@@ -626,7 +626,7 @@
     },
     "confidential": {
       "type": "object",
-      "description": "Confidential等の透かし文言。内部的にTextMasterDecorationへ合成される（#394）。meta.logoと対称な語彙で、anchor/offsetの既定値も同じ（bottom-left・{x:30,y:-20}）。他のanchorを使う場合はoffsetを明示しないと画面外に出るので注意",
+      "description": "Confidential等の透かし文言。内部的にTextMasterDecorationへ合成される（#394）。meta.logoと対称な語彙だが、anchor/offsetの既定値はあえて異なる（bottom-leftではなくtop-right）。meta.logoの既定位置がbottom-leftのため、両方指定しても既定で重ならないようにしている。top-right以外のanchorを使う場合はoffsetを明示しないと画面外に出るので注意",
       "fields": {
         "text": { "type": "string" },
         "fontSize": { "type": "number" },
@@ -634,9 +634,9 @@
         "anchor": {
           "type": "string",
           "enum": ["top-left", "top-center", "top-right", "middle-left", "middle-center", "middle-right", "bottom-left", "bottom-center", "bottom-right"],
-          "description": "9方向のアンカー位置。省略時bottom-left"
+          "description": "9方向のアンカー位置。省略時top-right（meta.logoの既定位置bottom-leftと重ならないようにするため）"
         },
-        "offset": { "type": "object", "description": "{ x, y } でアンカーからのpxオフセット。省略時 { x: 30, y: -20 }（bottom-left以外のanchorを使う場合は明示すること）" },
+        "offset": { "type": "object", "description": "{ x, y } でアンカーからのpxオフセット。省略時 { x: -30, y: 20 }（top-right用。他のanchorを使う場合は明示すること）" },
         "only": {
           "type": "string",
           "enum": ["first", "last", "not-first", "all", "middle", "section-first", "not-section-first"],

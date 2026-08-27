@@ -216,6 +216,11 @@ confirm them in a diff dialog. Two generation methods are available:
   untouched. On apply the JSON is normalized to 2-space indentation for readability.
 - **Progress and cancellation** — Progress is shown during generation, and **Cancel** stops an in-flight run. On failure,
   cancellation, or offline, the editor content is preserved and you can safely fall back to manual editing.
+- **Check appearance and fix** — Next to **Generate**, this button runs the same visual checks used by the
+  sample/reference-deck CI (overflow, safe-area intrusion, decoration overlap, collapsed fill items, internal clipping)
+  across every slide. Only if issues are found, it asks the AI to fix them through the same auto-repair loop above —
+  instructing wording/structure adjustments only, never layout code changes. The result is shown in the same diff
+  confirmation dialog.
 
 Generation, GCP settings/login, and networking are enabled only while in edit mode with generation active (never reached in
 view or live presentation).
@@ -256,14 +261,19 @@ If this file does not exist, **Open Sample** fetches the [distributed sample](#d
 
 Customize the presentation logo via the `meta.logo` field.
 
-| Field    | Type   | Default     | Description        |
-|----------|--------|-------------|--------------------|
-| `src`    | string | `/logo.png` | Path to logo image |
-| `width`  | number | `120`       | Logo width (px)    |
-| `height` | number | `40`        | Logo height (px)   |
+| Field    | Type   | Default        | Description                                     |
+|----------|--------|----------------|--------------------------------------------------|
+| `src`    | string | `/logo.png`    | Path to logo image                               |
+| `width`  | number | `120`          | Logo width (px)                                  |
+| `height` | number | `40`           | Logo height (px)                                 |
+| `anchor` | string | `bottom-left`  | One of 9 positions (e.g. `top-right`, `center`)  |
+| `offset` | object | `{x:30,y:-20}` | Pixel offset `{ x, y }` from the anchor          |
+| `only`   | object | -              | Restrict which slides the logo is drawn on       |
 
 If `meta.logo` is omitted, no logo will be displayed. If `width` and `height` are omitted, the defaults of `120` and`40`
-are used respectively. The logo is shown in the bottom-left corner of every slide.
+are used respectively. By default the logo is shown in the bottom-left corner of every slide; set `anchor`/`offset` to
+place it elsewhere. Note that the default `offset` is tuned for `bottom-left`, so when using another `anchor` you
+should specify `offset` explicitly (otherwise it may end up off-screen).
 
 ![Logo shown in the bottom-left corner](resources/screenshots/en/logo.png)
 
@@ -274,17 +284,19 @@ Place a watermark such as "CONFIDENTIAL" or "DRAFT" across the whole deck via th
 | Field      | Type   | Default        | Description                                          |
 |------------|--------|----------------|-------------------------------------------------------|
 | `text`     | string | (required)     | Watermark text                                       |
-| `anchor`   | string | `bottom-left`  | One of 9 positions (e.g. `top-right`, `center`)       |
-| `offset`   | object | `{x:30,y:-20}` | Pixel offset `{ x, y }` from the anchor               |
+| `anchor`   | string | `top-right`    | One of 9 positions (e.g. `bottom-left`, `center`)     |
+| `offset`   | object | `{x:-30,y:20}` | Pixel offset `{ x, y }` from the anchor               |
 | `fontSize` | number | -              | Font size (px)                                        |
 | `color`    | string | -              | Text color                                            |
 | `opacity`  | number | `1`            | Opacity (0-1); use around `0.1`-`0.2` for a watermark |
 | `rotate`   | number | `0`            | Rotation angle (deg, clockwise); e.g. `-30` for a diagonal watermark |
 | `only`     | object | -              | Restrict which slides the watermark is drawn on       |
 
-If `meta.confidential` is omitted, no watermark is displayed. `text` is the only required field. Note that the default
-`offset` is tuned for `bottom-left`, so when using another `anchor` you should specify `offset` explicitly (otherwise
-it may end up off-screen).
+If `meta.confidential` is omitted, no watermark is displayed. `text` is the only required field. The default position
+is the top-right corner — deliberately different from the logo's bottom-left default — so that a logo and a watermark
+placed together with no explicit position don't overlap. Note that the default `offset` is tuned for `top-right`, so
+when using another `anchor` (e.g. `bottom-left`) you should specify `offset` explicitly (otherwise it may end up
+off-screen).
 
 Both `meta.logo` and `meta.confidential` can be overridden per slide via `slides[].meta.logo` /
 `slides[].meta.confidential`. Unspecified fields inherit the top-level setting, and `{ "hidden": true }` hides the
