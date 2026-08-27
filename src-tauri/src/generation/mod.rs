@@ -150,6 +150,29 @@ impl std::fmt::Display for GenerateError {
 
 impl std::error::Error for GenerateError {}
 
+impl GenerateError {
+  /// 一時的な異常（LLM応答不安定・通信エラー等）で、同じ入力のまま再試行する価値があるか（#47）。
+  /// 設定不備（NotConfigured）・認証未完了（Credential）・外部CLI起動失敗（Cli）・利用者中断（Cancelled）は
+  /// 再試行しても直らないため false（429/529 のバックオフは既に vertex.rs 内で吸収済み。ここは JS 側の
+  /// 自動修正ループに一時的失敗を乗せるための粒度）。
+  pub fn is_retryable(&self) -> bool {
+    match self {
+      GenerateError::Cancelled | GenerateError::NotConfigured | GenerateError::Credential(_) | GenerateError::Cli(_) => false,
+      GenerateError::Timeout | GenerateError::Network(_) | GenerateError::InvalidResponse(_) => true,
+      GenerateError::Api { status, .. } => *status >= 500,
+    }
+  }
+}
+
+/// `generate_slides` コマンドが Err で返す構造化ペイロード（UI へは `message` で表示・NFR-004）。
+/// TS 側は `retryable` を見て、自動修正ループの試行回数内で再試行するかを判断する（#47）。
+#[derive(serde::Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct GenerateErrorPayload {
+  pub message: String,
+  pub retryable: bool,
+}
+
 /// 生成器が返す候補（テキスト＋トークン上限による途中切断の判定）。
 /// TS 側の `GenerateCandidate` と camelCase で一致する（`generate_slides` の戻り値）。
 /// `truncated` は Anthropic レスポンスの `stop_reason == "max_tokens"` から判定する（内蔵 Vertex のみ検出可能。
@@ -662,6 +685,30 @@ mod tests {
       gen.generate(&req, &cancel).await,
       Err(GenerateError::Cancelled)
     ));
+  }
+
+  #[test]
+  fn is_retryable_distinguishes_transient_from_permanent_errors() {
+    // 一時的な異常（LLM応答不安定・通信エラー・タイムアウト）は再試行の価値がある
+    assert!(GenerateError::Timeout.is_retryable());
+    assert!(GenerateError::Network("connection reset".to_string()).is_retryable());
+    assert!(GenerateError::InvalidResponse("text ブロックが空です".to_string()).is_retryable());
+
+    // 設定不備・認証未完了・利用者中断・外部CLI起動失敗は再試行しても直らない
+    assert!(!GenerateError::Cancelled.is_retryable());
+    assert!(!GenerateError::NotConfigured.is_retryable());
+    assert!(!GenerateError::Credential("ADC 未ログイン".to_string()).is_retryable());
+    assert!(!GenerateError::Cli("claude command not found".to_string()).is_retryable());
+  }
+
+  #[test]
+  fn is_retryable_for_api_error_depends_on_status() {
+    // 5xx はサーバー側の一時的障害の可能性があるため再試行対象、4xx は再送しても変わらない
+    assert!(GenerateError::Api { status: 500, message: "internal error".to_string() }.is_retryable());
+    assert!(GenerateError::Api { status: 503, message: "unavailable".to_string() }.is_retryable());
+    assert!(!GenerateError::Api { status: 400, message: "bad request".to_string() }.is_retryable());
+    assert!(!GenerateError::Api { status: 401, message: "unauthorized".to_string() }.is_retryable());
+    assert!(!GenerateError::Api { status: 429, message: "rate limited".to_string() }.is_retryable());
   }
 
   #[test]

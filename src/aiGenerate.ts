@@ -37,6 +37,30 @@ export interface GenerateCandidate {
 }
 
 /**
+ * `generate_slides` invoke が Err で返す構造化ペイロード。Rust の `GenerateErrorPayload`（camelCase）と一致。
+ * `retryable` が true の一時的な異常（LLM応答不安定・通信エラー等）は自動修正ループの試行回数内で
+ * 再試行する（#47。判定は Rust 側 `GenerateError::is_retryable` を単一ソースとし、JS 側で文字列パターン
+ * マッチによる再判定はしない）。
+ */
+export interface GenerateErrorPayload {
+  message: string
+  retryable: boolean
+}
+
+/** invoke の catch で受け取った値を `GenerateErrorPayload` へ正規化する。想定外の形（文字列・Error
+ * インスタンス等）は安全側に倒し retryable: false にする（Rust 側が必ず構造化ペイロードを返す契約だが、
+ * 型情報が失われる catch 境界での防御）。 */
+function toGenerateErrorPayload(e: unknown): GenerateErrorPayload {
+  if (typeof e === 'object' && e !== null && 'message' in e && 'retryable' in e) {
+    const { message, retryable } = e as { message: unknown; retryable: unknown }
+    if (typeof message === 'string' && typeof retryable === 'boolean') {
+      return { message, retryable }
+    }
+  }
+  return { message: e instanceof Error ? e.message : String(e), retryable: false }
+}
+
+/**
  * 生成リクエスト。Rust の `GenerateRequest`（camelCase）とワイヤーフォーマットを一致させる。
  */
 export interface GenerateRequest {
@@ -276,7 +300,10 @@ function cancelledResult(attempts: number): GenerateResult {
  * （`schema/slide-content-schema.json` を単一ソースとする生成専用の厳格チェック。未知 layout・型不一致を検出）
  * の両方で検証する。妥当なら `succeeded`。不正なら検証エラー要約を
  * 次試行の `repairFeedback` に載せて再投入し、上限到達時は検証エラー最小の最良候補を退避して `exhausted`。
- * invoke が中断要求後に reject したら `cancelled`、その他の失敗は `failed` とする（器の手動編集へ退避・FR-008）。
+ * invoke が中断要求後に reject したら `cancelled`。invoke 自体の失敗（Rust 側 `GenerateErrorPayload`）は
+ * `retryable` なら（一時的な LLM 応答異常・通信エラー等）自動修正ループの試行回数内で再試行し、
+ * リトライ不可または最終試行でなお失敗した場合は、検証エラー付き候補が既に得られていれば `exhausted`、
+ * 一度も得られていなければ `failed` とする（器の手動編集へ退避・FR-008／#47）。
  *
  * @param onProgress 試行・フェーズ遷移の通知（Tauri event を張らず JS 内コールバックで完結・T-003）
  */
@@ -289,8 +316,11 @@ export async function generateSlides(request: GenerateRequest, onProgress?: (p: 
   let repairFeedback = request.repairFeedback
   // 適用中テーマ・登録済みコンポーネント/アイコンは試行中に変わらないため一度だけ組み立てる（#211）
   const themeConstraints = buildThemeConstraintsPrompt()
+  // exhausted 返却時の attempts に使う（break で早期終了した場合は正規のループ変数がスコープ外になるため）
+  let lastAttempt = 0
 
   for (let attempt = 1; attempt <= MAX_GENERATE_ATTEMPTS; attempt++) {
+    lastAttempt = attempt
     if (cancelRequested) return cancelledResult(attempt - 1)
 
     onProgress?.({ attempt, maxAttempts: MAX_GENERATE_ATTEMPTS, phase: 'generating' })
@@ -300,11 +330,17 @@ export async function generateSlides(request: GenerateRequest, onProgress?: (p: 
       candidate = await invoke<GenerateCandidate>('generate_slides', { request: { ...request, repairFeedback, themeConstraints } })
     } catch (e) {
       // ゲート拒否・タイムアウト・HTTP エラー・中断はいずれも Rust 側で Err になる。
-      // 中断要求済みなら cancelled、それ以外は failed に分類する（Rust はキー等を漏らさず整形済み・NFR-004）。
+      // 中断要求済みなら cancelled。それ以外は Rust 側の retryable 判定（構造化ペイロード）に従い、
+      // 一時的な異常なら試行回数を消費して次の attempt へ進める（同じリクエストを再送。#47）
       if (cancelRequested) return cancelledResult(attempt - 1)
-      const errorMessage = e instanceof Error ? e.message : String(e)
+      const payload = toGenerateErrorPayload(e)
       console.error('[ai-slide-generation] 生成に失敗しました:', e)
-      return { outcome: 'failed', slidesJson: null, validationErrors: [], attempts: attempt, errorMessage }
+      if (payload.retryable && attempt < MAX_GENERATE_ATTEMPTS) {
+        continue
+      }
+      // リトライ不可、または最終試行でも失敗: 検証エラー付き候補が既にあれば exhausted に合流させる
+      if (best) break
+      return { outcome: 'failed', slidesJson: null, validationErrors: [], attempts: attempt, errorMessage: payload.message }
     }
 
     // invoke 解決後の中断再検査。in-flight 完了と中断がわずかに競合した場合でも、明示中断した候補は
@@ -333,12 +369,12 @@ export async function generateSlides(request: GenerateRequest, onProgress?: (p: 
     }
   }
 
-  // 上限到達: 最良候補を退避して返す（exhausted）
+  // 上限到達、またはリトライ不可な invoke 失敗で打ち切り: 最良候補を退避して返す（exhausted）
   return {
     outcome: 'exhausted',
     slidesJson: best?.slidesJson ?? null,
     validationErrors: best?.errors ?? [],
-    attempts: MAX_GENERATE_ATTEMPTS,
+    attempts: lastAttempt,
     errorMessage: null,
   }
 }
