@@ -53,8 +53,10 @@ export function logoToDecoration(logo: LogoConfig): LogoMasterDecoration {
 }
 
 /** meta.confidential（ConfidentialConfig）を TextMasterDecoration へ合成する（#394）。meta.logo と対称な
- * 語彙・既定値（anchor/offset は logoToDecoration と同じ既定値）にしており、opacity/rotate/anchor を
- * 指定すれば斜め・半透明の典型的な透かし表現にできる。layer は front 固定（meta.logo と同じ扱い）。
+ * 語彙にしているが、anchor/offset の既定値は意図的に異なる（bottom-left ではなく top-right）: logo の既定位置
+ * が bottom-left のため、confidential も同じ既定にすると両方を指定したときに常に重なってしまう。既定で重ならない
+ * ようにするため、confidential だけ既定を右上に置く。opacity/rotate/anchor を指定すれば斜め・半透明の典型的な
+ * 透かし表現にできる。layer は front 固定（meta.logo と同じ扱い）。
  * SlideFrame（描画）と getMasterWarnings（decorationWarnings 経由の検証）の両方がこの1箇所を共有する */
 export function confidentialToDecoration(confidential: ConfidentialConfig): TextMasterDecoration {
   return {
@@ -62,8 +64,8 @@ export function confidentialToDecoration(confidential: ConfidentialConfig): Text
     content: confidential.text,
     fontSize: confidential.fontSize,
     color: confidential.color,
-    anchor: confidential.anchor ?? 'bottom-left',
-    offset: confidential.offset ?? { x: 30, y: -20 },
+    anchor: confidential.anchor ?? 'top-right',
+    offset: confidential.offset ?? { x: -30, y: 20 },
     only: confidential.only,
     opacity: confidential.opacity,
     rotate: confidential.rotate,

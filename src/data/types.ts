@@ -39,15 +39,17 @@ export interface LogoConfig {
 }
 
 /** Confidential等の透かし設定。描画は内部的に TextMasterDecoration へ合成される（#394）。
- * meta.logo（LogoConfig）と対称な語彙にしており、anchor/offset の既定値も同じ（bottom-left・
- * { x: 30, y: -20 }）。opacity/rotate/anchor を指定すれば斜め・半透明の典型的な透かし表現にできる */
+ * meta.logo（LogoConfig）と対称な語彙にしているが、anchor/offset の既定値は意図的に異なる（bottom-left
+ * ではなく top-right）。meta.logo の既定位置が bottom-left のため、confidential も同じ既定にすると
+ * 両方指定した場合に常に重なってしまうため、confidential だけ既定を右上に置いている。opacity/rotate/anchor
+ * を指定すれば斜め・半透明の典型的な透かし表現にできる */
 export interface ConfidentialConfig {
   text: string
   fontSize?: number
   color?: string
-  /** 省略時 'bottom-left'（meta.logo と同じ既定位置） */
+  /** 省略時 'top-right'（meta.logo の既定位置 bottom-left と重ならないようにするため） */
   anchor?: MasterAnchor
-  /** 省略時 { x: 30, y: -20 }（meta.logo と同じ既定オフセット） */
+  /** 省略時 { x: -30, y: 20 }（top-right 用。他の anchor を使う場合は明示すること） */
   offset?: { x?: number; y?: number }
   /** 本文領域全体を使うコンポーネント（hierarchyDiagram/flow等）と重なるスライドを除外する等に使う */
   only?: MasterDecorationOnly

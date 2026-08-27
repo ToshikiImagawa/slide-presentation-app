@@ -6,6 +6,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Changed the default position of `meta.confidential` from `bottom-left` to `top-right`, so a logo and a watermark placed together with no explicit `anchor`/`offset` no longer overlap by default (`meta.logo` still defaults to `bottom-left`)
+
 ## [2.3.1] - 2026-08-26
 
 ### Added

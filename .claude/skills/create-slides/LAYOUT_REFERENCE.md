@@ -761,7 +761,7 @@ mermaidはd3/dagre/katex/cytoscape等の重い依存を持ち込むため、コ�
 }
 ```
 
-`logo` を指定するとプレゼン内にロゴが表示される。`width`（デフォルト: 120）と `height`（デフォルト: 40）は省略可能。
+`logo` を指定するとプレゼン内にロゴが表示される。`width`（デフォルト: 120）と `height`（デフォルト: 40）は省略可能。`anchor`（9方向、デフォルト: `bottom-left`）・`offset`（アンカーからのpxオフセット、デフォルト: `{ x: 30, y: -20 }`）・`only`（描画対象スライドの絞り込み）も省略可能で、既定では左下に表示される。`offset` のデフォルトは `bottom-left` 専用の値なので、他の `anchor` を使う場合は必ず `offset` を指定する。
 
 `confidential` を指定するとConfidential等の透かし文言をデッキ全体に配置できる（`logo` と対称な語彙。#394）:
 
@@ -777,7 +777,7 @@ mermaidはd3/dagre/katex/cytoscape等の重い依存を持ち込むため、コ�
 }
 ```
 
-`text` のみ必須。`anchor`（9方向、デフォルト: `bottom-left`）・`offset`（アンカーからのpxオフセット、デフォルト: `{ x: 30, y: -20 }`）・`fontSize`・`color`・`opacity`（0〜1）・`rotate`（deg）・`only`（描画対象スライドの絞り込み）は省略可能。**`offset` のデフォルトは `bottom-left` 専用の値なので、他の `anchor` を使う場合は必ず `offset` を指定する**（指定しないと画面外に出て見えなくなる）。未指定時は現行と完全同一（透かし無し）。
+`text` のみ必須。`anchor`（9方向、デフォルト: `top-right`）・`offset`（アンカーからのpxオフセット、デフォルト: `{ x: -30, y: 20 }`）・`fontSize`・`color`・`opacity`（0〜1）・`rotate`（deg）・`only`（描画対象スライドの絞り込み）は省略可能。`anchor`/`offset` のデフォルトが `logo`（デフォルト: `bottom-left`）と異なるのは、両方を位置指定なしで使っても既定で重ならないようにするため。**`offset` のデフォルトは `top-right` 専用の値なので、他の `anchor`（例: `bottom-left`）を使う場合は必ず `offset` を指定する**（指定しないと画面外に出て見えなくなる）。未指定時は現行と完全同一（透かし無し）。
 
 ## 共通: theme フィールド（プレゼン全体、トップレベル）
 
