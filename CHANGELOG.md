@@ -6,6 +6,19 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.5.0] - 2026-08-28
+
+### Added
+
+- Added automatic font-size shrinking for titles, section dividers, and large-message slides based on content length
+- Added a warning and a "Regenerate" button when an AI-generated result still has validation errors after the automatic repair loop, instead of allowing the broken result to be applied
+
+### Fixed
+
+- Fixed "Check appearance and fix" occasionally making the AI rewrite unrelated fields such as speaker notes
+- Fixed AI slide generation getting stuck on a single transient failure (e.g. an empty response from the model) instead of retrying automatically within the existing repair loop
+- Fixed AI slide generation occasionally failing with an empty response because extended thinking consumed the entire token budget
+
 ## [2.4.0] - 2026-08-27
 
 ### Added
