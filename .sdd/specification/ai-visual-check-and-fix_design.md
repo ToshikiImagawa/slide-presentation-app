@@ -42,7 +42,7 @@ category: authoring
 | オフスクリーン描画（`AiGeneratePanel.tsx` 内） | ✅ | FR-002。`SlideRenderer.Slide` を非表示コンテナで1枚ずつ描画し `flushSync` で同期コミット |
 | 一括チェック→AI修正→再チェックのオーケストレーション | ✅ | FR-003/004/005/006/007/008。`handleVisualCheckFix`（`AiGeneratePanel.tsx`） |
 | `SlideEditor.tsx` からの `baseDir`/`brandTheme` 伝播 | ✅ | NFR-002。ライブプレビューと同じ実測規則にするための1行（2 props追加） |
-| i18n（`aiGenerate.visualCheck*`） | ✅ | ja-JP/en-US/fr-FR の3ロケールに8キーを追加（フラットな2階層命名。v0.2で`visualCheckInvalidJson`を追加） |
+| i18n（`aiGenerate.visualCheck*`） | ✅ | ja-JP/en-US/fr-FR の3ロケールに8キーを追加（フラットな2階層命名。v0.2で`aiGenerate.visualCheckInvalidJson`を追加） |
 | 単体テスト | ✅ | `checkAllSlidesVisually.test.tsx`（8件）・`AiGeneratePanel.test.tsx` 追加分（6件） |
 | 実機（Vertex AI / 外部CLIへの実際のAI往復） | 🔴 | 開発サンドボックスでは検証不可。利用者環境での確認が必要（§9.3） |
 
@@ -249,7 +249,7 @@ function AiGeneratePanel({
 
 **変更内容:**
 
-- §1.1のi18nキー数記載を「7キー」→「8キー」に修正（v0.2で追加した`visualCheckInvalidJson`を反映漏れしていた）。
+- §1.1のi18nキー数記載を「7キー」→「8キー」に修正（v0.2で追加した`aiGenerate.visualCheckInvalidJson`を反映漏れしていた）。
 - `deriveCheckableDeck`の「構文的には妥当だが構造エラー（`slides`欠落等）ならnull」分岐を検証する単体テストを追加（`checkAllSlidesVisually.test.tsx`）。テスト件数を実測に合わせて更新（8件・本機能追加分14件・全体1680件）。
 - spec.md §4 API表の`AiGeneratePanel.tsx`行を、他行と体裁を揃えて`<AiGeneratePanel ... />`のシグネチャ表記に修正。
 
@@ -258,7 +258,7 @@ function AiGeneratePanel({
 **変更内容:**
 
 - `runVisualCheck`（`AiGeneratePanel.tsx`）が、JSON構文エラーで実測不能な場合に空配列を返し「警告0件（問題なし）」と誤って同一視していた不具合を修正（D-002違反）。戻り値型を`SlideVisualCheckResult[] | null`に変更し、`null`（チェック不能）を専用のエラー表示（`aiGenerate.visualCheckInvalidJson`）で区別するようにした。AI修正後の再チェック時に同様のケースが起きた場合の扱いも同様に修正した。
-- 単体テストを1件追加（`currentText`がJSON構文エラーの場合の挙動）。i18n 3ロケールに`visualCheckInvalidJson`キーを追加。
+- 単体テストを1件追加（`currentText`がJSON構文エラーの場合の挙動）。i18n 3ロケールに`aiGenerate.visualCheckInvalidJson`キーを追加。
 - 本v0.2の指摘は本ドキュメントのspec-reviewerレビューで検出された（§9.1「チェック不能時の扱い」参照）。
 
 ## v0.1（2026-08-27）
