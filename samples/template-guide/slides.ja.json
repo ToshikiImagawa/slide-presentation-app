@@ -512,6 +512,52 @@
       }
     },
     {
+      "id": "guide-confidential",
+      "layout": "two-column",
+      "content": {
+        "title": "透かし設定",
+        "left": {
+          "heading": "meta.confidential",
+          "headingDescription": "デッキ全体にConfidential等の透かしを表示",
+          "items": [
+            {"text": "text:", "emphasis": true, "description": " 必須。透かし文言"},
+            {"text": "anchor / offset:", "emphasis": true, "description": " 配置位置とオフセット（デフォルト: bottom-left）"},
+            {"text": "opacity / rotate:", "emphasis": true, "description": " 不透明度と回転角"},
+            {"text": "slides[].meta:", "emphasis": true, "description": " logoとconfidentialをスライド単位で上書き"},
+            {"text": "省略時:", "emphasis": true, "description": " 透かしは表示されません"}
+          ]
+        },
+        "right": {
+          "codeBlock": {
+            "header": "> JSON での指定方法",
+            "items": [
+              "\"meta\": {",
+              "\u00a0\u00a0\"confidential\": { \"text\": \"CONFIDENTIAL\" }",
+              "},",
+              "\"slides\": [",
+              "\u00a0\u00a0{",
+              "\u00a0\u00a0\u00a0\u00a0\"meta\": {",
+              "\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"confidential\": { \"text\": \"DRAFT\" },",
+              "\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"logo\": { \"hidden\": true }",
+              "\u00a0\u00a0\u00a0\u00a0}",
+              "\u00a0\u00a0}",
+              "]"
+            ]
+          }
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "meta.confidential でデッキ全体にConfidential等の透かし文言を設定できます。text は必須で、anchor / offset で配置、opacity / rotate で見た目を調整します。slides[].meta.confidential や slides[].meta.logo でスライド単位に上書きでき、hidden: true でロゴだけ非表示にすることもできます。",
+          "summary": [
+            "meta.confidential でデッキ全体に透かしを表示",
+            "text必須、anchor/offset/opacity/rotateで調整可能",
+            "slides[].meta でスライド単位にlogo/confidentialを上書き"
+          ]
+        }
+      }
+    },
+    {
       "id": "guide-fonts",
       "layout": "two-column",
       "content": {

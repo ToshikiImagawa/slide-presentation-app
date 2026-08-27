@@ -512,6 +512,52 @@
       }
     },
     {
+      "id": "guide-confidential",
+      "layout": "two-column",
+      "content": {
+        "title": "Paramètres de filigrane",
+        "left": {
+          "heading": "meta.confidential",
+          "headingDescription": "Afficher un filigrane Confidential sur toute la présentation",
+          "items": [
+            {"text": "text:", "emphasis": true, "description": " obligatoire. Texte du filigrane"},
+            {"text": "anchor / offset:", "emphasis": true, "description": " position et décalage (par défaut : bottom-left)"},
+            {"text": "opacity / rotate:", "emphasis": true, "description": " opacité et angle de rotation"},
+            {"text": "slides[].meta:", "emphasis": true, "description": " remplace logo et confidential par diapositive"},
+            {"text": "En cas d'omission :", "emphasis": true, "description": " aucun filigrane n'est affiché"}
+          ]
+        },
+        "right": {
+          "codeBlock": {
+            "header": "> Spécification JSON",
+            "items": [
+              "\"meta\": {",
+              "\u00a0\u00a0\"confidential\": { \"text\": \"CONFIDENTIAL\" }",
+              "},",
+              "\"slides\": [",
+              "\u00a0\u00a0{",
+              "\u00a0\u00a0\u00a0\u00a0\"meta\": {",
+              "\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"confidential\": { \"text\": \"DRAFT\" },",
+              "\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"logo\": { \"hidden\": true }",
+              "\u00a0\u00a0\u00a0\u00a0}",
+              "\u00a0\u00a0}",
+              "]"
+            ]
+          }
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "Définissez un filigrane Confidential pour toute la présentation avec meta.confidential. text est obligatoire, anchor / offset définissent la position et opacity / rotate ajustent l'apparence. Vous pouvez remplacer logo et confidential par diapositive avec slides[].meta.confidential et slides[].meta.logo, y compris masquer uniquement le logo avec hidden: true.",
+          "summary": [
+            "Afficher un filigrane sur toute la présentation avec meta.confidential",
+            "text obligatoire ; ajuster avec anchor/offset/opacity/rotate",
+            "Remplacer logo/confidential par diapositive avec slides[].meta"
+          ]
+        }
+      }
+    },
+    {
       "id": "guide-fonts",
       "layout": "two-column",
       "content": {
