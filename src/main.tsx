@@ -80,7 +80,7 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
   const [scrollSpeed, setScrollSpeed] = useScrollSpeed()
   const { addonsDisabled, addonTrustList, handleToggleAddonsDisabled, handleResetAddonTrust, handleSetAddonTrust } = useAddonSettings({ active: settingsOpen, recentPackages })
   // 自動アップデート（#121）。view が変わったら（発表・編集開始）ダイアログを閉じ、発表・編集中に割り込まない
-  const { updateInfo, updateDialogOpen, installingUpdate, closeUpdateDialog, handleInstallUpdate } = useUpdateCheck(view)
+  const { updateInfo, updateDialogOpen, installingUpdate, closeUpdateDialog, handleInstallUpdate, checkForUpdateManually, checkingUpdate } = useUpdateCheck(view)
 
   const openSettings = () => setSettingsOpen(true)
   const closeSettings = () => setSettingsOpen(false)
@@ -351,6 +351,8 @@ function RootContent({ initialRecentPackages }: { initialRecentPackages: RecentS
           addonTrust: addonTrustList,
           onSetAddonTrust: handleSetAddonTrust,
           onOpenShortcuts: openShortcuts,
+          onCheckForUpdate: checkForUpdateManually,
+          checkingUpdate,
         }}
         // スクロール速度はプレゼンテーション画面でのみ意味を持つ設定なので、他画面では渡さない（行が出ない）
         presentation={view === 'presentation' ? { scrollSpeed, setScrollSpeed } : undefined}

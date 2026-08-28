@@ -19,6 +19,10 @@ type GlobalSettingsProps = {
   onSetAddonTrust?: (path: string, decision: AddonTrustDecision | undefined) => void
   /** キーボードショートカット一覧ダイアログを開くハンドラ（未指定時はボタンを表示しない） */
   onOpenShortcuts?: () => void
+  /** 更新の手動確認ハンドラ（未指定時はボタンを表示しない。#121 follow-up） */
+  onCheckForUpdate?: () => void
+  /** 確認中はボタンを disabled にする（多重クリック防止） */
+  checkingUpdate?: boolean
 }
 
 /** プレゼンテーション画面専用の設定。渡された場合は scrollSpeed / setScrollSpeed が両方揃うことを型で強制する（FR-LANG-011） */
@@ -36,7 +40,7 @@ type SettingsWindowProps = {
 }
 
 export function SettingsWindow({ open, onClose, global, presentation }: SettingsWindowProps) {
-  const { embeddedAddonsDisabled, onToggleEmbeddedAddons, onResetAddonTrust, addonTrust, onSetAddonTrust, onOpenShortcuts } = global
+  const { embeddedAddonsDisabled, onToggleEmbeddedAddons, onResetAddonTrust, addonTrust, onSetAddonTrust, onOpenShortcuts, onCheckForUpdate, checkingUpdate } = global
   const { locale, locales, setLocale } = useI18n()
   const { t } = useTranslation()
 
@@ -124,6 +128,14 @@ export function SettingsWindow({ open, onClose, global, presentation }: Settings
             </div>
           )}
         </>
+      )}
+      {onCheckForUpdate && (
+        <div className={styles.settingRow}>
+          <label className={styles.label}>{t('settings.checkForUpdate', 'アプリの更新')}</label>
+          <button type="button" className={dialogFrameStyles.footerButton} onClick={onCheckForUpdate} disabled={checkingUpdate} data-testid="check-for-update">
+            {t('settings.checkForUpdateButton', '更新を確認')}
+          </button>
+        </div>
       )}
     </DialogFrame>
   )

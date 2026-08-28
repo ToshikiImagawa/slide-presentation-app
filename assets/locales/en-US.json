@@ -51,7 +51,9 @@
       "addonTrustDeny": "Deny",
       "addonTrustDisabledNote": "While globally disabled, this takes precedence over per-package settings",
       "shortcuts": "Keyboard shortcuts",
-      "shortcutsOpen": "Show"
+      "shortcutsOpen": "Show",
+      "checkForUpdate": "App update",
+      "checkForUpdateButton": "Check for updates"
     },
     "edit": {
       "startEdit": "Edit",
@@ -321,7 +323,9 @@
       "versionAvailable": "Version {version} is available",
       "installing": "Installing…",
       "installNow": "Install now and restart",
-      "installFailed": "Failed to install the update"
+      "installFailed": "Failed to install the update",
+      "upToDate": "You're on the latest version",
+      "checkFailed": "Failed to check for updates"
     },
     "slideError": {
       "message": "This slide could not be displayed"

@@ -5,6 +5,7 @@ use std::sync::Mutex;
 use tauri::{Emitter, Manager};
 use tauri_plugin_fs::FsExt;
 
+mod app_menu;
 mod bin_resolve;
 mod brand;
 mod brand_overrides;
@@ -1248,6 +1249,7 @@ pub fn run() {
       check_claude_cli,
       take_pending_open_paths,
       update_check::check_for_update,
+      update_check::check_for_update_manual,
       update_check::install_update
     ])
     .setup(|app| {
@@ -1263,6 +1265,13 @@ pub fn run() {
       app
         .handle()
         .plugin(tauri_plugin_updater::Builder::new().build())?;
+      // OSネイティブメニューへの「更新を確認」項目の追加（#121 follow-up）。メニュー概念は
+      // モバイルと異なるため desktop 限定にする（updater plugin と同じ規約）
+      #[cfg(desktop)]
+      {
+        app.handle().set_menu(app_menu::build_menu(app.handle())?)?;
+        app.handle().on_menu_event(app_menu::handle_menu_event);
+      }
       // Windows / Linux のファイルマネージャからの初回起動はパスが argv で渡る。
       // macOS は argv ではなく後述の RunEvent::Opened で届くため対象外にする（#104）
       #[cfg(not(target_os = "macos"))]

@@ -51,7 +51,9 @@
       "addonTrustDeny": "拒否",
       "addonTrustDisabledNote": "一律無効化が有効な間は個別設定より優先されます",
       "shortcuts": "キーボードショートカット",
-      "shortcutsOpen": "表示"
+      "shortcutsOpen": "表示",
+      "checkForUpdate": "アプリの更新",
+      "checkForUpdateButton": "更新を確認"
     },
     "edit": {
       "startEdit": "編集",
@@ -321,7 +323,9 @@
       "versionAvailable": "バージョン {version} が利用可能です",
       "installing": "更新中…",
       "installNow": "今すぐ更新して再起動",
-      "installFailed": "更新の適用に失敗しました"
+      "installFailed": "更新の適用に失敗しました",
+      "upToDate": "お使いのバージョンは最新です",
+      "checkFailed": "更新の確認に失敗しました"
     },
     "slideError": {
       "message": "このスライドを表示できませんでした"

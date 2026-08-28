@@ -1,8 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
-import { checkForUpdate, installUpdate } from '../update'
+import { listen } from '@tauri-apps/api/event'
+import type { UnlistenFn } from '@tauri-apps/api/event'
+import { checkForUpdate, checkForUpdateManual, installUpdate } from '../update'
 import type { UpdateInfo } from '../update'
 import { useTranslation } from '../i18n'
 import { useToast } from '../toast'
+
+/** OSネイティブメニュー「Check for Updates…」のクリック通知（`src-tauri/src/app_menu.rs` が emit）。 */
+const CHECK_FOR_UPDATES_MENU_EVENT = 'check-for-updates-requested'
 
 export interface UseUpdateCheckReturn {
   updateInfo: UpdateInfo | null
@@ -10,6 +15,9 @@ export interface UseUpdateCheckReturn {
   installingUpdate: boolean
   closeUpdateDialog: () => void
   handleInstallUpdate: () => void
+  /** 設定画面の「更新を確認」ボタンから呼ぶ手動確認。クールダウンの対象外（#121 follow-up） */
+  checkForUpdateManually: () => void
+  checkingUpdate: boolean
 }
 
 /**
@@ -25,6 +33,7 @@ export function useUpdateCheck(screenKey: unknown): UseUpdateCheckReturn {
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null)
   const [updateDialogOpen, setUpdateDialogOpen] = useState(false)
   const [installingUpdate, setInstallingUpdate] = useState(false)
+  const [checkingUpdate, setCheckingUpdate] = useState(false)
 
   useEffect(() => {
     checkForUpdate()
@@ -52,5 +61,32 @@ export function useUpdateCheck(screenKey: unknown): UseUpdateCheckReturn {
     })
   }, [showToast, t])
 
-  return { updateInfo, updateDialogOpen, installingUpdate, closeUpdateDialog, handleInstallUpdate }
+  const checkForUpdateManually = useCallback(() => {
+    setCheckingUpdate(true)
+    checkForUpdateManual()
+      .then((info) => {
+        if (!info) {
+          showToast(t('updater.upToDate', 'お使いのバージョンは最新です'))
+          return
+        }
+        setUpdateInfo(info)
+        setUpdateDialogOpen(true)
+      })
+      .catch((error) => {
+        console.error('[useUpdateCheck] 更新の確認に失敗しました', error)
+        showToast(t('updater.checkFailed', '更新の確認に失敗しました'))
+      })
+      .finally(() => setCheckingUpdate(false))
+  }, [showToast, t])
+
+  // OSネイティブメニューからのクリックも設定画面のボタンと同じ経路（手動確認）に合流させる
+  useEffect(() => {
+    let unlisten: UnlistenFn | undefined
+    listen(CHECK_FOR_UPDATES_MENU_EVENT, () => checkForUpdateManually()).then((fn) => {
+      unlisten = fn
+    })
+    return () => unlisten?.()
+  }, [checkForUpdateManually])
+
+  return { updateInfo, updateDialogOpen, installingUpdate, closeUpdateDialog, handleInstallUpdate, checkForUpdateManually, checkingUpdate }
 }

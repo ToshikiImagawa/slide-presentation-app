@@ -20,6 +20,14 @@ export async function checkForUpdate(): Promise<UpdateInfo | null> {
   return invoke<UpdateInfo | null>('check_for_update')
 }
 
+/**
+ * 設定画面の「更新を確認」ボタンから呼ぶ手動確認。ユーザーの明示操作のため、起動時チェックの
+ * クールダウン・devガードの対象外（`check_for_update_manual`。`src-tauri/src/update_check.rs`）
+ */
+export async function checkForUpdateManual(): Promise<UpdateInfo | null> {
+  return invoke<UpdateInfo | null>('check_for_update_manual')
+}
+
 /** 確認済みの更新をダウンロード・インストールし、アプリを再起動する（成功時は戻ってこない） */
 export async function installUpdate(): Promise<void> {
   await invoke('install_update')
