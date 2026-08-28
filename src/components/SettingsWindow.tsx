@@ -85,14 +85,6 @@ export function SettingsWindow({ open, onClose, global, presentation }: Settings
           </button>
         </div>
       )}
-      {onCheckForUpdate && (
-        <div className={styles.settingRow}>
-          <label className={styles.label}>{t('settings.checkForUpdate', 'アプリの更新')}</label>
-          <button type="button" className={dialogFrameStyles.footerButton} onClick={onCheckForUpdate} disabled={checkingUpdate} data-testid="check-for-update">
-            {t('settings.checkForUpdateButton', '更新を確認')}
-          </button>
-        </div>
-      )}
       {onToggleEmbeddedAddons && (
         <>
           <div className={styles.settingRow}>
@@ -136,6 +128,14 @@ export function SettingsWindow({ open, onClose, global, presentation }: Settings
             </div>
           )}
         </>
+      )}
+      {onCheckForUpdate && (
+        <div className={styles.settingRow}>
+          <label className={styles.label}>{t('settings.checkForUpdate', 'アプリの更新')}</label>
+          <button type="button" className={dialogFrameStyles.footerButton} onClick={onCheckForUpdate} disabled={checkingUpdate} data-testid="check-for-update">
+            {t('settings.checkForUpdateButton', '更新を確認')}
+          </button>
+        </div>
       )}
     </DialogFrame>
   )
