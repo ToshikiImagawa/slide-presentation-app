@@ -1,20 +1,20 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { renderHook, act, waitFor } from '@testing-library/react'
+import { renderHook, act, waitFor, screen } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { I18nProvider } from '../../i18n'
 import type { LocaleResource } from '../../i18n'
 import { ToastProvider } from '../../toast'
 
-const h = vi.hoisted(() => ({ checkForUpdate: vi.fn(), installUpdate: vi.fn() }))
+const h = vi.hoisted(() => ({ checkForUpdate: vi.fn(), checkForUpdateManual: vi.fn(), installUpdate: vi.fn() }))
 
-vi.mock('../../update', () => ({ checkForUpdate: h.checkForUpdate, installUpdate: h.installUpdate }))
+vi.mock('../../update', () => ({ checkForUpdate: h.checkForUpdate, checkForUpdateManual: h.checkForUpdateManual, installUpdate: h.installUpdate }))
 
 import { useUpdateCheck } from '../useUpdateCheck'
 
 const enUS: LocaleResource = {
   languageCode: 'en-US',
   languageName: 'English',
-  ui: { updater: { installFailed: 'Failed to install the update' } },
+  ui: { updater: { installFailed: 'Failed to install the update', upToDate: "You're on the latest version", checkFailed: 'Failed to check for updates' } },
 }
 
 function Wrapper({ children }: { children: ReactNode }) {
@@ -28,6 +28,7 @@ function Wrapper({ children }: { children: ReactNode }) {
 describe('useUpdateCheck', () => {
   beforeEach(() => {
     h.checkForUpdate.mockReset()
+    h.checkForUpdateManual.mockReset()
     h.installUpdate.mockReset()
   })
 
@@ -111,5 +112,47 @@ describe('useUpdateCheck', () => {
     expect(result.current.installingUpdate).toBe(true)
 
     await waitFor(() => expect(result.current.installingUpdate).toBe(false))
+  })
+
+  it('checkForUpdateManually で更新が見つかったら updateInfo を設定し、ダイアログを開く', async () => {
+    h.checkForUpdate.mockResolvedValue(null)
+    const info = { version: '2.1.0', currentVersion: '2.0.0', body: 'notes' }
+    h.checkForUpdateManual.mockResolvedValue(info)
+
+    const { result } = renderHook(() => useUpdateCheck('home'), { wrapper: Wrapper })
+    await waitFor(() => expect(h.checkForUpdate).toHaveBeenCalled())
+
+    act(() => result.current.checkForUpdateManually())
+    expect(result.current.checkingUpdate).toBe(true)
+
+    await waitFor(() => expect(result.current.updateInfo).toEqual(info))
+    expect(result.current.updateDialogOpen).toBe(true)
+    expect(result.current.checkingUpdate).toBe(false)
+  })
+
+  it('checkForUpdateManually で更新がなければトーストを表示する', async () => {
+    h.checkForUpdate.mockResolvedValue(null)
+    h.checkForUpdateManual.mockResolvedValue(null)
+
+    const { result } = renderHook(() => useUpdateCheck('home'), { wrapper: Wrapper })
+    await waitFor(() => expect(h.checkForUpdate).toHaveBeenCalled())
+
+    act(() => result.current.checkForUpdateManually())
+
+    await waitFor(() => expect(screen.getByText("You're on the latest version")).toBeTruthy())
+    expect(result.current.updateDialogOpen).toBe(false)
+  })
+
+  it('checkForUpdateManually が失敗したらエラートーストを表示する', async () => {
+    h.checkForUpdate.mockResolvedValue(null)
+    h.checkForUpdateManual.mockRejectedValue(new Error('offline'))
+
+    const { result } = renderHook(() => useUpdateCheck('home'), { wrapper: Wrapper })
+    await waitFor(() => expect(h.checkForUpdate).toHaveBeenCalled())
+
+    act(() => result.current.checkForUpdateManually())
+
+    await waitFor(() => expect(screen.getByText('Failed to check for updates')).toBeTruthy())
+    expect(result.current.checkingUpdate).toBe(false)
   })
 })

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { checkForUpdate, installUpdate } from '../update'
+import { checkForUpdate, checkForUpdateManual, installUpdate } from '../update'
 import type { UpdateInfo } from '../update'
 import { useTranslation } from '../i18n'
 import { useToast } from '../toast'
@@ -10,6 +10,9 @@ export interface UseUpdateCheckReturn {
   installingUpdate: boolean
   closeUpdateDialog: () => void
   handleInstallUpdate: () => void
+  /** 設定画面の「更新を確認」ボタンから呼ぶ手動確認。クールダウンの対象外（#121 follow-up） */
+  checkForUpdateManually: () => void
+  checkingUpdate: boolean
 }
 
 /**
@@ -25,6 +28,7 @@ export function useUpdateCheck(screenKey: unknown): UseUpdateCheckReturn {
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null)
   const [updateDialogOpen, setUpdateDialogOpen] = useState(false)
   const [installingUpdate, setInstallingUpdate] = useState(false)
+  const [checkingUpdate, setCheckingUpdate] = useState(false)
 
   useEffect(() => {
     checkForUpdate()
@@ -52,5 +56,23 @@ export function useUpdateCheck(screenKey: unknown): UseUpdateCheckReturn {
     })
   }, [showToast, t])
 
-  return { updateInfo, updateDialogOpen, installingUpdate, closeUpdateDialog, handleInstallUpdate }
+  const checkForUpdateManually = useCallback(() => {
+    setCheckingUpdate(true)
+    checkForUpdateManual()
+      .then((info) => {
+        if (!info) {
+          showToast(t('updater.upToDate', 'お使いのバージョンは最新です'))
+          return
+        }
+        setUpdateInfo(info)
+        setUpdateDialogOpen(true)
+      })
+      .catch((error) => {
+        console.error('[useUpdateCheck] 更新の確認に失敗しました', error)
+        showToast(t('updater.checkFailed', '更新の確認に失敗しました'))
+      })
+      .finally(() => setCheckingUpdate(false))
+  }, [showToast, t])
+
+  return { updateInfo, updateDialogOpen, installingUpdate, closeUpdateDialog, handleInstallUpdate, checkForUpdateManually, checkingUpdate }
 }

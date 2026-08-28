@@ -11,9 +11,9 @@ const LATEST_JSON_ASSET_NAME: &str = "latest.json";
 /// 直前のチェック時刻を並置する plugin-store のパス（他の設定保存モジュールと同じパターン）。
 const LAST_CHECK_STORE_PATH: &str = "update-check.json";
 const LAST_CHECK_KEY: &str = "lastCheckedAtEpochSecs";
-/// 起動ごとに毎回チェックすると、上記のレート制限枠をより早く消費してしまうため間引く。
-/// パッチリリースの頻度（数日〜数週間おき）に対して十分短く、かつ呼び出し回数を大きく減らせる値として24時間とする
-const CHECK_COOLDOWN_SECS: u64 = 24 * 60 * 60;
+/// 起動ごとに毎回チェックすると、レート制限枠をより早く消費してしまうため間引く（現在は静的URL方式
+/// でAPIレート制限自体を回避済みだが、予防的に短いクールダウンを残す）。1時間とする。
+const CHECK_COOLDOWN_SECS: u64 = 60 * 60;
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -39,7 +39,7 @@ fn latest_json_url() -> String {
 /// 静的URLを updater の endpoints に設定して構築する。ここで失敗するのは URL 解析等のローカルな
 /// 問題（`REPO`/`LATEST_JSON_ASSET_NAME` の誤り等）であり、ネットワークへは一切到達していない。
 /// check_for_update のクールダウン記録（`CHECK_COOLDOWN_SECS` はレート制限枠の消費を防ぐためのもの）は
-/// この段の失敗では行わない（ローカルな不具合を「ネットワーク済み」として24時間隠してしまうため）
+/// この段の失敗では行わない（ローカルな不具合を「ネットワーク済み」として1時間隠してしまうため）
 fn build_updater(app: &tauri::AppHandle) -> Result<Updater, String> {
   let endpoint = Url::parse(&latest_json_url()).map_err(|e| e.to_string())?;
 
@@ -95,12 +95,26 @@ fn record_checked_now(app: &tauri::AppHandle) {
   }
 }
 
-/// 更新の有無を確認する。開発ビルド（`npm run tauri:dev` 等）では常に確認せず `None` を返す
-/// （dev では起動が頻繁なうえ配布物とバージョン整合の意味がないため。他の dev 限定機能と同じ
-/// `cfg!(debug_assertions)` 規約）。前回チェックから24時間以内なら（同一ネットワーク内でのレート制限枠の
-/// 消費を抑えるため）実際には確認せず `None` を返す（`build_updater` のローカルな失敗はこの記録の対象外。
-/// `record_checked_now` のコメント参照）。latest.json 未添付・オフラインなどはすべて Err にし、
-/// 呼び出し側（フロント）はこれを無言で諦める（利用を妨げない・issue #121 の受け入れ基準）
+/// updater を構築して check() し、成否問わずチェック時刻を記録する（`check_for_update`／
+/// `check_for_update_manual` の共通処理。`build_updater` のローカルな失敗はこの記録の対象外。
+/// `record_checked_now` のコメント参照）。
+async fn do_check(app: &tauri::AppHandle) -> Result<Option<UpdateInfo>, String> {
+  let updater = build_updater(app)?;
+  let result = updater.check().await.map_err(|e| e.to_string());
+  record_checked_now(app);
+  let update = result?;
+  Ok(update.map(|u| UpdateInfo {
+    version: u.version,
+    current_version: u.current_version,
+    body: u.body,
+  }))
+}
+
+/// 更新の有無を確認する（起動時の自動チェック専用）。開発ビルド（`npm run tauri:dev` 等）では常に
+/// 確認せず `None` を返す（dev では起動が頻繁なうえ配布物とバージョン整合の意味がないため。他の dev
+/// 限定機能と同じ `cfg!(debug_assertions)` 規約）。前回チェックから1時間以内なら（同一ネットワーク内で
+/// のレート制限枠の消費を抑えるため）実際には確認せず `None` を返す。latest.json 未添付・オフラインなどは
+/// すべて Err にし、呼び出し側（フロント）はこれを無言で諦める（利用を妨げない・issue #121 の受け入れ基準）
 #[tauri::command]
 pub async fn check_for_update(app: tauri::AppHandle) -> Result<Option<UpdateInfo>, String> {
   if cfg!(debug_assertions) {
@@ -115,15 +129,16 @@ pub async fn check_for_update(app: tauri::AppHandle) -> Result<Option<UpdateInfo
     return Ok(None);
   }
 
-  let updater = build_updater(&app)?;
-  let result = updater.check().await.map_err(|e| e.to_string());
-  record_checked_now(&app);
-  let update = result?;
-  Ok(update.map(|u| UpdateInfo {
-    version: u.version,
-    current_version: u.current_version,
-    body: u.body,
-  }))
+  do_check(&app).await
+}
+
+/// 更新の有無を確認する（設定画面の「更新を確認」ボタン専用）。ユーザーの明示操作のため、
+/// `install_update` と同様に devガード・クールダウン判定の対象外にする（押しても無反応になる方が
+/// 体験として悪い）。呼び出し後は `do_check` 内で記録するため、直後の自動チェック（起動時）は
+/// 1時間空くまで再実行されない（無駄な再確認を防ぐ）。
+#[tauri::command]
+pub async fn check_for_update_manual(app: tauri::AppHandle) -> Result<Option<UpdateInfo>, String> {
+  do_check(&app).await
 }
 
 /// 更新を（再確認の上）ダウンロード・インストールし、アプリを再起動する

@@ -1248,6 +1248,7 @@ pub fn run() {
       check_claude_cli,
       take_pending_open_paths,
       update_check::check_for_update,
+      update_check::check_for_update_manual,
       update_check::install_update
     ])
     .setup(|app| {

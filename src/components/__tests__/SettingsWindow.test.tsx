@@ -19,6 +19,8 @@ const enUS: LocaleResource = {
       resetAddonTrust: 'Reset add-on trust history',
       shortcuts: 'Keyboard shortcuts',
       shortcutsOpen: 'Show',
+      checkForUpdate: 'App update',
+      checkForUpdateButton: 'Check for updates',
     },
   },
 }
@@ -211,6 +213,37 @@ describe('SettingsWindow', () => {
       )
       fireEvent.click(screen.getByRole('button', { name: 'Show' }))
       expect(onOpenShortcuts).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe('更新確認導線', () => {
+    it('onCheckForUpdate 未指定時はボタンを表示しない（後方互換）', () => {
+      render(
+        <Wrapper>
+          <SettingsWindow {...defaultProps} />
+        </Wrapper>,
+      )
+      expect(screen.queryByText('App update')).toBeNull()
+    })
+
+    it('onCheckForUpdate 指定時にボタンが表示され、クリックで呼ばれる', () => {
+      const onCheckForUpdate = vi.fn()
+      render(
+        <Wrapper>
+          <SettingsWindow {...defaultProps} global={{ onCheckForUpdate }} />
+        </Wrapper>,
+      )
+      fireEvent.click(screen.getByRole('button', { name: 'Check for updates' }))
+      expect(onCheckForUpdate).toHaveBeenCalledTimes(1)
+    })
+
+    it('checkingUpdate=true のときボタンが disabled になる', () => {
+      render(
+        <Wrapper>
+          <SettingsWindow {...defaultProps} global={{ onCheckForUpdate: () => {}, checkingUpdate: true }} />
+        </Wrapper>,
+      )
+      expect((screen.getByRole('button', { name: 'Check for updates' }) as HTMLButtonElement).disabled).toBe(true)
     })
   })
 
