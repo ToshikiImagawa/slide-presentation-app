@@ -6,6 +6,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.5.1] - 2026-08-28
+
+### Added
+
+- Added a "Check for updates" action to the settings screen and to the OS-native app menu, so you can manually check for updates without waiting for the automatic check
+
+### Changed
+
+- Shortened the automatic update check cooldown from 24 hours to 1 hour
+
 ## [2.5.0] - 2026-08-28
 
 ### Added
