@@ -5,9 +5,10 @@ import { I18nProvider } from '../../i18n'
 import type { LocaleResource } from '../../i18n'
 import { ToastProvider } from '../../toast'
 
-const h = vi.hoisted(() => ({ checkForUpdate: vi.fn(), checkForUpdateManual: vi.fn(), installUpdate: vi.fn() }))
+const h = vi.hoisted(() => ({ checkForUpdate: vi.fn(), checkForUpdateManual: vi.fn(), installUpdate: vi.fn(), listen: vi.fn(), unlisten: vi.fn() }))
 
 vi.mock('../../update', () => ({ checkForUpdate: h.checkForUpdate, checkForUpdateManual: h.checkForUpdateManual, installUpdate: h.installUpdate }))
+vi.mock('@tauri-apps/api/event', () => ({ listen: h.listen }))
 
 import { useUpdateCheck } from '../useUpdateCheck'
 
@@ -30,6 +31,8 @@ describe('useUpdateCheck', () => {
     h.checkForUpdate.mockReset()
     h.checkForUpdateManual.mockReset()
     h.installUpdate.mockReset()
+    h.unlisten.mockReset()
+    h.listen.mockReset().mockResolvedValue(h.unlisten)
   })
 
   it('更新が見つかったら updateInfo を設定し、ダイアログを開く', async () => {
@@ -154,5 +157,30 @@ describe('useUpdateCheck', () => {
 
     await waitFor(() => expect(screen.getByText('Failed to check for updates')).toBeTruthy())
     expect(result.current.checkingUpdate).toBe(false)
+  })
+
+  it('OSネイティブメニュー「Check for Updates…」のクリック通知を受けたら手動確認を実行する（#121 follow-up）', async () => {
+    h.checkForUpdate.mockResolvedValue(null)
+    const info = { version: '2.1.0', currentVersion: '2.0.0', body: 'notes' }
+    h.checkForUpdateManual.mockResolvedValue(info)
+
+    const { result } = renderHook(() => useUpdateCheck('home'), { wrapper: Wrapper })
+    await waitFor(() => expect(h.listen).toHaveBeenCalledWith('check-for-updates-requested', expect.any(Function)))
+
+    const menuHandler = h.listen.mock.calls[0][1] as () => void
+    act(() => menuHandler())
+
+    await waitFor(() => expect(result.current.updateInfo).toEqual(info))
+    expect(result.current.updateDialogOpen).toBe(true)
+  })
+
+  it('アンマウント時に unlisten を呼ぶ', async () => {
+    h.checkForUpdate.mockResolvedValue(null)
+
+    const { unmount } = renderHook(() => useUpdateCheck('home'), { wrapper: Wrapper })
+    await waitFor(() => expect(h.listen).toHaveBeenCalled())
+
+    unmount()
+    expect(h.unlisten).toHaveBeenCalledTimes(1)
   })
 })

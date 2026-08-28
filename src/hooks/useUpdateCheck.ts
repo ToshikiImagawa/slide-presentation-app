@@ -1,8 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
+import { listen } from '@tauri-apps/api/event'
+import type { UnlistenFn } from '@tauri-apps/api/event'
 import { checkForUpdate, checkForUpdateManual, installUpdate } from '../update'
 import type { UpdateInfo } from '../update'
 import { useTranslation } from '../i18n'
 import { useToast } from '../toast'
+
+/** OSネイティブメニュー「Check for Updates…」のクリック通知（`src-tauri/src/app_menu.rs` が emit）。 */
+const CHECK_FOR_UPDATES_MENU_EVENT = 'check-for-updates-requested'
 
 export interface UseUpdateCheckReturn {
   updateInfo: UpdateInfo | null
@@ -73,6 +78,15 @@ export function useUpdateCheck(screenKey: unknown): UseUpdateCheckReturn {
       })
       .finally(() => setCheckingUpdate(false))
   }, [showToast, t])
+
+  // OSネイティブメニューからのクリックも設定画面のボタンと同じ経路（手動確認）に合流させる
+  useEffect(() => {
+    let unlisten: UnlistenFn | undefined
+    listen(CHECK_FOR_UPDATES_MENU_EVENT, () => checkForUpdateManually()).then((fn) => {
+      unlisten = fn
+    })
+    return () => unlisten?.()
+  }, [checkForUpdateManually])
 
   return { updateInfo, updateDialogOpen, installingUpdate, closeUpdateDialog, handleInstallUpdate, checkForUpdateManually, checkingUpdate }
 }
