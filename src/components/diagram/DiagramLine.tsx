@@ -1,4 +1,4 @@
-import { useId, type ReactNode } from 'react'
+import { useId, type CSSProperties, type ReactNode } from 'react'
 import { resolveColorToken } from '../../applyTheme'
 import { useDiagramSize } from './DiagramCanvas'
 import { pathMidpoint, polylinePoints, pxToPercent, type PxPoint } from './geometry'
@@ -20,6 +20,8 @@ export type DiagramLineStyleProps = {
   tail?: LineEndShape
   /** 線に添えるラベル。経路長の中央に置く */
   label?: ReactNode
+  /** 表示順のインデックス。指定すると線が手前に引かれてくるドローイン演出になる（dashed 時は適用しない） */
+  staggerIndex?: number
 }
 
 type Props = DiagramLineStyleProps & { points: PxPoint[] }
@@ -53,7 +55,7 @@ function EndMarker({ id, shape, color, atStart }: { id: string; shape: LineEndSh
  * 経路は px で受け取る（縦横比で太さや先端形状が歪まないようにするため）。線幅・破線の刻みは
  * --theme-border-width の倍率、色はカラーパレットキー経由の CSS 変数で持つので、いずれもテーマに追従する。
  */
-export function DiagramLine({ points, color, thickness = 2, dashed, head = 'arrow', tail = 'none', label }: Props) {
+export function DiagramLine({ points, color, thickness = 2, dashed, head = 'arrow', tail = 'none', label, staggerIndex }: Props) {
   const size = useDiagramSize()
   // useId の戻り値は url(#...) に使えない記号を含むため、識別子として使える文字だけを残す
   const uid = useId().replace(/[^a-zA-Z0-9_-]/g, '')
@@ -65,6 +67,10 @@ export function DiagramLine({ points, color, thickness = 2, dashed, head = 'arro
   const strokeColor = `var(${resolveColorToken(color)})`
   const lineWidth = `calc(var(--theme-border-width) * ${thickness})`
   const mid = label == null ? null : pathMidpoint(points)
+  // dashed は絶対px由来のダッシュ間隔を使うため、pathLength=1 による正規化と組み合わせられない（#202）
+  const draw = !dashed && staggerIndex != null
+  // dashed 線は「データが流れる」向きを持つ接続として、ダッシュの1周期分だけ無限に流すループ演出にする
+  const dashPeriod = `calc(var(--theme-border-width) * ${thickness * 7})`
 
   return (
     <>
@@ -79,9 +85,13 @@ export function DiagramLine({ points, color, thickness = 2, dashed, head = 'arro
           stroke={strokeColor}
           strokeLinecap="butt"
           strokeLinejoin="round"
+          className={dashed ? styles.flow : draw ? styles.draw : undefined}
+          pathLength={draw ? 1 : undefined}
           style={{
             strokeWidth: lineWidth,
-            strokeDasharray: dashed ? `calc(var(--theme-border-width) * ${thickness * 4}) calc(var(--theme-border-width) * ${thickness * 3})` : undefined,
+            strokeDasharray: dashed ? `calc(var(--theme-border-width) * ${thickness * 4}) calc(var(--theme-border-width) * ${thickness * 3})` : draw ? 1 : undefined,
+            ...(dashed ? ({ '--flow-dash-period': dashPeriod } as CSSProperties) : {}),
+            ...(draw ? ({ '--stagger-index': staggerIndex } as CSSProperties) : {}),
           }}
           markerEnd={head === 'none' ? undefined : `url(#${headId})`}
           markerStart={tail === 'none' ? undefined : `url(#${tailId})`}

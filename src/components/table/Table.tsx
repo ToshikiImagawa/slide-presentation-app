@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react'
 import { asArray } from '../../data/loader'
 import type { TableColumnSpec, TableSpec } from './types'
 import styles from './Table.module.css'
@@ -56,7 +57,7 @@ export function Table(spec: TableSpec) {
         </thead>
         <tbody>
           {rows.map((row, rowIndex) => (
-            <tr key={rowIndex} className={styles.tr}>
+            <tr key={rowIndex} className={styles.tr} style={{ '--stagger-index': rowIndex } as CSSProperties}>
               {columns.map((column, columnIndex) => (
                 <td key={columnIndex} className={styles.td} style={{ textAlign: column.align ?? DEFAULT_ALIGN }}>
                   {row[columnIndex] ?? ''}

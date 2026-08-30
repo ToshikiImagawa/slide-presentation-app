@@ -111,6 +111,46 @@
   }
 }
 
+/* マスター背景の grid/gradient に付ける控えめな周期モーション（opt-in・theme.masters[].background.motion）。
+   0%/開始状態が motion なし時と同じ見た目になるよう設計している。Playwright の
+   `animations: 'disabled'`（無限アニメーションは開始状態に固定）でも既存スクリーンショットに影響しない */
+@keyframes masterGridDrift {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: var(--theme-background-grid-size) var(--theme-background-grid-size);
+  }
+}
+
+@keyframes masterGradientDrift {
+  0%,
+  100% {
+    background-position: 0% 0%;
+  }
+  50% {
+    background-position: 100% 100%;
+  }
+}
+
+.master-background-motion-grid {
+  animation: masterGridDrift 40s linear infinite;
+}
+
+.master-background-motion-gradient {
+  animation: masterGradientDrift 20s ease-in-out infinite;
+}
+
+/* アクセシビリティ設定でアニメーションを一括無効化する（fadeInUp 等の既存演出も含む） */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-delay: 0s !important;
+  }
+}
+
 /* 1. THE SETUP */
 * {
   box-sizing: border-box;
@@ -278,6 +318,36 @@ body {
 
 .reveal .slides section.present .content-area {
   animation-delay: 0.15s;
+}
+
+/* content-area 内の子要素を1件ずつ段階的に表示する汎用ユーティリティ（Timeline/FeatureTileGrid 等）。
+   --stagger-index（配列インデックス）で表示順に遅延をずらす。delay に上限（min(index, N)）を設けると、
+   上限を超えた要素が全部同時に発火し、「途中から間隔が詰まって速度が変わる」不自然さを生むため
+   キャップしない（このキャップは元は撮影の sleep(700ms) 対策だったが、
+   window.__VISUAL_CHECK_FINISH_ANIMATIONS__ 経由で有限アニメーションを明示的に完了状態へ固定する
+   方式に変えたため不要になった）。要素数が多いデッキでは最後の要素の出現が遅くなるが、
+   間隔が常に一定であることを優先する。
+   セレクタは必ず `.reveal .slides section.present` を前置する: Reveal.js はスライド切替のたびに
+   `.present` クラスを付け外しするため、このセレクタ自体のマッチ状態が変わることで CSS アニメーションが
+   都度再トリガーされる。`.stagger-item` 単体（要素自身が常に持つクラス）に animation を直接付けると、
+   全スライドが一括マウントされる初回だけ再生され、以降スライドを切り替えても二度と再生されない（実測で
+   確認済み: Web Animations API 上で 2 回目以降の遷移でも `playState: "finished"` のまま）。
+   base delay 0.2s は、スライド全体の一括フェードイン（.content-area の 0.15s）と重ならないよう間を空け、
+   「まずスライドが現れ、続いて中の要素が1件ずつ現れる」という順序を目でも追えるようにするため */
+.reveal .slides section.present .stagger-item {
+  animation: staggerFadeInUp 0.6s ease-out both;
+  animation-delay: calc(0.2s + var(--stagger-index, 0) * 0.12s);
+}
+
+@keyframes staggerFadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* 2. TYPOGRAPHY */

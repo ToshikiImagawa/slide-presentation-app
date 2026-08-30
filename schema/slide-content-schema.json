@@ -767,7 +767,8 @@
             "to": { "type": "string", "description": "type: gradient で必須（終了色）" },
             "angle": { "type": "number", "description": "type: gradient で使用（deg。省略時180=上→下）" },
             "src": { "type": "string", "description": "type: image で必須（画像パス）" },
-            "fit": { "type": "string", "enum": ["cover", "contain"], "description": "type: image で使用。省略時cover" }
+            "fit": { "type": "string", "enum": ["cover", "contain"], "description": "type: image で使用。省略時cover" },
+            "motion": { "type": "boolean", "description": "grid/gradient 背景に付く控えめな周期モーション（他の種別では無視）。省略時true相当（動く）。false を明示するとこのマスターだけ動きを止める" }
           }
         },
         "decorations": {

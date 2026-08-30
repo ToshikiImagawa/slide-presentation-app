@@ -60,7 +60,7 @@ export function Diagram({ nodes, connectors, arrows, badges, callouts }: Diagram
           return null
         }
         // from/to はスプレッド後に上書きする（id 文字列 → 矩形。後勝ちなので型も NormRect になる）
-        return <Connector key={`connector-${i}`} {...connector} from={from} to={to} />
+        return <Connector key={`connector-${i}`} {...connector} from={from} to={to} staggerIndex={i} />
       })}
 
       {asArray(arrows).map((arrow, i) => (
@@ -76,6 +76,7 @@ export function Diagram({ nodes, connectors, arrows, badges, callouts }: Diagram
           variant={node.variant}
           shape={node.shape}
           badge={node.badge === undefined ? undefined : <DiagramBadge color={node.color}>{node.badge}</DiagramBadge>}
+          staggerIndex={i}
         >
           {node.body}
         </DiagramCard>

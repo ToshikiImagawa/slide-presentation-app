@@ -1,4 +1,4 @@
-import { Fragment } from 'react'
+import { Fragment, type CSSProperties } from 'react'
 import { AxisFrame } from './AxisFrame'
 import { ChartLineLayer, ChartPolyline } from './ChartPolyline'
 import { formatValue, ratioOf, VALUE_INSIDE_THRESHOLD_VERTICAL, type AxisChartProps } from './chartScale'
@@ -36,7 +36,7 @@ export function LineChart({ categories, series, scale, unit, axis, valueLabels }
           const ratio = ratioOf(value, scale)
           return (
             <Fragment key={`${seriesIndex}-${index}`}>
-              <span className={styles.point} style={{ left: `${xOf(index, count)}%`, bottom: `${ratio * 100}%`, background: entry.color }} />
+              <span className={styles.point} style={{ left: `${xOf(index, count)}%`, bottom: `${ratio * 100}%`, background: entry.color, '--point-progress': xOf(index, count) / 100 } as CSSProperties} />
               {valueLabels && (
                 <span className={`${styles.value} ${styles.valueAbove}`} data-inside={ratio > VALUE_INSIDE_THRESHOLD_VERTICAL} style={{ left: `${xOf(index, count)}%`, bottom: `${ratio * 100}%` }}>
                   {formatValue(value, unit)}

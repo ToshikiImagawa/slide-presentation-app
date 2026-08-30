@@ -73,9 +73,18 @@ async function captureLocale(browser, bar, vp, locale, outDir) {
       await page.evaluate((h) => (window.location.hash = h), `#/${index}`)
       await page.evaluate(() => document.fonts.ready)
       await sleep(700)
-      // animations: 'disabled' で fadeInUp を最終状態に確定させる。Reveal.js は .present 付与のたびに
-      // アニメーションを再生し直すため、sleep だけでは撮影タイミングが揺れて実行ごとに最大 2.4% の
-      // ピクセル差が出る（git 差分ベースの回帰検知が機能しなくなる）
+      // Playwright の animations: 'disabled' は有限アニメーションの完了への早送りを保証しない
+      // best-effort のため（Timeline/Diagram 系の段階的エントランス演出のように、要素数に応じて
+      // 複数の異なる delay を持つアニメーションが同時に走ると、中間状態のまま撮影されることがある）、
+      // src/visualChecks.ts の finishSettlingAnimations（getVisualCheckWarnings・PDF書き出しと共有する
+      // 唯一の確定手段）を window.__VISUAL_CHECK_FINISH_ANIMATIONS__ 経由で呼び、有限アニメーションを
+      // 明示的に最終状態へ固定してから撮影する。animations: 'disabled' 自体は無限アニメーションの
+      // 一時停止に有効なため引き続き併用する
+      await page.evaluate(() => {
+        const finish = window.__VISUAL_CHECK_FINISH_ANIMATIONS__
+        const section = document.querySelector('.reveal .slides section.present')
+        if (finish && section) finish(section)
+      })
       const contentBuf = await page.screenshot({ fullPage: vp.fullPage, animations: 'disabled' })
       const finalBuf = compositeChrome(contentBuf, bar)
       const name = expectedFileName(index, slide)

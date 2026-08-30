@@ -19,6 +19,8 @@ type Props = {
   /** 外形。'pill' は角を完全な丸みに、'diamond' はひし形の枠を背後に敷く（本文は矩形のまま中央表示）。
    * variant（面の塗り方）とは独立した軸（フローチャートのノード種別・#206が使う。他の用途では省略時 'rect' 相当） */
   shape?: 'rect' | 'pill' | 'diamond'
+  /** 表示順のインデックス。指定するとカードが1件ずつ段階的に浮かび上がるドローイン演出になる（省略時は遅延なし） */
+  staggerIndex?: number
 }
 
 /**
@@ -27,7 +29,7 @@ type Props = {
  * 位置は正規化座標をそのまま % 指定に載せるため、キャンバスサイズが変わっても相対配置が保たれる
  * （px へ落とさないのでサイズ計測の完了を待つ必要もない）。
  */
-export function DiagramCard({ rect, title, children, color, variant = 'outline', badge, scale, shape = 'rect' }: Props) {
+export function DiagramCard({ rect, title, children, color, variant = 'outline', badge, scale, shape = 'rect', staggerIndex }: Props) {
   const cssVar = resolveColorToken(color)
   const style = {
     left: normToPercent(rect.x),
@@ -36,6 +38,7 @@ export function DiagramCard({ rect, title, children, color, variant = 'outline',
     height: normToPercent(rect.h),
     '--diagram-color': `var(${cssVar})`,
     ...(scale != null ? { '--diagram-font-scale': scale } : {}),
+    ...(staggerIndex != null ? { '--stagger-index': staggerIndex } : {}),
   } as CSSProperties
 
   const className = [styles.card, variant === 'filled' && styles.filled, variant === 'plain' && styles.plain, badge && styles.withBadge, shape === 'pill' && styles.pill, shape === 'diamond' && styles.diamond].filter(Boolean).join(' ')

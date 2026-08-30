@@ -14,10 +14,7 @@
       "meta": {
         "notes": {
           "speakerNotes": "Cette présentation explique comment utiliser les modèles de diapositives.\nEn plaçant public/slides.json, vous pouvez personnaliser librement le contenu des diapositives.",
-          "summary": [
-            "Présentation du guide des modèles de diapositives",
-            "Personnalisable via slides.json"
-          ]
+          "summary": ["Présentation du guide des modèles de diapositives", "Personnalisable via slides.json"]
         }
       }
     },
@@ -29,31 +26,30 @@
         "left": {
           "heading": "Colonne de gauche : heading",
           "headingDescription": "Ajoutez un sous-texte avec headingDescription",
-          "paragraphs": [
-            "Rédigez le corps du texte avec paragraphs. Les <strong>balises HTML</strong> sont aussi prises en charge.",
-            "Plusieurs paragraphes via un tableau."
-          ],
+          "paragraphs": ["Rédigez le corps du texte avec paragraphs. Les <strong>balises HTML</strong> sont aussi prises en charge.", "Plusieurs paragraphes via un tableau."],
           "items": [
-            {"text": "items:", "emphasis": true, "description": " emphasis: true pour du texte en gras"},
-            {"text": "Élément normal :", "description": " ajoutez un sous-texte avec description"},
-            {"text": "Élément simple"}
+            {
+              "text": "items:",
+              "emphasis": true,
+              "description": " emphasis: true pour du texte en gras"
+            },
+            {
+              "text": "Élément normal :",
+              "description": " ajoutez un sous-texte avec description"
+            },
+            {
+              "text": "Élément simple"
+            }
           ]
         },
         "right": {
           "codeBlock": {
             "header": "> codeBlock.header",
-            "items": [
-              "codeBlock.items[0]",
-              "Idéal pour afficher du code ou des structures hiérarchiques",
-              "Les <strong>balises HTML</strong> sont prises en charge"
-            ]
+            "items": ["codeBlock.items[0]", "Idéal pour afficher du code ou des structures hiérarchiques", "Les <strong>balises HTML</strong> sont prises en charge"]
           },
           "titledBulletList": {
             "title": "titledBulletList.title",
-            "items": [
-              "Élément titledBulletList 1",
-              "Élément titledBulletList 2"
-            ]
+            "items": ["Élément titledBulletList 1", "Élément titledBulletList 2"]
           },
           "accentText": "→ accentText : mis en évidence avec la couleur primaire"
         }
@@ -61,11 +57,7 @@
       "meta": {
         "notes": {
           "speakerNotes": "Cette diapositive explique la structure de base de la mise en page two-column. La colonne de gauche contient heading, paragraphs et items, tandis que la colonne de droite contient codeBlock, titledBulletList et accentText.",
-          "summary": [
-            "Structure de base de la mise en page two-column",
-            "Gauche : heading, paragraphs, items",
-            "Droite : codeBlock, titledBulletList, accentText"
-          ]
+          "summary": ["Structure de base de la mise en page two-column", "Gauche : heading, paragraphs, items", "Droite : codeBlock, titledBulletList, accentText"]
         }
       }
     },
@@ -75,38 +67,27 @@
       "content": {
         "title": "layout: \"two-column\" — Placement de composants",
         "left": {
-          "paragraphs": [
-            "Un <code>component</code> dans left/right affiche un visuel."
-          ],
+          "paragraphs": ["Un <code>component</code> dans left/right affiche un visuel."],
           "codeBlock": {
             "header": "> Spécification JSON",
-            "items": [
-              "\"right\": {",
-              "\u00a0\u00a0\"component\": {",
-              "\u00a0\u00a0\u00a0\u00a0\"name\": \"TerminalAnimation\",",
-              "\u00a0\u00a0\u00a0\u00a0\"props\": {",
-              "\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"logTextUrl\": \"/demo-log.txt\"",
-              "\u00a0\u00a0\u00a0\u00a0}",
-              "\u00a0\u00a0}",
-              "}"
-            ]
+            "items": ["\"right\": {", "  \"component\": {", "    \"name\": \"TerminalAnimation\",", "    \"props\": {", "      \"logTextUrl\": \"/demo-log.txt\"", "    }", "  }", "}"]
           }
         },
         "right": {
           "component": {
             "name": "TerminalAnimation",
-            "style": { "height": "400px", "width": "90%", "margin": "auto" }
+            "style": {
+              "height": "400px",
+              "width": "90%",
+              "margin": "auto"
+            }
           }
         }
       },
       "meta": {
         "notes": {
           "speakerNotes": "Vous pouvez intégrer des composants enregistrés en indiquant un champ component dans les colonnes left ou right d'une mise en page two-column.",
-          "summary": [
-            "Indiquer component dans left / right",
-            "Intégrer des composants enregistrés",
-            "Configurer avec name, props, style"
-          ]
+          "summary": ["Indiquer component dans left / right", "Intégrer des composants enregistrés", "Configurer avec name, props, style"]
         }
       }
     },
@@ -116,22 +97,35 @@
       "content": {
         "title": "layout: \"content\" — Chronologie (steps)",
         "steps": [
-          {"number": 1, "title": "Step Title", "description": "Description de chaque étape", "command": "/command_name"},
-          {"number": 2, "title": "Step Title", "description": "command est facultatif"},
-          {"number": 3, "title": "Step Title", "description": "Aucune limite sur le nombre d'étapes", "command": "/another"},
-          {"number": 4, "title": "Step Title", "description": "Dernière étape"}
+          {
+            "number": 1,
+            "title": "Step Title",
+            "description": "Description de chaque étape",
+            "command": "/command_name"
+          },
+          {
+            "number": 2,
+            "title": "Step Title",
+            "description": "command est facultatif"
+          },
+          {
+            "number": 3,
+            "title": "Step Title",
+            "description": "Aucune limite sur le nombre d'étapes",
+            "command": "/another"
+          },
+          {
+            "number": 4,
+            "title": "Step Title",
+            "description": "Dernière étape"
+          }
         ],
         "footer": "footer : affiche un texte complémentaire sous la chronologie"
       },
       "meta": {
         "notes": {
           "speakerNotes": "Lorsque vous indiquez steps dans une mise en page content, l'affichage se fait sous forme de chronologie. Chaque étape requiert number, title et description. command est facultatif.",
-          "summary": [
-            "Afficher une chronologie avec steps",
-            "number, title, description sont obligatoires",
-            "command est facultatif",
-            "footer pour le texte complémentaire"
-          ]
+          "summary": ["Afficher une chronologie avec steps", "number, title, description sont obligatoires", "command est facultatif", "footer pour le texte complémentaire"]
         }
       }
     },
@@ -161,11 +155,7 @@
       "meta": {
         "notes": {
           "speakerNotes": "Lorsque vous indiquez tiles dans une mise en page content, l'affichage se fait sous forme de grille de tuiles. Chaque tuile possède icon, title et description.",
-          "summary": [
-            "Afficher une grille de tuiles avec tiles",
-            "Définir icon, title, description",
-            "Disposées dans une grille à 3 colonnes"
-          ]
+          "summary": ["Afficher une grille de tuiles avec tiles", "Définir icon, title, description", "Disposées dans une grille à 3 colonnes"]
         }
       }
     },
@@ -176,18 +166,18 @@
         "title": "layout: \"content\" — Composant (component)",
         "component": {
           "name": "TerminalAnimation",
-          "style": { "height": "400px", "width": "90%", "margin": "auto" }
+          "style": {
+            "height": "400px",
+            "width": "90%",
+            "margin": "auto"
+          }
         },
         "footer": "Les composants de la mise en page content sont rendus dans un conteneur doté d'une barre de titre"
       },
       "meta": {
         "notes": {
           "speakerNotes": "Lorsque vous indiquez component dans une mise en page content, le composant est rendu dans un conteneur ContentLayout doté d'une barre de titre. Il est traité comme un élément enfant de la mise en page content, tout comme steps et tiles.",
-          "summary": [
-            "Indiquer component dans la mise en page content",
-            "Rendu dans le conteneur ContentLayout",
-            "La barre de titre s'affiche automatiquement"
-          ]
+          "summary": ["Indiquer component dans la mise en page content", "Rendu dans le conteneur ContentLayout", "La barre de titre s'affiche automatiquement"]
         }
       }
     },
@@ -198,23 +188,32 @@
         "title": "layout: \"bleed\" — Deux colonnes pleine largeur",
         "titleDescription": "titleDescription : affiche un complément de titre dans la colonne de gauche",
         "commands": [
-          {"text": "$ commands[0].text", "color": "var(--theme-text-heading)"},
-          {"text": "$ commands[1].text", "color": "var(--theme-primary)"},
-          {"text": "✓ Vous pouvez indiquer color pour chaque ligne", "color": "var(--theme-success)"}
+          {
+            "text": "$ commands[0].text",
+            "color": "var(--theme-text-heading)"
+          },
+          {
+            "text": "$ commands[1].text",
+            "color": "var(--theme-primary)"
+          },
+          {
+            "text": "✓ Vous pouvez indiquer color pour chaque ligne",
+            "color": "var(--theme-success)"
+          }
         ],
         "component": {
           "name": "TerminalAnimation",
-          "style": { "height": "400px", "width": "90%", "margin": "auto" }
+          "style": {
+            "height": "400px",
+            "width": "90%",
+            "margin": "auto"
+          }
         }
       },
       "meta": {
         "notes": {
           "speakerNotes": "La mise en page bleed s'affiche sur deux colonnes pleine largeur. La colonne de gauche contient title, titleDescription et commands, tandis que la colonne de droite accueille un component.",
-          "summary": [
-            "Deux colonnes pleine largeur avec la mise en page bleed",
-            "Gauche : title, titleDescription, commands",
-            "Droite : component pour tout composant enregistré"
-          ]
+          "summary": ["Deux colonnes pleine largeur avec la mise en page bleed", "Gauche : title, titleDescription, commands", "Droite : component pour tout composant enregistré"]
         }
       }
     },
@@ -224,17 +223,16 @@
       "content": {
         "component": {
           "name": "TerminalAnimation",
-          "style": { "height": "100%", "width": "100%" }
+          "style": {
+            "height": "100%",
+            "width": "100%"
+          }
         }
       },
       "meta": {
         "notes": {
           "speakerNotes": "La mise en page custom rend directement le composant indiqué. Contrairement à la mise en page content, il n'y a aucun conteneur tel qu'une barre de titre, et le composant occupe toute la diapositive.",
-          "summary": [
-            "layout: \"custom\" rend directement le composant",
-            "Aucun conteneur comme la barre de titre",
-            "Comprendre la différence avec la mise en page content"
-          ]
+          "summary": ["layout: \"custom\" rend directement le composant", "Aucun conteneur comme la barre de titre", "Comprendre la différence avec la mise en page content"]
         }
       }
     },
@@ -244,21 +242,10 @@
       "content": {
         "title": "component: \"Image\" — Afficher des images",
         "left": {
-          "paragraphs": [
-            "Le composant <code>Image</code> affiche des images, avec un repli automatique en cas d'erreur."
-          ],
+          "paragraphs": ["Le composant <code>Image</code> affiche des images, avec un repli automatique en cas d'erreur."],
           "codeBlock": {
             "header": "> Spécification JSON",
-            "items": [
-              "\"component\": {",
-              "\u00a0\u00a0\"name\": \"Image\",",
-              "\u00a0\u00a0\"props\": {",
-              "\u00a0\u00a0\u00a0\u00a0\"src\": \"https://...\",",
-              "\u00a0\u00a0\u00a0\u00a0\"width\": 320,",
-              "\u00a0\u00a0\u00a0\u00a0\"height\": 320,",
-              "\u00a0\u00a0}",
-              "}"
-            ]
+            "items": ["\"component\": {", "  \"name\": \"Image\",", "  \"props\": {", "    \"src\": \"https://...\",", "    \"width\": 320,", "    \"height\": 320,", "  }", "}"]
           }
         },
         "right": {
@@ -269,18 +256,19 @@
               "width": 320,
               "height": 320
             },
-            "style": { "display": "flex", "justifyContent": "center", "alignItems": "center", "height": "100%" }
+            "style": {
+              "display": "flex",
+              "justifyContent": "center",
+              "alignItems": "center",
+              "height": "100%"
+            }
           }
         }
       },
       "meta": {
         "notes": {
           "speakerNotes": "Le composant Image encapsule FallbackImage et affiche une interface de repli lorsque le chargement de l'image échoue. Indiquez src, width et height dans props.",
-          "summary": [
-            "Afficher des images avec le composant Image",
-            "Prise en charge du repli via FallbackImage",
-            "Indiquer src, width, height dans props"
-          ]
+          "summary": ["Afficher des images avec le composant Image", "Prise en charge du repli via FallbackImage", "Indiquer src, width, height dans props"]
         }
       }
     },
@@ -293,22 +281,13 @@
           "titledBulletList": {
             "title": "TerminalAnimation",
             "description": "Affichage de terminal avec animation",
-            "items": [
-              "<strong>logTextUrl</strong> : URL du fichier journal\nex. : \"/demo-log.txt\"",
-              "Utilise la valeur par défaut intégrée lorsque logTextUrl est omis"
-            ]
+            "items": ["<strong>logTextUrl</strong> : URL du fichier journal\nex. : \"/demo-log.txt\"", "Utilise la valeur par défaut intégrée lorsque logTextUrl est omis"]
           }
         },
         "right": {
           "codeBlock": {
             "header": "> Icônes MUI enregistrées",
-            "items": [
-              "Icon:Description",
-              "Icon:PlaylistAddCheck",
-              "Icon:Traffic",
-              "Icon:Memory",
-              "Icon:Search"
-            ]
+            "items": ["Icon:Description", "Icon:PlaylistAddCheck", "Icon:Traffic", "Icon:Memory", "Icon:Search"]
           },
           "accentText": "→ Utilisez les noms d'icônes dans le champ icon de tiles de la mise en page content"
         }
@@ -316,11 +295,7 @@
       "meta": {
         "notes": {
           "speakerNotes": "Voici la liste des composants enregistrés par défaut. TerminalAnimation et 5 icônes MUI sont disponibles.",
-          "summary": [
-            "TerminalAnimation : terminal avec animation",
-            "5 icônes MUI enregistrées",
-            "À utiliser dans le champ icon de tiles"
-          ]
+          "summary": ["TerminalAnimation : terminal avec animation", "5 icônes MUI enregistrées", "À utiliser dans le champ icon de tiles"]
         }
       }
     },
@@ -330,30 +305,28 @@
       "content": {
         "title": "Composants des modules complémentaires",
         "left": {
-          "paragraphs": [
-            "Placez vos composants dans <code>addons/src/</code> pour un enregistrement dynamique."
-          ],
+          "paragraphs": ["Placez vos composants dans <code>addons/src/</code> pour un enregistrement dynamique."],
           "items": [
-            {"text": "Enregistrement automatique :", "emphasis": true, "description": " enregistrés dans ComponentRegistry au démarrage"},
-            {"text": "Si non chargé :", "emphasis": true, "description": " affichage de repli (nom affiché)"}
+            {
+              "text": "Enregistrement automatique :",
+              "emphasis": true,
+              "description": " enregistrés dans ComponentRegistry au démarrage"
+            },
+            {
+              "text": "Si non chargé :",
+              "emphasis": true,
+              "description": " affichage de repli (nom affiché)"
+            }
           ],
           "codeBlock": {
             "header": "> Exemple de spécification JSON",
-            "items": [
-              "\"component\": {",
-              "\u00a0\u00a0\"name\": \"VibeCodingDemo\"",
-              "}"
-            ]
+            "items": ["\"component\": {", "  \"name\": \"VibeCodingDemo\"", "}"]
           }
         },
         "right": {
           "titledBulletList": {
             "title": "Comment créer un module complémentaire",
-            "items": [
-              "<strong>addons/src/{nom}/entry.ts</strong> — créer le fichier",
-              "<code>window.__ADDON_REGISTER__</code> — enregistrer le composant",
-              "<code>npm run build:addons</code> — compiler"
-            ]
+            "items": ["<strong>addons/src/{nom}/entry.ts</strong> — créer le fichier", "<code>window.__ADDON_REGISTER__</code> — enregistrer le composant", "<code>npm run build:addons</code> — compiler"]
           },
           "accentText": "→ addons/ est ignoré par git et ne fonctionne qu'en local"
         }
@@ -361,11 +334,7 @@
       "meta": {
         "notes": {
           "speakerNotes": "Le système de modules complémentaires permet d'ajouter des composants personnalisés. Placez un fichier d'entrée dans addons/src/ et enregistrez-le avec window.__ADDON_REGISTER__.",
-          "summary": [
-            "Ajouter des composants via addons/src/{nom}/entry.ts",
-            "Enregistrer avec window.__ADDON_REGISTER__",
-            "Compiler avec npm run build:addons"
-          ]
+          "summary": ["Ajouter des composants via addons/src/{nom}/entry.ts", "Enregistrer avec window.__ADDON_REGISTER__", "Compiler avec npm run build:addons"]
         }
       }
     },
@@ -379,13 +348,13 @@
             "header": "> meta (commun à toutes les diapositives)",
             "items": [
               "\"meta\": {",
-              "\u00a0\u00a0\"transition\": \"slide\",",
-              "\u00a0\u00a0\"backgroundColor\": \"#1a1a2e\",",
-              "\u00a0\u00a0\"backgroundImage\": \"/bg.png\",",
-              "\u00a0\u00a0\"notes\": \"chaîne\" or {",
-              "\u00a0\u00a0\u00a0\u00a0\"speakerNotes\": \"Notes du présentateur\",",
-              "\u00a0\u00a0\u00a0\u00a0\"summary\": [\"Point 1\", ...]",
-              "\u00a0\u00a0}",
+              "  \"transition\": \"slide\",",
+              "  \"backgroundColor\": \"#1a1a2e\",",
+              "  \"backgroundImage\": \"/bg.png\",",
+              "  \"notes\": \"chaîne\" or {",
+              "    \"speakerNotes\": \"Notes du présentateur\",",
+              "    \"summary\": [\"Point 1\", ...]",
+              "  }",
               "}"
             ]
           }
@@ -393,14 +362,7 @@
         "right": {
           "codeBlock": {
             "header": "> theme (toute la présentation)",
-            "items": [
-              "\"theme\": {",
-              "\u00a0\u00a0\"colors\": {",
-              "\u00a0\u00a0\u00a0\u00a0\"primary\": \"#6c63ff\",",
-              "\u00a0\u00a0\u00a0\u00a0\"background\": \"#0f0e17\"",
-              "\u00a0\u00a0}",
-              "}"
-            ]
+            "items": ["\"theme\": {", "  \"colors\": {", "    \"primary\": \"#6c63ff\",", "    \"background\": \"#0f0e17\"", "  }", "}"]
           },
           "accentText": "→ Détails dans la diapositive suivante"
         }
@@ -408,11 +370,7 @@
       "meta": {
         "notes": {
           "speakerNotes": "Le champ meta permet de définir la transition, la couleur de fond, l'image de fond et les notes du présentateur pour chaque diapositive. Le champ theme configure les couleurs et les polices de toute la présentation.",
-          "summary": [
-            "meta : transition, backgroundColor, backgroundImage, notes",
-            "theme : colors, fonts pour toute la présentation",
-            "notes accepte une chaîne ou un objet"
-          ]
+          "summary": ["meta : transition, backgroundColor, backgroundImage, notes", "theme : colors, fonts pour toute la présentation", "notes accepte une chaîne ou un objet"]
         }
       }
     },
@@ -427,11 +385,11 @@
             "header": "> theme.colors dans slides.json",
             "items": [
               "\"colors\": {",
-              "\u00a0\u00a0\"primary\": \"#6c63ff\",",
-              "\u00a0\u00a0\"background\": \"#0f0e17\",",
-              "\u00a0\u00a0\"textHeading\": \"#ffffff\",",
-              "\u00a0\u00a0\"textBody\": \"#a0a0b0\",",
-              "\u00a0\u00a0\"accent\": \"#ff6b6b\",",
+              "  \"primary\": \"#6c63ff\",",
+              "  \"background\": \"#0f0e17\",",
+              "  \"textHeading\": \"#ffffff\",",
+              "  \"textBody\": \"#a0a0b0\",",
+              "  \"accent\": \"#ff6b6b\",",
               "}",
               "\"customCSS\": \".reveal { ... }\""
             ]
@@ -440,16 +398,20 @@
         "right": {
           "heading": "Deux façons de définir le thème",
           "items": [
-            {"text": "Méthode 1 :", "emphasis": true, "description": " champ theme de slides.json (ou meta.themeColors)"},
-            {"text": "Méthode 2 :", "emphasis": true, "description": " public/theme-colors.json (couleurs)"}
+            {
+              "text": "Méthode 1 :",
+              "emphasis": true,
+              "description": " champ theme de slides.json (ou meta.themeColors)"
+            },
+            {
+              "text": "Méthode 2 :",
+              "emphasis": true,
+              "description": " public/theme-colors.json (couleurs)"
+            }
           ],
           "codeBlock": {
             "header": "> theme-colors.json (méthode 2)",
-            "items": [
-              "{",
-              "\u00a0\u00a0\"primary\": \"#6c63ff\", ...",
-              "}"
-            ]
+            "items": ["{", "  \"primary\": \"#6c63ff\", ...", "}"]
           },
           "accentText": "→ Chaque couleur a une variante -rgb (pour rgba())"
         }
@@ -457,12 +419,7 @@
       "meta": {
         "notes": {
           "speakerNotes": "Les couleurs du thème peuvent être définies via theme.colors dans slides.json ou via public/theme-colors.json. Du CSS personnalisé peut aussi être indiqué avec customCSS. Toutes les couleurs génèrent automatiquement une variante -rgb.",
-          "summary": [
-            "8 clés de couleur disponibles dans theme.colors",
-            "Ajouter du CSS personnalisé avec customCSS",
-            "theme-colors.json pour les couleurs uniquement",
-            "Toutes les couleurs génèrent automatiquement une variante -rgb"
-          ]
+          "summary": ["8 clés de couleur disponibles dans theme.colors", "Ajouter du CSS personnalisé avec customCSS", "theme-colors.json pour les couleurs uniquement", "Toutes les couleurs génèrent automatiquement une variante -rgb"]
         }
       }
     },
@@ -475,34 +432,34 @@
           "heading": "meta.logo",
           "headingDescription": "Définir un logo de présentation",
           "items": [
-            {"text": "src:", "emphasis": true, "description": " chemin de l'image du logo (par défaut : /logo.png)"},
-            {"text": "width / height:", "emphasis": true, "description": " spécification de la taille (par défaut : 120 x 40)"},
-            {"text": "En cas d'omission :", "emphasis": true, "description": " le logo n'est pas affiché"}
+            {
+              "text": "src:",
+              "emphasis": true,
+              "description": " chemin de l'image du logo (par défaut : /logo.png)"
+            },
+            {
+              "text": "width / height:",
+              "emphasis": true,
+              "description": " spécification de la taille (par défaut : 120 x 40)"
+            },
+            {
+              "text": "En cas d'omission :",
+              "emphasis": true,
+              "description": " le logo n'est pas affiché"
+            }
           ]
         },
         "right": {
           "codeBlock": {
             "header": "> Spécification JSON",
-            "items": [
-              "\"meta\": {",
-              "\u00a0\u00a0\"logo\": {",
-              "\u00a0\u00a0\u00a0\u00a0\"src\": \"/my-logo.png\",",
-              "\u00a0\u00a0\u00a0\u00a0\"width\": 150,",
-              "\u00a0\u00a0\u00a0\u00a0\"height\": 50",
-              "\u00a0\u00a0}",
-              "}"
-            ]
+            "items": ["\"meta\": {", "  \"logo\": {", "    \"src\": \"/my-logo.png\",", "    \"width\": 150,", "    \"height\": 50", "  }", "}"]
           }
         }
       },
       "meta": {
         "notes": {
           "speakerNotes": "Définissez une image de logo avec meta.logo. Indiquez le chemin avec src et la taille avec width / height. Le logo n'est pas affiché lorsque meta.logo est omis.",
-          "summary": [
-            "Définir l'image du logo avec meta.logo",
-            "Indiquer src / width / height",
-            "Aucun logo affiché en cas d'omission"
-          ]
+          "summary": ["Définir l'image du logo avec meta.logo", "Indiquer src / width / height", "Aucun logo affiché en cas d'omission"]
         }
       }
     },
@@ -515,11 +472,31 @@
           "heading": "meta.confidential",
           "headingDescription": "Afficher un filigrane sur toute la présentation",
           "items": [
-            {"text": "text:", "emphasis": true, "description": " obligatoire. Texte du filigrane"},
-            {"text": "anchor / offset:", "emphasis": true, "description": " position et décalage (par défaut : bottom-left)"},
-            {"text": "opacity / rotate:", "emphasis": true, "description": " opacité et angle de rotation"},
-            {"text": "slides[].meta:", "emphasis": true, "description": " remplace logo et confidential par diapositive"},
-            {"text": "En cas d'omission :", "emphasis": true, "description": " aucun filigrane n'est affiché"}
+            {
+              "text": "text:",
+              "emphasis": true,
+              "description": " obligatoire. Texte du filigrane"
+            },
+            {
+              "text": "anchor / offset:",
+              "emphasis": true,
+              "description": " position et décalage (par défaut : bottom-left)"
+            },
+            {
+              "text": "opacity / rotate:",
+              "emphasis": true,
+              "description": " opacité et angle de rotation"
+            },
+            {
+              "text": "slides[].meta:",
+              "emphasis": true,
+              "description": " remplace logo et confidential par diapositive"
+            },
+            {
+              "text": "En cas d'omission :",
+              "emphasis": true,
+              "description": " aucun filigrane n'est affiché"
+            }
           ]
         },
         "right": {
@@ -527,15 +504,15 @@
             "header": "> Spécification JSON",
             "items": [
               "\"meta\": {",
-              "\u00a0\u00a0\"confidential\": { \"text\": \"CONFIDENTIAL\" }",
+              "  \"confidential\": { \"text\": \"CONFIDENTIAL\" }",
               "},",
               "\"slides\": [",
-              "\u00a0\u00a0{",
-              "\u00a0\u00a0\u00a0\u00a0\"meta\": {",
-              "\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"confidential\": { \"text\": \"DRAFT\" },",
-              "\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"logo\": { \"hidden\": true }",
-              "\u00a0\u00a0\u00a0\u00a0}",
-              "\u00a0\u00a0}",
+              "  {",
+              "    \"meta\": {",
+              "      \"confidential\": { \"text\": \"DRAFT\" },",
+              "      \"logo\": { \"hidden\": true }",
+              "    }",
+              "  }",
               "]"
             ]
           }
@@ -544,11 +521,7 @@
       "meta": {
         "notes": {
           "speakerNotes": "Définissez un filigrane Confidential pour toute la présentation avec meta.confidential. text est obligatoire, anchor / offset définissent la position et opacity / rotate ajustent l'apparence. Vous pouvez remplacer logo et confidential par diapositive avec slides[].meta.confidential et slides[].meta.logo, y compris masquer uniquement le logo avec hidden: true.",
-          "summary": [
-            "Afficher un filigrane sur toute la présentation avec meta.confidential",
-            "text obligatoire ; ajuster avec anchor/offset/opacity/rotate",
-            "Remplacer logo/confidential par diapositive avec slides[].meta"
-          ]
+          "summary": ["Afficher un filigrane sur toute la présentation avec meta.confidential", "text obligatoire ; ajuster avec anchor/offset/opacity/rotate", "Remplacer logo/confidential par diapositive avec slides[].meta"]
         }
       }
     },
@@ -561,11 +534,31 @@
           "heading": "theme.fonts",
           "headingDescription": "Personnaliser les familles de polices",
           "items": [
-            {"text": "heading:", "emphasis": true, "description": " police des titres"},
-            {"text": "body:", "emphasis": true, "description": " police du corps de texte"},
-            {"text": "code:", "emphasis": true, "description": " police des blocs de code"},
-            {"text": "baseFontSize:", "emphasis": true, "description": " taille de police de base (par défaut : 24px)"},
-            {"text": "sources:", "emphasis": true, "description": " tableau d'URL de polices externes (par ex. Google Fonts)"}
+            {
+              "text": "heading:",
+              "emphasis": true,
+              "description": " police des titres"
+            },
+            {
+              "text": "body:",
+              "emphasis": true,
+              "description": " police du corps de texte"
+            },
+            {
+              "text": "code:",
+              "emphasis": true,
+              "description": " police des blocs de code"
+            },
+            {
+              "text": "baseFontSize:",
+              "emphasis": true,
+              "description": " taille de police de base (par défaut : 24px)"
+            },
+            {
+              "text": "sources:",
+              "emphasis": true,
+              "description": " tableau d'URL de polices externes (par ex. Google Fonts)"
+            }
           ]
         },
         "right": {
@@ -573,15 +566,15 @@
             "header": "> Spécification JSON",
             "items": [
               "\"theme\": {",
-              "\u00a0\u00a0\"fonts\": {",
-              "\u00a0\u00a0\u00a0\u00a0\"heading\": \"'Noto Sans JP'\",",
-              "\u00a0\u00a0\u00a0\u00a0\"body\": \"'Noto Sans JP'\",",
-              "\u00a0\u00a0\u00a0\u00a0\"code\": \"'Fira Code'\",",
-              "\u00a0\u00a0\u00a0\u00a0\"baseFontSize\": \"24px\",",
-              "\u00a0\u00a0\u00a0\u00a0\"sources\": [",
-              "\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"https://fonts...\"",
-              "\u00a0\u00a0\u00a0\u00a0]",
-              "\u00a0\u00a0}",
+              "  \"fonts\": {",
+              "    \"heading\": \"'Noto Sans JP'\",",
+              "    \"body\": \"'Noto Sans JP'\",",
+              "    \"code\": \"'Fira Code'\",",
+              "    \"baseFontSize\": \"24px\",",
+              "    \"sources\": [",
+              "      \"https://fonts...\"",
+              "    ]",
+              "  }",
               "}"
             ]
           }
@@ -590,11 +583,7 @@
       "meta": {
         "notes": {
           "speakerNotes": "Personnalisez les familles de polices avec theme.fonts. Trois types peuvent être définis — heading / body / code — ainsi que baseFontSize pour la taille de base et sources pour les URL de polices externes.",
-          "summary": [
-            "Personnaliser les polices avec theme.fonts",
-            "3 types de polices : heading / body / code",
-            "baseFontSize et sources sont aussi configurables"
-          ]
+          "summary": ["Personnaliser les polices avec theme.fonts", "3 types de polices : heading / body / code", "baseFontSize et sources sont aussi configurables"]
         }
       }
     },
@@ -613,14 +602,7 @@
         "right": {
           "codeBlock": {
             "header": "> Exemple de configuration de notes",
-            "items": [
-              "\"meta\": {",
-              "\u00a0\u00a0\"notes\": {",
-              "\u00a0\u00a0\u00a0\u00a0\"speakerNotes\": \"Notes du présentateur\",",
-              "\u00a0\u00a0\u00a0\u00a0\"summary\": [\"Point 1\", \"Point 2\"]",
-              "\u00a0\u00a0}",
-              "}"
-            ]
+            "items": ["\"meta\": {", "  \"notes\": {", "    \"speakerNotes\": \"Notes du présentateur\",", "    \"summary\": [\"Point 1\", \"Point 2\"]", "  }", "}"]
           },
           "accentText": "→ Définissez speakerNotes et summary dans meta.notes pour en tirer le meilleur parti"
         }
@@ -628,11 +610,7 @@
       "meta": {
         "notes": {
           "speakerNotes": "La vue présentateur s'ouvre dans une fenêtre séparée et reste synchronisée de façon bidirectionnelle avec la fenêtre principale. Vous pouvez naviguer depuis l'une ou l'autre fenêtre.",
-          "summary": [
-            "S'ouvre dans une fenêtre séparée via le bouton en haut à droite",
-            "Synchronisation bidirectionnelle avec la fenêtre principale",
-            "Définir speakerNotes / summary dans meta.notes"
-          ]
+          "summary": ["S'ouvre dans une fenêtre séparée via le bouton en haut à droite", "Synchronisation bidirectionnelle avec la fenêtre principale", "Définir speakerNotes / summary dans meta.notes"]
         }
       }
     },
@@ -643,29 +621,39 @@
         "title": "Vue présentateur — 4 panneaux",
         "left": {
           "items": [
-            {"text": "Notes du présentateur :", "emphasis": true, "description": " affiche les notes du présentateur (speakerNotes) de la diapositive actuelle"},
-            {"text": "Aperçu de la diapositive précédente :", "emphasis": true, "description": " affiche une vignette de la diapositive précédente"},
-            {"text": "Aperçu de la diapositive suivante :", "emphasis": true, "description": " affiche une vignette de la diapositive suivante"},
-            {"text": "Résumé des points clés :", "emphasis": true, "description": " affiche les points de summary sous forme de liste à puces"}
+            {
+              "text": "Notes du présentateur :",
+              "emphasis": true,
+              "description": " affiche les notes du présentateur (speakerNotes) de la diapositive actuelle"
+            },
+            {
+              "text": "Aperçu de la diapositive précédente :",
+              "emphasis": true,
+              "description": " affiche une vignette de la diapositive précédente"
+            },
+            {
+              "text": "Aperçu de la diapositive suivante :",
+              "emphasis": true,
+              "description": " affiche une vignette de la diapositive suivante"
+            },
+            {
+              "text": "Résumé des points clés :",
+              "emphasis": true,
+              "description": " affiche les points de summary sous forme de liste à puces"
+            }
           ]
         },
         "right": {
           "titledBulletList": {
             "title": "Commandes clavier",
-            "items": [
-              "<strong>← / →</strong> : aller à la diapositive précédente / suivante",
-              "<strong>Espace</strong> : aller à la diapositive suivante"
-            ]
+            "items": ["<strong>← / →</strong> : aller à la diapositive précédente / suivante", "<strong>Espace</strong> : aller à la diapositive suivante"]
           }
         }
       },
       "meta": {
         "notes": {
           "speakerNotes": "La vue présentateur affiche 4 panneaux : les notes du présentateur, les aperçus des diapositives précédente et suivante, et le résumé des points clés. Naviguez avec ←/→/Espace depuis l'une ou l'autre fenêtre.",
-          "summary": [
-            "4 panneaux : notes du présentateur, aperçus précédent / suivant, résumé",
-            "Naviguer avec ←/→/Espace"
-          ]
+          "summary": ["4 panneaux : notes du présentateur, aperçus précédent / suivant, résumé", "Naviguer avec ←/→/Espace"]
         }
       }
     },
@@ -679,25 +667,28 @@
           "headingDescription": "Indiquer un fichier audio par diapositive",
           "codeBlock": {
             "header": "> Spécification JSON",
-            "items": [
-              "\"meta\": {",
-              "\u00a0\u00a0\"notes\": {",
-              "\u00a0\u00a0\u00a0\u00a0\"voice\": \"/voice/slide-01.wav\",",
-              "\u00a0\u00a0\u00a0\u00a0\"speakerNotes\": \"Notes du présentateur\"",
-              "\u00a0\u00a0}",
-              "}"
-            ]
+            "items": ["\"meta\": {", "  \"notes\": {", "    \"voice\": \"/voice/slide-01.wav\",", "    \"speakerNotes\": \"Notes du présentateur\"", "  }", "}"]
           },
-          "paragraphs": [
-            "Placez les fichiers audio sous <code>public/</code>."
-          ]
+          "paragraphs": ["Placez les fichiers audio sous <code>public/</code>."]
         },
         "right": {
           "heading": "Boutons de la barre d'outils",
           "items": [
-            {"text": "Lecture / Arrêt :", "emphasis": true, "description": " lire ou arrêter manuellement l'audio de la diapositive actuelle"},
-            {"text": "Lecture automatique :", "emphasis": true, "description": " lecture audio automatique au changement de diapositive"},
-            {"text": "Diaporama automatique :", "emphasis": true, "description": " avance automatique des diapositives en fin d'audio"}
+            {
+              "text": "Lecture / Arrêt :",
+              "emphasis": true,
+              "description": " lire ou arrêter manuellement l'audio de la diapositive actuelle"
+            },
+            {
+              "text": "Lecture automatique :",
+              "emphasis": true,
+              "description": " lecture audio automatique au changement de diapositive"
+            },
+            {
+              "text": "Diaporama automatique :",
+              "emphasis": true,
+              "description": " avance automatique des diapositives en fin d'audio"
+            }
           ],
           "accentText": "→ Lecture automatique + diaporama automatique = présentations entièrement automatisées"
         }
@@ -715,6 +706,1592 @@
       }
     },
     {
+      "id": "guide-content-body-items",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (body/items)",
+        "body": "Si aucun de steps / tiles / component n'est spécifié, body et items affichent un texte simple.",
+        "items": [
+          {
+            "text": "body : texte de paragraphe multi-ligne",
+            "emphasis": true
+          },
+          {
+            "text": "items : liste à puces (imbricable)",
+            "items": [
+              {
+                "text": "Les éléments enfants peuvent avoir leurs propres items"
+              },
+              {
+                "text": "emphasis: true affiche du texte en gras",
+                "emphasis": true
+              }
+            ]
+          }
+        ]
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "Si aucun de steps / tiles / component n'est spécifié, body et items affichent un texte simple. items prend en charge emphasis et peut être imbriqué.",
+          "summary": ["Sans steps/tiles/component, body + items s'affichent", "items prend en charge emphasis: true pour le gras", "items peut être imbriqué (items enfants)"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-images",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (images)",
+        "images": [
+          {
+            "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0ODAgMjcwIiB3aWR0aD0iNDgwIiBoZWlnaHQ9IjI3MCI+PHJlY3Qgd2lkdGg9IjQ4MCIgaGVpZ2h0PSIyNzAiIGZpbGw9IiMxZjI0MzAiLz48ZyBmaWxsPSJub25lIiBzdHJva2U9IiMyZGQ0YmYiIHN0cm9rZS13aWR0aD0iMyI+PHJlY3QgeD0iMTQiIHk9IjE0IiB3aWR0aD0iNDUyIiBoZWlnaHQ9IjI0MiIvPjxjaXJjbGUgY3g9IjI0MCIgY3k9IjExNyIgcj0iNDUiLz48L2c+PHRleHQgeD0iMjQwIiB5PSIxOTciIGZvbnQtZmFtaWx5PSJIZWx2ZXRpY2EgTmV1ZSxBcmlhbCxzYW5zLXNlcmlmIiBmb250LXNpemU9IjI2IiBmb250LXdlaWdodD0iNzAwIiBmaWxsPSIjZjhmYWZjIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj4xNjo5PC90ZXh0Pjwvc3ZnPg==",
+            "alt": "Image d'exemple paysage",
+            "caption": "Paysage (16:9)"
+          },
+          {
+            "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNzAgMzYwIiB3aWR0aD0iMjcwIiBoZWlnaHQ9IjM2MCI+PHJlY3Qgd2lkdGg9IjI3MCIgaGVpZ2h0PSIzNjAiIGZpbGw9IiMxZjI0MzAiLz48ZyBmaWxsPSJub25lIiBzdHJva2U9IiMyZGQ0YmYiIHN0cm9rZS13aWR0aD0iMyI+PHJlY3QgeD0iMTQiIHk9IjE0IiB3aWR0aD0iMjQyIiBoZWlnaHQ9IjMzMiIvPjxjaXJjbGUgY3g9IjEzNSIgY3k9IjE2MiIgcj0iNDUiLz48L2c+PHRleHQgeD0iMTM1IiB5PSIyNDIiIGZvbnQtZmFtaWx5PSJIZWx2ZXRpY2EgTmV1ZSxBcmlhbCxzYW5zLXNlcmlmIiBmb250LXNpemU9IjI2IiBmb250LXdlaWdodD0iNzAwIiBmaWxsPSIjZjhmYWZjIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj4zOjQ8L3RleHQ+PC9zdmc+",
+            "alt": "Image d'exemple portrait",
+            "caption": "Portrait (3:4)"
+          },
+          {
+            "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMjAgMzIwIiB3aWR0aD0iMzIwIiBoZWlnaHQ9IjMyMCI+PHJlY3Qgd2lkdGg9IjMyMCIgaGVpZ2h0PSIzMjAiIGZpbGw9IiMxZjI0MzAiLz48ZyBmaWxsPSJub25lIiBzdHJva2U9IiMyZGQ0YmYiIHN0cm9rZS13aWR0aD0iMyI+PHJlY3QgeD0iMTQiIHk9IjE0IiB3aWR0aD0iMjkyIiBoZWlnaHQ9IjI5MiIvPjxjaXJjbGUgY3g9IjE2MCIgY3k9IjE0MiIgcj0iNDUiLz48L2c+PHRleHQgeD0iMTYwIiB5PSIyMjIiIGZvbnQtZmFtaWx5PSJIZWx2ZXRpY2EgTmV1ZSxBcmlhbCxzYW5zLXNlcmlmIiBmb250LXNpemU9IjI2IiBmb250LXdlaWdodD0iNzAwIiBmaWxsPSIjZjhmYWZjIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj4xOjE8L3RleHQ+PC9zdmc+",
+            "alt": "Image d'exemple carrée",
+            "caption": "Carrée (1:1)"
+          }
+        ]
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "En spécifiant images dans la mise en page content, plusieurs images s'affichent en grille. Chaque image peut définir src, alt et caption.",
+          "summary": ["images affiche plusieurs images en grille", "Définissez src, alt et caption pour chaque image", "Les images paysage, portrait et carrées restent alignées"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-diagram",
+      "layout": "content",
+      "content": {
+        "title": "Primitives de diagramme",
+        "component": {
+          "name": "Diagram",
+          "props": {
+            "nodes": [
+              {
+                "id": "a",
+                "rect": {
+                  "x": 0.02,
+                  "y": 0.06,
+                  "w": 0.16,
+                  "h": 0.26
+                },
+                "title": "Carte",
+                "body": "contour",
+                "badge": 1,
+                "color": "primary"
+              },
+              {
+                "id": "b",
+                "rect": {
+                  "x": 0.3,
+                  "y": 0.06,
+                  "w": 0.16,
+                  "h": 0.26
+                },
+                "title": "Carte",
+                "body": "remplie",
+                "badge": 2,
+                "color": "success",
+                "variant": "filled"
+              },
+              {
+                "id": "c",
+                "rect": {
+                  "x": 0.02,
+                  "y": 0.64,
+                  "w": 0.16,
+                  "h": 0.26
+                },
+                "title": "Carte",
+                "body": "neutre",
+                "badge": 3,
+                "color": "neutral",
+                "variant": "plain"
+              }
+            ],
+            "connectors": [
+              {
+                "from": "a",
+                "to": "b",
+                "head": "triangle",
+                "label": "connecteur"
+              },
+              {
+                "from": "b",
+                "to": "c",
+                "routing": "vertical",
+                "head": "triangle"
+              }
+            ],
+            "arrows": [
+              {
+                "from": {
+                  "x": 0.53,
+                  "y": 0.1
+                },
+                "to": {
+                  "x": 0.97,
+                  "y": 0.1
+                },
+                "head": "arrow",
+                "label": "flèche (horizontale)"
+              },
+              {
+                "from": {
+                  "x": 0.53,
+                  "y": 0.28
+                },
+                "to": {
+                  "x": 0.97,
+                  "y": 0.44
+                },
+                "head": "triangle",
+                "thickness": 3,
+                "label": "diagonale"
+              },
+              {
+                "from": {
+                  "x": 0.56,
+                  "y": 0.55
+                },
+                "to": {
+                  "x": 0.56,
+                  "y": 0.8
+                },
+                "head": "arrow"
+              },
+              {
+                "from": {
+                  "x": 0.64,
+                  "y": 0.55
+                },
+                "to": {
+                  "x": 0.64,
+                  "y": 0.8
+                },
+                "head": "triangle",
+                "tail": "dot",
+                "dashed": true
+              }
+            ],
+            "badges": [
+              {
+                "at": {
+                  "x": 0.9,
+                  "y": 0.6
+                },
+                "text": "★",
+                "shape": "square",
+                "color": "warning"
+              }
+            ],
+            "callouts": [
+              {
+                "at": {
+                  "x": 0.876,
+                  "y": 0.638
+                },
+                "to": {
+                  "x": 0.8,
+                  "y": 0.86
+                },
+                "label": "légende"
+              }
+            ]
+          }
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "Le composant « Diagram » place librement des cartes (nodes), connecteurs, flèches, badges et légendes avec des coordonnées normalisées (0-1). Les flèches peuvent être en pointillés via dashed: true, et les lignes pleines reçoivent un effet de lumière qui défile en continu.",
+          "summary": ["Le composant Diagram place des primitives de diagramme", "nodes / connectors / arrows / badges / callouts", "Les coordonnées sont normalisées (0-1) par rapport au canevas"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-chart-bar",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (chart: bar)",
+        "chart": {
+          "type": "bar",
+          "unit": "%",
+          "categories": ["T1", "T2", "T3", "T4"],
+          "series": [
+            {
+              "name": "Cette année",
+              "values": [42, 51, 58, 67]
+            },
+            {
+              "name": "Année dernière",
+              "values": [38, 40, 47, 52],
+              "color": "series3"
+            }
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "chart.type: \"bar\" affiche un graphique à barres verticales. Spécifiez plusieurs series pour les comparer côte à côte. Les barres grandissent vers le haut à l'apparition.",
+          "summary": ["chart.type: \"bar\" affiche un graphique à barres verticales", "Plusieurs series s'affichent côte à côte pour comparaison", "unit ajoute une unité"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-chart-line",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (chart: line)",
+        "chart": {
+          "type": "line",
+          "unit": "k",
+          "categories": ["24/11", "24/12", "25/01", "25/02", "25/03", "25/04", "25/05", "25/06"],
+          "series": [
+            {
+              "name": "Réel",
+              "values": [34, 33, 38, 41, 44, 48, 52, 57]
+            },
+            {
+              "name": "Plan",
+              "values": [32, 34, 36, 38, 40, 42, 44, 46],
+              "color": "series4"
+            }
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "chart.type: \"line\" affiche un graphique en courbes, y compris des séries temporelles denses comme des tendances mensuelles. Les lignes se dessinent de gauche à droite.",
+          "summary": ["chart.type: \"line\" affiche un graphique en courbes", "Gère des séries temporelles denses", "Plusieurs series comparent, par ex. réel vs. plan"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-chart-pie",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (chart: pie)",
+        "chart": {
+          "type": "pie",
+          "unit": "%",
+          "categories": ["Conception", "Réalisation", "Revue", "Vérification", "Autre"],
+          "series": [
+            {
+              "values": [28, 34, 14, 18, 6]
+            }
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "chart.type: \"pie\" affiche un graphique circulaire, idéal pour montrer des proportions, avec une légende générée automatiquement en dessous. Les secteurs apparaissent depuis le centre.",
+          "summary": ["chart.type: \"pie\" affiche un graphique circulaire", "Idéal pour montrer des proportions", "La légende est générée automatiquement"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-chart-hbar",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (chart: hbar)",
+        "chart": {
+          "type": "hbar",
+          "categories": ["Étendre les tests automatisés", "Unifier les critères de revue", "Automatiser la publication", "Créer des tableaux de bord", "Actualiser la documentation", "Améliorer l'intégration"],
+          "series": [
+            {
+              "values": [124, 98, 76, 61, 45, 32]
+            }
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "chart.type: \"hbar\" affiche un graphique à barres horizontales, restant lisible même avec des noms de catégories longs.",
+          "summary": ["chart.type: \"hbar\" affiche un graphique à barres horizontales", "Idéal quand les noms de catégories sont longs", "L'espacement des lignes s'ajuste automatiquement"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-chart-kpi",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (chart: kpi)",
+        "chart": {
+          "type": "kpi",
+          "label": "Utilisateurs actifs mensuels",
+          "value": 128400,
+          "delta": "+18,2 % sur un an",
+          "trend": [72000, 78500, 81200, 86400, 95100, 104300, 118600, 128400],
+          "color": "series2"
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "chart.type: \"kpi\" affiche un grand nombre avec une mini-courbe de tendance. Utilisez label, value et delta pour mettre en avant un indicateur clé.",
+          "summary": ["chart.type: \"kpi\" affiche une grande valeur avec tendance", "Spécifiez label, value, delta et trend", "La mini-courbe se dessine de gauche à droite"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-chart-kpi-row",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (chart: kpi row)",
+        "chart": {
+          "type": "kpi",
+          "items": [
+            {
+              "label": "Croissance du CA",
+              "value": 24.6,
+              "unit": "%",
+              "delta": "+3,1 pt",
+              "deltaDirection": "up",
+              "deltaStatus": "success"
+            },
+            {
+              "label": "Nouveaux contrats",
+              "value": 342,
+              "delta": "+6,5 %",
+              "deltaDirection": "up",
+              "deltaStatus": "success",
+              "color": "series3"
+            },
+            {
+              "label": "Taux de résiliation",
+              "value": 3.1,
+              "unit": "%",
+              "delta": "+0,4 pt",
+              "deltaDirection": "up",
+              "deltaStatus": "danger",
+              "color": "series4"
+            },
+            {
+              "label": "NPS",
+              "value": 42,
+              "delta": "±0",
+              "deltaDirection": "flat",
+              "deltaStatus": "neutral",
+              "color": "series5"
+            }
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "En passant plusieurs items à chart.type: \"kpi\", une rangée d'indicateurs s'affiche. La taille du texte diminue automatiquement quand le nombre augmente.",
+          "summary": ["items affiche plusieurs KPI en rangée", "deltaDirection / deltaStatus colorent la variation", "La taille du texte diminue avec le nombre d'éléments"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-table",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (table)",
+        "table": {
+          "columns": [
+            {
+              "label": "Fonctionnalité",
+              "align": "left",
+              "width": 2
+            },
+            {
+              "label": "Free",
+              "align": "center",
+              "width": 1.2
+            },
+            {
+              "label": "Pro",
+              "align": "center",
+              "width": 1
+            },
+            {
+              "label": "Enterprise",
+              "align": "center",
+              "width": 1.5
+            }
+          ],
+          "rows": [
+            ["Prix", "0 €", "12 €/mois", "Sur devis"],
+            ["Utilisateurs", "1", "10", "Illimité"],
+            ["Support", "Communauté", "E-mail", "Dédié"],
+            ["SLA", "-", "99,9 %", "99,99 %"],
+            ["SSO", "-", "-", "Oui"]
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "En spécifiant table dans la mise en page content, un tableau avec bordures et rayures zébrées s'affiche. Les lignes apparaissent de haut en bas, et chaque colonne peut définir son alignement.",
+          "summary": ["table affiche un tableau avec bordures et rayures", "columns définit largeur et alignement par colonne", "La densité s'ajuste automatiquement pour de nombreuses lignes"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-compare",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (compare)",
+        "compare": {
+          "left": {
+            "heading": "Auto-hébergé",
+            "items": [
+              {
+                "text": "Aucun coût initial",
+                "status": "pass"
+              },
+              {
+                "text": "Données conservées en interne",
+                "status": "pass"
+              },
+              {
+                "text": "Exploitation assurée par votre équipe",
+                "status": "warn"
+              },
+              {
+                "text": "La montée en charge nécessite du travail manuel",
+                "status": "fail"
+              }
+            ]
+          },
+          "right": {
+            "heading": "Service géré",
+            "items": [
+              {
+                "text": "Charge d'exploitation faible",
+                "status": "pass"
+              },
+              {
+                "text": "Montée en charge automatique",
+                "status": "pass"
+              },
+              {
+                "text": "Coût mensuel applicable",
+                "status": "warn"
+              },
+              {
+                "text": "Exposé aux pannes régionales",
+                "status": "fail"
+              }
+            ]
+          }
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "compare affiche deux options côte à côte pour comparaison. Définir status: \"pass\"/\"warn\"/\"fail\" sur chaque élément affiche une icône et une couleur pour le verdict.",
+          "summary": ["compare affiche deux options côte à côte", "status: pass/warn/fail définit icône et couleur", "heading définit le titre de chaque côté"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-flow",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (flow)",
+        "flow": [
+          {
+            "title": "Exigences",
+            "description": "Identifier les problèmes et les critères d'acceptation"
+          },
+          {
+            "title": "Conception",
+            "description": "Décider de la structure des données et de l'API"
+          },
+          {
+            "title": "Réalisation",
+            "description": "Livrer par petites étapes"
+          },
+          {
+            "title": "Revue",
+            "description": "Vérifier la conformité aux principes de conception"
+          },
+          {
+            "title": "Publication",
+            "description": "Vérifier avec la présentation de référence"
+          }
+        ]
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "flow affiche un flux de processus horizontal de cartes reliées par des flèches. La largeur des cartes et la taille du texte s'ajustent automatiquement au nombre d'étapes.",
+          "summary": ["flow affiche un flux de processus horizontal", "Spécifiez title / description par étape", "Largeur et taille du texte s'ajustent au nombre d'étapes"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-checklist",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (checklist)",
+        "checklist": [
+          {
+            "title": "Critères d'acceptation remplis",
+            "description": "Correspondance un à un avec les cases de l'issue",
+            "checked": true
+          },
+          {
+            "title": "Présentation de référence recapturée",
+            "description": "Seuls les nouveaux types de diapositives doivent différer",
+            "checked": true
+          },
+          {
+            "title": "Inspection visuelle réussie",
+            "description": "Zéro dépassement, ni chevauchement de zone de sécurité ou de décoration",
+            "checked": true
+          },
+          {
+            "title": "Tous les jobs CI sont au vert",
+            "description": "Les résultats locaux ne constituent pas une preuve"
+          },
+          {
+            "title": "Le travail hors périmètre est documenté",
+            "description": "Créez des issues de suivi et citez leurs numéros"
+          }
+        ]
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "checklist affiche une liste d'éléments avec des cases à cocher. Définissez checked: true pour marquer un élément comme terminé.",
+          "summary": ["checklist affiche des éléments avec cases à cocher", "checked: true marque un élément comme terminé", "Spécifiez title / description par élément"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-steps-columns",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (steps + stepColumns)",
+        "stepColumns": 2,
+        "steps": [
+          {
+            "number": 1,
+            "title": "Choisir l'issue",
+            "description": "Commencer par celle avec le moins de dépendances"
+          },
+          {
+            "number": 2,
+            "title": "Fixer le contrat",
+            "description": "Répartir la responsabilité entre les voies d'abord"
+          },
+          {
+            "number": 3,
+            "title": "Migrer la base",
+            "description": "Déplacer les règles privées vers le contrat partagé"
+          },
+          {
+            "number": 4,
+            "title": "Ajouter les types",
+            "description": "Construire sur la base migrée"
+          },
+          {
+            "number": 5,
+            "title": "Vérifier par mesure",
+            "description": "Détecter les dépassements à partir du DOM réel"
+          },
+          {
+            "number": 6,
+            "title": "Recapturer la présentation",
+            "description": "Confirmer que rien d'autre n'a changé"
+          },
+          {
+            "number": 7,
+            "title": "Ouvrir la PR",
+            "description": "Indiquer le reste à faire et les issues de suivi"
+          }
+        ]
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "L'ajout de stepColumns à steps passe à une liste numérotée multi-colonnes sans ligne de connexion, adaptée aux chronologies avec de nombreuses étapes.",
+          "summary": ["stepColumns affiche steps sur plusieurs colonnes", "Une liste numérotée sans ligne de connexion", "Plus lisible qu'une seule rangée avec de nombreuses étapes"]
+        }
+      }
+    },
+    {
+      "id": "guide-two-column-diagram-fill",
+      "layout": "two-column",
+      "content": {
+        "title": "layout: two-column (composant de remplissage)",
+        "left": {
+          "heading": "Un diagramme dans une colonne",
+          "paragraphs": ["La colonne elle-même transmet sa hauteur restante au canevas"],
+          "items": [
+            {
+              "text": "La colonne est l'hôte de remplissage"
+            },
+            {
+              "text": "Marquer la zone de contenu à la place casse la grille à 2 colonnes"
+            }
+          ]
+        },
+        "right": {
+          "component": {
+            "name": "Diagram",
+            "props": {
+              "nodes": [
+                {
+                  "id": "host",
+                  "rect": {
+                    "x": 0.06,
+                    "y": 0.04,
+                    "w": 0.88,
+                    "h": 0.24
+                  },
+                  "title": "Colonne",
+                  "body": "hôte de remplissage",
+                  "color": "primary"
+                },
+                {
+                  "id": "item",
+                  "rect": {
+                    "x": 0.06,
+                    "y": 0.38,
+                    "w": 0.88,
+                    "h": 0.24
+                  },
+                  "title": "Canevas du diagramme",
+                  "body": "élément de remplissage",
+                  "color": "success",
+                  "variant": "filled"
+                },
+                {
+                  "id": "primitive",
+                  "rect": {
+                    "x": 0.06,
+                    "y": 0.72,
+                    "w": 0.88,
+                    "h": 0.24
+                  },
+                  "title": "Primitives",
+                  "body": "placées en coordonnées normalisées",
+                  "color": "neutral",
+                  "variant": "plain"
+                }
+              ],
+              "connectors": [
+                {
+                  "from": "host",
+                  "to": "item",
+                  "routing": "vertical",
+                  "head": "triangle"
+                },
+                {
+                  "from": "item",
+                  "to": "primitive",
+                  "routing": "vertical",
+                  "head": "triangle"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "En plaçant le composant Diagram dans left/right d'une mise en page two-column, la colonne elle-même transmet sa hauteur restante au canevas. Le point de réception de la hauteur doit se trouver sur la colonne, pas sur la zone de contenu.",
+          "summary": ["Placez Diagram dans left/right d'une mise en page two-column", "La colonne transmet sa hauteur restante au canevas", "L'hôte de remplissage doit être la colonne, pas la zone de contenu"]
+        }
+      }
+    },
+    {
+      "id": "guide-center-quote",
+      "layout": "center",
+      "content": {
+        "variant": "quote",
+        "quote": "Ne jamais plier la conception\npour économiser un effort d'implémentation",
+        "citation": "Règles de décision de conception"
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "La variante variant: \"quote\" de la mise en page center affiche une citation avec sa source de façon proéminente. À utiliser pour une déclaration forte ou une phrase de clôture.",
+          "summary": ["variant: \"quote\" affiche une diapositive de citation", "Spécifiez quote et citation", "Idéal pour une déclaration forte ou une phrase mémorable"]
+        }
+      }
+    },
+    {
+      "id": "guide-center-message",
+      "layout": "center",
+      "content": {
+        "variant": "message",
+        "message": "Un message par diapositive",
+        "body": "La variante pâle, utilisée pour changer de chapitre"
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "variant: \"message\" affiche un message par diapositive sur un fond pâle, utile pour attirer l'attention, comme lors d'un changement de chapitre.",
+          "summary": ["variant: \"message\" affiche un message par diapositive", "Le fond pâle attire l'attention sur le texte", "Idéal pour changer de chapitre"]
+        }
+      }
+    },
+    {
+      "id": "guide-center-message-inverse",
+      "layout": "center",
+      "content": {
+        "variant": "message-inverse",
+        "message": "Remplir la diapositive\npour marquer le message",
+        "body": "Les couleurs de remplissage et de texte vivent dans le master et ses tokens"
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "variant: \"message-inverse\" s'associe à un remplissage plein cadre du master pour faire ressortir le message. Les couleurs de remplissage et de texte vivent dans le master et ses tokens, le contraste est donc vérifié automatiquement.",
+          "summary": ["variant: \"message-inverse\" s'associe à un remplissage plein cadre", "Couleurs de remplissage/texte gérées par master et tokens", "Le contraste est vérifié automatiquement"]
+        }
+      }
+    },
+    {
+      "id": "guide-closing-slide",
+      "layout": "center",
+      "content": {
+        "variant": "closing",
+        "message": "Merci",
+        "body": "Clôture sur un remplissage plein cadre avec le logo en arrière-plan",
+        "githubRepo": "ToshikiImagawa/slide-presentation-app"
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "variant: \"closing\" est conçu pour la diapositive finale et s'associe à un placement de logo plein cadre. Spécifier githubRepo affiche un lien vers le dépôt.",
+          "summary": ["variant: \"closing\" est pour la diapositive finale", "S'associe à un placement de logo plein cadre", "githubRepo affiche un lien vers le dépôt"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-toc",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (toc)",
+        "toc": {
+          "items": [
+            {
+              "number": "01",
+              "title": "Contexte",
+              "page": 2
+            },
+            {
+              "number": "02",
+              "title": "Conception",
+              "page": 8
+            },
+            {
+              "number": "03",
+              "title": "Implémentation",
+              "page": 15
+            },
+            {
+              "number": "04",
+              "title": "Vérification",
+              "page": 22
+            }
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "toc affiche une table des matières. Spécifiez number, title et page pour lister les numéros de chapitre, titres et pages de départ.",
+          "summary": ["toc affiche une diapositive de table des matières", "Spécifiez number, title et page par élément", "Idéal près du début d'une présentation avec chapitres"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-hierarchy-diagram",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (hierarchyDiagram)",
+        "hierarchyDiagram": {
+          "layers": [
+            {
+              "title": "Couche de présentation",
+              "description": "UI web, application mobile"
+            },
+            {
+              "title": "Couche métier",
+              "description": "API, logique métier"
+            },
+            {
+              "title": "Couche de données",
+              "description": "SGBD, cache"
+            }
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "hierarchyDiagram empile une structure en couches (comme une architecture) de haut en bas. Spécifiez title et description pour chaque couche.",
+          "summary": ["hierarchyDiagram empile une structure en couches", "Spécifiez title / description par couche", "Idéal pour expliquer une architecture"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-server-diagram",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (serverDiagram)",
+        "serverDiagram": {
+          "zones": [
+            {
+              "title": "Sous-réseau public",
+              "nodes": [
+                {
+                  "id": "lb",
+                  "label": "Répartiteur de charge"
+                }
+              ]
+            },
+            {
+              "title": "Sous-réseau privé",
+              "nodes": [
+                {
+                  "id": "app1",
+                  "label": "Serveur API"
+                },
+                {
+                  "id": "app2",
+                  "label": "Serveur API"
+                }
+              ]
+            },
+            {
+              "title": "Couche de données",
+              "nodes": [
+                {
+                  "id": "db",
+                  "label": "RDS"
+                }
+              ]
+            }
+          ],
+          "connections": [
+            {
+              "from": "lb",
+              "to": "app1"
+            },
+            {
+              "from": "lb",
+              "to": "app2"
+            },
+            {
+              "from": "app1",
+              "to": "db"
+            },
+            {
+              "from": "app2",
+              "to": "db"
+            }
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "serverDiagram regroupe des nœuds en zones (comme des sous-réseaux) et les relie par des lignes, utile pour expliquer une infrastructure.",
+          "summary": ["serverDiagram affiche un diagramme d'infrastructure", "zones regroupe les nœuds ensemble", "connections relie les nœuds entre eux"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-org-chart",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (orgChart)",
+        "orgChart": {
+          "nodes": [
+            {
+              "id": "ceo",
+              "label": "PDG"
+            },
+            {
+              "id": "cto",
+              "label": "DT",
+              "parent": "ceo"
+            },
+            {
+              "id": "coo",
+              "label": "DOO",
+              "parent": "ceo"
+            },
+            {
+              "id": "eng",
+              "label": "Responsable ingénierie",
+              "parent": "cto"
+            },
+            {
+              "id": "biz",
+              "label": "Responsable activité",
+              "parent": "coo"
+            }
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "orgChart organise automatiquement un organigramme simplement en spécifiant parent, sans calcul de disposition manuel.",
+          "summary": ["orgChart organise automatiquement un organigramme", "Spécifiez parent pour construire la hiérarchie", "Aucun calcul de coordonnées manuel requis"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-class-diagram",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (classDiagram)",
+        "classDiagram": {
+          "classes": [
+            {
+              "id": "user",
+              "label": "User",
+              "attributes": ["id: string", "name: string"],
+              "methods": ["login(): void"]
+            },
+            {
+              "id": "admin",
+              "label": "Admin",
+              "attributes": ["role: string"],
+              "methods": ["ban(user): void"]
+            }
+          ],
+          "relations": [
+            {
+              "from": "admin",
+              "to": "user",
+              "type": "inheritance"
+            }
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "classDiagram affiche un diagramme de classes UML. Spécifiez attributes / methods sous forme de tableaux et utilisez relations pour l'héritage et autres relations.",
+          "summary": ["classDiagram affiche un diagramme de classes UML", "Spécifiez attributes / methods sous forme de tableaux", "relations exprime des relations comme l'héritage"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-date-timeline",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (dateTimeline)",
+        "dateTimeline": [
+          {
+            "date": "2026/01",
+            "title": "Exigences finalisées",
+            "description": "Périmètre verrouillé"
+          },
+          {
+            "date": "2026/03",
+            "title": "Implémentation terminée"
+          },
+          {
+            "date": "2026/04",
+            "title": "Publication",
+            "description": "Déployé en production"
+          }
+        ]
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "dateTimeline aligne des jalons datés sur une seule ligne. Spécifiez date, title et description.",
+          "summary": ["dateTimeline aligne des jalons datés", "Spécifiez date, title et description", "S'affiche comme une seule chronologie"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-date-timeline-columns",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (dateTimeline + dateTimelineColumns)",
+        "dateTimelineColumns": 3,
+        "dateTimeline": [
+          {
+            "date": "2022",
+            "title": "Expansion internationale",
+            "description": "Ajout de la localisation"
+          },
+          {
+            "date": "2022/06",
+            "title": "Levée de fonds série A"
+          },
+          {
+            "date": "2023",
+            "title": "Croissance de l'organisation",
+            "description": "Répartition en 3 équipes"
+          },
+          {
+            "date": "2023/09",
+            "title": "Contrat majeur"
+          },
+          {
+            "date": "2024",
+            "title": "Plateformisation"
+          },
+          {
+            "date": "2024/11",
+            "title": "Certification"
+          },
+          {
+            "date": "2025",
+            "title": "Migration vers la plateforme nouvelle génération",
+            "description": "Abandon progressif de l'ancienne"
+          },
+          {
+            "date": "2026",
+            "title": "Aujourd'hui"
+          }
+        ]
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "L'ajout de dateTimelineColumns à dateTimeline enroule un long historique sur plusieurs colonnes lorsqu'il y a de nombreuses entrées.",
+          "summary": ["dateTimelineColumns enroule une chronologie sur des colonnes", "Gère les longs historiques avec de nombreuses entrées", "Plus compact qu'une seule colonne"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-flowchart",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (flowchart)",
+        "flowchart": {
+          "nodes": [
+            {
+              "id": "start",
+              "label": "Demande",
+              "shape": "start",
+              "row": 0,
+              "col": 1
+            },
+            {
+              "id": "check",
+              "label": "Approuvé ?",
+              "shape": "decision",
+              "row": 1,
+              "col": 1
+            },
+            {
+              "id": "approve",
+              "label": "Traiter l'approbation",
+              "shape": "process",
+              "row": 2,
+              "col": 0
+            },
+            {
+              "id": "reject",
+              "label": "Notifier le rejet",
+              "shape": "process",
+              "row": 2,
+              "col": 2
+            },
+            {
+              "id": "end",
+              "label": "Terminé",
+              "shape": "end",
+              "row": 3,
+              "col": 1
+            }
+          ],
+          "edges": [
+            {
+              "from": "start",
+              "to": "check"
+            },
+            {
+              "from": "check",
+              "to": "approve",
+              "label": "Oui"
+            },
+            {
+              "from": "check",
+              "to": "reject",
+              "label": "Non"
+            },
+            {
+              "from": "approve",
+              "to": "end"
+            },
+            {
+              "from": "reject",
+              "to": "end"
+            }
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "flowchart place des nœuds début/fin/décision/processus avec row/col et les relie avec edges. shape: \"decision\" affiche un losange.",
+          "summary": ["flowchart affiche un flux de processus métier", "Placez les nœuds avec row / col", "shape: start/end/decision/process définit le type de nœud"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-swimlane",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (swimlane)",
+        "swimlane": {
+          "phases": ["Conception", "Réalisation", "Revue", "Publication"],
+          "lanes": [
+            {
+              "title": "PM",
+              "nodes": [
+                {
+                  "id": "req",
+                  "label": "Exigences",
+                  "col": 0
+                }
+              ]
+            },
+            {
+              "title": "Ingénieur",
+              "nodes": [
+                {
+                  "id": "impl",
+                  "label": "Réalisation",
+                  "col": 1
+                },
+                {
+                  "id": "fix",
+                  "label": "Correction",
+                  "col": 2
+                }
+              ]
+            },
+            {
+              "title": "QA",
+              "nodes": [
+                {
+                  "id": "review",
+                  "label": "Revue",
+                  "col": 2
+                },
+                {
+                  "id": "release",
+                  "label": "Publication",
+                  "col": 3
+                }
+              ]
+            }
+          ],
+          "connections": [
+            {
+              "from": "req",
+              "to": "impl"
+            },
+            {
+              "from": "impl",
+              "to": "review"
+            },
+            {
+              "from": "review",
+              "to": "fix"
+            },
+            {
+              "from": "fix",
+              "to": "release"
+            }
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "swimlane place des nœuds de processus par voie (propriétaire ou service) avec les phases affichées comme en-têtes de colonnes, adapté aux flux où la responsabilité change.",
+          "summary": ["swimlane affiche un flux de processus par voie", "lanes place des nœuds par propriétaire/service", "phases s'affiche comme en-têtes de colonnes"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-gantt",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (gantt)",
+        "gantt": {
+          "axis": ["Jan", "Fév", "Mar", "Avr"],
+          "tasks": [
+            {
+              "label": "Conception",
+              "startCol": 0,
+              "span": 1
+            },
+            {
+              "label": "Réalisation",
+              "startCol": 1,
+              "span": 2
+            },
+            {
+              "label": "Test",
+              "startCol": 2,
+              "span": 1
+            },
+            {
+              "label": "Publication",
+              "startCol": 3,
+              "span": 1
+            }
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "gantt affiche un calendrier à l'aide d'un axe temporel et de barres de tâches. Spécifiez la durée de chaque barre avec startCol / span.",
+          "summary": ["gantt affiche un calendrier", "axis définit les en-têtes de colonnes de l'axe temporel", "startCol / span définit la durée de chaque tâche"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-two-by-two",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (twoByTwo)",
+        "twoByTwo": {
+          "quadrants": [
+            {
+              "title": "Fort / Difficile"
+            },
+            {
+              "title": "Fort / Facile"
+            },
+            {
+              "title": "Faible / Difficile"
+            },
+            {
+              "title": "Faible / Facile"
+            }
+          ],
+          "axes": {
+            "x": {
+              "label": "Effort",
+              "low": "Facile",
+              "high": "Difficile"
+            },
+            "y": {
+              "label": "Impact",
+              "low": "Faible",
+              "high": "Élevé"
+            }
+          },
+          "items": [
+            {
+              "label": "Initiative A",
+              "x": 0.15,
+              "y": 0.2
+            },
+            {
+              "label": "Initiative B",
+              "x": 0.72,
+              "y": 0.28
+            },
+            {
+              "label": "Initiative C",
+              "x": 0.3,
+              "y": 0.78
+            },
+            {
+              "label": "Initiative D",
+              "x": 0.82,
+              "y": 0.7
+            }
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "twoByTwo place des éléments sur une matrice à deux axes avec des coordonnées x/y, utile pour la priorisation comme impact vs. effort.",
+          "summary": ["twoByTwo affiche une matrice à deux axes", "Placez les éléments avec des coordonnées x/y", "Idéal pour la priorisation, par ex. impact vs. effort"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-funnel",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (funnel)",
+        "funnel": {
+          "unit": "",
+          "stages": [
+            {
+              "label": "Visites",
+              "value": 10000,
+              "description": "Trafic"
+            },
+            {
+              "label": "Inscriptions",
+              "value": 3000,
+              "description": "Enregistrements"
+            },
+            {
+              "label": "Payant",
+              "value": 800,
+              "description": "Abonnements"
+            },
+            {
+              "label": "Retenu",
+              "value": 300,
+              "description": "Mois 2"
+            }
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "funnel affiche un entonnoir dont la largeur de chaque étape varie selon sa value, utile pour expliquer une conversion.",
+          "summary": ["funnel affiche un entonnoir de conversion", "La largeur de chaque étape varie selon sa value", "Spécifiez label / description par étape"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-swot",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (swot)",
+        "swot": {
+          "strengths": {
+            "items": ["Notoriété de la marque", "Ingénieurs seniors", "Base de clients existante"]
+          },
+          "weaknesses": {
+            "items": ["Code existant", "Difficulté de recrutement", "Coûts d'exploitation élevés"]
+          },
+          "opportunities": {
+            "items": ["Expansion du marché", "Adoption de l'IA", "Nouveaux segments"]
+          },
+          "threats": {
+            "items": ["Concurrence", "Réglementation", "Volatilité des changes"]
+          }
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "swot affiche les quatre quadrants SWOT (forces, faiblesses, opportunités, menaces). Spécifiez une liste à puces dans items de chaque quadrant.",
+          "summary": ["swot affiche les quatre quadrants SWOT", "Spécifiez strengths/weaknesses/opportunities/threats", "Définissez une liste à puces dans items de chaque quadrant"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-heatmap",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (heatmap)",
+        "heatmap": {
+          "rows": ["Produit A", "Produit B", "Produit C", "Produit D"],
+          "cols": ["T1", "T2", "T3", "T4"],
+          "color": "series2",
+          "unit": "%",
+          "values": [
+            [12, 18, 24, 30],
+            [8, 14, 22, 28],
+            [20, 26, 32, 38],
+            [4, 10, 16, 22]
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "heatmap affiche des valeurs ligne par colonne sous forme de nuances. Définissez color pour la teinte de base afin de comparer les magnitudes d'un coup d'œil.",
+          "summary": ["heatmap affiche des valeurs ligne par colonne en nuances", "color définit la teinte de base", "Les cellules apparaissent en fondu l'une après l'autre"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-svg",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (svg)",
+        "svg": {
+          "markup": "<svg viewBox=\"0 0 200 120\"><rect x=\"10\" y=\"70\" width=\"40\" height=\"40\" fill=\"currentColor\" /><rect x=\"80\" y=\"40\" width=\"40\" height=\"70\" fill=\"currentColor\" opacity=\"0.7\" /><rect x=\"150\" y=\"10\" width=\"40\" height=\"100\" fill=\"currentColor\" opacity=\"0.4\" /></svg>",
+          "color": "accent",
+          "caption": "Intègre le balisage SVG et suit la couleur du thème via currentColor"
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "svg intègre le balisage donné tel quel. Utiliser color avec currentColor fait suivre la forme aux tokens de couleur du thème.",
+          "summary": ["svg intègre un balisage SVG arbitraire", "color suit les tokens du thème via currentColor", "caption ajoute une ligne explicative"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-text-diagram",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (textDiagram)",
+        "textDiagram": {
+          "source": "flowchart LR\n  A[Start] --> B{Decision}\n  B -->|Yes| C[Done]\n  B -->|No| A",
+          "caption": "Affiche la syntaxe de diagramme textuel Mermaid (mermaid se charge via import dynamique à la première utilisation)"
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "textDiagram affiche un diagramme à partir d'une syntaxe texte Mermaid. Il suffit d'écrire la syntaxe dans source pour générer des organigrammes, diagrammes de séquence, etc.",
+          "summary": ["textDiagram convertit la syntaxe Mermaid en diagramme", "Écrivez simplement la syntaxe texte dans source", "mermaid se charge dynamiquement à la première utilisation"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-sequence-diagram",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (sequenceDiagram)",
+        "sequenceDiagram": {
+          "lifelines": [
+            {
+              "id": "user",
+              "label": "Utilisateur"
+            },
+            {
+              "id": "api",
+              "label": "API"
+            },
+            {
+              "id": "db",
+              "label": "BD"
+            }
+          ],
+          "messages": [
+            {
+              "from": "user",
+              "to": "api",
+              "label": "login()"
+            },
+            {
+              "from": "api",
+              "to": "api",
+              "label": "validate()"
+            },
+            {
+              "from": "api",
+              "to": "db",
+              "label": "query()",
+              "type": "async"
+            },
+            {
+              "from": "db",
+              "to": "api",
+              "label": "résultat"
+            },
+            {
+              "from": "api",
+              "to": "user",
+              "label": "réponse"
+            }
+          ],
+          "activations": [
+            {
+              "lifeline": "api",
+              "from": 0,
+              "to": 4
+            }
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "sequenceDiagram affiche des échanges de messages entre lignes de vie. Utilisez activations pour mettre en évidence une période d'activité.",
+          "summary": ["sequenceDiagram affiche un diagramme de séquence", "lifelines et messages expriment l'échange", "activations met en évidence une période d'activité"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-profile",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (profile)",
+        "profile": {
+          "image": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMDAgMzYwIiB3aWR0aD0iMzAwIiBoZWlnaHQ9IjM2MCI+PHJlY3Qgd2lkdGg9IjMwMCIgaGVpZ2h0PSIzNjAiIGZpbGw9IiMxZjI0MzAiLz48Y2lyY2xlIGN4PSIxNTAiIGN5PSIxMzIiIHI9IjU4IiBmaWxsPSIjMmRkNGJmIiBvcGFjaXR5PSIwLjkiLz48cGF0aCBkPSJNNDYgMzUyYzAtNTcgNDctMTAzIDEwNC0xMDNzMTA0IDQ2IDEwNCAxMDN6IiBmaWxsPSIjMmRkNGJmIiBvcGFjaXR5PSIwLjkiLz48cmVjdCB4PSI5IiB5PSI5IiB3aWR0aD0iMjgyIiBoZWlnaHQ9IjM0MiIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMmRkNGJmIiBzdHJva2Utd2lkdGg9IjMiLz48L3N2Zz4=",
+          "name": "Taro Yamada",
+          "nameSub": "山田 太郎",
+          "role": "Ingénieur logiciel",
+          "org": "Département de développement de plateforme",
+          "body": "Développe un outil de création de présentations.\nIntéressé par la conception logicielle et l'automatisation des tests.",
+          "links": [
+            {
+              "icon": "MailOutline",
+              "label": "taro.yamada@example.com"
+            },
+            {
+              "icon": "AccountCircle",
+              "label": "@taro_yamada"
+            }
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "profile affiche une carte de profil avec une photo. Spécifiez icon et label dans links pour aligner les coordonnées.",
+          "summary": ["profile affiche une carte de profil avec photo", "Spécifiez name, role, org et body", "links aligne les icônes de coordonnées"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-images-grouped",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (groupes d'images)",
+        "imageColumns": 4,
+        "images": [
+          {
+            "label": "Partenaires",
+            "images": [
+              {
+                "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIiB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCI+PHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiMxZjI0MzAiLz48Y2lyY2xlIGN4PSIxMDAiIGN5PSIxMDAiIHI9IjYwIiBmaWxsPSIjMmRkNGJmIi8+PC9zdmc+",
+                "alt": "Logo partenaire 1"
+              },
+              {
+                "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIiB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCI+PHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiMxZjI0MzAiLz48Y2lyY2xlIGN4PSIxMDAiIGN5PSIxMDAiIHI9IjYwIiBmaWxsPSIjMmRkNGJmIi8+PC9zdmc+",
+                "alt": "Logo partenaire 2"
+              },
+              {
+                "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIiB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCI+PHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiMxZjI0MzAiLz48Y2lyY2xlIGN4PSIxMDAiIGN5PSIxMDAiIHI9IjYwIiBmaWxsPSIjMmRkNGJmIi8+PC9zdmc+",
+                "alt": "Logo partenaire 3"
+              },
+              {
+                "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIiB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCI+PHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiMxZjI0MzAiLz48Y2lyY2xlIGN4PSIxMDAiIGN5PSIxMDAiIHI9IjYwIiBmaWxsPSIjMmRkNGJmIi8+PC9zdmc+",
+                "alt": "Logo partenaire 4"
+              }
+            ]
+          },
+          {
+            "label": "Stack technique",
+            "images": [
+              {
+                "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIiB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCI+PHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiMxZjI0MzAiLz48Y2lyY2xlIGN4PSIxMDAiIGN5PSIxMDAiIHI9IjYwIiBmaWxsPSIjMmRkNGJmIi8+PC9zdmc+",
+                "alt": "Logo stack technique 1"
+              },
+              {
+                "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIiB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCI+PHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiMxZjI0MzAiLz48Y2lyY2xlIGN4PSIxMDAiIGN5PSIxMDAiIHI9IjYwIiBmaWxsPSIjMmRkNGJmIi8+PC9zdmc+",
+                "alt": "Logo stack technique 2"
+              }
+            ]
+          }
+        ]
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "En passant des groupes étiquetés d'images à images, ils s'affichent regroupés avec un titre, comme des logos de partenaires. imageColumns définit le nombre de colonnes par groupe.",
+          "summary": ["Regroupe les images sous un titre", "label définit le titre de chaque groupe", "imageColumns définit le nombre de colonnes par groupe"]
+        }
+      }
+    },
+    {
+      "id": "guide-background-image",
+      "layout": "content",
+      "meta": {
+        "backgroundImage": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA5NjAgNTQwIiB3aWR0aD0iOTYwIiBoZWlnaHQ9IjU0MCI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJza3kiIHgxPSIwIiB5MT0iMCIgeDI9IjAiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiMxZTNhOGEiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNmOTczMTYiLz48L2xpbmVhckdyYWRpZW50PjxsaW5lYXJHcmFkaWVudCBpZD0ic2NyaW0iIHgxPSIwIiB5MT0iMCIgeDI9IjAiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiMwZjE3MmEiIHN0b3Atb3BhY2l0eT0iMC43NSIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzBmMTcyYSIgc3RvcC1vcGFjaXR5PSIwIi8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHJlY3Qgd2lkdGg9Ijk2MCIgaGVpZ2h0PSI1NDAiIGZpbGw9InVybCgjc2t5KSIvPjxjaXJjbGUgY3g9IjcwMCIgY3k9IjE1MCIgcj0iNzAiIGZpbGw9IiNmZWYzYzciLz48cG9seWdvbiBwb2ludHM9IjAsNDIwIDIyMCwyMjAgMzgwLDM4MCA1MjAsMjQwIDY4MCw0MjAiIGZpbGw9IiMwZjE3MmEiIG9wYWNpdHk9IjAuODUiLz48cG9seWdvbiBwb2ludHM9IjMwMCw0NjAgNTIwLDMwMCA3MjAsNDYwIiBmaWxsPSIjMWUyOTNiIiBvcGFjaXR5PSIwLjkiLz48cmVjdCB5PSI0NjAiIHdpZHRoPSI5NjAiIGhlaWdodD0iODAiIGZpbGw9IiMwYjExMjAiLz48cmVjdCB3aWR0aD0iOTYwIiBoZWlnaHQ9IjI2MCIgZmlsbD0idXJsKCNzY3JpbSkiLz48L3N2Zz4K",
+        "notes": {
+          "speakerNotes": "meta.backgroundImage définit une image d'arrière-plan par diapositive. Pour la partager sur toute la présentation, utilisez plutôt le type image de theme.masters[].background.",
+          "summary": ["meta.backgroundImage définit une image d'arrière-plan par diapositive", "theme.masters[].background (type: image) la partage sur toute la présentation", "fit: cover/contain et opacity sont configurables"]
+        }
+      },
+      "content": {
+        "title": "Image d'arrière-plan",
+        "body": "En définissant meta.backgroundImage sur un chemin ou une URI de données, seule cette diapositive reçoit une image d'arrière-plan.\nPour un usage plus avancé partagé entre plusieurs diapositives, définissez plutôt type: \"image\" sur theme.masters[].background (fit: cover/contain et opacity sont pris en charge)."
+      }
+    },
+    {
       "id": "guide-summary",
       "layout": "center",
       "content": {
@@ -727,11 +2304,7 @@
       "meta": {
         "notes": {
           "speakerNotes": "La mise en page center avec variant: section convient parfaitement aux séparateurs de section ou aux diapositives de synthèse, avec un grand titre. Vous pouvez également y placer un code QR et un lien GitHub.",
-          "summary": [
-            "center + variant: section pour les diapositives de synthèse",
-            "Placement d'un code QR et d'un lien GitHub",
-            "Également utile comme séparateur de section"
-          ]
+          "summary": ["center + variant: section pour les diapositives de synthèse", "Placement d'un code QR et d'un lien GitHub", "Également utile comme séparateur de section"]
         }
       }
     }

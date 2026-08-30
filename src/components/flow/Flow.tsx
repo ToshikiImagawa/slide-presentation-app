@@ -31,9 +31,9 @@ export function Flow({ steps }: { steps?: FlowStep[] }) {
 
   return (
     <DiagramCanvas>
-      {rects.map((rect, i) => i > 0 && <Connector key={`arrow-${i}`} from={rects[i - 1]} to={rect} />)}
+      {rects.map((rect, i) => i > 0 && <Connector key={`arrow-${i}`} from={rects[i - 1]} to={rect} staggerIndex={i} />)}
       {list.map((step, i) => (
-        <DiagramCard key={i} rect={rects[i]} scale={fontScale} badge={<DiagramBadge>{i + 1}</DiagramBadge>} title={step.title}>
+        <DiagramCard key={i} rect={rects[i]} scale={fontScale} badge={<DiagramBadge>{i + 1}</DiagramBadge>} title={step.title} staggerIndex={i}>
           {step.description}
         </DiagramCard>
       ))}

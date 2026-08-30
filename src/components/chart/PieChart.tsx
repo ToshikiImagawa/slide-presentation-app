@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react'
 import { arcPath, pieSlices, polarPoint } from './chartScale'
 import styles from './Chart.module.css'
 
@@ -30,9 +31,19 @@ export function PieChart({ values, colors, valueLabels }: Props) {
       <div className={styles.pieBox} data-testid="chart-pie">
         <svg className={styles.pieSvg} viewBox="0 0 100 100" aria-hidden="true">
           {single ? (
-            <circle cx={50} cy={50} r={RADIUS} fill={colors[slices[0].index]} />
+            <circle cx={50} cy={50} r={RADIUS} fill={colors[slices[0].index]} className={styles.pieSlice} />
           ) : (
-            slices.map((slice) => <path key={slice.index} d={arcPath(50, 50, RADIUS, slice.startAngle, slice.endAngle)} fill={colors[slice.index]} stroke="var(--theme-background)" strokeWidth={0.5} />)
+            slices.map((slice) => (
+              <path
+                key={slice.index}
+                d={arcPath(50, 50, RADIUS, slice.startAngle, slice.endAngle)}
+                fill={colors[slice.index]}
+                stroke="var(--theme-background)"
+                strokeWidth={0.5}
+                className={styles.pieSlice}
+                style={{ '--stagger-index': slice.index } as CSSProperties}
+              />
+            ))
           )}
         </svg>
 

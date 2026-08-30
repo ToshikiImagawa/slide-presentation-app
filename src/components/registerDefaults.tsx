@@ -4,6 +4,8 @@ import PlaylistAddCheckIcon from '@mui/icons-material/PlaylistAddCheck'
 import FactCheckIcon from '@mui/icons-material/FactCheck'
 import SearchIcon from '@mui/icons-material/Search'
 import TrafficIcon from '@mui/icons-material/Traffic'
+import MailOutlineIcon from '@mui/icons-material/MailOutline'
+import AccountCircleIcon from '@mui/icons-material/AccountCircle'
 import logText from '../data/default-log.txt?raw'
 import { TerminalAnimation } from './TerminalAnimation'
 import { FallbackImage } from './FallbackImage'
@@ -78,4 +80,7 @@ export function registerDefaultComponents(): void {
   registerDefaultComponent('Icon:FactCheck', () => <FactCheckIcon sx={{ fontSize: 32 }} />)
   registerDefaultComponent('Icon:Memory', () => <MemoryIcon sx={{ fontSize: 32 }} />)
   registerDefaultComponent('Icon:Search', () => <SearchIcon sx={{ fontSize: 32 }} />)
+  // profile の links（連絡先アイコン）用。メール/SNSアカウントという汎用的な用途のため他アイコンと同枠で登録する
+  registerDefaultComponent('Icon:MailOutline', () => <MailOutlineIcon sx={{ fontSize: 32 }} />)
+  registerDefaultComponent('Icon:AccountCircle', () => <AccountCircleIcon sx={{ fontSize: 32 }} />)
 }

@@ -29,3 +29,37 @@
 .chipCentered {
   transform: translate(-50%, -50%);
 }
+
+/* 線が手前に引かれてくるドローイン演出（#202・pathLength=1 と組み合わせて使う。dashed 線には未適用:
+   dashed の strokeDasharray（px由来の絶対値）と pathLength 正規化が競合し破綻するため）。
+   :global(.reveal .slides section.present) を前置する理由は global.css の .stagger-item のコメント参照
+   （要素自身に直接 animation を付けると Reveal.js のスライド切替で再トリガーされない）。
+   delay をキャップしない理由も global.css の .stagger-item のコメント参照（キャップすると
+   途中から間隔が詰まって速度が不自然に変わる）。
+   base delay 0.25s は DiagramCard の 0.2s よりわずかに後（ノードが現れた直後に線が引かれる順序） */
+:global(.reveal .slides section.present) .draw {
+  animation: diagramLineDraw 0.5s ease-out both;
+  animation-delay: calc(0.25s + var(--stagger-index, 0) * 0.12s);
+}
+
+@keyframes diagramLineDraw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* dashed 線（データフロー的な補助的接続）は、ダッシュの1周期分だけ無限に流れて進行方向を示す。
+   1周期分ちょうど動かすためシームレスにループする（--flow-dash-period は DiagramLine.tsx が
+   dashed の strokeDasharray と同じ周期で計算する） */
+.flow {
+  animation: diagramLineFlow 1s linear infinite;
+}
+
+@keyframes diagramLineFlow {
+  to {
+    stroke-dashoffset: calc(-1 * var(--flow-dash-period));
+  }
+}

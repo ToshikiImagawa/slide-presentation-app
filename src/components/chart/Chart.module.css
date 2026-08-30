@@ -104,10 +104,31 @@
   left: 12%;
   right: 12%;
   border-radius: var(--theme-radius-sm) var(--theme-radius-sm) 0 0;
+  transform-origin: bottom;
 }
 
 .bar[data-negative='true'] {
   border-radius: 0 0 var(--theme-radius-sm) var(--theme-radius-sm);
+  transform-origin: top;
+}
+
+/* :global(.reveal .slides section.present) を前置する理由は global.css の .stagger-item のコメント参照
+   （要素自身に直接 animation を付けると Reveal.js のスライド切替で再トリガーされない）。
+   delay をキャップしない理由も global.css の .stagger-item のコメント参照（キャップすると
+   途中から間隔が詰まって速度が不自然に変わる）。base delay 0.2s は .stagger-item と同じ考え方。
+   timing-function は他の演出（ease-out）と揃え、独自の cubic-bezier は使わない */
+:global(.reveal .slides section.present) .bar {
+  animation: barGrowVertical 0.6s ease-out both;
+  animation-delay: calc(0.2s + var(--stagger-index, 0) * 0.1s);
+}
+
+@keyframes barGrowVertical {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
 }
 
 /* ---- 折れ線 ---- */
@@ -124,6 +145,26 @@
   overflow: visible;
 }
 
+/* 折れ線の描画演出。stroke-dasharray + pathLength ではなく clip-path で右側をマスクし左から右へ
+   ワイプする（vector-effect:non-scaling-stroke との組み合わせで WebKit が線を分断表示する既知バグを
+   回避するため。ChartPolyline のコメント参照）。:global(.reveal .slides section.present) を前置する
+   理由は global.css の .stagger-item のコメント参照。overflow:visible とは独立したプロパティなので
+   ストロークの縦方向の逃げ場は維持される。delay の `var(--stagger-index, 0)` 項は KpiRow 内では
+   .kpi 自身の --stagger-index を継承するため、カードの出現 delay とずれて線だけ先に描かれ終える
+   ことを防ぐ（LineChart 単体では祖先が --stagger-index を持たないため 0 のまま） */
+:global(.reveal .slides section.present) .lineLayer {
+  animation: lineLayerReveal 0.8s ease-out calc(0.2s + var(--stagger-index, 0) * 0.12s) both;
+}
+
+@keyframes lineLayerReveal {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
 .point {
   position: absolute;
   width: 10px;
@@ -131,6 +172,49 @@
   border: calc(var(--theme-border-width) * 2) solid var(--theme-background);
   border-radius: 50%;
   transform: translate(-50%, 50%);
+}
+
+/* :global(.reveal .slides section.present) を前置する理由は global.css の .stagger-item のコメント参照。
+   --point-progress（0〜1、点のX位置に対応）で delay をずらし、線が描かれていく先端に点が追従して
+   ポップインするように見せる（lineLayerReveal と同じ base delay・duration 0.8s を基準にする） */
+:global(.reveal .slides section.present) .point {
+  animation: pointPopIn 0.35s ease-out calc(0.2s + var(--stagger-index, 0) * 0.12s + var(--point-progress, 1) * 0.8s) both;
+}
+
+@keyframes pointPopIn {
+  from {
+    transform: translate(-50%, 50%) scale(0);
+    opacity: 0;
+  }
+  to {
+    transform: translate(-50%, 50%) scale(1);
+    opacity: 1;
+  }
+}
+
+/* 円グラフの扇形/円が中心から広がるように現れる。transform-box は view-box（SVGビューポート全体
+   =円の中心(50,50)）を基準にする。fill-box（扇形自身のバウンディングボックス中心）だと扇形ごとに
+   拡大の基準点がズレ、アニメーション終盤に正しい位置へ補正されて「ブチッと」止まったように見える */
+.pieSlice {
+  transform-box: view-box;
+  transform-origin: 50% 50%;
+}
+
+/* delay をキャップしない理由は global.css の .stagger-item のコメント参照 */
+:global(.reveal .slides section.present) .pieSlice {
+  animation: pieSliceIn 0.6s ease-out both;
+  animation-delay: calc(0.2s + var(--stagger-index, 0) * 0.12s);
+}
+
+@keyframes pieSliceIn {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 /* ---- 値ラベル（全種別共通） ---- */
@@ -216,11 +300,30 @@
   height: 100%;
   max-height: 52px;
   border-radius: 0 var(--theme-radius-sm) var(--theme-radius-sm) 0;
+  transform-origin: left;
   transform: translateY(-50%);
 }
 
 .hbarBar[data-negative='true'] {
   border-radius: var(--theme-radius-sm) 0 0 var(--theme-radius-sm);
+  transform-origin: right;
+}
+
+/* :global(.reveal .slides section.present) を前置する理由・delay をキャップしない理由は
+   global.css の .stagger-item のコメント参照。timing-function は .bar と揃え ease-out にする */
+:global(.reveal .slides section.present) .hbarBar {
+  animation: barGrowHorizontal 0.6s ease-out both;
+  animation-delay: calc(0.2s + var(--stagger-index, 0) * 0.1s);
+}
+
+/* translateY(-50%) は縦中央配置のための静的な値なので、アニメーションの to 側にも含めて維持する */
+@keyframes barGrowHorizontal {
+  from {
+    transform: translateY(-50%) scaleX(0);
+  }
+  to {
+    transform: translateY(-50%) scaleX(1);
+  }
 }
 
 /* 棒の先に添える。プロット右端に近い値はラベルが切れるので棒の内側へ回す（data-inside） */

@@ -18,6 +18,26 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, calc(0.06 * var(--theme-shadow-strength)));
 }
 
+/* :global(.reveal .slides section.present) を前置する理由は global.css の .stagger-item のコメント参照
+   （要素自身に直接 animation を付けると Reveal.js のスライド切替で再トリガーされない）。
+   delay をキャップしない理由も global.css の .stagger-item のコメント参照（キャップすると
+   途中から間隔が詰まって速度が不自然に変わる）。base delay 0.2s は .stagger-item と同じ考え方 */
+:global(.reveal .slides section.present) .card {
+  animation: diagramCardIn 0.6s ease-out both;
+  animation-delay: calc(0.2s + var(--stagger-index, 0) * 0.12s);
+}
+
+@keyframes diagramCardIn {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 /* カード左端のアクセントバー（既定幅 0 = 描画なし）。border-left にすると 0px 指定時に左辺の
    ヘアライン境界線を食い潰すため、FeatureTileGrid と同じく擬似要素で描く */
 .card::before {
@@ -38,6 +58,29 @@
   --diagram-badge-outline: var(--theme-background);
 }
 
+/* 意図的に強調されたノード（variant: filled。Gantt のバー・Funnel の段等、コンテンツ側が塗りを選んだ
+   ノードに限る）だけに、ごく緩やかな明度の呼吸を常時加える。全ノードに適用すると図解が忙しく見えるため
+   対象を絞る。diagramCardIn（出現）と両方を1つの animation に列挙する必要がある: .card の animation
+   （出現のみ）とは別プロパティ値になるため、同じ詳細度なら CSS の出現順で本ルールが勝つ（このファイル内で
+   .card のルールより後に置くこと）。1つ目の diagramCardIn の delay も .card 側の animation-delay と
+   同じ式で明示し直す必要がある（animation ショートハンドで丸ごと置き換わるため、.card 側の
+   animation-delay だけを個別に継承することはできない） */
+:global(.reveal .slides section.present) .filled {
+  animation:
+    diagramCardIn 0.6s ease-out calc(0.2s + var(--stagger-index, 0) * 0.12s) both,
+    diagramNodeGlow 3s ease-in-out 0.8s infinite;
+}
+
+@keyframes diagramNodeGlow {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.12);
+  }
+}
+
 .filled .title,
 .filled .body {
   color: var(--theme-background);
@@ -46,6 +89,25 @@
 /* 色に意味を持たせないノード（枠だけのプレースホルダ等）向け。境界線をテーマの中立色にする */
 .plain {
   border-color: var(--theme-border);
+}
+
+/* ゾーン/レーンの背景パネル（ServerDiagram・Swimlane・Gantt が variant:'plain' で使う大きな背景枠）は
+   タイトルバッジ（DiagramBadge）が正規化座標で独立して静止表示されるのに対し、.card 共通の
+   diagramCardIn（scale(0.6)→1）で拡大させると、パネルが自身の中心から広がる間バッジだけ最終位置に
+   浮いて見え「タイトル周りのレイアウト崩れ」に見える。plain はこの背景パネル用途専用のため、
+   スケールなしのフェードのみに変える（.plain は .filled と排他なので .filled の
+   diagramNodeGlow と競合しない） */
+:global(.reveal .slides section.present) .plain {
+  animation: diagramPanelFadeIn 0.5s ease-out calc(0.2s + var(--stagger-index, 0) * 0.12s) both;
+}
+
+@keyframes diagramPanelFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .title {

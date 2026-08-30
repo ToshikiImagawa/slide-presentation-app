@@ -4,6 +4,7 @@ import Box from '@mui/material/Box'
 import Divider from '@mui/material/Divider'
 import Typography from '@mui/material/Typography'
 import { useAutoFitHeadingFontSize } from '../hooks/useAutoFitHeadingFontSize'
+import styles from './UnderlinedHeading.module.css'
 
 type Props = {
   children: React.ReactNode
@@ -23,6 +24,7 @@ export function UnderlinedHeading({ children, sx, fontSize }: Props) {
         {children}
       </Typography>
       <Divider
+        className={styles.underline}
         sx={{
           borderWidth: 'var(--theme-heading-underline-width)',
           borderColor: 'var(--theme-primary)',

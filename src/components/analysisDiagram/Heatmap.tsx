@@ -82,7 +82,8 @@ export function Heatmap({ rows, cols, values, color, min, max, valueLabels, unit
           width: normToPercent(col.size),
           height: normToPercent(row.size),
           backgroundColor: typeof value === 'number' && Number.isFinite(value) ? shadeSeries(color, alpha) : 'transparent',
-        },
+          '--stagger-index': r * colCount + c,
+        } as CSSProperties,
         label: showLabels && typeof value === 'number' && Number.isFinite(value) ? formatValue(value, unit) : undefined,
       })
     }

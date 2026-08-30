@@ -16,6 +16,61 @@
   height: var(--theme-rule-width);
   background: var(--theme-border);
   z-index: 0;
+  transform-origin: left;
+  overflow: hidden;
+}
+
+/* :global(.reveal .slides section.present) を前置する理由は global.css の .stagger-item のコメント参照
+   （要素自身に直接 animation を付けると Reveal.js のスライド切替で再トリガーされない）。
+   delay は .stagger-item と同じ 0.2s を起点にする（スライド全体のフェードインの後に続けて始まるように） */
+:global(.reveal .slides section.present) .line {
+  animation: timelineLineGrow 0.8s ease-out 0.2s both;
+}
+
+@keyframes timelineLineGrow {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.line::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(var(--theme-primary-rgb), 0.7) 50%, transparent 100%);
+  background-size: 40% 100%;
+  background-repeat: no-repeat;
+  background-position: -100% 0;
+}
+
+/* 線が引かれ終わった後、光が左から右へ流れ続ける常時演出（無限ループ）。
+   無限アニメーションでも :global(.reveal .slides section.present) を前置する必要がある
+   （DiagramCard の diagramNodeGlow と同じ理由）: 省略すると Reveal.js が全スライドを一括マウントする
+   タイミング（アプリ起動時）からタイマーが動き続け、実際にこのスライドを表示した瞬間には
+   既に任意の位相まで進行した状態になってしまう（「最初から中途半端な状態で始まる」ように見える原因、
+   実測で確認済み）。.present を前置することで、スライドを表示するたびに同じタイミング
+  （delay 1s = ドローイン完了直後）から光が流れ始める、一貫した体験になる。
+   帯を薄く・周期を長め（3.5s）にすることで、発表中に気を取られない程度に抑える */
+:global(.reveal .slides section.present) .line::after {
+  animation: timelineLineShimmer 3.5s linear 1s infinite;
+}
+
+/* background-position の % 指定は (要素幅 - 画像幅) × 割合 で物理オフセットが決まる（CSS仕様）。
+   画像幅が background-size: 40% のとき、from/to を単純に -40%/140% にすると、
+   計算上まだ要素の可視範囲に画像の端が重なってしまい「開始・終了時点でわずかに光が見えている」
+   状態になる（加速して見える／ループが繋がって見えない原因）。-100%/200% なら
+   画像の右端・左端が確実に可視範囲の外（見た目が完全に同一の非表示状態）になり、
+   ループの継続点で見た目が連続する */
+@keyframes timelineLineShimmer {
+  from {
+    background-position: -100% 0;
+  }
+  to {
+    background-position: 200% 0;
+  }
 }
 
 .item {

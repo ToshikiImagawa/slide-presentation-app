@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react'
 import { resolveColorToken } from '../../applyTheme'
 import { ChartLineLayer, ChartPolyline } from './ChartPolyline'
 import { formatValue } from './chartScale'
@@ -22,6 +23,8 @@ type Props = {
   trend: number[]
   /** CSS の色指定（seriesColor が返す var(--theme-series-N)） */
   color: string
+  /** 表示順のインデックス。KpiRow で複数個並べるときに段階的な出現演出の delay を決める（省略時0） */
+  index?: number
 }
 
 /** 推移線のY位置（0=下端, 1=上端）。実績の変化が読めるよう 0 基準ではなくデータ範囲に合わせる */
@@ -39,14 +42,14 @@ function formatKpiValue(value: string | number | undefined, unit?: string): stri
 }
 
 /** 大数値＋推移（KPI）。主役は数値なので、推移線は傾向だけが読めるスパークラインとして添える */
-export function KpiTrend({ value, label, delta, deltaDirection, deltaStatus, unit, trend, color }: Props) {
+export function KpiTrend({ value, label, delta, deltaDirection, deltaStatus, unit, trend, color, index }: Props) {
   const values = trend.filter((entry) => Number.isFinite(entry))
   const heights = values.length >= 2 ? ratios(values) : []
   const formatted = formatKpiValue(value, unit)
   const deltaColor = deltaStatus ? `var(${resolveColorToken(deltaStatus)})` : color
 
   return (
-    <div className={styles.kpi} data-testid="chart-kpi">
+    <div className={`${styles.kpi} stagger-item`} data-testid="chart-kpi" style={{ '--stagger-index': index ?? 0 } as CSSProperties}>
       {label && <span className={styles.kpiLabel}>{label}</span>}
       {formatted !== '' && (
         <span className={styles.kpiValue} style={{ color }}>
@@ -63,9 +66,9 @@ export function KpiTrend({ value, label, delta, deltaDirection, deltaStatus, uni
       {heights.length > 0 && (
         <div className={styles.kpiTrend}>
           <ChartLineLayer>
-            <ChartPolyline points={heights.map((ratio, index) => ({ x: (index / (heights.length - 1)) * 100, y: (1 - ratio) * 100 }))} color={color} />
+            <ChartPolyline points={heights.map((ratio, i) => ({ x: (i / (heights.length - 1)) * 100, y: (1 - ratio) * 100 }))} color={color} />
           </ChartLineLayer>
-          <span className={styles.point} style={{ left: '100%', bottom: `${heights[heights.length - 1] * 100}%`, background: color }} />
+          <span className={styles.point} style={{ left: '100%', bottom: `${heights[heights.length - 1] * 100}%`, background: color, '--point-progress': 1 } as CSSProperties} />
         </div>
       )}
     </div>

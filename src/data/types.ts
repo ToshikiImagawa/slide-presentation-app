@@ -344,6 +344,9 @@ export type MasterDecoration = LogoMasterDecoration | BandMasterDecoration | Rul
 interface MasterBackgroundBase {
   /** 不透明度（0〜1）。省略時は 1。薄めるとデッキ既定の背景（body の格子）が透けて見える */
   opacity?: number
+  /** grid/gradient の背景に付く控えめな周期的アニメーション（他の種別では無視）。省略時は true 相当（動く）。
+   * false を明示するとこのマスターだけ動きを止める（静止画としての一貫性を優先したい場合の opt-out） */
+  motion?: boolean
 }
 
 /** 無地背景。テーマ背景色で塗り、デッキ既定の格子を隠す */
