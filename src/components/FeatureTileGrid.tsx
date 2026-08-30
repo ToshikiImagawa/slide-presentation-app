@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import Avatar from '@mui/material/Avatar'
 import Box from '@mui/material/Box'
 import Card from '@mui/material/Card'
@@ -23,11 +23,13 @@ type Props = {
 export function FeatureTileGrid({ tiles, columns }: Props) {
   return (
     <Box sx={{ display: 'grid', gridTemplateColumns: `repeat(${columns ?? tiles.length}, 1fr)`, gap: '30px', width: '100%' }}>
-      {tiles.map((tile) => {
+      {tiles.map((tile, i) => {
         const cssVar = resolveColorToken(tile.accentColor)
         return (
           <Card
             key={tile.title}
+            className="stagger-item"
+            style={{ '--stagger-index': i } as CSSProperties}
             sx={{
               p: '30px',
               position: 'relative',

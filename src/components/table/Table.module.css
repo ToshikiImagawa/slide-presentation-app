@@ -39,6 +39,14 @@
   border-bottom: none;
 }
 
+/* display: table-row は transform が効かないブラウザがあるため opacity のみで段階表示する。
+   :global(.reveal .slides section.present) を前置する理由・delay をキャップしない理由は
+   global.css の .stagger-item のコメント参照 */
+:global(.reveal .slides section.present) .tr {
+  animation: fadeIn 0.5s ease-out both;
+  animation-delay: calc(0.15s + var(--stagger-index, 0) * 0.06s);
+}
+
 /* ゼブラ（偶数行）。color-mix() は WebKit で getComputedStyle() の解決結果が CSS Color 4 の
    color() 関数構文になり、html2canvas（PDF書き出し時のスライド撮影）がこれを未サポート関数として
    例外を投げるため使わない（structureDiagram/colors.ts の shadeSeries と同じ rgba + -rgb companion

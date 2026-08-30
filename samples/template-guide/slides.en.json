@@ -14,10 +14,7 @@
       "meta": {
         "notes": {
           "speakerNotes": "This presentation introduces how to use slide templates.\nYou can freely customize slide content by placing public/slides.json.",
-          "summary": [
-            "Introduction to the slide template guide",
-            "Customizable via slides.json"
-          ]
+          "summary": ["Introduction to the slide template guide", "Customizable via slides.json"]
         }
       }
     },
@@ -29,31 +26,30 @@
         "left": {
           "heading": "Left Column: heading",
           "headingDescription": "Add subtext with headingDescription",
-          "paragraphs": [
-            "Write body text with paragraphs. <strong>HTML tags</strong> are also supported.",
-            "You can specify multiple paragraphs using an array."
-          ],
+          "paragraphs": ["Write body text with paragraphs. <strong>HTML tags</strong> are also supported.", "You can specify multiple paragraphs using an array."],
           "items": [
-            {"text": "items:", "emphasis": true, "description": " emphasis: true for bold text"},
-            {"text": "Normal item:", "description": " add subtext with description"},
-            {"text": "Simple item"}
+            {
+              "text": "items:",
+              "emphasis": true,
+              "description": " emphasis: true for bold text"
+            },
+            {
+              "text": "Normal item:",
+              "description": " add subtext with description"
+            },
+            {
+              "text": "Simple item"
+            }
           ]
         },
         "right": {
           "codeBlock": {
             "header": "> codeBlock.header",
-            "items": [
-              "codeBlock.items[0]",
-              "Ideal for displaying code or hierarchical structures",
-              "<strong>HTML tags</strong> are supported"
-            ]
+            "items": ["codeBlock.items[0]", "Ideal for displaying code or hierarchical structures", "<strong>HTML tags</strong> are supported"]
           },
           "titledBulletList": {
             "title": "titledBulletList.title",
-            "items": [
-              "titledBulletList item 1",
-              "titledBulletList item 2"
-            ]
+            "items": ["titledBulletList item 1", "titledBulletList item 2"]
           },
           "accentText": "→ accentText: Highlighted in primary color"
         }
@@ -61,11 +57,7 @@
       "meta": {
         "notes": {
           "speakerNotes": "This slide explains the basic structure of the two-column layout. The left column contains heading, paragraphs, and items, while the right column has codeBlock, titledBulletList, and accentText.",
-          "summary": [
-            "Basic structure of two-column layout",
-            "Left: heading, paragraphs, items",
-            "Right: codeBlock, titledBulletList, accentText"
-          ]
+          "summary": ["Basic structure of two-column layout", "Left: heading, paragraphs, items", "Right: codeBlock, titledBulletList, accentText"]
         }
       }
     },
@@ -75,38 +67,27 @@
       "content": {
         "title": "layout: \"two-column\" — Component Placement",
         "left": {
-          "paragraphs": [
-            "Specify <code>component</code> in left / right to embed registered visuals."
-          ],
+          "paragraphs": ["Specify <code>component</code> in left / right to embed registered visuals."],
           "codeBlock": {
             "header": "> JSON specification",
-            "items": [
-              "\"right\": {",
-              "\u00a0\u00a0\"component\": {",
-              "\u00a0\u00a0\u00a0\u00a0\"name\": \"TerminalAnimation\",",
-              "\u00a0\u00a0\u00a0\u00a0\"props\": {",
-              "\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"logTextUrl\": \"/demo-log.txt\"",
-              "\u00a0\u00a0\u00a0\u00a0}",
-              "\u00a0\u00a0}",
-              "}"
-            ]
+            "items": ["\"right\": {", "  \"component\": {", "    \"name\": \"TerminalAnimation\",", "    \"props\": {", "      \"logTextUrl\": \"/demo-log.txt\"", "    }", "  }", "}"]
           }
         },
         "right": {
           "component": {
             "name": "TerminalAnimation",
-            "style": { "height": "400px", "width": "90%", "margin": "auto" }
+            "style": {
+              "height": "400px",
+              "width": "90%",
+              "margin": "auto"
+            }
           }
         }
       },
       "meta": {
         "notes": {
           "speakerNotes": "You can embed registered components by specifying a component field in the left or right columns of a two-column layout.",
-          "summary": [
-            "Specify component in left / right",
-            "Embed registered components",
-            "Configure with name, props, style"
-          ]
+          "summary": ["Specify component in left / right", "Embed registered components", "Configure with name, props, style"]
         }
       }
     },
@@ -116,22 +97,35 @@
       "content": {
         "title": "layout: \"content\" — Timeline (steps)",
         "steps": [
-          {"number": 1, "title": "Step Title", "description": "Description for each step", "command": "/command_name"},
-          {"number": 2, "title": "Step Title", "description": "command is optional"},
-          {"number": 3, "title": "Step Title", "description": "No limit on the number of steps", "command": "/another"},
-          {"number": 4, "title": "Step Title", "description": "Final step"}
+          {
+            "number": 1,
+            "title": "Step Title",
+            "description": "Description for each step",
+            "command": "/command_name"
+          },
+          {
+            "number": 2,
+            "title": "Step Title",
+            "description": "command is optional"
+          },
+          {
+            "number": 3,
+            "title": "Step Title",
+            "description": "No limit on the number of steps",
+            "command": "/another"
+          },
+          {
+            "number": 4,
+            "title": "Step Title",
+            "description": "Final step"
+          }
         ],
         "footer": "footer: Display supplementary text below the timeline"
       },
       "meta": {
         "notes": {
           "speakerNotes": "When you specify steps in a content layout, it displays in timeline format. Each step requires number, title, and description. command is optional.",
-          "summary": [
-            "Display timeline with steps",
-            "number, title, description are required",
-            "command is optional",
-            "footer for supplementary text"
-          ]
+          "summary": ["Display timeline with steps", "number, title, description are required", "command is optional", "footer for supplementary text"]
         }
       }
     },
@@ -161,11 +155,7 @@
       "meta": {
         "notes": {
           "speakerNotes": "When you specify tiles in a content layout, it displays in a tile grid format. Each tile has icon, title, and description.",
-          "summary": [
-            "Display tile grid with tiles",
-            "Set icon, title, description",
-            "Arranged in 3-column grid"
-          ]
+          "summary": ["Display tile grid with tiles", "Set icon, title, description", "Arranged in 3-column grid"]
         }
       }
     },
@@ -176,18 +166,18 @@
         "title": "layout: \"content\" — Component (component)",
         "component": {
           "name": "TerminalAnimation",
-          "style": { "height": "400px", "width": "90%", "margin": "auto" }
+          "style": {
+            "height": "400px",
+            "width": "90%",
+            "margin": "auto"
+          }
         },
         "footer": "Content layout components are rendered inside a wrapper with a title bar"
       },
       "meta": {
         "notes": {
           "speakerNotes": "When you specify component in a content layout, the component is rendered inside a ContentLayout wrapper with a title bar. It is treated as a child element of the content layout, similar to steps and tiles.",
-          "summary": [
-            "Specify component in content layout",
-            "Rendered inside ContentLayout wrapper",
-            "Title bar is displayed automatically"
-          ]
+          "summary": ["Specify component in content layout", "Rendered inside ContentLayout wrapper", "Title bar is displayed automatically"]
         }
       }
     },
@@ -198,23 +188,32 @@
         "title": "layout: \"bleed\" — Full-width Two-column",
         "titleDescription": "titleDescription: Display title supplement in left column",
         "commands": [
-          {"text": "$ commands[0].text", "color": "var(--theme-text-heading)"},
-          {"text": "$ commands[1].text", "color": "var(--theme-primary)"},
-          {"text": "✓ You can specify color for each line", "color": "var(--theme-success)"}
+          {
+            "text": "$ commands[0].text",
+            "color": "var(--theme-text-heading)"
+          },
+          {
+            "text": "$ commands[1].text",
+            "color": "var(--theme-primary)"
+          },
+          {
+            "text": "✓ You can specify color for each line",
+            "color": "var(--theme-success)"
+          }
         ],
         "component": {
           "name": "TerminalAnimation",
-          "style": { "height": "400px", "width": "90%", "margin": "auto" }
+          "style": {
+            "height": "400px",
+            "width": "90%",
+            "margin": "auto"
+          }
         }
       },
       "meta": {
         "notes": {
           "speakerNotes": "The bleed layout displays in a full-width two-column format. The left column contains title, titleDescription, and commands, while the right column holds a component.",
-          "summary": [
-            "Full-width two-column with bleed layout",
-            "Left: title, titleDescription, commands",
-            "Right: component for any registered component"
-          ]
+          "summary": ["Full-width two-column with bleed layout", "Left: title, titleDescription, commands", "Right: component for any registered component"]
         }
       }
     },
@@ -224,17 +223,16 @@
       "content": {
         "component": {
           "name": "TerminalAnimation",
-          "style": { "height": "100%", "width": "100%" }
+          "style": {
+            "height": "100%",
+            "width": "100%"
+          }
         }
       },
       "meta": {
         "notes": {
           "speakerNotes": "The custom layout renders the specified component directly. Unlike the content layout, there is no wrapper such as a title bar, and the component occupies the entire slide.",
-          "summary": [
-            "layout: \"custom\" renders component directly",
-            "No wrapper like title bar",
-            "Understand the difference from content layout"
-          ]
+          "summary": ["layout: \"custom\" renders component directly", "No wrapper like title bar", "Understand the difference from content layout"]
         }
       }
     },
@@ -244,21 +242,10 @@
       "content": {
         "title": "component: \"Image\" — Display Images",
         "left": {
-          "paragraphs": [
-            "The <code>Image</code> component displays images, with an automatic fallback on load errors."
-          ],
+          "paragraphs": ["The <code>Image</code> component displays images, with an automatic fallback on load errors."],
           "codeBlock": {
             "header": "> JSON specification",
-            "items": [
-              "\"component\": {",
-              "\u00a0\u00a0\"name\": \"Image\",",
-              "\u00a0\u00a0\"props\": {",
-              "\u00a0\u00a0\u00a0\u00a0\"src\": \"https://...\",",
-              "\u00a0\u00a0\u00a0\u00a0\"width\": 320,",
-              "\u00a0\u00a0\u00a0\u00a0\"height\": 320,",
-              "\u00a0\u00a0}",
-              "}"
-            ]
+            "items": ["\"component\": {", "  \"name\": \"Image\",", "  \"props\": {", "    \"src\": \"https://...\",", "    \"width\": 320,", "    \"height\": 320,", "  }", "}"]
           }
         },
         "right": {
@@ -269,18 +256,19 @@
               "width": 320,
               "height": 320
             },
-            "style": { "display": "flex", "justifyContent": "center", "alignItems": "center", "height": "100%" }
+            "style": {
+              "display": "flex",
+              "justifyContent": "center",
+              "alignItems": "center",
+              "height": "100%"
+            }
           }
         }
       },
       "meta": {
         "notes": {
           "speakerNotes": "The Image component wraps FallbackImage and shows a fallback UI when image loading fails. Specify src, width, and height in props.",
-          "summary": [
-            "Display images with Image component",
-            "Fallback support via FallbackImage",
-            "Specify src, width, height in props"
-          ]
+          "summary": ["Display images with Image component", "Fallback support via FallbackImage", "Specify src, width, height in props"]
         }
       }
     },
@@ -293,22 +281,13 @@
           "titledBulletList": {
             "title": "TerminalAnimation",
             "description": "Terminal display with animation",
-            "items": [
-              "<strong>logTextUrl</strong>: URL of the log file\ne.g., \"/demo-log.txt\"",
-              "Uses built-in default when logTextUrl is omitted"
-            ]
+            "items": ["<strong>logTextUrl</strong>: URL of the log file\ne.g., \"/demo-log.txt\"", "Uses built-in default when logTextUrl is omitted"]
           }
         },
         "right": {
           "codeBlock": {
             "header": "> Registered MUI Icons",
-            "items": [
-              "Icon:Description",
-              "Icon:PlaylistAddCheck",
-              "Icon:Traffic",
-              "Icon:Memory",
-              "Icon:Search"
-            ]
+            "items": ["Icon:Description", "Icon:PlaylistAddCheck", "Icon:Traffic", "Icon:Memory", "Icon:Search"]
           },
           "accentText": "→ Use icon names in the tiles icon field of content layout"
         }
@@ -316,11 +295,7 @@
       "meta": {
         "notes": {
           "speakerNotes": "This is a list of components registered by default. TerminalAnimation and 5 MUI icons are available.",
-          "summary": [
-            "TerminalAnimation: Terminal with animation",
-            "5 MUI icons registered",
-            "Use in tiles icon field"
-          ]
+          "summary": ["TerminalAnimation: Terminal with animation", "5 MUI icons registered", "Use in tiles icon field"]
         }
       }
     },
@@ -330,30 +305,28 @@
       "content": {
         "title": "Addon Components",
         "left": {
-          "paragraphs": [
-            "Place components in <code>addons/src/</code> to dynamically register and use them in slides."
-          ],
+          "paragraphs": ["Place components in <code>addons/src/</code> to dynamically register and use them in slides."],
           "items": [
-            {"text": "Auto-registration:", "emphasis": true, "description": " Addons are registered to ComponentRegistry at startup"},
-            {"text": "When unloaded:", "emphasis": true, "description": " Fallback display (shows component name)"}
+            {
+              "text": "Auto-registration:",
+              "emphasis": true,
+              "description": " Addons are registered to ComponentRegistry at startup"
+            },
+            {
+              "text": "When unloaded:",
+              "emphasis": true,
+              "description": " Fallback display (shows component name)"
+            }
           ],
           "codeBlock": {
             "header": "> JSON specification example",
-            "items": [
-              "\"component\": {",
-              "\u00a0\u00a0\"name\": \"VibeCodingDemo\"",
-              "}"
-            ]
+            "items": ["\"component\": {", "  \"name\": \"VibeCodingDemo\"", "}"]
           }
         },
         "right": {
           "titledBulletList": {
             "title": "How to Create Addons",
-            "items": [
-              "<strong>addons/src/{name}/entry.ts</strong> — create the file",
-              "<code>window.__ADDON_REGISTER__</code> — register the component",
-              "<code>npm run build:addons</code> — build"
-            ]
+            "items": ["<strong>addons/src/{name}/entry.ts</strong> — create the file", "<code>window.__ADDON_REGISTER__</code> — register the component", "<code>npm run build:addons</code> — build"]
           },
           "accentText": "→ addons/ is gitignored and only works locally"
         }
@@ -361,11 +334,7 @@
       "meta": {
         "notes": {
           "speakerNotes": "The addon system allows you to add custom components. Place an entry file in addons/src/ and register it with window.__ADDON_REGISTER__.",
-          "summary": [
-            "Add components via addons/src/{name}/entry.ts",
-            "Register with window.__ADDON_REGISTER__",
-            "Build with npm run build:addons"
-          ]
+          "summary": ["Add components via addons/src/{name}/entry.ts", "Register with window.__ADDON_REGISTER__", "Build with npm run build:addons"]
         }
       }
     },
@@ -379,13 +348,13 @@
             "header": "> meta (common to all slides)",
             "items": [
               "\"meta\": {",
-              "\u00a0\u00a0\"transition\": \"slide\",",
-              "\u00a0\u00a0\"backgroundColor\": \"#1a1a2e\",",
-              "\u00a0\u00a0\"backgroundImage\": \"/bg.png\",",
-              "\u00a0\u00a0\"notes\": \"string\" or {",
-              "\u00a0\u00a0\u00a0\u00a0\"speakerNotes\": \"Speaker notes\",",
-              "\u00a0\u00a0\u00a0\u00a0\"summary\": [\"Point 1\", ...]",
-              "\u00a0\u00a0}",
+              "  \"transition\": \"slide\",",
+              "  \"backgroundColor\": \"#1a1a2e\",",
+              "  \"backgroundImage\": \"/bg.png\",",
+              "  \"notes\": \"string\" or {",
+              "    \"speakerNotes\": \"Speaker notes\",",
+              "    \"summary\": [\"Point 1\", ...]",
+              "  }",
               "}"
             ]
           }
@@ -393,14 +362,7 @@
         "right": {
           "codeBlock": {
             "header": "> theme (entire presentation)",
-            "items": [
-              "\"theme\": {",
-              "\u00a0\u00a0\"colors\": {",
-              "\u00a0\u00a0\u00a0\u00a0\"primary\": \"#6c63ff\",",
-              "\u00a0\u00a0\u00a0\u00a0\"background\": \"#0f0e17\"",
-              "\u00a0\u00a0}",
-              "}"
-            ]
+            "items": ["\"theme\": {", "  \"colors\": {", "    \"primary\": \"#6c63ff\",", "    \"background\": \"#0f0e17\"", "  }", "}"]
           },
           "accentText": "→ Details in the next slide"
         }
@@ -408,11 +370,7 @@
       "meta": {
         "notes": {
           "speakerNotes": "The meta field lets you set transition, background color, background image, and speaker notes for each slide. The theme field configures colors and fonts for the entire presentation.",
-          "summary": [
-            "meta: transition, backgroundColor, backgroundImage, notes",
-            "theme: colors, fonts for entire presentation",
-            "notes can be string or object format"
-          ]
+          "summary": ["meta: transition, backgroundColor, backgroundImage, notes", "theme: colors, fonts for entire presentation", "notes can be string or object format"]
         }
       }
     },
@@ -427,11 +385,11 @@
             "header": "> theme.colors in slides.json",
             "items": [
               "\"colors\": {",
-              "\u00a0\u00a0\"primary\": \"#6c63ff\",",
-              "\u00a0\u00a0\"background\": \"#0f0e17\",",
-              "\u00a0\u00a0\"textHeading\": \"#ffffff\",",
-              "\u00a0\u00a0\"textBody\": \"#a0a0b0\",",
-              "\u00a0\u00a0\"accent\": \"#ff6b6b\",",
+              "  \"primary\": \"#6c63ff\",",
+              "  \"background\": \"#0f0e17\",",
+              "  \"textHeading\": \"#ffffff\",",
+              "  \"textBody\": \"#a0a0b0\",",
+              "  \"accent\": \"#ff6b6b\",",
               "}",
               "\"customCSS\": \".reveal { ... }\""
             ]
@@ -440,16 +398,20 @@
         "right": {
           "heading": "Two Ways to Set Theme",
           "items": [
-            {"text": "Method 1:", "emphasis": true, "description": " slides.json theme field (or meta.themeColors)"},
-            {"text": "Method 2:", "emphasis": true, "description": " public/theme-colors.json (colors only)"}
+            {
+              "text": "Method 1:",
+              "emphasis": true,
+              "description": " slides.json theme field (or meta.themeColors)"
+            },
+            {
+              "text": "Method 2:",
+              "emphasis": true,
+              "description": " public/theme-colors.json (colors only)"
+            }
           ],
           "codeBlock": {
             "header": "> theme-colors.json (Method 2)",
-            "items": [
-              "{",
-              "\u00a0\u00a0\"primary\": \"#6c63ff\", ...",
-              "}"
-            ]
+            "items": ["{", "  \"primary\": \"#6c63ff\", ...", "}"]
           },
           "accentText": "→ All colors have -rgb variants (usable with rgba())"
         }
@@ -457,12 +419,7 @@
       "meta": {
         "notes": {
           "speakerNotes": "Theme colors can be set via slides.json theme.colors or public/theme-colors.json. Custom CSS can also be specified with customCSS. All colors automatically generate -rgb variants.",
-          "summary": [
-            "8 color keys available in theme.colors",
-            "Add custom CSS with customCSS",
-            "theme-colors.json for colors only",
-            "All colors auto-generate -rgb variants"
-          ]
+          "summary": ["8 color keys available in theme.colors", "Add custom CSS with customCSS", "theme-colors.json for colors only", "All colors auto-generate -rgb variants"]
         }
       }
     },
@@ -475,34 +432,34 @@
           "heading": "meta.logo",
           "headingDescription": "Set a presentation logo",
           "items": [
-            {"text": "src:", "emphasis": true, "description": " Path to logo image (default: /logo.png)"},
-            {"text": "width / height:", "emphasis": true, "description": " Size specification (default: 120 x 40)"},
-            {"text": "When omitted:", "emphasis": true, "description": " Logo is not displayed"}
+            {
+              "text": "src:",
+              "emphasis": true,
+              "description": " Path to logo image (default: /logo.png)"
+            },
+            {
+              "text": "width / height:",
+              "emphasis": true,
+              "description": " Size specification (default: 120 x 40)"
+            },
+            {
+              "text": "When omitted:",
+              "emphasis": true,
+              "description": " Logo is not displayed"
+            }
           ]
         },
         "right": {
           "codeBlock": {
             "header": "> JSON specification",
-            "items": [
-              "\"meta\": {",
-              "\u00a0\u00a0\"logo\": {",
-              "\u00a0\u00a0\u00a0\u00a0\"src\": \"/my-logo.png\",",
-              "\u00a0\u00a0\u00a0\u00a0\"width\": 150,",
-              "\u00a0\u00a0\u00a0\u00a0\"height\": 50",
-              "\u00a0\u00a0}",
-              "}"
-            ]
+            "items": ["\"meta\": {", "  \"logo\": {", "    \"src\": \"/my-logo.png\",", "    \"width\": 150,", "    \"height\": 50", "  }", "}"]
           }
         }
       },
       "meta": {
         "notes": {
           "speakerNotes": "Set a logo image with meta.logo. Specify the path with src and the size with width / height. The logo is not displayed when meta.logo is omitted.",
-          "summary": [
-            "Set logo image with meta.logo",
-            "Specify src / width / height",
-            "No logo is shown when omitted"
-          ]
+          "summary": ["Set logo image with meta.logo", "Specify src / width / height", "No logo is shown when omitted"]
         }
       }
     },
@@ -515,11 +472,31 @@
           "heading": "meta.confidential",
           "headingDescription": "Show a Confidential watermark across the deck",
           "items": [
-            {"text": "text:", "emphasis": true, "description": " Required. Watermark text"},
-            {"text": "anchor / offset:", "emphasis": true, "description": " Position and offset (default: bottom-left)"},
-            {"text": "opacity / rotate:", "emphasis": true, "description": " Opacity and rotation angle"},
-            {"text": "slides[].meta:", "emphasis": true, "description": " Override logo and confidential per slide"},
-            {"text": "When omitted:", "emphasis": true, "description": " No watermark is shown"}
+            {
+              "text": "text:",
+              "emphasis": true,
+              "description": " Required. Watermark text"
+            },
+            {
+              "text": "anchor / offset:",
+              "emphasis": true,
+              "description": " Position and offset (default: bottom-left)"
+            },
+            {
+              "text": "opacity / rotate:",
+              "emphasis": true,
+              "description": " Opacity and rotation angle"
+            },
+            {
+              "text": "slides[].meta:",
+              "emphasis": true,
+              "description": " Override logo and confidential per slide"
+            },
+            {
+              "text": "When omitted:",
+              "emphasis": true,
+              "description": " No watermark is shown"
+            }
           ]
         },
         "right": {
@@ -527,15 +504,15 @@
             "header": "> JSON specification",
             "items": [
               "\"meta\": {",
-              "\u00a0\u00a0\"confidential\": { \"text\": \"CONFIDENTIAL\" }",
+              "  \"confidential\": { \"text\": \"CONFIDENTIAL\" }",
               "},",
               "\"slides\": [",
-              "\u00a0\u00a0{",
-              "\u00a0\u00a0\u00a0\u00a0\"meta\": {",
-              "\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"confidential\": { \"text\": \"DRAFT\" },",
-              "\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"logo\": { \"hidden\": true }",
-              "\u00a0\u00a0\u00a0\u00a0}",
-              "\u00a0\u00a0}",
+              "  {",
+              "    \"meta\": {",
+              "      \"confidential\": { \"text\": \"DRAFT\" },",
+              "      \"logo\": { \"hidden\": true }",
+              "    }",
+              "  }",
               "]"
             ]
           }
@@ -544,11 +521,7 @@
       "meta": {
         "notes": {
           "speakerNotes": "Set a deck-wide Confidential watermark with meta.confidential. text is required, and anchor / offset control the position while opacity / rotate adjust the look. You can override logo and confidential per slide with slides[].meta.confidential and slides[].meta.logo, including hiding just the logo with hidden: true.",
-          "summary": [
-            "Show a deck-wide watermark with meta.confidential",
-            "text required; anchor/offset/opacity/rotate to adjust",
-            "Override logo/confidential per slide with slides[].meta"
-          ]
+          "summary": ["Show a deck-wide watermark with meta.confidential", "text required; anchor/offset/opacity/rotate to adjust", "Override logo/confidential per slide with slides[].meta"]
         }
       }
     },
@@ -561,11 +534,31 @@
           "heading": "theme.fonts",
           "headingDescription": "Customize font families",
           "items": [
-            {"text": "heading:", "emphasis": true, "description": " Font for headings"},
-            {"text": "body:", "emphasis": true, "description": " Font for body text"},
-            {"text": "code:", "emphasis": true, "description": " Font for code blocks"},
-            {"text": "baseFontSize:", "emphasis": true, "description": " Base font size (default: 24px)"},
-            {"text": "sources:", "emphasis": true, "description": " Array of external font URLs (e.g., Google Fonts)"}
+            {
+              "text": "heading:",
+              "emphasis": true,
+              "description": " Font for headings"
+            },
+            {
+              "text": "body:",
+              "emphasis": true,
+              "description": " Font for body text"
+            },
+            {
+              "text": "code:",
+              "emphasis": true,
+              "description": " Font for code blocks"
+            },
+            {
+              "text": "baseFontSize:",
+              "emphasis": true,
+              "description": " Base font size (default: 24px)"
+            },
+            {
+              "text": "sources:",
+              "emphasis": true,
+              "description": " Array of external font URLs (e.g., Google Fonts)"
+            }
           ]
         },
         "right": {
@@ -573,15 +566,15 @@
             "header": "> JSON specification",
             "items": [
               "\"theme\": {",
-              "\u00a0\u00a0\"fonts\": {",
-              "\u00a0\u00a0\u00a0\u00a0\"heading\": \"'Noto Sans JP'\",",
-              "\u00a0\u00a0\u00a0\u00a0\"body\": \"'Noto Sans JP'\",",
-              "\u00a0\u00a0\u00a0\u00a0\"code\": \"'Fira Code'\",",
-              "\u00a0\u00a0\u00a0\u00a0\"baseFontSize\": \"24px\",",
-              "\u00a0\u00a0\u00a0\u00a0\"sources\": [",
-              "\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"https://fonts...\"",
-              "\u00a0\u00a0\u00a0\u00a0]",
-              "\u00a0\u00a0}",
+              "  \"fonts\": {",
+              "    \"heading\": \"'Noto Sans JP'\",",
+              "    \"body\": \"'Noto Sans JP'\",",
+              "    \"code\": \"'Fira Code'\",",
+              "    \"baseFontSize\": \"24px\",",
+              "    \"sources\": [",
+              "      \"https://fonts...\"",
+              "    ]",
+              "  }",
               "}"
             ]
           }
@@ -590,11 +583,7 @@
       "meta": {
         "notes": {
           "speakerNotes": "Customize font families with theme.fonts. Three types can be specified — heading / body / code — along with baseFontSize for the base size and sources for external font URLs.",
-          "summary": [
-            "Customize fonts with theme.fonts",
-            "3 font types: heading / body / code",
-            "baseFontSize and sources also configurable"
-          ]
+          "summary": ["Customize fonts with theme.fonts", "3 font types: heading / body / code", "baseFontSize and sources also configurable"]
         }
       }
     },
@@ -605,22 +594,12 @@
         "title": "Presenter View",
         "left": {
           "heading": "Overview",
-          "paragraphs": [
-            "Click the \"Presenter View\" button in the top right to open a dedicated presenter window.",
-            "The main window and presenter view are synchronized bidirectionally. You can navigate slides from either window."
-          ]
+          "paragraphs": ["Click the \"Presenter View\" button in the top right to open a dedicated presenter window.", "The main window and presenter view are synchronized bidirectionally. You can navigate slides from either window."]
         },
         "right": {
           "codeBlock": {
             "header": "> notes configuration example",
-            "items": [
-              "\"meta\": {",
-              "\u00a0\u00a0\"notes\": {",
-              "\u00a0\u00a0\u00a0\u00a0\"speakerNotes\": \"Speaker notes\",",
-              "\u00a0\u00a0\u00a0\u00a0\"summary\": [\"Point 1\", \"Point 2\"]",
-              "\u00a0\u00a0}",
-              "}"
-            ]
+            "items": ["\"meta\": {", "  \"notes\": {", "    \"speakerNotes\": \"Speaker notes\",", "    \"summary\": [\"Point 1\", \"Point 2\"]", "  }", "}"]
           },
           "accentText": "→ Set speakerNotes and summary in meta.notes to make the most of it"
         }
@@ -628,11 +607,7 @@
       "meta": {
         "notes": {
           "speakerNotes": "The presenter view opens in a separate window and is synchronized bidirectionally with the main window. You can navigate slides from either window.",
-          "summary": [
-            "Opens in separate window via top-right button",
-            "Bidirectional sync with main window",
-            "Set speakerNotes / summary in meta.notes"
-          ]
+          "summary": ["Opens in separate window via top-right button", "Bidirectional sync with main window", "Set speakerNotes / summary in meta.notes"]
         }
       }
     },
@@ -643,29 +618,39 @@
         "title": "Presenter View — 4 Panels",
         "left": {
           "items": [
-            {"text": "Speaker Notes:", "emphasis": true, "description": " Displays speaker notes (speakerNotes) for the current slide"},
-            {"text": "Previous Slide Preview:", "emphasis": true, "description": " Shows a thumbnail of the previous slide"},
-            {"text": "Next Slide Preview:", "emphasis": true, "description": " Shows a thumbnail of the next slide"},
-            {"text": "Key Points Summary:", "emphasis": true, "description": " Displays summary points as bullet list"}
+            {
+              "text": "Speaker Notes:",
+              "emphasis": true,
+              "description": " Displays speaker notes (speakerNotes) for the current slide"
+            },
+            {
+              "text": "Previous Slide Preview:",
+              "emphasis": true,
+              "description": " Shows a thumbnail of the previous slide"
+            },
+            {
+              "text": "Next Slide Preview:",
+              "emphasis": true,
+              "description": " Shows a thumbnail of the next slide"
+            },
+            {
+              "text": "Key Points Summary:",
+              "emphasis": true,
+              "description": " Displays summary points as bullet list"
+            }
           ]
         },
         "right": {
           "titledBulletList": {
             "title": "Keyboard Controls",
-            "items": [
-              "<strong>← / →</strong>: Navigate to previous/next slide",
-              "<strong>Space</strong>: Navigate to next slide"
-            ]
+            "items": ["<strong>← / →</strong>: Navigate to previous/next slide", "<strong>Space</strong>: Navigate to next slide"]
           }
         }
       },
       "meta": {
         "notes": {
           "speakerNotes": "The presenter view shows 4 panels: speaker notes, previous/next slide previews, and key points summary. Use ←/→/Space to navigate from either window.",
-          "summary": [
-            "4 panels: speaker notes, prev/next previews, summary",
-            "Navigate with ←/→/Space"
-          ]
+          "summary": ["4 panels: speaker notes, prev/next previews, summary", "Navigate with ←/→/Space"]
         }
       }
     },
@@ -679,25 +664,28 @@
           "headingDescription": "Specify audio files per slide",
           "codeBlock": {
             "header": "> JSON specification",
-            "items": [
-              "\"meta\": {",
-              "\u00a0\u00a0\"notes\": {",
-              "\u00a0\u00a0\u00a0\u00a0\"voice\": \"/voice/slide-01.wav\",",
-              "\u00a0\u00a0\u00a0\u00a0\"speakerNotes\": \"Speaker notes\"",
-              "\u00a0\u00a0}",
-              "}"
-            ]
+            "items": ["\"meta\": {", "  \"notes\": {", "    \"voice\": \"/voice/slide-01.wav\",", "    \"speakerNotes\": \"Speaker notes\"", "  }", "}"]
           },
-          "paragraphs": [
-            "Place audio files under <code>public/</code>."
-          ]
+          "paragraphs": ["Place audio files under <code>public/</code>."]
         },
         "right": {
           "heading": "Toolbar Buttons",
           "items": [
-            {"text": "Play/Stop:", "emphasis": true, "description": " Manually play or stop the current slide's audio"},
-            {"text": "Auto-play:", "emphasis": true, "description": " Toggle automatic audio playback on slide transition"},
-            {"text": "Auto-slideshow:", "emphasis": true, "description": " Toggle automatic slide advance when audio ends"}
+            {
+              "text": "Play/Stop:",
+              "emphasis": true,
+              "description": " Manually play or stop the current slide's audio"
+            },
+            {
+              "text": "Auto-play:",
+              "emphasis": true,
+              "description": " Toggle automatic audio playback on slide transition"
+            },
+            {
+              "text": "Auto-slideshow:",
+              "emphasis": true,
+              "description": " Toggle automatic slide advance when audio ends"
+            }
           ],
           "accentText": "→ Auto-play + Auto-slideshow enables fully automated presentations"
         }
@@ -705,13 +693,1595 @@
       "meta": {
         "notes": {
           "speakerNotes": "This slide introduces the audio playback feature. Specify the audio file path in meta.notes.voice to enable playback from the toolbar. Combining auto-play and auto-slideshow enables fully automated presentations across all slides.",
-          "summary": [
-            "Specify audio files with meta.notes.voice",
-            "Toolbar controls: manual play, auto-play, auto-slideshow",
-            "Auto-play + auto-slideshow for fully automated presentations"
-          ],
+          "summary": ["Specify audio files with meta.notes.voice", "Toolbar controls: manual play, auto-play, auto-slideshow", "Auto-play + auto-slideshow for fully automated presentations"],
           "voice": "voice/guide-audio-en.wav"
         }
+      }
+    },
+    {
+      "id": "guide-content-body-items",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (body/items)",
+        "body": "When none of steps / tiles / component are specified, body and items render plain body text.",
+        "items": [
+          {
+            "text": "body: multi-line paragraph text",
+            "emphasis": true
+          },
+          {
+            "text": "items: bullet list (nestable)",
+            "items": [
+              {
+                "text": "Child items can have their own items"
+              },
+              {
+                "text": "emphasis: true renders bold text",
+                "emphasis": true
+              }
+            ]
+          }
+        ]
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "When none of steps / tiles / component are specified, body and items render plain body text. items support emphasis and can be nested.",
+          "summary": ["Without steps/tiles/component, body + items render", "items support emphasis: true for bold text", "items can be nested (child items)"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-images",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (images)",
+        "images": [
+          {
+            "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0ODAgMjcwIiB3aWR0aD0iNDgwIiBoZWlnaHQ9IjI3MCI+PHJlY3Qgd2lkdGg9IjQ4MCIgaGVpZ2h0PSIyNzAiIGZpbGw9IiMxZjI0MzAiLz48ZyBmaWxsPSJub25lIiBzdHJva2U9IiMyZGQ0YmYiIHN0cm9rZS13aWR0aD0iMyI+PHJlY3QgeD0iMTQiIHk9IjE0IiB3aWR0aD0iNDUyIiBoZWlnaHQ9IjI0MiIvPjxjaXJjbGUgY3g9IjI0MCIgY3k9IjExNyIgcj0iNDUiLz48L2c+PHRleHQgeD0iMjQwIiB5PSIxOTciIGZvbnQtZmFtaWx5PSJIZWx2ZXRpY2EgTmV1ZSxBcmlhbCxzYW5zLXNlcmlmIiBmb250LXNpemU9IjI2IiBmb250LXdlaWdodD0iNzAwIiBmaWxsPSIjZjhmYWZjIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj4xNjo5PC90ZXh0Pjwvc3ZnPg==",
+            "alt": "Landscape sample image",
+            "caption": "Landscape (16:9)"
+          },
+          {
+            "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNzAgMzYwIiB3aWR0aD0iMjcwIiBoZWlnaHQ9IjM2MCI+PHJlY3Qgd2lkdGg9IjI3MCIgaGVpZ2h0PSIzNjAiIGZpbGw9IiMxZjI0MzAiLz48ZyBmaWxsPSJub25lIiBzdHJva2U9IiMyZGQ0YmYiIHN0cm9rZS13aWR0aD0iMyI+PHJlY3QgeD0iMTQiIHk9IjE0IiB3aWR0aD0iMjQyIiBoZWlnaHQ9IjMzMiIvPjxjaXJjbGUgY3g9IjEzNSIgY3k9IjE2MiIgcj0iNDUiLz48L2c+PHRleHQgeD0iMTM1IiB5PSIyNDIiIGZvbnQtZmFtaWx5PSJIZWx2ZXRpY2EgTmV1ZSxBcmlhbCxzYW5zLXNlcmlmIiBmb250LXNpemU9IjI2IiBmb250LXdlaWdodD0iNzAwIiBmaWxsPSIjZjhmYWZjIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj4zOjQ8L3RleHQ+PC9zdmc+",
+            "alt": "Portrait sample image",
+            "caption": "Portrait (3:4)"
+          },
+          {
+            "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMjAgMzIwIiB3aWR0aD0iMzIwIiBoZWlnaHQ9IjMyMCI+PHJlY3Qgd2lkdGg9IjMyMCIgaGVpZ2h0PSIzMjAiIGZpbGw9IiMxZjI0MzAiLz48ZyBmaWxsPSJub25lIiBzdHJva2U9IiMyZGQ0YmYiIHN0cm9rZS13aWR0aD0iMyI+PHJlY3QgeD0iMTQiIHk9IjE0IiB3aWR0aD0iMjkyIiBoZWlnaHQ9IjI5MiIvPjxjaXJjbGUgY3g9IjE2MCIgY3k9IjE0MiIgcj0iNDUiLz48L2c+PHRleHQgeD0iMTYwIiB5PSIyMjIiIGZvbnQtZmFtaWx5PSJIZWx2ZXRpY2EgTmV1ZSxBcmlhbCxzYW5zLXNlcmlmIiBmb250LXNpemU9IjI2IiBmb250LXdlaWdodD0iNzAwIiBmaWxsPSIjZjhmYWZjIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj4xOjE8L3RleHQ+PC9zdmc+",
+            "alt": "Square sample image",
+            "caption": "Square (1:1)"
+          }
+        ]
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "Specifying images on the content layout arranges multiple images in a grid. Each image can set src, alt, and caption.",
+          "summary": ["images renders multiple images in a grid", "Set src, alt, and caption per image", "Landscape, portrait, and square images align consistently"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-diagram",
+      "layout": "content",
+      "content": {
+        "title": "Diagram primitives",
+        "component": {
+          "name": "Diagram",
+          "props": {
+            "nodes": [
+              {
+                "id": "a",
+                "rect": {
+                  "x": 0.02,
+                  "y": 0.06,
+                  "w": 0.16,
+                  "h": 0.26
+                },
+                "title": "Card",
+                "body": "outline",
+                "badge": 1,
+                "color": "primary"
+              },
+              {
+                "id": "b",
+                "rect": {
+                  "x": 0.3,
+                  "y": 0.06,
+                  "w": 0.16,
+                  "h": 0.26
+                },
+                "title": "Card",
+                "body": "filled",
+                "badge": 2,
+                "color": "success",
+                "variant": "filled"
+              },
+              {
+                "id": "c",
+                "rect": {
+                  "x": 0.02,
+                  "y": 0.64,
+                  "w": 0.16,
+                  "h": 0.26
+                },
+                "title": "Card",
+                "body": "plain",
+                "badge": 3,
+                "color": "neutral",
+                "variant": "plain"
+              }
+            ],
+            "connectors": [
+              {
+                "from": "a",
+                "to": "b",
+                "head": "triangle",
+                "label": "connector"
+              },
+              {
+                "from": "b",
+                "to": "c",
+                "routing": "vertical",
+                "head": "triangle"
+              }
+            ],
+            "arrows": [
+              {
+                "from": {
+                  "x": 0.53,
+                  "y": 0.1
+                },
+                "to": {
+                  "x": 0.97,
+                  "y": 0.1
+                },
+                "head": "arrow",
+                "label": "arrow (horizontal)"
+              },
+              {
+                "from": {
+                  "x": 0.53,
+                  "y": 0.28
+                },
+                "to": {
+                  "x": 0.97,
+                  "y": 0.44
+                },
+                "head": "triangle",
+                "thickness": 3,
+                "label": "diagonal"
+              },
+              {
+                "from": {
+                  "x": 0.56,
+                  "y": 0.55
+                },
+                "to": {
+                  "x": 0.56,
+                  "y": 0.8
+                },
+                "head": "arrow"
+              },
+              {
+                "from": {
+                  "x": 0.64,
+                  "y": 0.55
+                },
+                "to": {
+                  "x": 0.64,
+                  "y": 0.8
+                },
+                "head": "triangle",
+                "tail": "dot",
+                "dashed": true
+              }
+            ],
+            "badges": [
+              {
+                "at": {
+                  "x": 0.9,
+                  "y": 0.6
+                },
+                "text": "★",
+                "shape": "square",
+                "color": "warning"
+              }
+            ],
+            "callouts": [
+              {
+                "at": {
+                  "x": 0.876,
+                  "y": 0.638
+                },
+                "to": {
+                  "x": 0.8,
+                  "y": 0.86
+                },
+                "label": "callout"
+              }
+            ]
+          }
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "The \"Diagram\" component freely places cards (nodes), connectors, arrows, badges, and callouts using normalized coordinates (0-1). Arrows can be dashed via dashed: true, and solid lines get a continuous flowing light effect.",
+          "summary": ["The Diagram component places diagram primitives", "nodes / connectors / arrows / badges / callouts", "Coordinates are normalized (0-1) relative to the canvas"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-chart-bar",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (chart: bar)",
+        "chart": {
+          "type": "bar",
+          "unit": "%",
+          "categories": ["Q1", "Q2", "Q3", "Q4"],
+          "series": [
+            {
+              "name": "This year",
+              "values": [42, 51, 58, 67]
+            },
+            {
+              "name": "Last year",
+              "values": [38, 40, 47, 52],
+              "color": "series3"
+            }
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "chart.type: \"bar\" renders a vertical bar chart. Specify multiple series to compare them side by side. Bars grow upward on appearance.",
+          "summary": ["chart.type: \"bar\" renders a vertical bar chart", "Multiple series render side by side for comparison", "unit adds a unit label"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-chart-line",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (chart: line)",
+        "chart": {
+          "type": "line",
+          "unit": "k",
+          "categories": ["24/11", "24/12", "25/01", "25/02", "25/03", "25/04", "25/05", "25/06"],
+          "series": [
+            {
+              "name": "Actual",
+              "values": [34, 33, 38, 41, 44, 48, 52, 57]
+            },
+            {
+              "name": "Plan",
+              "values": [32, 34, 36, 38, 40, 42, 44, 46],
+              "color": "series4"
+            }
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "chart.type: \"line\" renders a line chart, including dense time-series data such as monthly trends. Lines draw in from left to right.",
+          "summary": ["chart.type: \"line\" renders a line chart", "Handles dense time-series data", "Multiple series compare, e.g., actual vs. plan"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-chart-pie",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (chart: pie)",
+        "chart": {
+          "type": "pie",
+          "unit": "%",
+          "categories": ["Design", "Build", "Review", "Verify", "Other"],
+          "series": [
+            {
+              "values": [28, 34, 14, 18, 6]
+            }
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "chart.type: \"pie\" renders a pie chart, ideal for showing proportions, with the legend generated automatically below. Slices pop in from the center.",
+          "summary": ["chart.type: \"pie\" renders a pie chart", "Best for showing proportions/composition", "Legend is generated automatically"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-chart-hbar",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (chart: hbar)",
+        "chart": {
+          "type": "hbar",
+          "categories": ["Expand automated tests", "Unify review criteria", "Automate release steps", "Build monitoring dashboards", "Refresh documentation", "Improve onboarding"],
+          "series": [
+            {
+              "values": [124, 98, 76, 61, 45, 32]
+            }
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "chart.type: \"hbar\" renders a horizontal bar chart, staying readable even when category names are long.",
+          "summary": ["chart.type: \"hbar\" renders a horizontal bar chart", "Best when category names are long", "Row spacing auto-adjusts for many categories"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-chart-kpi",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (chart: kpi)",
+        "chart": {
+          "type": "kpi",
+          "label": "Monthly active users",
+          "value": 128400,
+          "delta": "+18.2% year over year",
+          "trend": [72000, 78500, 81200, 86400, 95100, 104300, 118600, 128400],
+          "color": "series2"
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "chart.type: \"kpi\" shows a large number with a trend sparkline. Use label, value, and delta to highlight a key metric.",
+          "summary": ["chart.type: \"kpi\" shows a large value with a trend", "Specify label, value, delta, and trend", "The sparkline draws in from left to right"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-chart-kpi-row",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (chart: kpi row)",
+        "chart": {
+          "type": "kpi",
+          "items": [
+            {
+              "label": "Revenue growth",
+              "value": 24.6,
+              "unit": "%",
+              "delta": "+3.1pt",
+              "deltaDirection": "up",
+              "deltaStatus": "success"
+            },
+            {
+              "label": "New contracts",
+              "value": 342,
+              "delta": "+6.5%",
+              "deltaDirection": "up",
+              "deltaStatus": "success",
+              "color": "series3"
+            },
+            {
+              "label": "Churn rate",
+              "value": 3.1,
+              "unit": "%",
+              "delta": "+0.4pt",
+              "deltaDirection": "up",
+              "deltaStatus": "danger",
+              "color": "series4"
+            },
+            {
+              "label": "NPS",
+              "value": 42,
+              "delta": "±0",
+              "deltaDirection": "flat",
+              "deltaStatus": "neutral",
+              "color": "series5"
+            }
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "Passing multiple items to chart.type: \"kpi\" lays out a row of KPIs. Font size automatically shrinks as the count grows.",
+          "summary": ["items lays out multiple KPIs in a row", "deltaDirection / deltaStatus color-code the change", "Font size auto-shrinks as the count grows"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-table",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (table)",
+        "table": {
+          "columns": [
+            {
+              "label": "Feature",
+              "align": "left",
+              "width": 2
+            },
+            {
+              "label": "Free",
+              "align": "center",
+              "width": 1.2
+            },
+            {
+              "label": "Pro",
+              "align": "center",
+              "width": 1
+            },
+            {
+              "label": "Enterprise",
+              "align": "center",
+              "width": 1.5
+            }
+          ],
+          "rows": [
+            ["Price", "$0", "$12/mo", "Custom"],
+            ["Users", "1", "10", "Unlimited"],
+            ["Support", "Community", "Email", "Dedicated"],
+            ["SLA", "-", "99.9%", "99.99%"],
+            ["SSO", "-", "-", "Yes"]
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "Specifying table on the content layout renders a table with borders and zebra striping. Rows appear from top to bottom, and each column can set its own alignment.",
+          "summary": ["table renders a table with borders and zebra stripes", "columns set width and alignment per column", "Density auto-adjusts for many rows"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-compare",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (compare)",
+        "compare": {
+          "left": {
+            "heading": "Self-hosted",
+            "items": [
+              {
+                "text": "No upfront cost",
+                "status": "pass"
+              },
+              {
+                "text": "Data stays in-house",
+                "status": "pass"
+              },
+              {
+                "text": "Ops owned by your team",
+                "status": "warn"
+              },
+              {
+                "text": "Scaling needs manual work",
+                "status": "fail"
+              }
+            ]
+          },
+          "right": {
+            "heading": "Managed service",
+            "items": [
+              {
+                "text": "Low operational overhead",
+                "status": "pass"
+              },
+              {
+                "text": "Scales automatically",
+                "status": "pass"
+              },
+              {
+                "text": "Monthly cost applies",
+                "status": "warn"
+              },
+              {
+                "text": "Exposed to region outages",
+                "status": "fail"
+              }
+            ]
+          }
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "compare renders two options side by side for comparison. Setting status: \"pass\"/\"warn\"/\"fail\" on each item shows an icon and color for the verdict.",
+          "summary": ["compare shows two options side by side", "status: pass/warn/fail sets icon and color", "heading sets each side's title"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-flow",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (flow)",
+        "flow": [
+          {
+            "title": "Requirements",
+            "description": "Surface issues and acceptance criteria"
+          },
+          {
+            "title": "Design",
+            "description": "Decide data shape and API"
+          },
+          {
+            "title": "Build",
+            "description": "Ship in small increments"
+          },
+          {
+            "title": "Review",
+            "description": "Check against design principles"
+          },
+          {
+            "title": "Release",
+            "description": "Verify with the reference deck"
+          }
+        ]
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "flow renders a horizontal process flow of cards connected by arrows. Card width and font size auto-adjust to the number of steps.",
+          "summary": ["flow renders a horizontal process flow", "Specify title / description per step", "Width and font size auto-adjust to the step count"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-checklist",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (checklist)",
+        "checklist": [
+          {
+            "title": "Acceptance criteria met",
+            "description": "Map one-to-one with the issue checkboxes",
+            "checked": true
+          },
+          {
+            "title": "Reference deck recaptured",
+            "description": "Only the added slide types should differ",
+            "checked": true
+          },
+          {
+            "title": "Visual inspection passed",
+            "description": "Zero overflow, safe-area or decoration overlaps",
+            "checked": true
+          },
+          {
+            "title": "All CI jobs green",
+            "description": "Local results are not evidence"
+          },
+          {
+            "title": "Out-of-scope work written up",
+            "description": "File follow-up issues and cite the numbers"
+          }
+        ]
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "checklist renders a list of items with checkboxes. Set checked: true to mark an item as complete.",
+          "summary": ["checklist renders items with checkboxes", "checked: true marks an item as done", "Specify title / description per item"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-steps-columns",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (steps + stepColumns)",
+        "stepColumns": 2,
+        "steps": [
+          {
+            "number": 1,
+            "title": "Pick the issue",
+            "description": "Start with the fewest dependencies"
+          },
+          {
+            "number": 2,
+            "title": "Fix the contract",
+            "description": "Split ownership across lanes first"
+          },
+          {
+            "number": 3,
+            "title": "Migrate the base",
+            "description": "Move private rules to the shared contract"
+          },
+          {
+            "number": 4,
+            "title": "Add the types",
+            "description": "Build on the migrated base"
+          },
+          {
+            "number": 5,
+            "title": "Verify by measuring",
+            "description": "Detect overflow from the real DOM"
+          },
+          {
+            "number": 6,
+            "title": "Recapture the deck",
+            "description": "Confirm nothing else changed"
+          },
+          {
+            "number": 7,
+            "title": "Open the PR",
+            "description": "State leftovers and follow-up issues"
+          }
+        ]
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "Adding stepColumns to steps switches to a multi-column numbered list without a connecting line, which suits timelines with many steps.",
+          "summary": ["stepColumns renders steps in multiple columns", "A numbered list without a connecting line", "More readable than one row when there are many steps"]
+        }
+      }
+    },
+    {
+      "id": "guide-two-column-diagram-fill",
+      "layout": "two-column",
+      "content": {
+        "title": "layout: two-column (filling component)",
+        "left": {
+          "heading": "A diagram inside a column",
+          "paragraphs": ["The column itself hands the remaining body height to the canvas"],
+          "items": [
+            {
+              "text": "The column is the fill host"
+            },
+            {
+              "text": "Marking the body area instead breaks the 2-column grid"
+            }
+          ]
+        },
+        "right": {
+          "component": {
+            "name": "Diagram",
+            "props": {
+              "nodes": [
+                {
+                  "id": "host",
+                  "rect": {
+                    "x": 0.06,
+                    "y": 0.04,
+                    "w": 0.88,
+                    "h": 0.24
+                  },
+                  "title": "Column",
+                  "body": "fill host",
+                  "color": "primary"
+                },
+                {
+                  "id": "item",
+                  "rect": {
+                    "x": 0.06,
+                    "y": 0.38,
+                    "w": 0.88,
+                    "h": 0.24
+                  },
+                  "title": "Diagram canvas",
+                  "body": "fill item",
+                  "color": "success",
+                  "variant": "filled"
+                },
+                {
+                  "id": "primitive",
+                  "rect": {
+                    "x": 0.06,
+                    "y": 0.72,
+                    "w": 0.88,
+                    "h": 0.24
+                  },
+                  "title": "Primitives",
+                  "body": "placed in normalized coords",
+                  "color": "neutral",
+                  "variant": "plain"
+                }
+              ],
+              "connectors": [
+                {
+                  "from": "host",
+                  "to": "item",
+                  "routing": "vertical",
+                  "head": "triangle"
+                },
+                {
+                  "from": "item",
+                  "to": "primitive",
+                  "routing": "vertical",
+                  "head": "triangle"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "Placing the Diagram component in a two-column's left/right lets the column itself hand its remaining height to the canvas. The height-receiving point must live on the column, not the body area.",
+          "summary": ["Place Diagram inside a two-column's left/right", "The column hands its remaining height to the canvas", "The fill host must be the column, not the body area"]
+        }
+      }
+    },
+    {
+      "id": "guide-center-quote",
+      "layout": "center",
+      "content": {
+        "variant": "quote",
+        "quote": "Never bend the design\nto save implementation effort",
+        "citation": "Design decision rules"
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "The center layout's variant: \"quote\" displays a quotation with its citation prominently. Use it for a strong statement or a closing line.",
+          "summary": ["variant: \"quote\" renders a quote slide", "Specify quote and citation", "Best for a strong statement or memorable closing line"]
+        }
+      }
+    },
+    {
+      "id": "guide-center-message",
+      "layout": "center",
+      "content": {
+        "variant": "message",
+        "message": "One message per slide",
+        "body": "The pale variant, used to switch chapters"
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "variant: \"message\" shows one message per slide on a pale background, useful when you want to draw attention, such as a chapter switch.",
+          "summary": ["variant: \"message\" shows one message per slide", "The pale background draws attention to the text", "Best for switching chapters"]
+        }
+      }
+    },
+    {
+      "id": "guide-center-message-inverse",
+      "layout": "center",
+      "content": {
+        "variant": "message-inverse",
+        "message": "Fill the slide\nto land the point",
+        "body": "The fill and text colors live in the master and its tokens"
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "variant: \"message-inverse\" pairs with a full-bleed master fill to make the point stand out. Fill and text colors live in the master and its tokens, so contrast is verified automatically.",
+          "summary": ["variant: \"message-inverse\" pairs with a full-bleed fill", "Fill/text colors live in the master and tokens", "Contrast is verified automatically"]
+        }
+      }
+    },
+    {
+      "id": "guide-closing-slide",
+      "layout": "center",
+      "content": {
+        "variant": "closing",
+        "message": "Thank you",
+        "body": "Closing on a full-bleed fill with the logo behind it",
+        "githubRepo": "ToshikiImagawa/slide-presentation-app"
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "variant: \"closing\" is built for the final slide and pairs with a full-bleed logo placement. Specifying githubRepo shows a link to the repository.",
+          "summary": ["variant: \"closing\" is for the final slide", "Pairs with a full-bleed logo placement", "githubRepo shows a repository link"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-toc",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (toc)",
+        "toc": {
+          "items": [
+            {
+              "number": "01",
+              "title": "Background",
+              "page": 2
+            },
+            {
+              "number": "02",
+              "title": "Design",
+              "page": 8
+            },
+            {
+              "number": "03",
+              "title": "Implementation",
+              "page": 15
+            },
+            {
+              "number": "04",
+              "title": "Verification",
+              "page": 22
+            }
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "toc renders a table of contents. Specify number, title, and page to list chapter numbers, titles, and starting pages.",
+          "summary": ["toc renders a table-of-contents slide", "Specify number, title, and page per item", "Best near the start of a chaptered presentation"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-hierarchy-diagram",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (hierarchyDiagram)",
+        "hierarchyDiagram": {
+          "layers": [
+            {
+              "title": "Presentation Layer",
+              "description": "Web UI, mobile app"
+            },
+            {
+              "title": "Business Layer",
+              "description": "API, domain logic"
+            },
+            {
+              "title": "Data Layer",
+              "description": "RDB, cache"
+            }
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "hierarchyDiagram stacks a layered structure (such as an architecture) from top to bottom. Specify title and description on each layer.",
+          "summary": ["hierarchyDiagram stacks a layered structure", "Specify title / description per layer", "Best for explaining an architecture"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-server-diagram",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (serverDiagram)",
+        "serverDiagram": {
+          "zones": [
+            {
+              "title": "Public Subnet",
+              "nodes": [
+                {
+                  "id": "lb",
+                  "label": "Load Balancer"
+                }
+              ]
+            },
+            {
+              "title": "Private Subnet",
+              "nodes": [
+                {
+                  "id": "app1",
+                  "label": "API Server"
+                },
+                {
+                  "id": "app2",
+                  "label": "API Server"
+                }
+              ]
+            },
+            {
+              "title": "Data Tier",
+              "nodes": [
+                {
+                  "id": "db",
+                  "label": "RDS"
+                }
+              ]
+            }
+          ],
+          "connections": [
+            {
+              "from": "lb",
+              "to": "app1"
+            },
+            {
+              "from": "lb",
+              "to": "app2"
+            },
+            {
+              "from": "app1",
+              "to": "db"
+            },
+            {
+              "from": "app2",
+              "to": "db"
+            }
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "serverDiagram groups nodes into zones (such as subnets) and connects them with lines, useful for explaining infrastructure.",
+          "summary": ["serverDiagram shows an infrastructure diagram", "zones group nodes together", "connections link nodes together"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-org-chart",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (orgChart)",
+        "orgChart": {
+          "nodes": [
+            {
+              "id": "ceo",
+              "label": "CEO"
+            },
+            {
+              "id": "cto",
+              "label": "CTO",
+              "parent": "ceo"
+            },
+            {
+              "id": "coo",
+              "label": "COO",
+              "parent": "ceo"
+            },
+            {
+              "id": "eng",
+              "label": "Engineering Manager",
+              "parent": "cto"
+            },
+            {
+              "id": "biz",
+              "label": "Business Manager",
+              "parent": "coo"
+            }
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "orgChart auto-arranges an organization chart just by specifying parent, with no manual layout math needed.",
+          "summary": ["orgChart auto-arranges an org chart", "Specify parent to build the hierarchy", "No manual coordinate math required"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-class-diagram",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (classDiagram)",
+        "classDiagram": {
+          "classes": [
+            {
+              "id": "user",
+              "label": "User",
+              "attributes": ["id: string", "name: string"],
+              "methods": ["login(): void"]
+            },
+            {
+              "id": "admin",
+              "label": "Admin",
+              "attributes": ["role: string"],
+              "methods": ["ban(user): void"]
+            }
+          ],
+          "relations": [
+            {
+              "from": "admin",
+              "to": "user",
+              "type": "inheritance"
+            }
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "classDiagram renders a UML class diagram. Specify attributes / methods as arrays and use relations for relationships such as inheritance.",
+          "summary": ["classDiagram renders a UML class diagram", "Specify attributes / methods as arrays", "relations expresses relationships like inheritance"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-date-timeline",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (dateTimeline)",
+        "dateTimeline": [
+          {
+            "date": "2026/01",
+            "title": "Requirements finalized",
+            "description": "Scope locked"
+          },
+          {
+            "date": "2026/03",
+            "title": "Implementation complete"
+          },
+          {
+            "date": "2026/04",
+            "title": "Release",
+            "description": "Shipped to production"
+          }
+        ]
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "dateTimeline lines up dated milestones on a single line. Specify date, title, and description.",
+          "summary": ["dateTimeline lines up dated milestones", "Specify date, title, and description", "Renders as a single timeline"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-date-timeline-columns",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (dateTimeline + dateTimelineColumns)",
+        "dateTimelineColumns": 3,
+        "dateTimeline": [
+          {
+            "date": "2022",
+            "title": "Global expansion",
+            "description": "Added localization"
+          },
+          {
+            "date": "2022/06",
+            "title": "Series A"
+          },
+          {
+            "date": "2023",
+            "title": "Org grows",
+            "description": "Split into 3 teams"
+          },
+          {
+            "date": "2023/09",
+            "title": "Major contract"
+          },
+          {
+            "date": "2024",
+            "title": "Platformization"
+          },
+          {
+            "date": "2024/11",
+            "title": "Certification"
+          },
+          {
+            "date": "2025",
+            "title": "Next-gen platform migration",
+            "description": "Legacy phased out"
+          },
+          {
+            "date": "2026",
+            "title": "Today"
+          }
+        ]
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "Adding dateTimelineColumns to dateTimeline wraps a long history into multiple columns when there are many entries.",
+          "summary": ["dateTimelineColumns wraps a timeline into columns", "Handles long histories with many entries", "More compact than a single column"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-flowchart",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (flowchart)",
+        "flowchart": {
+          "nodes": [
+            {
+              "id": "start",
+              "label": "Request",
+              "shape": "start",
+              "row": 0,
+              "col": 1
+            },
+            {
+              "id": "check",
+              "label": "Approved?",
+              "shape": "decision",
+              "row": 1,
+              "col": 1
+            },
+            {
+              "id": "approve",
+              "label": "Process approval",
+              "shape": "process",
+              "row": 2,
+              "col": 0
+            },
+            {
+              "id": "reject",
+              "label": "Notify rejection",
+              "shape": "process",
+              "row": 2,
+              "col": 2
+            },
+            {
+              "id": "end",
+              "label": "Done",
+              "shape": "end",
+              "row": 3,
+              "col": 1
+            }
+          ],
+          "edges": [
+            {
+              "from": "start",
+              "to": "check"
+            },
+            {
+              "from": "check",
+              "to": "approve",
+              "label": "Yes"
+            },
+            {
+              "from": "check",
+              "to": "reject",
+              "label": "No"
+            },
+            {
+              "from": "approve",
+              "to": "end"
+            },
+            {
+              "from": "reject",
+              "to": "end"
+            }
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "flowchart places start/end/decision/process nodes using row/col and connects them with edges. shape: \"decision\" renders a diamond.",
+          "summary": ["flowchart shows a business process flow", "Place nodes with row / col", "shape: start/end/decision/process sets the node kind"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-swimlane",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (swimlane)",
+        "swimlane": {
+          "phases": ["Design", "Build", "Review", "Release"],
+          "lanes": [
+            {
+              "title": "PM",
+              "nodes": [
+                {
+                  "id": "req",
+                  "label": "Requirements",
+                  "col": 0
+                }
+              ]
+            },
+            {
+              "title": "Engineer",
+              "nodes": [
+                {
+                  "id": "impl",
+                  "label": "Build",
+                  "col": 1
+                },
+                {
+                  "id": "fix",
+                  "label": "Fix",
+                  "col": 2
+                }
+              ]
+            },
+            {
+              "title": "QA",
+              "nodes": [
+                {
+                  "id": "review",
+                  "label": "Review",
+                  "col": 2
+                },
+                {
+                  "id": "release",
+                  "label": "Release",
+                  "col": 3
+                }
+              ]
+            }
+          ],
+          "connections": [
+            {
+              "from": "req",
+              "to": "impl"
+            },
+            {
+              "from": "impl",
+              "to": "review"
+            },
+            {
+              "from": "review",
+              "to": "fix"
+            },
+            {
+              "from": "fix",
+              "to": "release"
+            }
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "swimlane places process nodes per lane (owner or department) with phases shown as column headers, good for flows where ownership shifts.",
+          "summary": ["swimlane shows a process flow by lane", "lanes place nodes per owner/department", "phases render as column headers"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-gantt",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (gantt)",
+        "gantt": {
+          "axis": ["Jan", "Feb", "Mar", "Apr"],
+          "tasks": [
+            {
+              "label": "Design",
+              "startCol": 0,
+              "span": 1
+            },
+            {
+              "label": "Build",
+              "startCol": 1,
+              "span": 2
+            },
+            {
+              "label": "Test",
+              "startCol": 2,
+              "span": 1
+            },
+            {
+              "label": "Release",
+              "startCol": 3,
+              "span": 1
+            }
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "gantt shows a schedule using a time axis and task bars. Specify each bar's span with startCol / span.",
+          "summary": ["gantt shows a schedule", "axis sets the time-axis column headers", "startCol / span sets each task's duration"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-two-by-two",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (twoByTwo)",
+        "twoByTwo": {
+          "quadrants": [
+            {
+              "title": "Strong / Hard"
+            },
+            {
+              "title": "Strong / Easy"
+            },
+            {
+              "title": "Weak / Hard"
+            },
+            {
+              "title": "Weak / Easy"
+            }
+          ],
+          "axes": {
+            "x": {
+              "label": "Effort",
+              "low": "Easy",
+              "high": "Hard"
+            },
+            "y": {
+              "label": "Impact",
+              "low": "Low",
+              "high": "High"
+            }
+          },
+          "items": [
+            {
+              "label": "Initiative A",
+              "x": 0.15,
+              "y": 0.2
+            },
+            {
+              "label": "Initiative B",
+              "x": 0.72,
+              "y": 0.28
+            },
+            {
+              "label": "Initiative C",
+              "x": 0.3,
+              "y": 0.78
+            },
+            {
+              "label": "Initiative D",
+              "x": 0.82,
+              "y": 0.7
+            }
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "twoByTwo plots items on a two-axis matrix using x/y coordinates, useful for prioritization such as impact vs. effort.",
+          "summary": ["twoByTwo shows a two-axis matrix", "Plot items using x/y coordinates", "Best for prioritization, e.g., impact vs. effort"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-funnel",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (funnel)",
+        "funnel": {
+          "unit": "",
+          "stages": [
+            {
+              "label": "Visits",
+              "value": 10000,
+              "description": "Traffic"
+            },
+            {
+              "label": "Signups",
+              "value": 3000,
+              "description": "Registrations"
+            },
+            {
+              "label": "Paid",
+              "value": 800,
+              "description": "Subscriptions"
+            },
+            {
+              "label": "Retained",
+              "value": 300,
+              "description": "Month 2"
+            }
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "funnel renders a funnel where each stage's width scales with its value, useful for explaining conversion.",
+          "summary": ["funnel shows a conversion funnel", "Each stage's width scales with its value", "Specify label / description per stage"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-swot",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (swot)",
+        "swot": {
+          "strengths": {
+            "items": ["Brand awareness", "Senior engineers", "Existing customer base"]
+          },
+          "weaknesses": {
+            "items": ["Legacy code", "Hiring difficulty", "High ops cost"]
+          },
+          "opportunities": {
+            "items": ["Market expansion", "AI adoption", "New segments"]
+          },
+          "threats": {
+            "items": ["Competition", "Regulation", "FX volatility"]
+          }
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "swot renders the four SWOT quadrants (strengths, weaknesses, opportunities, threats). Specify a bullet list in each quadrant's items.",
+          "summary": ["swot shows the four SWOT quadrants", "Specify strengths/weaknesses/opportunities/threats", "Set a bullet list in each quadrant's items"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-heatmap",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (heatmap)",
+        "heatmap": {
+          "rows": ["Product A", "Product B", "Product C", "Product D"],
+          "cols": ["Q1", "Q2", "Q3", "Q4"],
+          "color": "series2",
+          "unit": "%",
+          "values": [
+            [12, 18, 24, 30],
+            [8, 14, 22, 28],
+            [20, 26, 32, 38],
+            [4, 10, 16, 22]
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "heatmap shows row-by-column values as shading. Set color for the base hue to compare magnitudes at a glance.",
+          "summary": ["heatmap shows row-by-column values as shading", "color sets the base hue", "Cells fade in one after another"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-svg",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (svg)",
+        "svg": {
+          "markup": "<svg viewBox=\"0 0 200 120\"><rect x=\"10\" y=\"70\" width=\"40\" height=\"40\" fill=\"currentColor\" /><rect x=\"80\" y=\"40\" width=\"40\" height=\"70\" fill=\"currentColor\" opacity=\"0.7\" /><rect x=\"150\" y=\"10\" width=\"40\" height=\"100\" fill=\"currentColor\" opacity=\"0.4\" /></svg>",
+          "color": "accent",
+          "caption": "Inlines the SVG markup and follows the theme color via currentColor"
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "svg inlines the given markup as-is. Using color with currentColor makes the shape follow the theme's color tokens.",
+          "summary": ["svg inlines arbitrary SVG markup", "color follows theme tokens via currentColor", "caption adds an explanatory line"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-text-diagram",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (textDiagram)",
+        "textDiagram": {
+          "source": "flowchart LR\n  A[Start] --> B{Decision}\n  B -->|Yes| C[Done]\n  B -->|No| A",
+          "caption": "Renders Mermaid text-diagram syntax (mermaid loads via dynamic import on first use)"
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "textDiagram renders a diagram from Mermaid text syntax. Just write the syntax in source to generate flowcharts, sequence diagrams, and more.",
+          "summary": ["textDiagram converts Mermaid syntax into a diagram", "Just write the text syntax in source", "mermaid loads dynamically on first use"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-sequence-diagram",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (sequenceDiagram)",
+        "sequenceDiagram": {
+          "lifelines": [
+            {
+              "id": "user",
+              "label": "User"
+            },
+            {
+              "id": "api",
+              "label": "API"
+            },
+            {
+              "id": "db",
+              "label": "DB"
+            }
+          ],
+          "messages": [
+            {
+              "from": "user",
+              "to": "api",
+              "label": "login()"
+            },
+            {
+              "from": "api",
+              "to": "api",
+              "label": "validate()"
+            },
+            {
+              "from": "api",
+              "to": "db",
+              "label": "query()",
+              "type": "async"
+            },
+            {
+              "from": "db",
+              "to": "api",
+              "label": "result"
+            },
+            {
+              "from": "api",
+              "to": "user",
+              "label": "response"
+            }
+          ],
+          "activations": [
+            {
+              "lifeline": "api",
+              "from": 0,
+              "to": 4
+            }
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "sequenceDiagram renders message exchanges between lifelines. Use activations to highlight an in-progress span.",
+          "summary": ["sequenceDiagram renders a sequence diagram", "lifelines and messages express the exchange", "activations highlight an in-progress span"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-profile",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (profile)",
+        "profile": {
+          "image": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMDAgMzYwIiB3aWR0aD0iMzAwIiBoZWlnaHQ9IjM2MCI+PHJlY3Qgd2lkdGg9IjMwMCIgaGVpZ2h0PSIzNjAiIGZpbGw9IiMxZjI0MzAiLz48Y2lyY2xlIGN4PSIxNTAiIGN5PSIxMzIiIHI9IjU4IiBmaWxsPSIjMmRkNGJmIiBvcGFjaXR5PSIwLjkiLz48cGF0aCBkPSJNNDYgMzUyYzAtNTcgNDctMTAzIDEwNC0xMDNzMTA0IDQ2IDEwNCAxMDN6IiBmaWxsPSIjMmRkNGJmIiBvcGFjaXR5PSIwLjkiLz48cmVjdCB4PSI5IiB5PSI5IiB3aWR0aD0iMjgyIiBoZWlnaHQ9IjM0MiIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMmRkNGJmIiBzdHJva2Utd2lkdGg9IjMiLz48L3N2Zz4=",
+          "name": "Taro Yamada",
+          "nameSub": "山田 太郎",
+          "role": "Software Engineer",
+          "org": "Platform Development Dept.",
+          "body": "Building a tool for authoring presentation decks.\nInterested in software design and test automation.",
+          "links": [
+            {
+              "icon": "MailOutline",
+              "label": "taro.yamada@example.com"
+            },
+            {
+              "icon": "AccountCircle",
+              "label": "@taro_yamada"
+            }
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "profile renders a profile card with a photo. Specify icon and label in links to line up contact info.",
+          "summary": ["profile shows a profile card with a photo", "Specify name, role, org, and body", "links lines up contact icons"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-images-grouped",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (images groups)",
+        "imageColumns": 4,
+        "images": [
+          {
+            "label": "Partners",
+            "images": [
+              {
+                "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIiB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCI+PHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiMxZjI0MzAiLz48Y2lyY2xlIGN4PSIxMDAiIGN5PSIxMDAiIHI9IjYwIiBmaWxsPSIjMmRkNGJmIi8+PC9zdmc+",
+                "alt": "Partner logo 1"
+              },
+              {
+                "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIiB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCI+PHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiMxZjI0MzAiLz48Y2lyY2xlIGN4PSIxMDAiIGN5PSIxMDAiIHI9IjYwIiBmaWxsPSIjMmRkNGJmIi8+PC9zdmc+",
+                "alt": "Partner logo 2"
+              },
+              {
+                "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIiB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCI+PHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiMxZjI0MzAiLz48Y2lyY2xlIGN4PSIxMDAiIGN5PSIxMDAiIHI9IjYwIiBmaWxsPSIjMmRkNGJmIi8+PC9zdmc+",
+                "alt": "Partner logo 3"
+              },
+              {
+                "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIiB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCI+PHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiMxZjI0MzAiLz48Y2lyY2xlIGN4PSIxMDAiIGN5PSIxMDAiIHI9IjYwIiBmaWxsPSIjMmRkNGJmIi8+PC9zdmc+",
+                "alt": "Partner logo 4"
+              }
+            ]
+          },
+          {
+            "label": "Tech Stack",
+            "images": [
+              {
+                "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIiB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCI+PHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiMxZjI0MzAiLz48Y2lyY2xlIGN4PSIxMDAiIGN5PSIxMDAiIHI9IjYwIiBmaWxsPSIjMmRkNGJmIi8+PC9zdmc+",
+                "alt": "Tech stack logo 1"
+              },
+              {
+                "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIiB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCI+PHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiMxZjI0MzAiLz48Y2lyY2xlIGN4PSIxMDAiIGN5PSIxMDAiIHI9IjYwIiBmaWxsPSIjMmRkNGJmIi8+PC9zdmc+",
+                "alt": "Tech stack logo 2"
+              }
+            ]
+          }
+        ]
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "Passing labeled groups of images to images displays them grouped with a heading, like partner logos. imageColumns sets the column count per group.",
+          "summary": ["Groups images under a heading", "label sets each group's heading", "imageColumns sets the column count per group"]
+        }
+      }
+    },
+    {
+      "id": "guide-background-image",
+      "layout": "content",
+      "meta": {
+        "backgroundImage": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA5NjAgNTQwIiB3aWR0aD0iOTYwIiBoZWlnaHQ9IjU0MCI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJza3kiIHgxPSIwIiB5MT0iMCIgeDI9IjAiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiMxZTNhOGEiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNmOTczMTYiLz48L2xpbmVhckdyYWRpZW50PjxsaW5lYXJHcmFkaWVudCBpZD0ic2NyaW0iIHgxPSIwIiB5MT0iMCIgeDI9IjAiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiMwZjE3MmEiIHN0b3Atb3BhY2l0eT0iMC43NSIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzBmMTcyYSIgc3RvcC1vcGFjaXR5PSIwIi8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHJlY3Qgd2lkdGg9Ijk2MCIgaGVpZ2h0PSI1NDAiIGZpbGw9InVybCgjc2t5KSIvPjxjaXJjbGUgY3g9IjcwMCIgY3k9IjE1MCIgcj0iNzAiIGZpbGw9IiNmZWYzYzciLz48cG9seWdvbiBwb2ludHM9IjAsNDIwIDIyMCwyMjAgMzgwLDM4MCA1MjAsMjQwIDY4MCw0MjAiIGZpbGw9IiMwZjE3MmEiIG9wYWNpdHk9IjAuODUiLz48cG9seWdvbiBwb2ludHM9IjMwMCw0NjAgNTIwLDMwMCA3MjAsNDYwIiBmaWxsPSIjMWUyOTNiIiBvcGFjaXR5PSIwLjkiLz48cmVjdCB5PSI0NjAiIHdpZHRoPSI5NjAiIGhlaWdodD0iODAiIGZpbGw9IiMwYjExMjAiLz48cmVjdCB3aWR0aD0iOTYwIiBoZWlnaHQ9IjI2MCIgZmlsbD0idXJsKCNzY3JpbSkiLz48L3N2Zz4K",
+        "notes": {
+          "speakerNotes": "meta.backgroundImage sets a background image per slide. To share one across the whole deck, use the image type on theme.masters[].background instead.",
+          "summary": ["meta.backgroundImage sets a per-slide background image", "theme.masters[].background (type: image) shares one across the deck", "fit: cover/contain and opacity are configurable"]
+        }
+      },
+      "content": {
+        "title": "Background image",
+        "body": "Setting meta.backgroundImage to a path or data URI gives this slide its own background image.\nFor a more advanced setup shared across multiple slides, set type: \"image\" on theme.masters[].background instead (fit: cover/contain and opacity are supported)."
       }
     },
     {
@@ -727,11 +2297,7 @@
       "meta": {
         "notes": {
           "speakerNotes": "The center layout with variant: section is ideal for section dividers or summary slides with a large title display. You can also place a QR code and GitHub link.",
-          "summary": [
-            "center + variant: section for summary slides",
-            "QR code and GitHub link placement",
-            "Also useful as section dividers"
-          ]
+          "summary": ["center + variant: section for summary slides", "QR code and GitHub link placement", "Also useful as section dividers"]
         }
       }
     }

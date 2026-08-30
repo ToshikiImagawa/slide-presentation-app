@@ -1667,7 +1667,8 @@ describe('SlideRenderer', () => {
         const { container } = renderWithTheme(<SlideRenderer slides={slides} theme={theme} />)
         const backgroundOf = (index: number) => container.querySelectorAll('section.slide-container')[index].querySelector('.master-layer-back > .master-background') as HTMLElement
         expect(backgroundOf(0).className).toBe('master-background')
-        expect(backgroundOf(1).className).toBe('master-background master-background-grid')
+        // motion は既定で有効（false を明示しない限り on）なので master-background-motion-grid も付く
+        expect(backgroundOf(1).className).toBe('master-background master-background-grid master-background-motion-grid')
         expect(backgroundOf(2).style.backgroundColor).toBe('rgb(1, 2, 3)')
       })
 

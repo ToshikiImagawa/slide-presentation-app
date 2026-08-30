@@ -84,8 +84,17 @@ function linearGradient(gradient: MasterGradient): string {
  * 透ける）は CSS の既定に委ねる。デッキ既定の格子を透かす旧来のグレーゾーン挙動より、常にテーマ背景色を
  * 下地にする方が「背景意匠の下は必ずテーマ背景色」という一貫した仕様になり、意図が説明しやすい
  */
+/** motion（既定で有効・#189拡張。false を明示した場合のみ opt-out）が effect を持つのは grid/gradient のみ。
+ * 他の種別では無視する */
+function backgroundMotionClassName(background: MasterBackground): string | undefined {
+  if (background.motion === false) return undefined
+  if (background.type === 'grid') return 'master-background-motion-grid'
+  if (background.type === 'gradient') return 'master-background-motion-gradient'
+  return undefined
+}
+
 function MasterBackgroundElement({ background }: { background: MasterBackground }) {
-  const className = background.type === 'grid' ? 'master-background master-background-grid' : 'master-background'
+  const className = ['master-background', background.type === 'grid' ? 'master-background-grid' : undefined, backgroundMotionClassName(background)].filter(Boolean).join(' ')
   return <div className={className} style={backgroundStyle(background)} />
 }
 
@@ -105,7 +114,9 @@ function backgroundStyle(background: MasterBackground): CSSProperties {
       return { ...base, backgroundColor: background.color }
 
     case 'gradient':
-      return { ...base, backgroundImage: linearGradient(background) }
+      // motion（既定で有効）時は masterGradientDrift（global.css）が background-position を揺らすため、
+      // 動く余地を持たせて拡大する。false を明示した場合のみ拡大しない
+      return { ...base, backgroundImage: linearGradient(background), ...(background.motion === false ? {} : { backgroundSize: '140% 140%' }) }
 
     case 'image':
       return { ...base, ...imageBackgroundStyle(background.src, background.fit) }

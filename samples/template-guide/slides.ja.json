@@ -14,10 +14,7 @@
       "meta": {
         "notes": {
           "speakerNotes": "このプレゼンテーションでは、スライドテンプレートの使い方を紹介します。\npublic/slides.json を配置することで、自由にスライド内容をカスタマイズできます。",
-          "summary": [
-            "スライドテンプレートガイドの紹介",
-            "slides.json でカスタマイズ可能"
-          ]
+          "summary": ["スライドテンプレートガイドの紹介", "slides.json でカスタマイズ可能"]
         }
       }
     },
@@ -29,31 +26,30 @@
         "left": {
           "heading": "左カラム: heading",
           "headingDescription": "headingDescription でサブテキストを追加",
-          "paragraphs": [
-            "paragraphs で本文テキストを記述します。<strong>HTML タグ</strong>も利用可能です。",
-            "配列で複数段落を指定できます。"
-          ],
+          "paragraphs": ["paragraphs で本文テキストを記述します。<strong>HTML タグ</strong>も利用可能です。", "配列で複数段落を指定できます。"],
           "items": [
-            {"text": "items:", "emphasis": true, "description": " emphasis: true で太字"},
-            {"text": "通常の項目:", "description": " description でサブテキスト追加"},
-            {"text": "シンプルな項目"}
+            {
+              "text": "items:",
+              "emphasis": true,
+              "description": " emphasis: true で太字"
+            },
+            {
+              "text": "通常の項目:",
+              "description": " description でサブテキスト追加"
+            },
+            {
+              "text": "シンプルな項目"
+            }
           ]
         },
         "right": {
           "codeBlock": {
             "header": "> codeBlock.header",
-            "items": [
-              "codeBlock.items[0]",
-              "コードや階層構造の表示に最適",
-              "<strong>HTML タグ</strong>も使えます"
-            ]
+            "items": ["codeBlock.items[0]", "コードや階層構造の表示に最適", "<strong>HTML タグ</strong>も使えます"]
           },
           "titledBulletList": {
             "title": "titledBulletList.title",
-            "items": [
-              "titledBulletList の項目1",
-              "titledBulletList の項目2"
-            ]
+            "items": ["titledBulletList の項目1", "titledBulletList の項目2"]
           },
           "accentText": "→ accentText: プライマリカラーで強調表示"
         }
@@ -61,11 +57,7 @@
       "meta": {
         "notes": {
           "speakerNotes": "two-column レイアウトの基本構成を説明するスライドです。左カラムには heading, paragraphs, items を、右カラムには codeBlock, titledBulletList, accentText を配置しています。",
-          "summary": [
-            "two-column レイアウトの基本構成",
-            "左: heading, paragraphs, items",
-            "右: codeBlock, titledBulletList, accentText"
-          ]
+          "summary": ["two-column レイアウトの基本構成", "左: heading, paragraphs, items", "右: codeBlock, titledBulletList, accentText"]
         }
       }
     },
@@ -75,38 +67,27 @@
       "content": {
         "title": "layout: \"two-column\" — component 配置",
         "left": {
-          "paragraphs": [
-            "left / right に <code>component</code> を指定すると、登録済みビジュアルを埋め込めます。"
-          ],
+          "paragraphs": ["left / right に <code>component</code> を指定すると、登録済みビジュアルを埋め込めます。"],
           "codeBlock": {
             "header": "> JSON での指定方法",
-            "items": [
-              "\"right\": {",
-              "\u00a0\u00a0\"component\": {",
-              "\u00a0\u00a0\u00a0\u00a0\"name\": \"TerminalAnimation\",",
-              "\u00a0\u00a0\u00a0\u00a0\"props\": {",
-              "\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"logTextUrl\": \"/demo-log.txt\"",
-              "\u00a0\u00a0\u00a0\u00a0}",
-              "\u00a0\u00a0}",
-              "}"
-            ]
+            "items": ["\"right\": {", "  \"component\": {", "    \"name\": \"TerminalAnimation\",", "    \"props\": {", "      \"logTextUrl\": \"/demo-log.txt\"", "    }", "  }", "}"]
           }
         },
         "right": {
           "component": {
             "name": "TerminalAnimation",
-            "style": { "height": "400px", "width": "90%", "margin": "auto" }
+            "style": {
+              "height": "400px",
+              "width": "90%",
+              "margin": "auto"
+            }
           }
         }
       },
       "meta": {
         "notes": {
           "speakerNotes": "two-column レイアウトの左右カラムに component フィールドを指定することで、登録済みコンポーネントを埋め込むことができます。",
-          "summary": [
-            "left / right に component を指定可能",
-            "登録済みコンポーネントを埋め込み表示",
-            "name, props, style で設定"
-          ]
+          "summary": ["left / right に component を指定可能", "登録済みコンポーネントを埋め込み表示", "name, props, style で設定"]
         }
       }
     },
@@ -116,22 +97,35 @@
       "content": {
         "title": "layout: \"content\" — タイムライン (steps)",
         "steps": [
-          {"number": 1, "title": "Step Title", "description": "各ステップの説明文", "command": "/command_name"},
-          {"number": 2, "title": "Step Title", "description": "command はオプション"},
-          {"number": 3, "title": "Step Title", "description": "ステップ数に制限はありません", "command": "/another"},
-          {"number": 4, "title": "Step Title", "description": "最後のステップ"}
+          {
+            "number": 1,
+            "title": "Step Title",
+            "description": "各ステップの説明文",
+            "command": "/command_name"
+          },
+          {
+            "number": 2,
+            "title": "Step Title",
+            "description": "command はオプション"
+          },
+          {
+            "number": 3,
+            "title": "Step Title",
+            "description": "ステップ数に制限はありません",
+            "command": "/another"
+          },
+          {
+            "number": 4,
+            "title": "Step Title",
+            "description": "最後のステップ"
+          }
         ],
         "footer": "footer: タイムライン下部に補足テキストを表示"
       },
       "meta": {
         "notes": {
           "speakerNotes": "content レイアウトで steps を指定すると、タイムライン形式で表示されます。各ステップには number, title, description が必須で、command はオプションです。",
-          "summary": [
-            "steps でタイムライン表示",
-            "number, title, description が必須",
-            "command はオプション",
-            "footer で補足テキスト表示可能"
-          ]
+          "summary": ["steps でタイムライン表示", "number, title, description が必須", "command はオプション", "footer で補足テキスト表示可能"]
         }
       }
     },
@@ -161,11 +155,7 @@
       "meta": {
         "notes": {
           "speakerNotes": "content レイアウトで tiles を指定すると、タイルグリッド形式で表示されます。各タイルには icon, title, description を設定します。",
-          "summary": [
-            "tiles でタイルグリッド表示",
-            "icon, title, description を設定",
-            "3列グリッドで配置"
-          ]
+          "summary": ["tiles でタイルグリッド表示", "icon, title, description を設定", "3列グリッドで配置"]
         }
       }
     },
@@ -176,18 +166,18 @@
         "title": "layout: \"content\" — コンポーネント (component)",
         "component": {
           "name": "TerminalAnimation",
-          "style": { "height": "400px", "width": "90%", "margin": "auto" }
+          "style": {
+            "height": "400px",
+            "width": "90%",
+            "margin": "auto"
+          }
         },
         "footer": "content レイアウトの component はタイトルバー付きのラッパー内に描画されます"
       },
       "meta": {
         "notes": {
           "speakerNotes": "content レイアウトで component を指定すると、タイトルバー付きの ContentLayout ラッパー内にコンポーネントが描画されます。steps や tiles と同様に content レイアウトの子要素として扱われます。",
-          "summary": [
-            "content レイアウトで component を指定",
-            "ContentLayout ラッパー内に描画",
-            "タイトルバーが自動で表示される"
-          ]
+          "summary": ["content レイアウトで component を指定", "ContentLayout ラッパー内に描画", "タイトルバーが自動で表示される"]
         }
       }
     },
@@ -198,23 +188,32 @@
         "title": "layout: \"bleed\" — 2カラム全幅",
         "titleDescription": "titleDescription: 左カラムにタイトル補足を表示",
         "commands": [
-          {"text": "$ commands[0].text", "color": "var(--theme-text-heading)"},
-          {"text": "$ commands[1].text", "color": "var(--theme-primary)"},
-          {"text": "✓ 各行に color を指定可能", "color": "var(--theme-success)"}
+          {
+            "text": "$ commands[0].text",
+            "color": "var(--theme-text-heading)"
+          },
+          {
+            "text": "$ commands[1].text",
+            "color": "var(--theme-primary)"
+          },
+          {
+            "text": "✓ 各行に color を指定可能",
+            "color": "var(--theme-success)"
+          }
         ],
         "component": {
           "name": "TerminalAnimation",
-          "style": { "height": "400px", "width": "90%", "margin": "auto" }
+          "style": {
+            "height": "400px",
+            "width": "90%",
+            "margin": "auto"
+          }
         }
       },
       "meta": {
         "notes": {
           "speakerNotes": "bleed レイアウトは2カラム全幅で表示されます。左カラムに title, titleDescription, commands を、右カラムに component を配置します。",
-          "summary": [
-            "bleed レイアウトで2カラム全幅表示",
-            "左: title, titleDescription, commands",
-            "右: component で任意のコンポーネント配置"
-          ]
+          "summary": ["bleed レイアウトで2カラム全幅表示", "左: title, titleDescription, commands", "右: component で任意のコンポーネント配置"]
         }
       }
     },
@@ -224,17 +223,16 @@
       "content": {
         "component": {
           "name": "TerminalAnimation",
-          "style": { "height": "100%", "width": "100%" }
+          "style": {
+            "height": "100%",
+            "width": "100%"
+          }
         }
       },
       "meta": {
         "notes": {
           "speakerNotes": "custom レイアウトは component で指定したコンポーネントを直接描画します。content レイアウトとの違いは、タイトルバーなどのラッパーが一切なく、コンポーネントがスライド全体を占有する点です。",
-          "summary": [
-            "layout: \"custom\" でコンポーネントを直接描画",
-            "タイトルバーなどのラッパーなし",
-            "content レイアウトとの違いを理解する"
-          ]
+          "summary": ["layout: \"custom\" でコンポーネントを直接描画", "タイトルバーなどのラッパーなし", "content レイアウトとの違いを理解する"]
         }
       }
     },
@@ -244,21 +242,10 @@
       "content": {
         "title": "component: \"Image\" — 画像表示",
         "left": {
-          "paragraphs": [
-            "<code>Image</code> コンポーネントで画像を表示します。エラー時は自動でフォールバック表示します。"
-          ],
+          "paragraphs": ["<code>Image</code> コンポーネントで画像を表示します。エラー時は自動でフォールバック表示します。"],
           "codeBlock": {
             "header": "> JSON での指定方法",
-            "items": [
-              "\"component\": {",
-              "\u00a0\u00a0\"name\": \"Image\",",
-              "\u00a0\u00a0\"props\": {",
-              "\u00a0\u00a0\u00a0\u00a0\"src\": \"https://...\",",
-              "\u00a0\u00a0\u00a0\u00a0\"width\": 320,",
-              "\u00a0\u00a0\u00a0\u00a0\"height\": 320,",
-              "\u00a0\u00a0}",
-              "}"
-            ]
+            "items": ["\"component\": {", "  \"name\": \"Image\",", "  \"props\": {", "    \"src\": \"https://...\",", "    \"width\": 320,", "    \"height\": 320,", "  }", "}"]
           }
         },
         "right": {
@@ -269,18 +256,19 @@
               "width": 320,
               "height": 320
             },
-            "style": { "display": "flex", "justifyContent": "center", "alignItems": "center", "height": "100%" }
+            "style": {
+              "display": "flex",
+              "justifyContent": "center",
+              "alignItems": "center",
+              "height": "100%"
+            }
           }
         }
       },
       "meta": {
         "notes": {
           "speakerNotes": "Image コンポーネントは FallbackImage をラップしており、画像の読み込みエラー時にフォールバック UI を表示します。src, width, height を props で指定します。",
-          "summary": [
-            "Image コンポーネントで画像を表示",
-            "FallbackImage によるフォールバック対応",
-            "src, width, height を props で指定"
-          ]
+          "summary": ["Image コンポーネントで画像を表示", "FallbackImage によるフォールバック対応", "src, width, height を props で指定"]
         }
       }
     },
@@ -293,22 +281,13 @@
           "titledBulletList": {
             "title": "TerminalAnimation",
             "description": "アニメーション付きターミナル表示",
-            "items": [
-              "<strong>logTextUrl</strong>: ログファイルの URL\n例: \"/demo-log.txt\"",
-              "logTextUrl 省略時は組み込みデフォルトを使用"
-            ]
+            "items": ["<strong>logTextUrl</strong>: ログファイルの URL\n例: \"/demo-log.txt\"", "logTextUrl 省略時は組み込みデフォルトを使用"]
           }
         },
         "right": {
           "codeBlock": {
             "header": "> 登録済み MUI アイコン",
-            "items": [
-              "Icon:Description",
-              "Icon:PlaylistAddCheck",
-              "Icon:Traffic",
-              "Icon:Memory",
-              "Icon:Search"
-            ]
+            "items": ["Icon:Description", "Icon:PlaylistAddCheck", "Icon:Traffic", "Icon:Memory", "Icon:Search"]
           },
           "accentText": "→ content レイアウトの tiles の icon に名前を指定して使用"
         }
@@ -316,11 +295,7 @@
       "meta": {
         "notes": {
           "speakerNotes": "デフォルトで登録されているコンポーネントの一覧です。TerminalAnimation と5つの MUI アイコンが利用可能です。",
-          "summary": [
-            "TerminalAnimation: アニメーション付きターミナル",
-            "MUI アイコン5種が登録済み",
-            "tiles の icon フィールドで使用"
-          ]
+          "summary": ["TerminalAnimation: アニメーション付きターミナル", "MUI アイコン5種が登録済み", "tiles の icon フィールドで使用"]
         }
       }
     },
@@ -330,30 +305,28 @@
       "content": {
         "title": "アドオンコンポーネント",
         "left": {
-          "paragraphs": [
-            "<code>addons/src/</code> にコンポーネントを配置すると、動的に登録されスライドから利用できます。"
-          ],
+          "paragraphs": ["<code>addons/src/</code> にコンポーネントを配置すると、動的に登録されスライドから利用できます。"],
           "items": [
-            {"text": "自動登録:", "emphasis": true, "description": " アドオンは起動時に ComponentRegistry へ登録"},
-            {"text": "未ロード時:", "emphasis": true, "description": " フォールバック表示（コンポーネント名を表示）"}
+            {
+              "text": "自動登録:",
+              "emphasis": true,
+              "description": " アドオンは起動時に ComponentRegistry へ登録"
+            },
+            {
+              "text": "未ロード時:",
+              "emphasis": true,
+              "description": " フォールバック表示（コンポーネント名を表示）"
+            }
           ],
           "codeBlock": {
             "header": "> JSON での指定例",
-            "items": [
-              "\"component\": {",
-              "\u00a0\u00a0\"name\": \"VibeCodingDemo\"",
-              "}"
-            ]
+            "items": ["\"component\": {", "  \"name\": \"VibeCodingDemo\"", "}"]
           }
         },
         "right": {
           "titledBulletList": {
             "title": "アドオンの作り方",
-            "items": [
-              "<strong>addons/src/{名前}/entry.ts</strong> を作成",
-              "<code>window.__ADDON_REGISTER__</code> でコンポーネントを登録",
-              "<code>npm run build:addons</code> でビルド"
-            ]
+            "items": ["<strong>addons/src/{名前}/entry.ts</strong> を作成", "<code>window.__ADDON_REGISTER__</code> でコンポーネントを登録", "<code>npm run build:addons</code> でビルド"]
           },
           "accentText": "→ addons/ は gitignore 対象のためローカル環境でのみ動作"
         }
@@ -361,11 +334,7 @@
       "meta": {
         "notes": {
           "speakerNotes": "アドオンシステムにより、独自のコンポーネントを追加できます。addons/src/ にエントリファイルを配置し、window.__ADDON_REGISTER__ で登録します。",
-          "summary": [
-            "addons/src/{名前}/entry.ts でコンポーネントを追加",
-            "window.__ADDON_REGISTER__ で登録",
-            "npm run build:addons でビルド"
-          ]
+          "summary": ["addons/src/{名前}/entry.ts でコンポーネントを追加", "window.__ADDON_REGISTER__ で登録", "npm run build:addons でビルド"]
         }
       }
     },
@@ -379,13 +348,13 @@
             "header": "> meta (各スライド共通)",
             "items": [
               "\"meta\": {",
-              "\u00a0\u00a0\"transition\": \"slide\",",
-              "\u00a0\u00a0\"backgroundColor\": \"#1a1a2e\",",
-              "\u00a0\u00a0\"backgroundImage\": \"/bg.png\",",
-              "\u00a0\u00a0\"notes\": \"文字列\" or {",
-              "\u00a0\u00a0\u00a0\u00a0\"speakerNotes\": \"発表者メモ\",",
-              "\u00a0\u00a0\u00a0\u00a0\"summary\": [\"要点1\", ...]",
-              "\u00a0\u00a0}",
+              "  \"transition\": \"slide\",",
+              "  \"backgroundColor\": \"#1a1a2e\",",
+              "  \"backgroundImage\": \"/bg.png\",",
+              "  \"notes\": \"文字列\" or {",
+              "    \"speakerNotes\": \"発表者メモ\",",
+              "    \"summary\": [\"要点1\", ...]",
+              "  }",
               "}"
             ]
           }
@@ -393,14 +362,7 @@
         "right": {
           "codeBlock": {
             "header": "> theme (プレゼン全体)",
-            "items": [
-              "\"theme\": {",
-              "\u00a0\u00a0\"colors\": {",
-              "\u00a0\u00a0\u00a0\u00a0\"primary\": \"#6c63ff\",",
-              "\u00a0\u00a0\u00a0\u00a0\"background\": \"#0f0e17\"",
-              "\u00a0\u00a0}",
-              "}"
-            ]
+            "items": ["\"theme\": {", "  \"colors\": {", "    \"primary\": \"#6c63ff\",", "    \"background\": \"#0f0e17\"", "  }", "}"]
           },
           "accentText": "→ 詳細は次のスライドで紹介"
         }
@@ -408,11 +370,7 @@
       "meta": {
         "notes": {
           "speakerNotes": "meta フィールドでは各スライドのトランジション、背景色、背景画像、発表者ノートを設定できます。theme フィールドではプレゼン全体の色やフォントを設定します。",
-          "summary": [
-            "meta: transition, backgroundColor, backgroundImage, notes",
-            "theme: colors, fonts でプレゼン全体を設定",
-            "notes は文字列またはオブジェクト形式"
-          ]
+          "summary": ["meta: transition, backgroundColor, backgroundImage, notes", "theme: colors, fonts でプレゼン全体を設定", "notes は文字列またはオブジェクト形式"]
         }
       }
     },
@@ -427,11 +385,11 @@
             "header": "> slides.json 内の theme.colors",
             "items": [
               "\"colors\": {",
-              "\u00a0\u00a0\"primary\": \"#6c63ff\",",
-              "\u00a0\u00a0\"background\": \"#0f0e17\",",
-              "\u00a0\u00a0\"textHeading\": \"#ffffff\",",
-              "\u00a0\u00a0\"textBody\": \"#a0a0b0\",",
-              "\u00a0\u00a0\"accent\": \"#ff6b6b\"",
+              "  \"primary\": \"#6c63ff\",",
+              "  \"background\": \"#0f0e17\",",
+              "  \"textHeading\": \"#ffffff\",",
+              "  \"textBody\": \"#a0a0b0\",",
+              "  \"accent\": \"#ff6b6b\"",
               "}",
               "\"customCSS\": \".reveal { ... }\""
             ]
@@ -440,16 +398,20 @@
         "right": {
           "heading": "テーマ設定の2つの方法",
           "items": [
-            {"text": "方法1:", "emphasis": true, "description": " slides.json の theme フィールド（または meta.themeColors）"},
-            {"text": "方法2:", "emphasis": true, "description": " public/theme-colors.json（色のみ）"}
+            {
+              "text": "方法1:",
+              "emphasis": true,
+              "description": " slides.json の theme フィールド（または meta.themeColors）"
+            },
+            {
+              "text": "方法2:",
+              "emphasis": true,
+              "description": " public/theme-colors.json（色のみ）"
+            }
           ],
           "codeBlock": {
             "header": "> theme-colors.json（方法2）",
-            "items": [
-              "{",
-              "\u00a0\u00a0\"primary\": \"#6c63ff\", ...",
-              "}"
-            ]
+            "items": ["{", "  \"primary\": \"#6c63ff\", ...", "}"]
           },
           "accentText": "→ すべての色に -rgb 変数あり（rgba() で使用可能）"
         }
@@ -457,12 +419,7 @@
       "meta": {
         "notes": {
           "speakerNotes": "テーマの色は slides.json の theme.colors か public/theme-colors.json で設定できます。customCSS でカスタム CSS も指定可能です。すべての色に -rgb 変数が自動生成されます。",
-          "summary": [
-            "theme.colors で8種類の色を設定可能",
-            "customCSS でカスタム CSS を追加",
-            "theme-colors.json で色のみ設定も可能",
-            "すべての色に -rgb 変数が自動生成"
-          ]
+          "summary": ["theme.colors で8種類の色を設定可能", "customCSS でカスタム CSS を追加", "theme-colors.json で色のみ設定も可能", "すべての色に -rgb 変数が自動生成"]
         }
       }
     },
@@ -475,34 +432,34 @@
           "heading": "meta.logo",
           "headingDescription": "プレゼンテーションのロゴを設定",
           "items": [
-            {"text": "src:", "emphasis": true, "description": " ロゴ画像のパス（デフォルト: /logo.png）"},
-            {"text": "width / height:", "emphasis": true, "description": " サイズ指定（デフォルト: 120 x 40）"},
-            {"text": "省略時:", "emphasis": true, "description": " ロゴは表示されません"}
+            {
+              "text": "src:",
+              "emphasis": true,
+              "description": " ロゴ画像のパス（デフォルト: /logo.png）"
+            },
+            {
+              "text": "width / height:",
+              "emphasis": true,
+              "description": " サイズ指定（デフォルト: 120 x 40）"
+            },
+            {
+              "text": "省略時:",
+              "emphasis": true,
+              "description": " ロゴは表示されません"
+            }
           ]
         },
         "right": {
           "codeBlock": {
             "header": "> JSON での指定方法",
-            "items": [
-              "\"meta\": {",
-              "\u00a0\u00a0\"logo\": {",
-              "\u00a0\u00a0\u00a0\u00a0\"src\": \"/my-logo.png\",",
-              "\u00a0\u00a0\u00a0\u00a0\"width\": 150,",
-              "\u00a0\u00a0\u00a0\u00a0\"height\": 50",
-              "\u00a0\u00a0}",
-              "}"
-            ]
+            "items": ["\"meta\": {", "  \"logo\": {", "    \"src\": \"/my-logo.png\",", "    \"width\": 150,", "    \"height\": 50", "  }", "}"]
           }
         }
       },
       "meta": {
         "notes": {
           "speakerNotes": "meta.logo でロゴ画像を設定できます。src でパスを、width / height でサイズを指定します。meta.logo を省略するとロゴは表示されません。",
-          "summary": [
-            "meta.logo でロゴ画像を設定",
-            "src / width / height を指定",
-            "省略時はロゴを表示しない"
-          ]
+          "summary": ["meta.logo でロゴ画像を設定", "src / width / height を指定", "省略時はロゴを表示しない"]
         }
       }
     },
@@ -515,11 +472,31 @@
           "heading": "meta.confidential",
           "headingDescription": "デッキ全体にConfidential等の透かしを表示",
           "items": [
-            {"text": "text:", "emphasis": true, "description": " 必須。透かし文言"},
-            {"text": "anchor / offset:", "emphasis": true, "description": " 配置位置とオフセット（デフォルト: bottom-left）"},
-            {"text": "opacity / rotate:", "emphasis": true, "description": " 不透明度と回転角"},
-            {"text": "slides[].meta:", "emphasis": true, "description": " logoとconfidentialをスライド単位で上書き"},
-            {"text": "省略時:", "emphasis": true, "description": " 透かしは表示されません"}
+            {
+              "text": "text:",
+              "emphasis": true,
+              "description": " 必須。透かし文言"
+            },
+            {
+              "text": "anchor / offset:",
+              "emphasis": true,
+              "description": " 配置位置とオフセット（デフォルト: bottom-left）"
+            },
+            {
+              "text": "opacity / rotate:",
+              "emphasis": true,
+              "description": " 不透明度と回転角"
+            },
+            {
+              "text": "slides[].meta:",
+              "emphasis": true,
+              "description": " logoとconfidentialをスライド単位で上書き"
+            },
+            {
+              "text": "省略時:",
+              "emphasis": true,
+              "description": " 透かしは表示されません"
+            }
           ]
         },
         "right": {
@@ -527,15 +504,15 @@
             "header": "> JSON での指定方法",
             "items": [
               "\"meta\": {",
-              "\u00a0\u00a0\"confidential\": { \"text\": \"CONFIDENTIAL\" }",
+              "  \"confidential\": { \"text\": \"CONFIDENTIAL\" }",
               "},",
               "\"slides\": [",
-              "\u00a0\u00a0{",
-              "\u00a0\u00a0\u00a0\u00a0\"meta\": {",
-              "\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"confidential\": { \"text\": \"DRAFT\" },",
-              "\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"logo\": { \"hidden\": true }",
-              "\u00a0\u00a0\u00a0\u00a0}",
-              "\u00a0\u00a0}",
+              "  {",
+              "    \"meta\": {",
+              "      \"confidential\": { \"text\": \"DRAFT\" },",
+              "      \"logo\": { \"hidden\": true }",
+              "    }",
+              "  }",
               "]"
             ]
           }
@@ -544,11 +521,7 @@
       "meta": {
         "notes": {
           "speakerNotes": "meta.confidential でデッキ全体にConfidential等の透かし文言を設定できます。text は必須で、anchor / offset で配置、opacity / rotate で見た目を調整します。slides[].meta.confidential や slides[].meta.logo でスライド単位に上書きでき、hidden: true でロゴだけ非表示にすることもできます。",
-          "summary": [
-            "meta.confidential でデッキ全体に透かしを表示",
-            "text必須、anchor/offset/opacity/rotateで調整可能",
-            "slides[].meta でスライド単位にlogo/confidentialを上書き"
-          ]
+          "summary": ["meta.confidential でデッキ全体に透かしを表示", "text必須、anchor/offset/opacity/rotateで調整可能", "slides[].meta でスライド単位にlogo/confidentialを上書き"]
         }
       }
     },
@@ -561,11 +534,31 @@
           "heading": "theme.fonts",
           "headingDescription": "フォントファミリーをカスタマイズ",
           "items": [
-            {"text": "heading:", "emphasis": true, "description": " 見出し用フォント"},
-            {"text": "body:", "emphasis": true, "description": " 本文用フォント"},
-            {"text": "code:", "emphasis": true, "description": " コードブロック用フォント"},
-            {"text": "baseFontSize:", "emphasis": true, "description": " 基本フォントサイズ（デフォルト: 24px）"},
-            {"text": "sources:", "emphasis": true, "description": " Google Fonts 等の外部フォント URL 配列"}
+            {
+              "text": "heading:",
+              "emphasis": true,
+              "description": " 見出し用フォント"
+            },
+            {
+              "text": "body:",
+              "emphasis": true,
+              "description": " 本文用フォント"
+            },
+            {
+              "text": "code:",
+              "emphasis": true,
+              "description": " コードブロック用フォント"
+            },
+            {
+              "text": "baseFontSize:",
+              "emphasis": true,
+              "description": " 基本フォントサイズ（デフォルト: 24px）"
+            },
+            {
+              "text": "sources:",
+              "emphasis": true,
+              "description": " Google Fonts 等の外部フォント URL 配列"
+            }
           ]
         },
         "right": {
@@ -573,15 +566,15 @@
             "header": "> JSON での指定方法",
             "items": [
               "\"theme\": {",
-              "\u00a0\u00a0\"fonts\": {",
-              "\u00a0\u00a0\u00a0\u00a0\"heading\": \"'Noto Sans JP'\",",
-              "\u00a0\u00a0\u00a0\u00a0\"body\": \"'Noto Sans JP'\",",
-              "\u00a0\u00a0\u00a0\u00a0\"code\": \"'Fira Code'\",",
-              "\u00a0\u00a0\u00a0\u00a0\"baseFontSize\": \"24px\",",
-              "\u00a0\u00a0\u00a0\u00a0\"sources\": [",
-              "\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0\"https://fonts...\"",
-              "\u00a0\u00a0\u00a0\u00a0]",
-              "\u00a0\u00a0}",
+              "  \"fonts\": {",
+              "    \"heading\": \"'Noto Sans JP'\",",
+              "    \"body\": \"'Noto Sans JP'\",",
+              "    \"code\": \"'Fira Code'\",",
+              "    \"baseFontSize\": \"24px\",",
+              "    \"sources\": [",
+              "      \"https://fonts...\"",
+              "    ]",
+              "  }",
               "}"
             ]
           }
@@ -590,11 +583,7 @@
       "meta": {
         "notes": {
           "speakerNotes": "theme.fonts でフォントファミリーをカスタマイズできます。heading / body / code の3種類を指定でき、baseFontSize で基本サイズ、sources で外部フォントの URL を指定します。",
-          "summary": [
-            "theme.fonts でフォントをカスタマイズ",
-            "heading / body / code の3種類を指定可能",
-            "baseFontSize と sources も設定可能"
-          ]
+          "summary": ["theme.fonts でフォントをカスタマイズ", "heading / body / code の3種類を指定可能", "baseFontSize と sources も設定可能"]
         }
       }
     },
@@ -605,22 +594,12 @@
         "title": "発表者ビュー",
         "left": {
           "heading": "概要",
-          "paragraphs": [
-            "画面右上の「発表者ビュー」ボタンをクリックすると、別ウィンドウで発表者専用の画面が開きます。",
-            "メインウィンドウと発表者ビューは双方向に同期されます。どちらからでもスライドを操作できます。"
-          ]
+          "paragraphs": ["画面右上の「発表者ビュー」ボタンをクリックすると、別ウィンドウで発表者専用の画面が開きます。", "メインウィンドウと発表者ビューは双方向に同期されます。どちらからでもスライドを操作できます。"]
         },
         "right": {
           "codeBlock": {
             "header": "> notes の設定例",
-            "items": [
-              "\"meta\": {",
-              "\u00a0\u00a0\"notes\": {",
-              "\u00a0\u00a0\u00a0\u00a0\"speakerNotes\": \"発表者メモ\",",
-              "\u00a0\u00a0\u00a0\u00a0\"summary\": [\"要点1\", \"要点2\"]",
-              "\u00a0\u00a0}",
-              "}"
-            ]
+            "items": ["\"meta\": {", "  \"notes\": {", "    \"speakerNotes\": \"発表者メモ\",", "    \"summary\": [\"要点1\", \"要点2\"]", "  }", "}"]
           },
           "accentText": "→ meta.notes に speakerNotes と summary を設定して活用しましょう"
         }
@@ -628,11 +607,7 @@
       "meta": {
         "notes": {
           "speakerNotes": "発表者ビューは別ウィンドウで開き、メインウィンドウと双方向に同期されます。どちらのウィンドウからでもスライドを操作できます。",
-          "summary": [
-            "右上ボタンで別ウィンドウに表示",
-            "メインウィンドウと双方向同期",
-            "meta.notes の speakerNotes / summary を活用"
-          ]
+          "summary": ["右上ボタンで別ウィンドウに表示", "メインウィンドウと双方向同期", "meta.notes の speakerNotes / summary を活用"]
         }
       }
     },
@@ -643,29 +618,39 @@
         "title": "発表者ビュー — 4つのパネル",
         "left": {
           "items": [
-            {"text": "スピーカーノート:", "emphasis": true, "description": " 現在のスライドの発表者メモ（speakerNotes）を表示"},
-            {"text": "前スライドプレビュー:", "emphasis": true, "description": " 前のスライドの縮小プレビューを表示"},
-            {"text": "次スライドプレビュー:", "emphasis": true, "description": " 次のスライドの縮小プレビューを表示"},
-            {"text": "要点サマリー:", "emphasis": true, "description": " 現在のスライドの要点（summary）を箇条書き表示"}
+            {
+              "text": "スピーカーノート:",
+              "emphasis": true,
+              "description": " 現在のスライドの発表者メモ（speakerNotes）を表示"
+            },
+            {
+              "text": "前スライドプレビュー:",
+              "emphasis": true,
+              "description": " 前のスライドの縮小プレビューを表示"
+            },
+            {
+              "text": "次スライドプレビュー:",
+              "emphasis": true,
+              "description": " 次のスライドの縮小プレビューを表示"
+            },
+            {
+              "text": "要点サマリー:",
+              "emphasis": true,
+              "description": " 現在のスライドの要点（summary）を箇条書き表示"
+            }
           ]
         },
         "right": {
           "titledBulletList": {
             "title": "キーボード操作",
-            "items": [
-              "<strong>← / →</strong>: 前後のスライドへ移動",
-              "<strong>Space</strong>: 次のスライドへ移動"
-            ]
+            "items": ["<strong>← / →</strong>: 前後のスライドへ移動", "<strong>Space</strong>: 次のスライドへ移動"]
           }
         }
       },
       "meta": {
         "notes": {
           "speakerNotes": "発表者ビューはスピーカーノート・前後スライドプレビュー・要点サマリーの4パネルを表示します。キーボードの ←/→/Space でどちらのウィンドウからでも操作できます。",
-          "summary": [
-            "スピーカーノート・前後プレビュー・要点サマリーの4パネル",
-            "←/→/Space でスライド操作"
-          ]
+          "summary": ["スピーカーノート・前後プレビュー・要点サマリーの4パネル", "←/→/Space でスライド操作"]
         }
       }
     },
@@ -679,25 +664,28 @@
           "headingDescription": "スライドごとに音声ファイルを指定",
           "codeBlock": {
             "header": "> JSON での指定方法",
-            "items": [
-              "\"meta\": {",
-              "\u00a0\u00a0\"notes\": {",
-              "\u00a0\u00a0\u00a0\u00a0\"voice\": \"/voice/slide-01.wav\",",
-              "\u00a0\u00a0\u00a0\u00a0\"speakerNotes\": \"発表者メモ\"",
-              "\u00a0\u00a0}",
-              "}"
-            ]
+            "items": ["\"meta\": {", "  \"notes\": {", "    \"voice\": \"/voice/slide-01.wav\",", "    \"speakerNotes\": \"発表者メモ\"", "  }", "}"]
           },
-          "paragraphs": [
-            "音声ファイルは <code>public/</code> 配下に配置してください。"
-          ]
+          "paragraphs": ["音声ファイルは <code>public/</code> 配下に配置してください。"]
         },
         "right": {
           "heading": "ツールバーボタン",
           "items": [
-            {"text": "再生/停止:", "emphasis": true, "description": " 現在のスライドの音声を手動で再生・停止"},
-            {"text": "自動再生:", "emphasis": true, "description": " スライド遷移時に音声を自動再生する ON/OFF"},
-            {"text": "自動スライドショー:", "emphasis": true, "description": " 音声終了時に次スライドへ自動遷移する ON/OFF"}
+            {
+              "text": "再生/停止:",
+              "emphasis": true,
+              "description": " 現在のスライドの音声を手動で再生・停止"
+            },
+            {
+              "text": "自動再生:",
+              "emphasis": true,
+              "description": " スライド遷移時に音声を自動再生する ON/OFF"
+            },
+            {
+              "text": "自動スライドショー:",
+              "emphasis": true,
+              "description": " 音声終了時に次スライドへ自動遷移する ON/OFF"
+            }
           ],
           "accentText": "→ 自動再生 + 自動スライドショーで全自動プレゼンテーションが可能"
         }
@@ -705,13 +693,1602 @@
       "meta": {
         "notes": {
           "speakerNotes": "このスライドでは音声再生機能を紹介しています。meta.notes.voice に音声ファイルのパスを指定すると、ツールバーから再生できます。自動再生と自動スライドショーを組み合わせると、全スライドを通した自動プレゼンテーションが可能です。",
-          "summary": [
-            "meta.notes.voice で音声ファイルを指定",
-            "ツールバーで手動再生・自動再生・自動スライドショーを制御",
-            "自動再生 + 自動スライドショーで全自動プレゼンテーション"
-          ],
+          "summary": ["meta.notes.voice で音声ファイルを指定", "ツールバーで手動再生・自動再生・自動スライドショーを制御", "自動再生 + 自動スライドショーで全自動プレゼンテーション"],
           "voice": "voice/guide-audio-ja.wav"
         }
+      }
+    },
+    {
+      "id": "guide-content-body-items",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (body/items)",
+        "body": "steps / tiles / component をいずれも指定しない場合、body と items でプレーンな本文を描画します。",
+        "items": [
+          {
+            "text": "body: 複数行に対応した段落テキスト",
+            "emphasis": true
+          },
+          {
+            "text": "items: 箇条書き（ネスト可）",
+            "items": [
+              {
+                "text": "子要素にもさらに items を指定できる"
+              },
+              {
+                "text": "emphasis: true で太字強調",
+                "emphasis": true
+              }
+            ]
+          }
+        ]
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "steps / tiles / component のいずれも指定しない場合、body と items でプレーンな本文を描画します。items は emphasis で強調でき、ネストして子項目も持てます。",
+          "summary": ["steps/tiles/component 未指定時は body + items", "items は emphasis: true で太字強調", "items はネスト可能（子要素にも items）"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-images",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (images)",
+        "images": [
+          {
+            "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0ODAgMjcwIiB3aWR0aD0iNDgwIiBoZWlnaHQ9IjI3MCI+PHJlY3Qgd2lkdGg9IjQ4MCIgaGVpZ2h0PSIyNzAiIGZpbGw9IiMxZjI0MzAiLz48ZyBmaWxsPSJub25lIiBzdHJva2U9IiMyZGQ0YmYiIHN0cm9rZS13aWR0aD0iMyI+PHJlY3QgeD0iMTQiIHk9IjE0IiB3aWR0aD0iNDUyIiBoZWlnaHQ9IjI0MiIvPjxjaXJjbGUgY3g9IjI0MCIgY3k9IjExNyIgcj0iNDUiLz48L2c+PHRleHQgeD0iMjQwIiB5PSIxOTciIGZvbnQtZmFtaWx5PSJIZWx2ZXRpY2EgTmV1ZSxBcmlhbCxzYW5zLXNlcmlmIiBmb250LXNpemU9IjI2IiBmb250LXdlaWdodD0iNzAwIiBmaWxsPSIjZjhmYWZjIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj4xNjo5PC90ZXh0Pjwvc3ZnPg==",
+            "alt": "横長のサンプル画像",
+            "caption": "横長（16:9）"
+          },
+          {
+            "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNzAgMzYwIiB3aWR0aD0iMjcwIiBoZWlnaHQ9IjM2MCI+PHJlY3Qgd2lkdGg9IjI3MCIgaGVpZ2h0PSIzNjAiIGZpbGw9IiMxZjI0MzAiLz48ZyBmaWxsPSJub25lIiBzdHJva2U9IiMyZGQ0YmYiIHN0cm9rZS13aWR0aD0iMyI+PHJlY3QgeD0iMTQiIHk9IjE0IiB3aWR0aD0iMjQyIiBoZWlnaHQ9IjMzMiIvPjxjaXJjbGUgY3g9IjEzNSIgY3k9IjE2MiIgcj0iNDUiLz48L2c+PHRleHQgeD0iMTM1IiB5PSIyNDIiIGZvbnQtZmFtaWx5PSJIZWx2ZXRpY2EgTmV1ZSxBcmlhbCxzYW5zLXNlcmlmIiBmb250LXNpemU9IjI2IiBmb250LXdlaWdodD0iNzAwIiBmaWxsPSIjZjhmYWZjIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj4zOjQ8L3RleHQ+PC9zdmc+",
+            "alt": "縦長のサンプル画像",
+            "caption": "縦長（3:4）"
+          },
+          {
+            "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMjAgMzIwIiB3aWR0aD0iMzIwIiBoZWlnaHQ9IjMyMCI+PHJlY3Qgd2lkdGg9IjMyMCIgaGVpZ2h0PSIzMjAiIGZpbGw9IiMxZjI0MzAiLz48ZyBmaWxsPSJub25lIiBzdHJva2U9IiMyZGQ0YmYiIHN0cm9rZS13aWR0aD0iMyI+PHJlY3QgeD0iMTQiIHk9IjE0IiB3aWR0aD0iMjkyIiBoZWlnaHQ9IjI5MiIvPjxjaXJjbGUgY3g9IjE2MCIgY3k9IjE0MiIgcj0iNDUiLz48L2c+PHRleHQgeD0iMTYwIiB5PSIyMjIiIGZvbnQtZmFtaWx5PSJIZWx2ZXRpY2EgTmV1ZSxBcmlhbCxzYW5zLXNlcmlmIiBmb250LXNpemU9IjI2IiBmb250LXdlaWdodD0iNzAwIiBmaWxsPSIjZjhmYWZjIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj4xOjE8L3RleHQ+PC9zdmc+",
+            "alt": "正方形のサンプル画像",
+            "caption": "正方形（1:1）"
+          }
+        ]
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "content レイアウトで images を指定すると、複数枚の画像をグリッドで並べて表示します。各画像には src, alt, caption を設定できます。",
+          "summary": ["images で複数画像をグリッド表示", "src, alt, caption を設定", "縦長・横長・正方形が混在してもレイアウトが揃う"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-diagram",
+      "layout": "content",
+      "content": {
+        "title": "図解プリミティブ（Diagram）",
+        "component": {
+          "name": "Diagram",
+          "props": {
+            "nodes": [
+              {
+                "id": "a",
+                "rect": {
+                  "x": 0.02,
+                  "y": 0.06,
+                  "w": 0.16,
+                  "h": 0.26
+                },
+                "title": "カード",
+                "body": "outline",
+                "badge": 1,
+                "color": "primary"
+              },
+              {
+                "id": "b",
+                "rect": {
+                  "x": 0.3,
+                  "y": 0.06,
+                  "w": 0.16,
+                  "h": 0.26
+                },
+                "title": "カード",
+                "body": "filled",
+                "badge": 2,
+                "color": "success",
+                "variant": "filled"
+              },
+              {
+                "id": "c",
+                "rect": {
+                  "x": 0.02,
+                  "y": 0.64,
+                  "w": 0.16,
+                  "h": 0.26
+                },
+                "title": "カード",
+                "body": "plain",
+                "badge": 3,
+                "color": "neutral",
+                "variant": "plain"
+              }
+            ],
+            "connectors": [
+              {
+                "from": "a",
+                "to": "b",
+                "head": "triangle",
+                "label": "コネクタ"
+              },
+              {
+                "from": "b",
+                "to": "c",
+                "routing": "vertical",
+                "head": "triangle"
+              }
+            ],
+            "arrows": [
+              {
+                "from": {
+                  "x": 0.53,
+                  "y": 0.1
+                },
+                "to": {
+                  "x": 0.97,
+                  "y": 0.1
+                },
+                "head": "arrow",
+                "label": "矢印（水平）"
+              },
+              {
+                "from": {
+                  "x": 0.53,
+                  "y": 0.28
+                },
+                "to": {
+                  "x": 0.97,
+                  "y": 0.44
+                },
+                "head": "triangle",
+                "thickness": 3,
+                "label": "斜め"
+              },
+              {
+                "from": {
+                  "x": 0.56,
+                  "y": 0.55
+                },
+                "to": {
+                  "x": 0.56,
+                  "y": 0.8
+                },
+                "head": "arrow"
+              },
+              {
+                "from": {
+                  "x": 0.64,
+                  "y": 0.55
+                },
+                "to": {
+                  "x": 0.64,
+                  "y": 0.8
+                },
+                "head": "triangle",
+                "tail": "dot",
+                "dashed": true
+              }
+            ],
+            "badges": [
+              {
+                "at": {
+                  "x": 0.9,
+                  "y": 0.6
+                },
+                "text": "★",
+                "shape": "square",
+                "color": "warning"
+              }
+            ],
+            "callouts": [
+              {
+                "at": {
+                  "x": 0.876,
+                  "y": 0.638
+                },
+                "to": {
+                  "x": 0.8,
+                  "y": 0.86
+                },
+                "label": "引出線"
+              }
+            ]
+          }
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "component: \"Diagram\" を使うと、カード（nodes）・コネクタ・矢印・バッジ・引出線を正規化座標（0〜1）で自由に配置できます。矢印は dashed: true で破線にでき、実線には常時流れる光の演出が入ります。",
+          "summary": ["Diagram コンポーネントで図解プリミティブを配置", "nodes / connectors / arrows / badges / callouts", "座標はキャンバス比率（0〜1）の正規化座標"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-chart-bar",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (chart: bar)",
+        "chart": {
+          "type": "bar",
+          "unit": "%",
+          "categories": ["Q1", "Q2", "Q3", "Q4"],
+          "series": [
+            {
+              "name": "今期",
+              "values": [42, 51, 58, 67]
+            },
+            {
+              "name": "前期",
+              "values": [38, 40, 47, 52],
+              "color": "series3"
+            }
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "chart.type: \"bar\" で縦棒グラフを描画します。series を複数指定すると系列を並べて比較できます。棒は表示時に下から伸びるアニメーションが入ります。",
+          "summary": ["chart.type: \"bar\" で縦棒グラフ", "series を複数指定して比較表示", "unit で単位表記を追加"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-chart-line",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (chart: line)",
+        "chart": {
+          "type": "line",
+          "unit": "k",
+          "categories": ["24/11", "24/12", "25/01", "25/02", "25/03", "25/04", "25/05", "25/06"],
+          "series": [
+            {
+              "name": "実績",
+              "values": [34, 33, 38, 41, 44, 48, 52, 57]
+            },
+            {
+              "name": "計画",
+              "values": [32, 34, 36, 38, 40, 42, 44, 46],
+              "color": "series4"
+            }
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "chart.type: \"line\" で折れ線グラフを描画します。項目数が多いデータ（月次推移など）にも対応します。線は左から右へ引かれるように表示されます。",
+          "summary": ["chart.type: \"line\" で折れ線グラフ", "多数の項目（時系列）に対応", "series を複数指定して実績/計画などを比較"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-chart-pie",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (chart: pie)",
+        "chart": {
+          "type": "pie",
+          "unit": "%",
+          "categories": ["設計", "実装", "レビュー", "検証", "その他"],
+          "series": [
+            {
+              "values": [28, 34, 14, 18, 6]
+            }
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "chart.type: \"pie\" で円グラフを描画します。構成比の説明に使い、凡例は自動で下部に表示されます。扇形は中心から広がるように表示されます。",
+          "summary": ["chart.type: \"pie\" で円グラフ", "構成比・割合の説明に最適", "凡例を自動生成"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-chart-hbar",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (chart: hbar)",
+        "chart": {
+          "type": "hbar",
+          "unit": "件",
+          "categories": ["自動テストの拡充", "レビュー基準の統一", "リリース手順の自動化", "監視ダッシュボード整備", "ドキュメント刷新", "オンボーディング改善"],
+          "series": [
+            {
+              "values": [124, 98, 76, 61, 45, 32]
+            }
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "chart.type: \"hbar\" で横棒グラフを描画します。項目名が長い比較（施策名など）でも読みやすく表示できます。",
+          "summary": ["chart.type: \"hbar\" で横棒グラフ", "項目名が長い比較に最適", "項目数が多いときは行の余白を自動調整"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-chart-kpi",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (chart: kpi)",
+        "chart": {
+          "type": "kpi",
+          "label": "月間アクティブユーザー",
+          "value": 128400,
+          "delta": "+18.2% 前年同月比",
+          "trend": [72000, 78500, 81200, 86400, 95100, 104300, 118600, 128400],
+          "color": "series2"
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "chart.type: \"kpi\" で大きな数値と推移のスパークラインを表示します。label, value, delta で主要指標を強調できます。",
+          "summary": ["chart.type: \"kpi\" で大数値+推移を表示", "label, value, delta, trend を指定", "スパークラインは左から引かれるように表示"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-chart-kpi-row",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (chart: kpi row)",
+        "chart": {
+          "type": "kpi",
+          "items": [
+            {
+              "label": "売上成長率",
+              "value": 24.6,
+              "unit": "%",
+              "delta": "+3.1pt",
+              "deltaDirection": "up",
+              "deltaStatus": "success"
+            },
+            {
+              "label": "新規契約数",
+              "value": 342,
+              "delta": "+6.5%",
+              "deltaDirection": "up",
+              "deltaStatus": "success",
+              "color": "series3"
+            },
+            {
+              "label": "解約率",
+              "value": 3.1,
+              "unit": "%",
+              "delta": "+0.4pt",
+              "deltaDirection": "up",
+              "deltaStatus": "danger",
+              "color": "series4"
+            },
+            {
+              "label": "NPS",
+              "value": 42,
+              "delta": "±0",
+              "deltaDirection": "flat",
+              "deltaStatus": "neutral",
+              "color": "series5"
+            }
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "chart.type: \"kpi\" の items に複数の指標を並べると、KPI を横に並べた行として表示されます。個数に応じて文字サイズが自動的に縮小します。",
+          "summary": ["items で複数 KPI を横並び表示", "deltaDirection / deltaStatus で増減の色分け", "個数が増えるほど文字サイズを自動縮小"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-table",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (table)",
+        "table": {
+          "columns": [
+            {
+              "label": "項目",
+              "align": "left",
+              "width": 2
+            },
+            {
+              "label": "Free",
+              "align": "center",
+              "width": 1.2
+            },
+            {
+              "label": "Pro",
+              "align": "center",
+              "width": 1
+            },
+            {
+              "label": "Enterprise",
+              "align": "center",
+              "width": 1.5
+            }
+          ],
+          "rows": [
+            ["価格", "0円", "1,200円/月", "要見積り"],
+            ["ユーザー数", "1", "10", "無制限"],
+            ["サポート", "コミュニティ", "メール", "専任担当"],
+            ["SLA", "-", "99.9%", "99.99%"],
+            ["SSO", "-", "-", "対応"]
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "content レイアウトで table を指定すると、罫線・ゼブラ模様付きの表を描画します。行は上から順に表示され、列ごとに align で文字揃えを指定できます。",
+          "summary": ["table で罫線・ゼブラ付きの表を描画", "columns で列幅・文字揃えを指定", "行数が多いときは自動で密度を調整"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-compare",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (compare)",
+        "compare": {
+          "left": {
+            "heading": "自社ホスティング",
+            "items": [
+              {
+                "text": "初期費用ゼロ",
+                "status": "pass"
+              },
+              {
+                "text": "データを社外に出さない",
+                "status": "pass"
+              },
+              {
+                "text": "運用は自チームで担う",
+                "status": "warn"
+              },
+              {
+                "text": "スケールには増強作業が要る",
+                "status": "fail"
+              }
+            ]
+          },
+          "right": {
+            "heading": "マネージドサービス",
+            "items": [
+              {
+                "text": "運用負荷が小さい",
+                "status": "pass"
+              },
+              {
+                "text": "スケールが自動",
+                "status": "pass"
+              },
+              {
+                "text": "月額コストが発生",
+                "status": "warn"
+              },
+              {
+                "text": "リージョン障害の影響を受ける",
+                "status": "fail"
+              }
+            ]
+          }
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "compare で左右2案を対比表示します。各項目に status: \"pass\"/\"warn\"/\"fail\" を指定すると、アイコンと色で判定を表現できます。",
+          "summary": ["compare で左右2案を対比", "status: pass/warn/fail でアイコン・色分け", "見出しは heading で指定"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-flow",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (flow)",
+        "flow": [
+          {
+            "title": "要件定義",
+            "description": "課題と受け入れ基準を洗い出す"
+          },
+          {
+            "title": "設計",
+            "description": "データ構造とAPIを決める"
+          },
+          {
+            "title": "実装",
+            "description": "小さく分けて進める"
+          },
+          {
+            "title": "レビュー",
+            "description": "設計原則との整合を確認"
+          },
+          {
+            "title": "リリース",
+            "description": "見本デッキで回帰を確認"
+          }
+        ]
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "flow で工程カードと矢印による横フローを描画します。工程数に応じてカード幅・文字サイズが自動調整されます。",
+          "summary": ["flow で工程カード＋矢印の横フロー", "title / description を各工程に指定", "工程数に応じて幅・文字サイズを自動調整"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-checklist",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (checklist)",
+        "checklist": [
+          {
+            "title": "受け入れ基準を満たした",
+            "description": "イシューのチェックボックスと1対1で対応させる",
+            "checked": true
+          },
+          {
+            "title": "見本デッキを撮り直した",
+            "description": "追加した種別のぶんだけ差分が出る状態にする",
+            "checked": true
+          },
+          {
+            "title": "見た目の検査が通った",
+            "description": "はみ出し・セーフエリア侵入・装飾との重なりが 0 件",
+            "checked": true
+          },
+          {
+            "title": "CI の全ジョブが緑になった",
+            "description": "ローカルの結果は根拠にしない"
+          },
+          {
+            "title": "やり残した範囲を PR に書いた",
+            "description": "範囲外の作業は後続イシューにして番号を残す"
+          }
+        ]
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "checklist でチェックボックス付きの確認項目一覧を描画します。checked: true で完了済み項目を示せます。",
+          "summary": ["checklist でチェックボックス付き一覧", "checked: true で完了済みを表現", "title / description を項目ごとに指定"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-steps-columns",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (steps + stepColumns)",
+        "stepColumns": 2,
+        "steps": [
+          {
+            "number": 1,
+            "title": "課題を選ぶ",
+            "description": "依存の少ないものから着手する"
+          },
+          {
+            "number": 2,
+            "title": "契約を固定する",
+            "description": "並列レーンの分界を先に決める"
+          },
+          {
+            "number": 3,
+            "title": "基盤を移行する",
+            "description": "私的な宣言を共有側の契約へ寄せる"
+          },
+          {
+            "number": 4,
+            "title": "種別を追加する",
+            "description": "移行後の基盤に乗せて実装する"
+          },
+          {
+            "number": 5,
+            "title": "実測で検証する",
+            "description": "はみ出しは DOM 実測で機械的に見る"
+          },
+          {
+            "number": 6,
+            "title": "デッキを撮り直す",
+            "description": "追加分以外に差分が出ないことを確認する"
+          },
+          {
+            "number": 7,
+            "title": "PR にまとめる",
+            "description": "やり残しと後続イシューを明記する"
+          }
+        ]
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "steps に stepColumns を指定すると、連結線を持たない多列の番号付きリストとして表示されます。項目数が多いタイムラインに向いています。",
+          "summary": ["stepColumns で steps を多列表示", "連結線なしの番号付きリスト形式", "項目数が多いときに横1列より読みやすい"]
+        }
+      }
+    },
+    {
+      "id": "guide-two-column-diagram-fill",
+      "layout": "two-column",
+      "content": {
+        "title": "layout: two-column (埋めるコンポーネント)",
+        "left": {
+          "heading": "カラムに図解を置く",
+          "paragraphs": ["カラム自身が本文領域の残り高さをキャンバスへ渡す"],
+          "items": [
+            {
+              "text": "高さの受け取り口はカラム側"
+            },
+            {
+              "text": "本文領域側に付けると 2 カラムが崩れる"
+            }
+          ]
+        },
+        "right": {
+          "component": {
+            "name": "Diagram",
+            "props": {
+              "nodes": [
+                {
+                  "id": "host",
+                  "rect": {
+                    "x": 0.06,
+                    "y": 0.04,
+                    "w": 0.88,
+                    "h": 0.24
+                  },
+                  "title": "カラム",
+                  "body": "fill ホスト",
+                  "color": "primary"
+                },
+                {
+                  "id": "item",
+                  "rect": {
+                    "x": 0.06,
+                    "y": 0.38,
+                    "w": 0.88,
+                    "h": 0.24
+                  },
+                  "title": "図解キャンバス",
+                  "body": "埋める要素",
+                  "color": "success",
+                  "variant": "filled"
+                },
+                {
+                  "id": "primitive",
+                  "rect": {
+                    "x": 0.06,
+                    "y": 0.72,
+                    "w": 0.88,
+                    "h": 0.24
+                  },
+                  "title": "プリミティブ",
+                  "body": "正規化座標で配置",
+                  "color": "neutral",
+                  "variant": "plain"
+                }
+              ],
+              "connectors": [
+                {
+                  "from": "host",
+                  "to": "item",
+                  "routing": "vertical",
+                  "head": "triangle"
+                },
+                {
+                  "from": "item",
+                  "to": "primitive",
+                  "routing": "vertical",
+                  "head": "triangle"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "two-column の left/right に Diagram コンポーネントを置くと、カラム自身が本文領域の残り高さをキャンバスへ渡します。高さの受け取り口は必ずカラム側に置く必要があります。",
+          "summary": ["two-column のカラムに Diagram を配置", "カラムが残り高さをキャンバスへ渡す", "高さの受け取り口はカラム側（本文領域側ではない）"]
+        }
+      }
+    },
+    {
+      "id": "guide-center-quote",
+      "layout": "center",
+      "content": {
+        "variant": "quote",
+        "quote": "実装量の推定で\n設計を曲げない",
+        "citation": "設計判断ルール"
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "center レイアウトの variant: \"quote\" は、引用文とcitation（出典）を大きく表示します。強い主張やまとめの一言に使います。",
+          "summary": ["variant: \"quote\" で引用スライド", "quote と citation（出典）を指定", "強い主張・格言のようなまとめに最適"]
+        }
+      }
+    },
+    {
+      "id": "guide-center-message",
+      "layout": "center",
+      "content": {
+        "variant": "message",
+        "message": "1 枚に 1 メッセージ",
+        "body": "淡色地の大メッセージ。章の切り替えに使う"
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "variant: \"message\" は淡色地に1枚1メッセージを表示します。章の切り替えなど、視線を集めたい場面に使います。",
+          "summary": ["variant: \"message\" で1枚1メッセージ", "淡色地で本文に視線を集める", "章の切り替えに最適"]
+        }
+      }
+    },
+    {
+      "id": "guide-center-message-inverse",
+      "layout": "center",
+      "content": {
+        "variant": "message-inverse",
+        "message": "全面塗りで\n主張を際立たせる",
+        "body": "塗り色と文字色はマスターとトークンが持つ"
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "variant: \"message-inverse\" はマスターの全面塗りと組み合わせて主張を際立たせます。塗り色と文字色はマスターとトークンが管理するため、コントラストは自動検証されます。",
+          "summary": ["variant: \"message-inverse\" で全面塗りの強調表示", "塗り色・文字色はマスター/トークンが管理", "コントラストは自動検証される"]
+        }
+      }
+    },
+    {
+      "id": "guide-closing-slide",
+      "layout": "center",
+      "content": {
+        "variant": "closing",
+        "message": "ありがとうございました",
+        "body": "ロゴの全面配置と全面塗りで終わる",
+        "githubRepo": "ToshikiImagawa/slide-presentation-app"
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "variant: \"closing\" は結びのスライド専用で、ロゴの全面配置と組み合わせます。githubRepo を指定するとリポジトリへのリンクを表示できます。",
+          "summary": ["variant: \"closing\" で結びのスライド", "ロゴの全面配置と組み合わせる", "githubRepo でリポジトリリンクを表示"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-toc",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (toc)",
+        "toc": {
+          "items": [
+            {
+              "number": "01",
+              "title": "背景",
+              "page": 2
+            },
+            {
+              "number": "02",
+              "title": "設計",
+              "page": 8
+            },
+            {
+              "number": "03",
+              "title": "実装",
+              "page": 15
+            },
+            {
+              "number": "04",
+              "title": "検証",
+              "page": 22
+            }
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "toc で目次を描画します。number, title, page を指定すると、章番号・タイトル・開始ページを一覧表示できます。",
+          "summary": ["toc で目次スライドを描画", "number, title, page を項目ごとに指定", "章立てのある発表の冒頭に最適"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-hierarchy-diagram",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (hierarchyDiagram)",
+        "hierarchyDiagram": {
+          "layers": [
+            {
+              "title": "プレゼンテーション層",
+              "description": "Web UI・モバイルアプリ"
+            },
+            {
+              "title": "ビジネス層",
+              "description": "API・ドメインロジック"
+            },
+            {
+              "title": "データ層",
+              "description": "RDB・キャッシュ"
+            }
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "hierarchyDiagram は階層構造（アーキテクチャの層など）を上から下へ積んで表示します。layers に title と description を指定します。",
+          "summary": ["hierarchyDiagram で階層構造を表示", "layers に title / description を指定", "アーキテクチャ図の説明に最適"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-server-diagram",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (serverDiagram)",
+        "serverDiagram": {
+          "zones": [
+            {
+              "title": "パブリックサブネット",
+              "nodes": [
+                {
+                  "id": "lb",
+                  "label": "ロードバランサ"
+                }
+              ]
+            },
+            {
+              "title": "プライベートサブネット",
+              "nodes": [
+                {
+                  "id": "app1",
+                  "label": "APIサーバ"
+                },
+                {
+                  "id": "app2",
+                  "label": "APIサーバ"
+                }
+              ]
+            },
+            {
+              "title": "データ層",
+              "nodes": [
+                {
+                  "id": "db",
+                  "label": "RDS"
+                }
+              ]
+            }
+          ],
+          "connections": [
+            {
+              "from": "lb",
+              "to": "app1"
+            },
+            {
+              "from": "lb",
+              "to": "app2"
+            },
+            {
+              "from": "app1",
+              "to": "db"
+            },
+            {
+              "from": "app2",
+              "to": "db"
+            }
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "serverDiagram はゾーン（サブネット等）にノードをまとめ、接続線で結びます。インフラ構成図の説明に使います。",
+          "summary": ["serverDiagram でインフラ構成図を表示", "zones でノードをグルーピング", "connections でノード間を接続"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-org-chart",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (orgChart)",
+        "orgChart": {
+          "nodes": [
+            {
+              "id": "ceo",
+              "label": "CEO"
+            },
+            {
+              "id": "cto",
+              "label": "CTO",
+              "parent": "ceo"
+            },
+            {
+              "id": "coo",
+              "label": "COO",
+              "parent": "ceo"
+            },
+            {
+              "id": "eng",
+              "label": "エンジニアリング部長",
+              "parent": "cto"
+            },
+            {
+              "id": "biz",
+              "label": "事業部長",
+              "parent": "coo"
+            }
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "orgChart は parent を指定するだけで組織図を自動整列します。ノードの位置計算は不要です。",
+          "summary": ["orgChart で組織図を自動整列", "parent を指定するだけで階層を構築", "座標計算は不要"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-class-diagram",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (classDiagram)",
+        "classDiagram": {
+          "classes": [
+            {
+              "id": "user",
+              "label": "User",
+              "attributes": ["id: string", "name: string"],
+              "methods": ["login(): void"]
+            },
+            {
+              "id": "admin",
+              "label": "Admin",
+              "attributes": ["role: string"],
+              "methods": ["ban(user): void"]
+            }
+          ],
+          "relations": [
+            {
+              "from": "admin",
+              "to": "user",
+              "type": "inheritance"
+            }
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "classDiagram は UML クラス図を描画します。attributes / methods を配列で指定し、relations で継承などの関係を表現します。",
+          "summary": ["classDiagram で UML クラス図を表示", "attributes / methods を配列で指定", "relations でクラス間の関係を表現"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-date-timeline",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (dateTimeline)",
+        "dateTimeline": [
+          {
+            "date": "2026/01",
+            "title": "要件確定",
+            "description": "スコープを固定"
+          },
+          {
+            "date": "2026/03",
+            "title": "実装完了"
+          },
+          {
+            "date": "2026/04",
+            "title": "リリース",
+            "description": "本番反映"
+          }
+        ]
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "dateTimeline は日付付きのマイルストーンを一直線に並べます。date, title, description を指定します。",
+          "summary": ["dateTimeline で日付付きマイルストーン", "date, title, description を指定", "1本のタイムラインとして表示"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-date-timeline-columns",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (dateTimeline + dateTimelineColumns)",
+        "dateTimelineColumns": 3,
+        "dateTimeline": [
+          {
+            "date": "2022",
+            "title": "海外展開",
+            "description": "多言語対応"
+          },
+          {
+            "date": "2022/06",
+            "title": "資金調達"
+          },
+          {
+            "date": "2023",
+            "title": "組織拡大",
+            "description": "3チーム制へ"
+          },
+          {
+            "date": "2023/09",
+            "title": "大型契約"
+          },
+          {
+            "date": "2024",
+            "title": "プラットフォーム化"
+          },
+          {
+            "date": "2024/11",
+            "title": "認証取得"
+          },
+          {
+            "date": "2025",
+            "title": "次世代基盤へ移行",
+            "description": "旧基盤は段階的に廃止"
+          },
+          {
+            "date": "2026",
+            "title": "現在"
+          }
+        ]
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "dateTimeline に dateTimelineColumns を指定すると、項目数が多い年表を複数列に折り返して表示します。",
+          "summary": ["dateTimelineColumns で年表を複数列に折返す", "項目数が多い長期の年表に対応", "1列表示より省スペースで一覧できる"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-flowchart",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (flowchart)",
+        "flowchart": {
+          "nodes": [
+            {
+              "id": "start",
+              "label": "申請",
+              "shape": "start",
+              "row": 0,
+              "col": 1
+            },
+            {
+              "id": "check",
+              "label": "承認する?",
+              "shape": "decision",
+              "row": 1,
+              "col": 1
+            },
+            {
+              "id": "approve",
+              "label": "承認処理",
+              "shape": "process",
+              "row": 2,
+              "col": 0
+            },
+            {
+              "id": "reject",
+              "label": "却下通知",
+              "shape": "process",
+              "row": 2,
+              "col": 2
+            },
+            {
+              "id": "end",
+              "label": "完了",
+              "shape": "end",
+              "row": 3,
+              "col": 1
+            }
+          ],
+          "edges": [
+            {
+              "from": "start",
+              "to": "check"
+            },
+            {
+              "from": "check",
+              "to": "approve",
+              "label": "Yes"
+            },
+            {
+              "from": "check",
+              "to": "reject",
+              "label": "No"
+            },
+            {
+              "from": "approve",
+              "to": "end"
+            },
+            {
+              "from": "reject",
+              "to": "end"
+            }
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "flowchart は開始/終了/判断/処理の各ノードを row/col で配置し、edges で結びます。判断ノードは shape: \"decision\" でひし形になります。",
+          "summary": ["flowchart で業務フローを表示", "row / col でノードを配置", "shape: start/end/decision/process でノード種別を指定"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-swimlane",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (swimlane)",
+        "swimlane": {
+          "phases": ["設計", "実装", "レビュー", "リリース"],
+          "lanes": [
+            {
+              "title": "PM",
+              "nodes": [
+                {
+                  "id": "req",
+                  "label": "要件定義",
+                  "col": 0
+                }
+              ]
+            },
+            {
+              "title": "エンジニア",
+              "nodes": [
+                {
+                  "id": "impl",
+                  "label": "実装",
+                  "col": 1
+                },
+                {
+                  "id": "fix",
+                  "label": "修正",
+                  "col": 2
+                }
+              ]
+            },
+            {
+              "title": "QA",
+              "nodes": [
+                {
+                  "id": "review",
+                  "label": "レビュー",
+                  "col": 2
+                },
+                {
+                  "id": "release",
+                  "label": "リリース",
+                  "col": 3
+                }
+              ]
+            }
+          ],
+          "connections": [
+            {
+              "from": "req",
+              "to": "impl"
+            },
+            {
+              "from": "impl",
+              "to": "review"
+            },
+            {
+              "from": "review",
+              "to": "fix"
+            },
+            {
+              "from": "fix",
+              "to": "release"
+            }
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "swimlane はレーン（担当者や部署）ごとに工程ノードを配置し、フェーズを列見出しとして表示します。担当の移り変わりが見える業務フローに向きます。",
+          "summary": ["swimlane でレーン別の業務フローを表示", "lanes で担当者・部署ごとにノードを配置", "phases を列見出しとして表示"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-gantt",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (gantt)",
+        "gantt": {
+          "axis": ["1月", "2月", "3月", "4月"],
+          "tasks": [
+            {
+              "label": "設計",
+              "startCol": 0,
+              "span": 1
+            },
+            {
+              "label": "実装",
+              "startCol": 1,
+              "span": 2
+            },
+            {
+              "label": "テスト",
+              "startCol": 2,
+              "span": 1
+            },
+            {
+              "label": "リリース",
+              "startCol": 3,
+              "span": 1
+            }
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "gantt は時間軸（axis）と工程バー（tasks）でスケジュールを表示します。startCol / span で期間を指定します。",
+          "summary": ["gantt でスケジュールを表示", "axis で時間軸の列見出しを指定", "startCol / span で各工程の期間を指定"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-two-by-two",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (twoByTwo)",
+        "twoByTwo": {
+          "quadrants": [
+            {
+              "title": "強い / 難しい"
+            },
+            {
+              "title": "強い / 簡単"
+            },
+            {
+              "title": "弱い / 難しい"
+            },
+            {
+              "title": "弱い / 簡単"
+            }
+          ],
+          "axes": {
+            "x": {
+              "label": "実装難易度",
+              "low": "簡単",
+              "high": "難しい"
+            },
+            "y": {
+              "label": "効果",
+              "low": "低",
+              "high": "高"
+            }
+          },
+          "items": [
+            {
+              "label": "施策A",
+              "x": 0.15,
+              "y": 0.2
+            },
+            {
+              "label": "施策B",
+              "x": 0.72,
+              "y": 0.28
+            },
+            {
+              "label": "施策C",
+              "x": 0.3,
+              "y": 0.78
+            },
+            {
+              "label": "施策D",
+              "x": 0.82,
+              "y": 0.7
+            }
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "twoByTwo は2軸のマトリクスに項目を x/y 座標で配置します。優先度づけ（効果×難易度など）の説明に使います。",
+          "summary": ["twoByTwo で2軸マトリクスを表示", "items を x/y 座標でプロット", "優先度づけの説明に最適"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-funnel",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (funnel)",
+        "funnel": {
+          "unit": "件",
+          "stages": [
+            {
+              "label": "アクセス",
+              "value": 10000,
+              "description": "訪問数"
+            },
+            {
+              "label": "登録",
+              "value": 3000,
+              "description": "会員登録"
+            },
+            {
+              "label": "有料化",
+              "value": 800,
+              "description": "課金"
+            },
+            {
+              "label": "継続",
+              "value": 300,
+              "description": "翌月継続"
+            }
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "funnel は各段の value に応じて幅が変わる漏斗図を描画します。マーケティングのコンバージョン説明などに使います。",
+          "summary": ["funnel でコンバージョン漏斗を表示", "value に応じて段の幅が変わる", "各段に label / description を指定"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-swot",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (swot)",
+        "swot": {
+          "labels": {
+            "strengths": "強み",
+            "weaknesses": "弱み",
+            "opportunities": "機会",
+            "threats": "脅威"
+          },
+          "strengths": {
+            "items": ["ブランド認知", "熟練エンジニア", "既存顧客基盤"]
+          },
+          "weaknesses": {
+            "items": ["レガシーコード", "採用難", "運用コスト高"]
+          },
+          "opportunities": {
+            "items": ["市場拡大", "AI活用", "新規セグメント"]
+          },
+          "threats": {
+            "items": ["競合強化", "規制強化", "為替変動"]
+          }
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "swot は強み・弱み・機会・脅威の4象限を描画します。各象限の items に箇条書きを指定します。",
+          "summary": ["swot で4象限のSWOT分析を表示", "strengths/weaknesses/opportunities/threats を指定", "各象限に箇条書きの items を設定"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-heatmap",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (heatmap)",
+        "heatmap": {
+          "rows": ["Product A", "Product B", "Product C", "Product D"],
+          "cols": ["Q1", "Q2", "Q3", "Q4"],
+          "color": "series2",
+          "unit": "%",
+          "values": [
+            [12, 18, 24, 30],
+            [8, 14, 22, 28],
+            [20, 26, 32, 38],
+            [4, 10, 16, 22]
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "heatmap は行×列の値を濃淡で表現します。color で基準色を指定し、値の大小をひと目で比較できます。",
+          "summary": ["heatmap で行×列の値を濃淡表示", "color で基準色を指定", "セルは段階的にフェードインして表示"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-svg",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (svg)",
+        "svg": {
+          "markup": "<svg viewBox=\"0 0 200 120\"><rect x=\"10\" y=\"70\" width=\"40\" height=\"40\" fill=\"currentColor\" /><rect x=\"80\" y=\"40\" width=\"40\" height=\"70\" fill=\"currentColor\" opacity=\"0.7\" /><rect x=\"150\" y=\"10\" width=\"40\" height=\"100\" fill=\"currentColor\" opacity=\"0.4\" /></svg>",
+          "color": "accent",
+          "caption": "SVGマークアップをインライン展開し、currentColor でテーマ色に追従"
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "svg はマークアップをそのまま展開して描画します。color に currentColor を使うと、テーマの色トークンに追従します。",
+          "summary": ["svg で任意の SVG マークアップを展開", "color でテーマ色に追従（currentColor）", "caption で説明文を添える"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-text-diagram",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (textDiagram)",
+        "textDiagram": {
+          "source": "flowchart LR\n  A[開始] --> B{判断}\n  B -->|Yes| C[完了]\n  B -->|No| A",
+          "caption": "Mermaid記法のテキスト図法を描画（初回はmermaidを動的importで読み込む）"
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "textDiagram は Mermaid 記法のテキストから図を描画します。source に記法を書くだけで、フローチャートやシーケンス図が生成されます。",
+          "summary": ["textDiagram で Mermaid 記法を図に変換", "source にテキスト記法を記述するだけ", "初回利用時に mermaid を動的読み込み"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-sequence-diagram",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (sequenceDiagram)",
+        "sequenceDiagram": {
+          "lifelines": [
+            {
+              "id": "user",
+              "label": "User"
+            },
+            {
+              "id": "api",
+              "label": "API"
+            },
+            {
+              "id": "db",
+              "label": "DB"
+            }
+          ],
+          "messages": [
+            {
+              "from": "user",
+              "to": "api",
+              "label": "login()"
+            },
+            {
+              "from": "api",
+              "to": "api",
+              "label": "validate()"
+            },
+            {
+              "from": "api",
+              "to": "db",
+              "label": "query()",
+              "type": "async"
+            },
+            {
+              "from": "db",
+              "to": "api",
+              "label": "result"
+            },
+            {
+              "from": "api",
+              "to": "user",
+              "label": "response"
+            }
+          ],
+          "activations": [
+            {
+              "lifeline": "api",
+              "from": 0,
+              "to": 4
+            }
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "sequenceDiagram はライフライン間のメッセージをやり取りとして描画します。activations で処理中の区間を強調できます。",
+          "summary": ["sequenceDiagram でシーケンス図を表示", "lifelines と messages でやり取りを表現", "activations で処理中区間を強調"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-profile",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (profile)",
+        "profile": {
+          "image": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMDAgMzYwIiB3aWR0aD0iMzAwIiBoZWlnaHQ9IjM2MCI+PHJlY3Qgd2lkdGg9IjMwMCIgaGVpZ2h0PSIzNjAiIGZpbGw9IiMxZjI0MzAiLz48Y2lyY2xlIGN4PSIxNTAiIGN5PSIxMzIiIHI9IjU4IiBmaWxsPSIjMmRkNGJmIiBvcGFjaXR5PSIwLjkiLz48cGF0aCBkPSJNNDYgMzUyYzAtNTcgNDctMTAzIDEwNC0xMDNzMTA0IDQ2IDEwNCAxMDN6IiBmaWxsPSIjMmRkNGJmIiBvcGFjaXR5PSIwLjkiLz48cmVjdCB4PSI5IiB5PSI5IiB3aWR0aD0iMjgyIiBoZWlnaHQ9IjM0MiIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMmRkNGJmIiBzdHJva2Utd2lkdGg9IjMiLz48L3N2Zz4=",
+          "name": "山田 太郎",
+          "nameSub": "Taro Yamada",
+          "role": "ソフトウェアエンジニア",
+          "org": "プラットフォーム開発部",
+          "body": "登壇資料の作成ツールを開発しています。\n関心領域は設計とテスト自動化。",
+          "links": [
+            {
+              "icon": "MailOutline",
+              "label": "taro.yamada@example.com"
+            },
+            {
+              "icon": "AccountCircle",
+              "label": "@taro_yamada"
+            }
+          ]
+        }
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "profile は写真付きの自己紹介・プロフィールカードを描画します。links に icon と label を指定すると、連絡先を並べて表示できます。",
+          "summary": ["profile で写真付きプロフィールを表示", "name, role, org, body を指定", "links で連絡先アイコン一覧を表示"]
+        }
+      }
+    },
+    {
+      "id": "guide-content-images-grouped",
+      "layout": "content",
+      "content": {
+        "title": "layout: content (images グループ形)",
+        "imageColumns": 4,
+        "images": [
+          {
+            "label": "パートナー企業",
+            "images": [
+              {
+                "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIiB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCI+PHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiMxZjI0MzAiLz48Y2lyY2xlIGN4PSIxMDAiIGN5PSIxMDAiIHI9IjYwIiBmaWxsPSIjMmRkNGJmIi8+PC9zdmc+",
+                "alt": "パートナー企業ロゴ1"
+              },
+              {
+                "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIiB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCI+PHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiMxZjI0MzAiLz48Y2lyY2xlIGN4PSIxMDAiIGN5PSIxMDAiIHI9IjYwIiBmaWxsPSIjMmRkNGJmIi8+PC9zdmc+",
+                "alt": "パートナー企業ロゴ2"
+              },
+              {
+                "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIiB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCI+PHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiMxZjI0MzAiLz48Y2lyY2xlIGN4PSIxMDAiIGN5PSIxMDAiIHI9IjYwIiBmaWxsPSIjMmRkNGJmIi8+PC9zdmc+",
+                "alt": "パートナー企業ロゴ3"
+              },
+              {
+                "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIiB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCI+PHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiMxZjI0MzAiLz48Y2lyY2xlIGN4PSIxMDAiIGN5PSIxMDAiIHI9IjYwIiBmaWxsPSIjMmRkNGJmIi8+PC9zdmc+",
+                "alt": "パートナー企業ロゴ4"
+              }
+            ]
+          },
+          {
+            "label": "採用技術",
+            "images": [
+              {
+                "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIiB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCI+PHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiMxZjI0MzAiLz48Y2lyY2xlIGN4PSIxMDAiIGN5PSIxMDAiIHI9IjYwIiBmaWxsPSIjMmRkNGJmIi8+PC9zdmc+",
+                "alt": "採用技術ロゴ1"
+              },
+              {
+                "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMjAwIiB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCI+PHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiMxZjI0MzAiLz48Y2lyY2xlIGN4PSIxMDAiIGN5PSIxMDAiIHI9IjYwIiBmaWxsPSIjMmRkNGJmIi8+PC9zdmc+",
+                "alt": "採用技術ロゴ2"
+              }
+            ]
+          }
+        ]
+      },
+      "meta": {
+        "notes": {
+          "speakerNotes": "images にラベル付きの images 配列（グループ）を渡すと、パートナー企業ロゴのように見出し付きでグループ化して表示できます。imageColumns で1グループあたりの列数を指定します。",
+          "summary": ["images をグループ化して見出し付きで表示", "label でグループの見出しを指定", "imageColumns で1グループの列数を指定"]
+        }
+      }
+    },
+    {
+      "id": "guide-background-image",
+      "layout": "content",
+      "meta": {
+        "backgroundImage": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA5NjAgNTQwIiB3aWR0aD0iOTYwIiBoZWlnaHQ9IjU0MCI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJza3kiIHgxPSIwIiB5MT0iMCIgeDI9IjAiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiMxZTNhOGEiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNmOTczMTYiLz48L2xpbmVhckdyYWRpZW50PjxsaW5lYXJHcmFkaWVudCBpZD0ic2NyaW0iIHgxPSIwIiB5MT0iMCIgeDI9IjAiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiMwZjE3MmEiIHN0b3Atb3BhY2l0eT0iMC43NSIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzBmMTcyYSIgc3RvcC1vcGFjaXR5PSIwIi8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHJlY3Qgd2lkdGg9Ijk2MCIgaGVpZ2h0PSI1NDAiIGZpbGw9InVybCgjc2t5KSIvPjxjaXJjbGUgY3g9IjcwMCIgY3k9IjE1MCIgcj0iNzAiIGZpbGw9IiNmZWYzYzciLz48cG9seWdvbiBwb2ludHM9IjAsNDIwIDIyMCwyMjAgMzgwLDM4MCA1MjAsMjQwIDY4MCw0MjAiIGZpbGw9IiMwZjE3MmEiIG9wYWNpdHk9IjAuODUiLz48cG9seWdvbiBwb2ludHM9IjMwMCw0NjAgNTIwLDMwMCA3MjAsNDYwIiBmaWxsPSIjMWUyOTNiIiBvcGFjaXR5PSIwLjkiLz48cmVjdCB5PSI0NjAiIHdpZHRoPSI5NjAiIGhlaWdodD0iODAiIGZpbGw9IiMwYjExMjAiLz48cmVjdCB3aWR0aD0iOTYwIiBoZWlnaHQ9IjI2MCIgZmlsbD0idXJsKCNzY3JpbSkiLz48L3N2Zz4K",
+        "notes": {
+          "speakerNotes": "meta.backgroundImage を使うとスライド単位で背景画像を設定できます。デッキ全体で共有したい場合は theme.masters[].background の image 種別を使います。",
+          "summary": ["meta.backgroundImage でスライド個別の背景画像", "theme.masters[].background (type: image) でデッキ共有の背景", "fit: cover/contain・opacity を指定可能"]
+        }
+      },
+      "content": {
+        "title": "背景画像設定",
+        "body": "meta.backgroundImage にパスや data URI を指定すると、このスライドだけの背景画像になります。\nさらに高度な使い方として、theme.masters[].background に type: \"image\" を指定すると、複数スライドで共有するマスター背景として設定できます（fit: cover/contain・opacity 指定可）。"
       }
     },
     {
@@ -727,11 +2304,7 @@
       "meta": {
         "notes": {
           "speakerNotes": "center レイアウトの variant: section は、セクション区切りやまとめスライドに適した大きなタイトル表示です。QR コードと GitHub リンクも配置できます。",
-          "summary": [
-            "center + variant: section でまとめスライド",
-            "QR コードと GitHub リンクを配置可能",
-            "セクション区切りにも使用可能"
-          ]
+          "summary": ["center + variant: section でまとめスライド", "QR コードと GitHub リンクを配置可能", "セクション区切りにも使用可能"]
         }
       }
     }

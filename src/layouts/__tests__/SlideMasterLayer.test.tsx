@@ -214,9 +214,15 @@ describe('マスター背景', () => {
 
   it('grid は global.css の格子意匠クラスを付け、下地色（color 未指定時）も .master-background の既定に委ねる', () => {
     const el = backgroundEl({ type: 'grid' })
-    expect(el.className).toBe('master-background master-background-grid')
+    // motion は既定で有効（false を明示しない限り on）なので master-background-motion-grid も付く
+    expect(el.className).toBe('master-background master-background-grid master-background-motion-grid')
     expect(el.style.backgroundColor).toBe('')
     expect(el.style.getPropertyValue('--theme-background-grid-size')).toBe('')
+  })
+
+  it('grid の motion に false を明示すると動きを止める', () => {
+    const el = backgroundEl({ type: 'grid', motion: false })
+    expect(el.className).toBe('master-background master-background-grid')
   })
 
   it('grid の color を指定すると下地色をインラインで上書きする', () => {

@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { clampColumns, densityFromRows } from './multiColumnDensity'
 import styles from './Timeline.module.css'
 
@@ -15,7 +15,7 @@ export function Timeline({ items, columns }: Props) {
       <div className={styles.layout}>
         <div className={styles.line} />
         {items.map((item, i) => (
-          <div key={i} className={styles.item}>
+          <div key={i} className={`${styles.item} stagger-item`} style={{ '--stagger-index': i } as CSSProperties}>
             {item}
           </div>
         ))}
@@ -32,7 +32,7 @@ export function Timeline({ items, columns }: Props) {
       style={{ gridTemplateColumns: `repeat(${resolvedColumns}, minmax(0, 1fr))` }}
     >
       {items.map((item, i) => (
-        <div key={i} className={styles.item}>
+        <div key={i} className={`${styles.item} stagger-item`} style={{ '--stagger-index': i } as CSSProperties}>
           {item}
         </div>
       ))}

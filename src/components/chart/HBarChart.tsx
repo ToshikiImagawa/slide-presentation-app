@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react'
 import { AxisFrame } from './AxisFrame'
 import { barSpan, formatValue, VALUE_INSIDE_THRESHOLD_HORIZONTAL, type AxisChartProps } from './chartScale'
 import styles from './Chart.module.css'
@@ -21,7 +22,7 @@ export function HBarChart({ categories, series, scale, unit, axis, valueLabels }
               const { from, to } = barSpan(value, scale)
               return (
                 <div key={seriesIndex} className={styles.hbarSlot}>
-                  <div className={styles.hbarBar} data-negative={value < 0} style={{ left: `${from * 100}%`, width: `${(to - from) * 100}%`, background: entry.color }} />
+                  <div className={styles.hbarBar} data-negative={value < 0} style={{ left: `${from * 100}%`, width: `${(to - from) * 100}%`, background: entry.color, '--stagger-index': categoryIndex } as CSSProperties} />
                   {valueLabels && (
                     <span className={`${styles.value} ${styles.valueAfter}`} data-inside={to > VALUE_INSIDE_THRESHOLD_HORIZONTAL} style={{ left: `${to * 100}%` }}>
                       {formatValue(value, unit)}

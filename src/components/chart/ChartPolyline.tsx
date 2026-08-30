@@ -24,6 +24,12 @@ type Props = {
 /**
  * 折れ線の polyline。線幅が縦横比で歪まないよう vector-effect:non-scaling-stroke を使う
  * （LineChart・KpiTrend が共有・#240）。
+ *
+ * ドローイン演出（pathLength=1 + stroke-dasharray/dashoffset）は撤回している: vector-effect:
+ * non-scaling-stroke と pathLength による正規化を同時に指定すると、WebKit で stroke-dasharray の
+ * 計算が経路全体ではなく極小単位に基づいて行われ、線が点線状に途切れて表示される不具合を実測で
+ * 確認した（DiagramLine の矢印線は vector-effect を使わないため同じ問題を起こさない）。見た目の
+ * 破綻を避けるため、折れ線は静的描画のままにする。
  */
 export function ChartPolyline({ points, color }: Props) {
   if (points.length < 2) return null

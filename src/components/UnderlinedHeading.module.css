@@ -1,0 +1,22 @@
+/* 見出し下線のドローイン演出。MUI の sx（CSS-in-JS）では外側に `.reveal .slides section.present` を
+   前置するセレクタを書けないため、この CSS Module に切り出す。
+   :global(.reveal .slides section.present) を前置する理由は global.css の .stagger-item のコメント参照
+   （要素自身に直接 animation を付けると Reveal.js のスライド切替で再トリガーされない） */
+.underline {
+  transform-origin: left;
+}
+
+:global(.reveal .slides section.present) .underline {
+  animation: underlineGrow 0.7s ease-out 0.2s both;
+}
+
+@keyframes underlineGrow {
+  from {
+    opacity: 0;
+    transform: scaleX(0);
+  }
+  to {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
