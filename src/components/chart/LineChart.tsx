@@ -34,11 +34,12 @@ export function LineChart({ categories, series, scale, unit, axis, valueLabels }
         entry.values.map((value, index) => {
           if (!Number.isFinite(value)) return null
           const ratio = ratioOf(value, scale)
+          const x = xOf(index, count)
           return (
             <Fragment key={`${seriesIndex}-${index}`}>
-              <span className={styles.point} style={{ left: `${xOf(index, count)}%`, bottom: `${ratio * 100}%`, background: entry.color, '--point-progress': xOf(index, count) / 100 } as CSSProperties} />
+              <span className={styles.point} style={{ left: `${x}%`, bottom: `${ratio * 100}%`, background: entry.color, '--point-progress': x / 100 } as CSSProperties} />
               {valueLabels && (
-                <span className={`${styles.value} ${styles.valueAbove}`} data-inside={ratio > VALUE_INSIDE_THRESHOLD_VERTICAL} style={{ left: `${xOf(index, count)}%`, bottom: `${ratio * 100}%` }}>
+                <span className={`${styles.value} ${styles.valueAbove}`} data-inside={ratio > VALUE_INSIDE_THRESHOLD_VERTICAL} style={{ left: `${x}%`, bottom: `${ratio * 100}%`, '--point-progress': x / 100 } as CSSProperties}>
                   {formatValue(value, unit)}
                 </span>
               )}
