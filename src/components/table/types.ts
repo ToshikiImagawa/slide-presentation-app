@@ -4,7 +4,7 @@ export type TableColumnAlign = 'left' | 'center' | 'right'
 export type TableColumnSpec = {
   label: string
   align?: TableColumnAlign
-  /** 列幅の比率（例: 2は1の倍の幅）。省略時は全列等分 */
+  /** 列幅の比率（例: 2は1の倍の幅）。省略時はヘッダー・セルの文字数に応じた重みを自動算出する（#418） */
   width?: number
 }
 
