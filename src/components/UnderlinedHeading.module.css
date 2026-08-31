@@ -7,7 +7,7 @@
 }
 
 :global(.reveal .slides section.present) .underline {
-  animation: underlineGrow 0.7s ease-out 0.2s both;
+  animation: underlineGrow calc(0.7s / var(--theme-motion-speed, 1)) ease-out calc(0.2s / var(--theme-motion-speed, 1)) both;
 }
 
 @keyframes underlineGrow {

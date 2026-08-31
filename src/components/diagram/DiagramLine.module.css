@@ -38,8 +38,8 @@
    途中から間隔が詰まって速度が不自然に変わる）。
    base delay 0.25s は DiagramCard の 0.2s よりわずかに後（ノードが現れた直後に線が引かれる順序） */
 :global(.reveal .slides section.present) .draw {
-  animation: diagramLineDraw 0.5s ease-out both;
-  animation-delay: calc(0.25s + var(--stagger-index, 0) * 0.12s);
+  animation: diagramLineDraw calc(0.5s / var(--theme-motion-speed, 1)) ease-out both;
+  animation-delay: calc((0.25s + var(--stagger-index, 0) * 0.12s) / var(--theme-motion-speed, 1));
 }
 
 @keyframes diagramLineDraw {
@@ -55,7 +55,7 @@
    1周期分ちょうど動かすためシームレスにループする（--flow-dash-period は DiagramLine.tsx が
    dashed の strokeDasharray と同じ周期で計算する） */
 .flow {
-  animation: diagramLineFlow 1s linear infinite;
+  animation: diagramLineFlow calc(1s / var(--theme-motion-speed, 1)) linear infinite;
 }
 
 @keyframes diagramLineFlow {
