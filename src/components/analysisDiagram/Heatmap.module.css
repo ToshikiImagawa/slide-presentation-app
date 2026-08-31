@@ -16,8 +16,8 @@
    delay をキャップしない理由も global.css の .stagger-item のコメント参照（キャップすると
    途中から間隔が詰まって速度が不自然に変わる） */
 :global(.reveal .slides section.present) .cell {
-  animation: cellFadeIn calc(0.5s / var(--theme-motion-speed, 1)) ease-out both;
-  animation-delay: calc((0.15s + var(--stagger-index, 0) * 0.06s) / var(--theme-motion-speed, 1));
+  animation: cellFadeIn calc(0.5s * var(--theme-motion-scale)) ease-out both;
+  animation-delay: calc((0.15s + var(--stagger-index, 0) * 0.06s) * var(--theme-motion-scale));
 }
 
 @keyframes cellFadeIn {

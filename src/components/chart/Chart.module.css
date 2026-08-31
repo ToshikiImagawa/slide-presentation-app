@@ -118,8 +118,8 @@
    途中から間隔が詰まって速度が不自然に変わる）。base delay 0.2s は .stagger-item と同じ考え方。
    timing-function は他の演出（ease-out）と揃え、独自の cubic-bezier は使わない */
 :global(.reveal .slides section.present) .bar {
-  animation: barGrowVertical calc(0.6s / var(--theme-motion-speed, 1)) ease-out both;
-  animation-delay: calc((0.2s + var(--stagger-index, 0) * 0.1s) / var(--theme-motion-speed, 1));
+  animation: barGrowVertical calc(0.6s * var(--theme-motion-scale)) ease-out both;
+  animation-delay: calc((0.2s + var(--stagger-index, 0) * 0.1s) * var(--theme-motion-scale));
 }
 
 @keyframes barGrowVertical {
@@ -153,7 +153,7 @@
    .kpi 自身の --stagger-index を継承するため、カードの出現 delay とずれて線だけ先に描かれ終える
    ことを防ぐ（LineChart 単体では祖先が --stagger-index を持たないため 0 のまま） */
 :global(.reveal .slides section.present) .lineLayer {
-  animation: lineLayerReveal calc(0.8s / var(--theme-motion-speed, 1)) ease-out calc((0.2s + var(--stagger-index, 0) * 0.12s) / var(--theme-motion-speed, 1)) both;
+  animation: lineLayerReveal calc(0.8s * var(--theme-motion-scale)) ease-out calc((0.2s + var(--stagger-index, 0) * 0.12s) * var(--theme-motion-scale)) both;
 }
 
 @keyframes lineLayerReveal {
@@ -178,7 +178,7 @@
    --point-progress（0〜1、点のX位置に対応）で delay をずらし、線が描かれていく先端に点が追従して
    ポップインするように見せる（lineLayerReveal と同じ base delay・duration 0.8s を基準にする） */
 :global(.reveal .slides section.present) .point {
-  animation: pointPopIn calc(0.35s / var(--theme-motion-speed, 1)) ease-out calc((0.2s + var(--stagger-index, 0) * 0.12s + var(--point-progress, 1) * 0.8s) / var(--theme-motion-speed, 1)) both;
+  animation: pointPopIn calc(0.35s * var(--theme-motion-scale)) ease-out calc((0.2s + var(--stagger-index, 0) * 0.12s + var(--point-progress, 1) * 0.8s) * var(--theme-motion-scale)) both;
 }
 
 @keyframes pointPopIn {
@@ -202,8 +202,8 @@
 
 /* delay をキャップしない理由は global.css の .stagger-item のコメント参照 */
 :global(.reveal .slides section.present) .pieSlice {
-  animation: pieSliceIn calc(0.6s / var(--theme-motion-speed, 1)) ease-out both;
-  animation-delay: calc((0.2s + var(--stagger-index, 0) * 0.12s) / var(--theme-motion-speed, 1));
+  animation: pieSliceIn calc(0.6s * var(--theme-motion-scale)) ease-out both;
+  animation-delay: calc((0.2s + var(--stagger-index, 0) * 0.12s) * var(--theme-motion-scale));
 }
 
 @keyframes pieSliceIn {
@@ -239,15 +239,15 @@
    CSS カスタムプロパティの継承で両方の子要素に伝える（BarChart/HBarChart 側を参照） */
 :global(.reveal .slides section.present) .barSlot > .value,
 :global(.reveal .slides section.present) .hbarSlot > .value {
-  animation: fadeIn calc(0.3s / var(--theme-motion-speed, 1)) ease-out both;
-  animation-delay: calc((0.2s + var(--stagger-index, 0) * 0.1s + 0.6s) / var(--theme-motion-speed, 1));
+  animation: fadeIn calc(0.3s * var(--theme-motion-scale)) ease-out both;
+  animation-delay: calc((0.2s + var(--stagger-index, 0) * 0.1s + 0.6s) * var(--theme-motion-scale));
 }
 
 /* 折れ線の値ラベルは AxisFrame の .plot 直下に .point と並んで置かれる（LineChart 参照）。
    .point と同じ delay 式（pointPopIn 参照）に、その到達時刻である +0.35s を加える */
 :global(.reveal .slides section.present) .plot > .value {
-  animation: fadeIn calc(0.3s / var(--theme-motion-speed, 1)) ease-out both;
-  animation-delay: calc((0.2s + var(--stagger-index, 0) * 0.12s + var(--point-progress, 1) * 0.8s + 0.35s) / var(--theme-motion-speed, 1));
+  animation: fadeIn calc(0.3s * var(--theme-motion-scale)) ease-out both;
+  animation-delay: calc((0.2s + var(--stagger-index, 0) * 0.12s + var(--point-progress, 1) * 0.8s + 0.35s) * var(--theme-motion-scale));
 }
 
 /* マークの上に置く。プロット上端に近い値はラベルが切れるので棒の内側へ回す（data-inside） */
@@ -330,8 +330,8 @@
 /* :global(.reveal .slides section.present) を前置する理由・delay をキャップしない理由は
    global.css の .stagger-item のコメント参照。timing-function は .bar と揃え ease-out にする */
 :global(.reveal .slides section.present) .hbarBar {
-  animation: barGrowHorizontal calc(0.6s / var(--theme-motion-speed, 1)) ease-out both;
-  animation-delay: calc((0.2s + var(--stagger-index, 0) * 0.1s) / var(--theme-motion-speed, 1));
+  animation: barGrowHorizontal calc(0.6s * var(--theme-motion-scale)) ease-out both;
+  animation-delay: calc((0.2s + var(--stagger-index, 0) * 0.1s) * var(--theme-motion-scale));
 }
 
 /* translateY(-50%) は縦中央配置のための静的な値なので、アニメーションの to 側にも含めて維持する */
@@ -430,8 +430,8 @@
    .pieLabel は composes で .value の class を継承するが、上の .barSlot/.hbarSlot/.plot 直下限定の
    fadeIn 規則はいずれも親要素の構造が異なるため（PieChart は AxisFrame を使わない）マッチしない */
 :global(.reveal .slides section.present) .pieLabel {
-  animation: fadeIn calc(0.3s / var(--theme-motion-speed, 1)) ease-out both;
-  animation-delay: calc((0.2s + var(--stagger-index, 0) * 0.12s + 0.6s) / var(--theme-motion-speed, 1));
+  animation: fadeIn calc(0.3s * var(--theme-motion-scale)) ease-out both;
+  animation-delay: calc((0.2s + var(--stagger-index, 0) * 0.12s + 0.6s) * var(--theme-motion-scale));
 }
 
 /* ---- 大数値＋推移（KPI・#196でKPI行に拡張） ---- */
