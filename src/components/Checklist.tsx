@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { asArray } from '../data/loader'
 import { DiagramBadge } from './diagram'
 import styles from './Checklist.module.css'
@@ -29,13 +29,15 @@ function resolveDensity(count: number): 'normal' | 'dense' | 'compact' {
  *
  * 記号は #202 の DiagramBadge を再利用するので色・角丸・フォントは意匠トークンに追従する。
  * 済は丸＋✓・未は角丸の空枠で、色だけでなく形でも区別できるようにする（Compare の状態記号と同じ考え方）。
+ * 項目ごとの出現演出は global.css の `.stagger-item`（Timeline/ChartLegend 等と同じ汎用ユーティリティ）を
+ * 再利用する（#421）。
  */
 export function Checklist({ items }: Props) {
   const list = asArray(items)
   return (
     <ul className={styles.list} data-testid="checklist" data-density={resolveDensity(list.length)}>
       {list.map((item, i) => (
-        <li key={i} className={styles.item}>
+        <li key={i} className={`${styles.item} stagger-item`} style={{ '--stagger-index': i } as CSSProperties}>
           <DiagramBadge color={item.checked ? 'success' : 'neutral'} shape={item.checked ? 'circle' : 'square'}>
             {item.checked ? '✓' : ''}
           </DiagramBadge>
