@@ -53,7 +53,7 @@ export function PieChart({ values, colors, valueLabels }: Props) {
             .map((slice) => {
               const at = polarPoint(50, 50, RADIUS * LABEL_RADIUS_RATIO, slice.midAngle)
               return (
-                <span key={slice.index} className={styles.pieLabel} style={{ left: `${at.x}%`, top: `${at.y}%` }}>
+                <span key={slice.index} className={styles.pieLabel} style={{ left: `${at.x}%`, top: `${at.y}%`, '--stagger-index': slice.index } as CSSProperties}>
                   {Math.round(slice.share * 100)}%
                 </span>
               )
