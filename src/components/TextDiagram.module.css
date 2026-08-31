@@ -17,6 +17,25 @@
   justify-content: center;
 }
 
+/* mermaidが返すSVGの内部構造を解析しないため、要素単位のドローイン演出は適用できない
+　（InlineSvg.module.css の .svgArea と同じ理由・制約）。コンテナ全体のフェード+ごく控えめな
+   拡大のみに留める。:global(.reveal .slides section.present) を前置する理由は global.css の
+   .stagger-item のコメント参照 */
+:global(.reveal .slides section.present) .diagramArea {
+  animation: diagramAreaFadeIn calc(0.5s * var(--theme-motion-scale)) ease-out calc(0.2s * var(--theme-motion-scale)) both;
+}
+
+@keyframes diagramAreaFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 .diagramArea svg {
   width: 100%;
   height: 100%;

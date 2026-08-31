@@ -14,10 +14,10 @@ const STATUS: Record<CompareStatus, { mark: string; color: string }> = {
 
 /** 項目ごとの出現演出は global.css の `.stagger-item`（Timeline/ChartLegend 等と同じ汎用ユーティリティ）を
  * 再利用する（#421）。index は各ペインの items 配列内での位置なので、左右ペインは独立して0起点で出現する */
-function CompareItemRow({ item, index }: { item: CompareItem; index: number }) {
+function CompareItemRow({ item, index, count }: { item: CompareItem; index: number; count: number }) {
   const status = item.status && STATUS[item.status]
   return (
-    <li className={`${styles.item} stagger-item`} style={{ '--stagger-index': index } as CSSProperties}>
+    <li className={`${styles.item} stagger-item`} style={{ '--stagger-index': index, '--stagger-count': count } as CSSProperties}>
       {status && <DiagramBadge color={status.color}>{status.mark}</DiagramBadge>}
       <span className={styles.text}>{item.text}</span>
     </li>
@@ -34,7 +34,7 @@ function ComparePane({ pane }: { pane: ComparePaneSpec | undefined }) {
       {items.length > 0 && (
         <ul className={styles.items}>
           {items.map((item, i) => (
-            <CompareItemRow key={i} item={item} index={i} />
+            <CompareItemRow key={i} item={item} index={i} count={items.length} />
           ))}
         </ul>
       )}

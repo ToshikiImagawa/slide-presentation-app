@@ -18,7 +18,7 @@ export function BarChart({ categories, series, scale, unit, axis, valueLabels }:
 
               const { from, to } = barSpan(value, scale)
               return (
-                <div key={seriesIndex} className={styles.barSlot} style={{ '--stagger-index': categoryIndex } as CSSProperties}>
+                <div key={seriesIndex} className={styles.barSlot} style={{ '--stagger-index': categoryIndex, '--stagger-count': categories.length } as CSSProperties}>
                   <div className={styles.bar} data-negative={value < 0} style={{ bottom: `${from * 100}%`, height: `${(to - from) * 100}%`, background: entry.color }} />
                   {valueLabels && (
                     <span className={`${styles.value} ${styles.valueAbove}`} data-inside={to > VALUE_INSIDE_THRESHOLD_VERTICAL} style={{ bottom: `${to * 100}%` }}>

@@ -74,7 +74,7 @@ export function Table(spec: TableSpec) {
         </thead>
         <tbody>
           {rows.map((row, rowIndex) => (
-            <tr key={rowIndex} className={styles.tr} style={{ '--stagger-index': rowIndex } as CSSProperties}>
+            <tr key={rowIndex} className={styles.tr} style={{ '--stagger-index': rowIndex, '--stagger-count': rows.length } as CSSProperties}>
               {columns.map((column, columnIndex) => (
                 <td key={columnIndex} className={styles.td} style={{ textAlign: column.align ?? DEFAULT_ALIGN }}>
                   {row[columnIndex] ?? ''}

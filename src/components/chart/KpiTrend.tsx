@@ -25,6 +25,8 @@ type Props = {
   color: string
   /** 表示順のインデックス。KpiRow で複数個並べるときに段階的な出現演出の delay を決める（省略時0） */
   index?: number
+  /** KpiRow 内の総数。要素数が多いときに出現delayのステップを圧縮するため（省略時1） */
+  count?: number
 }
 
 /** 推移線のY位置（0=下端, 1=上端）。実績の変化が読めるよう 0 基準ではなくデータ範囲に合わせる */
@@ -42,14 +44,14 @@ function formatKpiValue(value: string | number | undefined, unit?: string): stri
 }
 
 /** 大数値＋推移（KPI）。主役は数値なので、推移線は傾向だけが読めるスパークラインとして添える */
-export function KpiTrend({ value, label, delta, deltaDirection, deltaStatus, unit, trend, color, index }: Props) {
+export function KpiTrend({ value, label, delta, deltaDirection, deltaStatus, unit, trend, color, index, count }: Props) {
   const values = trend.filter((entry) => Number.isFinite(entry))
   const heights = values.length >= 2 ? ratios(values) : []
   const formatted = formatKpiValue(value, unit)
   const deltaColor = deltaStatus ? `var(${resolveColorToken(deltaStatus)})` : color
 
   return (
-    <div className={`${styles.kpi} stagger-item`} data-testid="chart-kpi" style={{ '--stagger-index': index ?? 0 } as CSSProperties}>
+    <div className={`${styles.kpi} stagger-item`} data-testid="chart-kpi" style={{ '--stagger-index': index ?? 0, '--stagger-count': count ?? 1 } as CSSProperties}>
       {label && <span className={styles.kpiLabel}>{label}</span>}
       {formatted !== '' && (
         <span className={styles.kpiValue} style={{ color }}>

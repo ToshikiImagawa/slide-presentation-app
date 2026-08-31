@@ -15,7 +15,7 @@ export function Timeline({ items, columns }: Props) {
       <div className={styles.layout}>
         <div className={styles.line} />
         {items.map((item, i) => (
-          <div key={i} className={`${styles.item} stagger-item`} style={{ '--stagger-index': i } as CSSProperties}>
+          <div key={i} className={`${styles.item} stagger-item`} style={{ '--stagger-index': i, '--stagger-count': items.length } as CSSProperties}>
             {item}
           </div>
         ))}
@@ -24,6 +24,7 @@ export function Timeline({ items, columns }: Props) {
   }
 
   const resolvedColumns = clampColumns(columns)
+  const rowCount = Math.ceil(items.length / resolvedColumns)
   return (
     <div
       className={`${styles.layout} ${styles.multiColumn}`}
@@ -32,7 +33,11 @@ export function Timeline({ items, columns }: Props) {
       style={{ gridTemplateColumns: `repeat(${resolvedColumns}, minmax(0, 1fr))` }}
     >
       {items.map((item, i) => (
-        <div key={i} className={`${styles.item} stagger-item`} style={{ '--stagger-index': i } as CSSProperties}>
+        <div
+          key={i}
+          className={`${styles.item} stagger-item grid-stagger-item`}
+          style={{ '--stagger-row': Math.floor(i / resolvedColumns), '--stagger-row-count': rowCount, '--stagger-col': i % resolvedColumns, '--stagger-col-count': resolvedColumns } as CSSProperties}
+        >
           {item}
         </div>
       ))}

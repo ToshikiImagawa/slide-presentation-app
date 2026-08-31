@@ -21,6 +21,8 @@ type Props = {
   shape?: 'rect' | 'pill' | 'diamond'
   /** 表示順のインデックス。指定するとカードが1件ずつ段階的に浮かび上がるドローイン演出になる（省略時は遅延なし） */
   staggerIndex?: number
+  /** 同じ出現グループの総数。件数が多いときに出現delayのステップを圧縮するため（省略時1） */
+  staggerCount?: number
 }
 
 /**
@@ -29,7 +31,7 @@ type Props = {
  * 位置は正規化座標をそのまま % 指定に載せるため、キャンバスサイズが変わっても相対配置が保たれる
  * （px へ落とさないのでサイズ計測の完了を待つ必要もない）。
  */
-export function DiagramCard({ rect, title, children, color, variant = 'outline', badge, scale, shape = 'rect', staggerIndex }: Props) {
+export function DiagramCard({ rect, title, children, color, variant = 'outline', badge, scale, shape = 'rect', staggerIndex, staggerCount }: Props) {
   const cssVar = resolveColorToken(color)
   const style = {
     left: normToPercent(rect.x),
@@ -38,7 +40,7 @@ export function DiagramCard({ rect, title, children, color, variant = 'outline',
     height: normToPercent(rect.h),
     '--diagram-color': `var(${cssVar})`,
     ...(scale != null ? { '--diagram-font-scale': scale } : {}),
-    ...(staggerIndex != null ? { '--stagger-index': staggerIndex } : {}),
+    ...(staggerIndex != null ? { '--stagger-index': staggerIndex, '--stagger-count': staggerCount ?? 1 } : {}),
   } as CSSProperties
 
   const className = [styles.card, variant === 'filled' && styles.filled, variant === 'plain' && styles.plain, badge && styles.withBadge, shape === 'pill' && styles.pill, shape === 'diamond' && styles.diamond].filter(Boolean).join(' ')

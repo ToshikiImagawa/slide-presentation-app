@@ -37,7 +37,7 @@ export function Checklist({ items }: Props) {
   return (
     <ul className={styles.list} data-testid="checklist" data-density={resolveDensity(list.length)}>
       {list.map((item, i) => (
-        <li key={i} className={`${styles.item} stagger-item`} style={{ '--stagger-index': i } as CSSProperties}>
+        <li key={i} className={`${styles.item} stagger-item`} style={{ '--stagger-index': i, '--stagger-count': list.length } as CSSProperties}>
           <DiagramBadge color={item.checked ? 'success' : 'neutral'} shape={item.checked ? 'circle' : 'square'}>
             {item.checked ? '✓' : ''}
           </DiagramBadge>

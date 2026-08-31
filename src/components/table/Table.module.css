@@ -44,7 +44,7 @@
    global.css の .stagger-item のコメント参照 */
 :global(.reveal .slides section.present) .tr {
   animation: fadeIn calc(0.5s * var(--theme-motion-scale)) ease-out both;
-  animation-delay: calc((0.15s + var(--stagger-index, 0) * 0.06s) * var(--theme-motion-scale));
+  animation-delay: calc((0.15s + var(--stagger-index, 0) * min(0.06s, var(--theme-stagger-spread-max) / var(--stagger-count, 1))) * var(--theme-motion-scale));
 }
 
 /* ゼブラ（偶数行）。color-mix() は WebKit で getComputedStyle() の解決結果が CSS Color 4 の

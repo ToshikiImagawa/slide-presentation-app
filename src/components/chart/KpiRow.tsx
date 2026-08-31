@@ -25,7 +25,7 @@ export function KpiRow({ items }: Props) {
   return (
     <div className={styles.kpiRow} data-testid="chart-kpi-row" data-density={resolveDensity(items.length)}>
       {items.map((item, index) => (
-        <KpiTrend key={index} {...item} trend={asArray(item.trend).map(Number)} color={seriesColor(index, item.color)} index={index} />
+        <KpiTrend key={index} {...item} trend={asArray(item.trend).map(Number)} color={seriesColor(index, item.color)} index={index} count={items.length} />
       ))}
     </div>
   )

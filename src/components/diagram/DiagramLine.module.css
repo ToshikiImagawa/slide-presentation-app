@@ -39,7 +39,7 @@
    base delay 0.25s は DiagramCard の 0.2s よりわずかに後（ノードが現れた直後に線が引かれる順序） */
 :global(.reveal .slides section.present) .draw {
   animation: diagramLineDraw calc(0.5s * var(--theme-motion-scale)) ease-out both;
-  animation-delay: calc((0.25s + var(--stagger-index, 0) * 0.12s) * var(--theme-motion-scale));
+  animation-delay: calc((0.25s + var(--stagger-index, 0) * min(0.12s, var(--theme-stagger-spread-max) / var(--stagger-count, 1))) * var(--theme-motion-scale));
 }
 
 @keyframes diagramLineDraw {
@@ -48,6 +48,28 @@
   }
   to {
     stroke-dashoffset: 0;
+  }
+}
+
+/* SVG の marker（矢印の先端）は stroke-dashoffset のドローイン演出と連動しない仕様（marker は path の
+   頂点に配置されるだけで、線がどこまで描かれたかは見ない）。.draw と組み合わせて使うと、先端が要素
+   マウント直後から常に最終位置に見えてしまい、「線より先に矢印だけ浮いて見え、線が追いついた瞬間に
+   全部繋がって見える」（実機で確認・#269のシーケンス図で顕在化）。.markerReveal は先端自体も
+   フェードインさせ、.draw の delay + duration（0.5s）が終わるタイミングに揃える。delay の式が
+   .draw と重複しているのは、対象が別要素（marker 内の <g>）で、animation-delay を個別に持つ必要が
+   あるため */
+:global(.reveal .slides section.present) .markerReveal {
+  opacity: 0;
+  animation: markerRevealFadeIn calc(0.15s * var(--theme-motion-scale)) ease-out both;
+  animation-delay: calc((0.25s + var(--stagger-index, 0) * min(0.12s, var(--theme-stagger-spread-max) / var(--stagger-count, 1)) + 0.5s) * var(--theme-motion-scale));
+}
+
+@keyframes markerRevealFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
   }
 }
 

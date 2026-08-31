@@ -18,6 +18,25 @@
   justify-content: center;
 }
 
+/* 挿入されるマークアップの内部構造を解析しないため（外部SVGを丸ごと差し替え可能にする設計・#203の
+   コメント参照）、要素単位のドローイン演出は適用できない。コンテナ全体のフェード+ごく控えめな拡大のみ
+   に留める。:global(.reveal .slides section.present) を前置する理由は global.css の .stagger-item の
+   コメント参照 */
+:global(.reveal .slides section.present) .svgArea {
+  animation: svgAreaFadeIn calc(0.5s * var(--theme-motion-scale)) ease-out calc(0.2s * var(--theme-motion-scale)) both;
+}
+
+@keyframes svgAreaFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 /* svg要素自身が持つ width/height 属性より優先して確定高さいっぱいに広げる（CSSはSVGの提示属性より常に優先されるため !important は不要）。
    viewBox を持つSVGはこれで縦横比を保って自動フィットする（viewBox が無い場合は歪む可能性があるが、SVGの標準的な作法としてviewBox指定を前提にする） */
 .svgArea svg {

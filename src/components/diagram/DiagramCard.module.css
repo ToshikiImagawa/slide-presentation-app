@@ -24,7 +24,7 @@
    途中から間隔が詰まって速度が不自然に変わる）。base delay 0.2s は .stagger-item と同じ考え方 */
 :global(.reveal .slides section.present) .card {
   animation: diagramCardIn calc(0.6s * var(--theme-motion-scale)) ease-out both;
-  animation-delay: calc((0.2s + var(--stagger-index, 0) * 0.12s) * var(--theme-motion-scale));
+  animation-delay: calc((0.2s + var(--stagger-index, 0) * min(0.12s, var(--theme-stagger-spread-max) / var(--stagger-count, 1))) * var(--theme-motion-scale));
 }
 
 @keyframes diagramCardIn {
@@ -67,7 +67,7 @@
    animation-delay だけを個別に継承することはできない） */
 :global(.reveal .slides section.present) .filled {
   animation:
-    diagramCardIn calc(0.6s * var(--theme-motion-scale)) ease-out calc((0.2s + var(--stagger-index, 0) * 0.12s) * var(--theme-motion-scale)) both,
+    diagramCardIn calc(0.6s * var(--theme-motion-scale)) ease-out calc((0.2s + var(--stagger-index, 0) * min(0.12s, var(--theme-stagger-spread-max) / var(--stagger-count, 1))) * var(--theme-motion-scale)) both,
     diagramNodeGlow calc(3s * var(--theme-motion-scale)) ease-in-out calc(0.8s * var(--theme-motion-scale)) infinite;
 }
 
@@ -98,7 +98,7 @@
    スケールなしのフェードのみに変える（.plain は .filled と排他なので .filled の
    diagramNodeGlow と競合しない） */
 :global(.reveal .slides section.present) .plain {
-  animation: diagramPanelFadeIn calc(0.5s * var(--theme-motion-scale)) ease-out calc((0.2s + var(--stagger-index, 0) * 0.12s) * var(--theme-motion-scale)) both;
+  animation: diagramPanelFadeIn calc(0.5s * var(--theme-motion-scale)) ease-out calc((0.2s + var(--stagger-index, 0) * min(0.12s, var(--theme-stagger-spread-max) / var(--stagger-count, 1))) * var(--theme-motion-scale)) both;
 }
 
 @keyframes diagramPanelFadeIn {
