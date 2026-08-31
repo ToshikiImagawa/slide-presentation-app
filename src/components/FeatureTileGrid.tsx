@@ -5,6 +5,7 @@ import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
 import Typography from '@mui/material/Typography'
 import { resolveColorToken } from '../applyTheme'
+import styles from './FeatureTileGrid.module.css'
 
 type Tile = {
   icon: ReactNode
@@ -12,6 +13,8 @@ type Tile = {
   description: ReactNode
   /** カラーパレットキー名（例: 'series2'）。省略時は'primary' */
   accentColor?: string
+  /** 特に注目させたいタイルのアイコンにだけ、控えめな拡大縮小ループを付ける（opt-in・省略時はループなし） */
+  highlight?: boolean
 }
 
 type Props = {
@@ -49,6 +52,7 @@ export function FeatureTileGrid({ tiles, columns }: Props) {
           >
             <CardContent sx={{ p: 0, '&:last-child': { pb: 0 } }}>
               <Avatar
+                className={tile.highlight ? styles.avatarHighlight : undefined}
                 sx={{
                   width: 62,
                   height: 62,

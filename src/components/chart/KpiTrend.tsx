@@ -11,6 +11,13 @@ const TREND_PADDING = 0.12
 /** 増減の方向記号。良し悪しの判定はしない（色は deltaStatus が別に決める・#196） */
 const DIRECTION_MARK: Record<KpiDirection, string> = { up: '▲', down: '▼', flat: '–' }
 
+/** 増減方向記号のループ演出（跳ねる/沈む）は、良し悪し（deltaStatus）に紐付ける。方向（deltaDirection）は
+ * 数値が上下したという事実だけを示す記号で、良し悪しとは直交する概念（#196）。障害率の上昇（direction: 'up'
+ * だが deltaStatus: 'danger'）に軽快な bounce を付けると内容と印象が矛盾するため、跳ねる/沈むの選択は
+ * deltaStatus 側で行う（success以外を厳密にnegativeへ倒すと danger以外の見慣れないcolor tokenでも
+ * 意図せずsinkになるため、danger/warningのみを明示的にnegativeとして扱う） */
+const STATUS_TONE: Record<string, 'positive' | 'negative'> = { success: 'positive', danger: 'negative', warning: 'negative' }
+
 type Props = {
   value?: string | number
   label?: string
@@ -49,6 +56,7 @@ export function KpiTrend({ value, label, delta, deltaDirection, deltaStatus, uni
   const heights = values.length >= 2 ? ratios(values) : []
   const formatted = formatKpiValue(value, unit)
   const deltaColor = deltaStatus ? `var(${resolveColorToken(deltaStatus)})` : color
+  const tone = deltaStatus ? STATUS_TONE[deltaStatus] : undefined
 
   return (
     <div className={`${styles.kpi} stagger-item`} data-testid="chart-kpi" style={{ '--stagger-index': index ?? 0, '--stagger-count': count ?? 1 } as CSSProperties}>
@@ -60,7 +68,11 @@ export function KpiTrend({ value, label, delta, deltaDirection, deltaStatus, uni
       )}
       {delta && (
         <span className={styles.kpiDelta} style={{ color: deltaColor }}>
-          {deltaDirection && <span className={styles.kpiDeltaMark}>{DIRECTION_MARK[deltaDirection]}</span>}
+          {deltaDirection && (
+            <span className={styles.kpiDeltaMark} data-tone={tone}>
+              {DIRECTION_MARK[deltaDirection]}
+            </span>
+          )}
           {delta}
         </span>
       )}

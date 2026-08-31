@@ -24,6 +24,8 @@ export type DiagramLineStyleProps = {
   staggerIndex?: number
   /** 同じ出現グループの総数。件数が多いときに出現delayのステップを圧縮するため（省略時1） */
   staggerCount?: number
+  /** ソリッド線に「データが流れる」向きを示す小さな光の粒を無限に流す（dashed 時は既存の破線流れと重複するため無視） */
+  flow?: boolean
 }
 
 type Props = DiagramLineStyleProps & { points: PxPoint[] }
@@ -63,7 +65,7 @@ function EndMarker({ id, shape, color, atStart, revealStyle }: { id: string; sha
  * 経路は px で受け取る（縦横比で太さや先端形状が歪まないようにするため）。線幅・破線の刻みは
  * --theme-border-width の倍率、色はカラーパレットキー経由の CSS 変数で持つので、いずれもテーマに追従する。
  */
-export function DiagramLine({ points, color, thickness = 2, dashed, head = 'arrow', tail = 'none', label, staggerIndex, staggerCount }: Props) {
+export function DiagramLine({ points, color, thickness = 2, dashed, head = 'arrow', tail = 'none', label, staggerIndex, staggerCount, flow }: Props) {
   const size = useDiagramSize()
   // useId の戻り値は url(#...) に使えない記号を含むため、識別子として使える文字だけを残す
   const uid = useId().replace(/[^a-zA-Z0-9_-]/g, '')
@@ -80,6 +82,9 @@ export function DiagramLine({ points, color, thickness = 2, dashed, head = 'arro
   // dashed 線は「データが流れる」向きを持つ接続として、ダッシュの1周期分だけ無限に流すループ演出にする
   const dashPeriod = `calc(var(--theme-border-width) * ${thickness * 7})`
   const markerRevealStyle = draw ? ({ '--stagger-index': staggerIndex, '--stagger-count': staggerCount ?? 1 } as CSSProperties) : undefined
+  // ソリッド線用の flow は dashed 線の .flow と役割が重複するため dashed 指定時は無視する（opt-in・既定オフ）
+  const showFlowComet = flow && !dashed
+  const flowCometStyle = showFlowComet ? ({ '--stagger-index': staggerIndex ?? 0, '--stagger-count': staggerCount ?? 1 } as CSSProperties) : undefined
 
   return (
     <>
@@ -105,6 +110,17 @@ export function DiagramLine({ points, color, thickness = 2, dashed, head = 'arro
           markerEnd={head === 'none' ? undefined : `url(#${headId})`}
           markerStart={tail === 'none' ? undefined : `url(#${tailId})`}
         />
+        {showFlowComet && (
+          <polyline
+            points={polylinePoints(points)}
+            fill="none"
+            stroke={strokeColor}
+            strokeLinecap="round"
+            className={styles.flowComet}
+            pathLength={1}
+            style={{ strokeWidth: `calc(var(--theme-border-width) * ${thickness * 1.8})`, strokeDasharray: '0.08 0.92', ...flowCometStyle }}
+          />
+        )}
       </svg>
       {mid && (
         <span className={`${styles.chip} ${styles.chipCentered}`} style={{ left: pxToPercent(mid.x, size.width), top: pxToPercent(mid.y, size.height) }}>

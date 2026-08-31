@@ -394,7 +394,7 @@ function renderToc(content: SlideContent, ctx: MasterRenderContext): ReactNode {
 
 /** tilesをFeatureTileGridとしてレンダリング */
 function renderTiles(content: SlideContent): ReactNode {
-  const tiles = content.tiles as Array<{ icon: string; title: string; description: string; accentColor?: string }>
+  const tiles = content.tiles as Array<{ icon: string; title: string; description: string; accentColor?: string; highlight?: boolean }>
   return (
     <FeatureTileGrid
       columns={content.tileColumns as number | undefined}
@@ -403,6 +403,7 @@ function renderTiles(content: SlideContent): ReactNode {
         title: tile.title,
         description: renderHtml(tile.description),
         accentColor: tile.accentColor,
+        highlight: tile.highlight,
       }))}
     />
   )
