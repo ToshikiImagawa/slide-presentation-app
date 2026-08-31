@@ -65,6 +65,9 @@ export function Gantt({ axis, tasks }: GanttSpec) {
     rect: { x: 0, y: rowSlots[i].offset, w: LABEL_WIDTH - LABEL_GAP, h: rowSlots[i].size },
     title: task.label,
     variant: 'plain' as const,
+    // 行ラベル自身の並び順・件数で出現させる（axisHeaderNodes と同じ理由）
+    staggerIndex: i,
+    staggerCount: taskList.length,
   }))
 
   // getAxisSlotで範囲外・非整数のstartColをガードする（colCountの導出だけでは防げない・#276）
@@ -79,6 +82,10 @@ export function Gantt({ axis, tasks }: GanttSpec) {
       rect: { x: start.offset, y: row.offset + (row.size - barHeight) / 2, w: end.offset + end.size - start.offset, h: barHeight },
       color: task.color ?? defaultSeriesColor(i),
       variant: 'filled' as const,
+      // バー自身の並び順・件数で出現させる。軸見出し・行ラベルの件数分だけ配列内の位置が後ろにずれても
+      // 出現が遅れないようにする（本体の主役はバーのため、見出し・ラベルより優先して早く出す）
+      staggerIndex: i,
+      staggerCount: taskList.length,
     }
   })
 

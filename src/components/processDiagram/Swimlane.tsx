@@ -55,6 +55,10 @@ export function Swimlane({ phases, lanes, connections }: SwimlaneSpec) {
     id: `lane-${i}`,
     rect: { x: LANE_MARGIN, y: laneSlots[i].offset, w: 1 - LANE_MARGIN * 2, h: laneSlots[i].size },
     variant: 'plain' as const,
+    // レーンの背景枠は connections（レーンをまたぐ矢印）より先（背後）に描く。既定の描画順
+    // （線→カード）のままだとレーン全面を覆う背景枠が矢印を後から覆い隠してしまう
+    layer: 'background' as const,
+    staggerIndex: i,
   }))
 
   const headerBoxes = hasHeader ? axisHeaderNodes(phaseList, colSlots, headerHeight, 'phase') : []
@@ -79,6 +83,10 @@ export function Swimlane({ phases, lanes, connections }: SwimlaneSpec) {
     body: node.description,
     color: node.color ?? defaultSeriesColor(index),
     variant: node.variant,
+    // アイテム自身の並び順・件数で出現させる（見出し・レーン数分だけ配列内の位置が後ろにずれても
+    // 出現が遅れず、圧縮量も無関係な件数を含まないようにする）
+    staggerIndex: index,
+    staggerCount: placedItems.length,
   }))
 
   const laneBadges = laneList.map((lane, i) => ({

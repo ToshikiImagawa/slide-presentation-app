@@ -13,11 +13,16 @@
 
 /* :global(.reveal .slides section.present) を前置する理由は global.css の .stagger-item のコメント参照
    （要素自身に直接 animation を付けると Reveal.js のスライド切替で再トリガーされない）。
-   delay をキャップしない理由も global.css の .stagger-item のコメント参照（キャップすると
-   途中から間隔が詰まって速度が不自然に変わる） */
+   行・列を別々の delay 成分にする理由は Heatmap.tsx の --stagger-row/--stagger-col のコメント参照:
+   行の delay ステップ（最大 0.15s）は列数に関わらず確保され、列の delay ステップ（最大 0.02s）だけが
+   列数に応じて圧縮される。これにより「行ごとに現れる」というグリッドらしい見え方が、列数が多い
+   グリッドでも崩れない（末尾の行の全セルが同時に現れて見える問題の対策） */
 :global(.reveal .slides section.present) .cell {
   animation: cellFadeIn calc(0.5s * var(--theme-motion-scale)) ease-out both;
-  animation-delay: calc((0.15s + var(--stagger-index, 0) * 0.06s) * var(--theme-motion-scale));
+  animation-delay: calc(
+    (0.15s + var(--stagger-row, 0) * min(0.15s, var(--theme-stagger-spread-max) / var(--stagger-row-count, 1)) + var(--stagger-col, 0) * min(0.02s, var(--theme-stagger-spread-max) / 2 / var(--stagger-col-count, 1))) *
+      var(--theme-motion-scale)
+  );
 }
 
 @keyframes cellFadeIn {

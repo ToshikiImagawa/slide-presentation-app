@@ -76,6 +76,13 @@
      各アニメーションの duration/delay に乗算する --theme-motion-scale（= 1 / speed）へ、
      未指定時のフォールバック込みでここ1箇所だけ変換する。値が大きいほど再生が速くなる */
   --theme-motion-scale: calc(1 / var(--theme-motion-speed, 1));
+  /* stagger 演出（--stagger-index を使う各種一覧・グリッド）の合計 delay 幅の上限。
+     ステップ幅は各コンポーネント側で `min(固定ステップ, var(--theme-stagger-spread-max) / var(--stagger-count, 1))`
+     の形で計算する。要素数が少ないときは固定ステップのまま（既存の見た目を変えない）、要素数が多いときだけ
+     ステップを圧縮して合計幅をこの値に抑える。要素数に応じた連続的な圧縮のため、以前指摘された「途中から
+     間隔が詰まって速度が変わる」不連続（cap の話。.stagger-item の解説参照）は再発しない（キャップと違い
+     全要素が同じ値になる箇所が無く、常に単調増加のまま） */
+  --theme-stagger-spread-max: 0.8s;
 
   /* 固定パレット（applyTheme が上書きしない。プレゼンのテーマ変更から独立させたいUI chrome用。editorUiTheme(src/theme.ts) と揃える） */
   --fixed-primary: #2dd4bf;
@@ -328,12 +335,13 @@ body {
 }
 
 /* content-area 内の子要素を1件ずつ段階的に表示する汎用ユーティリティ（Timeline/FeatureTileGrid 等）。
-   --stagger-index（配列インデックス）で表示順に遅延をずらす。delay に上限（min(index, N)）を設けると、
-   上限を超えた要素が全部同時に発火し、「途中から間隔が詰まって速度が変わる」不自然さを生むため
-   キャップしない（このキャップは元は撮影の sleep(700ms) 対策だったが、
-   window.__VISUAL_CHECK_FINISH_ANIMATIONS__ 経由で有限アニメーションを明示的に完了状態へ固定する
-   方式に変えたため不要になった）。要素数が多いデッキでは最後の要素の出現が遅くなるが、
-   間隔が常に一定であることを優先する。
+   --stagger-index（配列インデックス）で表示順に遅延をずらす。ステップ幅は固定 0.12s と
+   「合計幅 --theme-stagger-spread-max ÷ 要素数（--stagger-count）」の小さい方（min()）にする。
+   要素数が少ないときは 0.12s のまま（既存の見た目を変えない）、要素数が多いコンポーネント
+   （Checklist/Compare の長い一覧等）では自動的にステップが縮み、最後の要素の出現が数秒後になる
+   ことを防ぐ。固定キャップ（min(index, N)）と違い、超えた要素が全部同じ delay に落ちて「途中から
+   間隔が詰まって速度が変わる」不自然さは生まない（値は要素数だけで決まり、index に対して常に単調増加）。
+   --stagger-count を指定しない呼び出し元は既定 1 のため min() は必ず 0.12s 側を返し、影響を受けない。
    セレクタは必ず `.reveal .slides section.present` を前置する: Reveal.js はスライド切替のたびに
    `.present` クラスを付け外しするため、このセレクタ自体のマッチ状態が変わることで CSS アニメーションが
    都度再トリガーされる。`.stagger-item` 単体（要素自身が常に持つクラス）に animation を直接付けると、
@@ -343,7 +351,19 @@ body {
    「まずスライドが現れ、続いて中の要素が1件ずつ現れる」という順序を目でも追えるようにするため */
 .reveal .slides section.present .stagger-item {
   animation: staggerFadeInUp calc(0.6s * var(--theme-motion-scale)) ease-out both;
-  animation-delay: calc((0.2s + var(--stagger-index, 0) * 0.12s) * var(--theme-motion-scale));
+  animation-delay: calc((0.2s + var(--stagger-index, 0) * min(0.12s, var(--theme-stagger-spread-max) / var(--stagger-count, 1))) * var(--theme-motion-scale));
+}
+
+/* .stagger-item と併用する（Timeline の多列モード・FeatureTileGrid 等、CSS Grid で複数列に折り返す一覧）。
+   .stagger-item のケイフレーム/duration はそのまま流用し、delay の計算だけを行・列に分離して上書きする
+   （このルールを .stagger-item より後に置くことで animation-delay だけが上書きされる。理由は
+   Heatmap.module.css の .cell のコメント参照: 単一連番のまま要素数で圧縮すると、列数が多いグリッドで
+   行の区切りが溶けて「最後の行が一気に出現する」ように見える） */
+.reveal .slides section.present .grid-stagger-item {
+  animation-delay: calc(
+    (0.2s + var(--stagger-row, 0) * min(0.12s, var(--theme-stagger-spread-max) / var(--stagger-row-count, 1)) + var(--stagger-col, 0) * min(0.03s, var(--theme-stagger-spread-max) / 2 / var(--stagger-col-count, 1))) *
+      var(--theme-motion-scale)
+  );
 }
 
 @keyframes staggerFadeInUp {

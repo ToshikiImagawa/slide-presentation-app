@@ -21,7 +21,7 @@ export function HBarChart({ categories, series, scale, unit, axis, valueLabels }
 
               const { from, to } = barSpan(value, scale)
               return (
-                <div key={seriesIndex} className={styles.hbarSlot} style={{ '--stagger-index': categoryIndex } as CSSProperties}>
+                <div key={seriesIndex} className={styles.hbarSlot} style={{ '--stagger-index': categoryIndex, '--stagger-count': categories.length } as CSSProperties}>
                   <div className={styles.hbarBar} data-negative={value < 0} style={{ left: `${from * 100}%`, width: `${(to - from) * 100}%`, background: entry.color }} />
                   {valueLabels && (
                     <span className={`${styles.value} ${styles.valueAfter}`} data-inside={to > VALUE_INSIDE_THRESHOLD_HORIZONTAL} style={{ left: `${to * 100}%` }}>

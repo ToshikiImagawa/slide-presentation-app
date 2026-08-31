@@ -82,7 +82,13 @@ export function Heatmap({ rows, cols, values, color, min, max, valueLabels, unit
           width: normToPercent(col.size),
           height: normToPercent(row.size),
           backgroundColor: typeof value === 'number' && Number.isFinite(value) ? shadeSeries(color, alpha) : 'transparent',
-          '--stagger-index': r * colCount + c,
+          // 行・列を別々の delay 成分にする（Heatmap.module.css 参照）。1本の連番（r*colCount+c）を
+          // 要素数で単純に圧縮すると、列数が多いグリッドでは行間の間隔まで潰れてしまい、最後の行の
+          // 全セルがほぼ同時に現れて「一気に濃くなる」ように見える。行の間隔は列数に関わらず確保する
+          '--stagger-row': r,
+          '--stagger-row-count': rowCount,
+          '--stagger-col': c,
+          '--stagger-col-count': colCount,
         } as CSSProperties,
         label: showLabels && typeof value === 'number' && Number.isFinite(value) ? formatValue(value, unit) : undefined,
       })

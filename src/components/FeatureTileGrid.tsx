@@ -21,15 +21,17 @@ type Props = {
 }
 
 export function FeatureTileGrid({ tiles, columns }: Props) {
+  const colCount = columns ?? tiles.length
+  const rowCount = Math.ceil(tiles.length / colCount)
   return (
-    <Box sx={{ display: 'grid', gridTemplateColumns: `repeat(${columns ?? tiles.length}, 1fr)`, gap: '30px', width: '100%' }}>
+    <Box sx={{ display: 'grid', gridTemplateColumns: `repeat(${colCount}, 1fr)`, gap: '30px', width: '100%' }}>
       {tiles.map((tile, i) => {
         const cssVar = resolveColorToken(tile.accentColor)
         return (
           <Card
             key={tile.title}
-            className="stagger-item"
-            style={{ '--stagger-index': i } as CSSProperties}
+            className="stagger-item grid-stagger-item"
+            style={{ '--stagger-row': Math.floor(i / colCount), '--stagger-row-count': rowCount, '--stagger-col': i % colCount, '--stagger-col-count': colCount } as CSSProperties}
             sx={{
               p: '30px',
               position: 'relative',

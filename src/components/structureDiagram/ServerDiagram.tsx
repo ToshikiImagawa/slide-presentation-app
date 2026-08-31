@@ -41,6 +41,10 @@ export function ServerDiagram({ zones, connections }: ServerDiagramSpec) {
     id: `zone-${i}`,
     rect: { x: ZONE_MARGIN, y: zoneSlots[i].offset, w: 1 - ZONE_MARGIN * 2, h: zoneSlots[i].size },
     variant: 'plain' as const,
+    // ゾーンの背景枠は connections（ゾーンをまたぐ矢印）より先（背後）に描く。Swimlane の
+    // レーン背景枠と同じ理由（DiagramCard.module.css の .plain のコメント参照）
+    layer: 'background' as const,
+    staggerIndex: i,
   }))
 
   // ゾーンをまたぐ全ノードを先に平坦化してから連番を振る（ミュータブルなカウンタを持たない）
@@ -60,6 +64,8 @@ export function ServerDiagram({ zones, connections }: ServerDiagramSpec) {
     body: node.description,
     color: node.color ?? defaultSeriesColor(index),
     variant: node.variant,
+    // アイテム自身の並び順で出現させる（ゾーン数分だけ配列内の位置が後ろにずれても出現が遅れないようにする）
+    staggerIndex: index,
   }))
 
   const badges = zoneList.map((zone, i) => ({

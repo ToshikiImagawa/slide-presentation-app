@@ -18,7 +18,7 @@ export function ChartLegend({ entries }: { entries: LegendEntry[] }) {
   return (
     <div className={styles.legend} data-testid="chart-legend">
       {entries.map((entry, index) => (
-        <span key={index} className={`${styles.legendItem} stagger-item`} style={{ '--stagger-index': index } as CSSProperties}>
+        <span key={index} className={`${styles.legendItem} stagger-item`} style={{ '--stagger-index': index, '--stagger-count': entries.length } as CSSProperties}>
           <span className={styles.legendSwatch} style={{ background: entry.color }} />
           {entry.label}
         </span>

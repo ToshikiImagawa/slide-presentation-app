@@ -22,6 +22,8 @@ export type DiagramLineStyleProps = {
   label?: ReactNode
   /** 表示順のインデックス。指定すると線が手前に引かれてくるドローイン演出になる（dashed 時は適用しない） */
   staggerIndex?: number
+  /** 同じ出現グループの総数。件数が多いときに出現delayのステップを圧縮するため（省略時1） */
+  staggerCount?: number
 }
 
 type Props = DiagramLineStyleProps & { points: PxPoint[] }
@@ -37,14 +39,20 @@ const MARKER_SHAPES: Record<Exclude<LineEndShape, 'none'>, { refX: number; size:
   dot: { refX: 5, size: 4, render: (color) => <circle cx={5} cy={5} r={4} fill={color} /> },
 }
 
-function EndMarker({ id, shape, color, atStart }: { id: string; shape: LineEndShape; color: string; atStart: boolean }) {
+function EndMarker({ id, shape, color, atStart, revealStyle }: { id: string; shape: LineEndShape; color: string; atStart: boolean; revealStyle?: CSSProperties }) {
   if (shape === 'none') return null
   const { refX, size, render } = MARKER_SHAPES[shape]
 
   return (
     // marker-start に付けたマーカーは auto-start-reverse で向きを反転させ、同じ形状定義を両端で使い回す
     <marker id={id} viewBox="0 0 10 10" refX={refX} refY={5} markerWidth={size} markerHeight={size} orient={atStart ? 'auto-start-reverse' : 'auto'}>
-      {render(color)}
+      {/* SVG の marker は stroke-dashoffset のドローイン演出と連動せず、要素がマウントされた瞬間から
+       * 常に終点の位置に表示される（マーカーは path の頂点に配置されるだけで、線がどこまで描かれたかは
+       * 見ない仕様）。revealStyle 指定時（draw=true）は先端自体もフェードインさせ、線が描き終わる
+       * タイミングまで先端が見えないようにする（DiagramLine.module.css の .markerReveal 参照） */}
+      <g className={revealStyle ? styles.markerReveal : undefined} style={revealStyle}>
+        {render(color)}
+      </g>
     </marker>
   )
 }
@@ -55,7 +63,7 @@ function EndMarker({ id, shape, color, atStart }: { id: string; shape: LineEndSh
  * 経路は px で受け取る（縦横比で太さや先端形状が歪まないようにするため）。線幅・破線の刻みは
  * --theme-border-width の倍率、色はカラーパレットキー経由の CSS 変数で持つので、いずれもテーマに追従する。
  */
-export function DiagramLine({ points, color, thickness = 2, dashed, head = 'arrow', tail = 'none', label, staggerIndex }: Props) {
+export function DiagramLine({ points, color, thickness = 2, dashed, head = 'arrow', tail = 'none', label, staggerIndex, staggerCount }: Props) {
   const size = useDiagramSize()
   // useId の戻り値は url(#...) に使えない記号を含むため、識別子として使える文字だけを残す
   const uid = useId().replace(/[^a-zA-Z0-9_-]/g, '')
@@ -71,13 +79,14 @@ export function DiagramLine({ points, color, thickness = 2, dashed, head = 'arro
   const draw = !dashed && staggerIndex != null
   // dashed 線は「データが流れる」向きを持つ接続として、ダッシュの1周期分だけ無限に流すループ演出にする
   const dashPeriod = `calc(var(--theme-border-width) * ${thickness * 7})`
+  const markerRevealStyle = draw ? ({ '--stagger-index': staggerIndex, '--stagger-count': staggerCount ?? 1 } as CSSProperties) : undefined
 
   return (
     <>
       <svg className={styles.layer} width={size.width} height={size.height} aria-hidden="true">
         <defs>
-          <EndMarker id={headId} shape={head} color={strokeColor} atStart={false} />
-          <EndMarker id={tailId} shape={tail} color={strokeColor} atStart={true} />
+          <EndMarker id={headId} shape={head} color={strokeColor} atStart={false} revealStyle={markerRevealStyle} />
+          <EndMarker id={tailId} shape={tail} color={strokeColor} atStart={true} revealStyle={markerRevealStyle} />
         </defs>
         <polyline
           points={polylinePoints(points)}
@@ -91,7 +100,7 @@ export function DiagramLine({ points, color, thickness = 2, dashed, head = 'arro
             strokeWidth: lineWidth,
             strokeDasharray: dashed ? `calc(var(--theme-border-width) * ${thickness * 4}) calc(var(--theme-border-width) * ${thickness * 3})` : draw ? 1 : undefined,
             ...(dashed ? ({ '--flow-dash-period': dashPeriod } as CSSProperties) : {}),
-            ...(draw ? ({ '--stagger-index': staggerIndex } as CSSProperties) : {}),
+            ...(markerRevealStyle ?? {}),
           }}
           markerEnd={head === 'none' ? undefined : `url(#${headId})`}
           markerStart={tail === 'none' ? undefined : `url(#${tailId})`}
