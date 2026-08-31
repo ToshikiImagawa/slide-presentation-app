@@ -1,8 +1,10 @@
+import { useEffect, useState } from 'react'
 import { asArray } from '../../data/loader'
 import { DiagramCanvas, DiagramCard, Path, type LineEndShape } from '../diagram'
+import { useDiagramVisible } from '../diagram/DiagramCanvas'
 import { defaultSeriesColor } from '../structureDiagram/colors'
-import { getAxisSlot, packAxis } from '../structureDiagram/packAxis'
-import type { SequenceDiagramSpec } from './types'
+import { getAxisSlot, packAxis, type AxisSlot } from '../structureDiagram/packAxis'
+import type { SequenceDiagramSpec, SequenceMessage } from './types'
 
 const MARGIN = 0.02
 const COL_GAP = 0.04
@@ -71,7 +73,77 @@ export function SequenceDiagram({ lifelines, messages, activations }: SequenceDi
         return <DiagramCard key={`activation-${i}`} rect={{ x: colX(colIndex) - width / 2, y: startRow.offset, w: width, h: endRow.offset + endRow.size - startRow.offset }} color={lifelineColor(colIndex)} variant="filled" />
       })}
 
-      {messageList.map((message, i) => {
+      <SequenceMessages messageList={messageList} lifelineIndex={lifelineIndex} colX={colX} colSlots={colSlots} rowSlots={rowSlots} />
+
+      {lifelineList.map((lifeline, i) => (
+        <DiagramCard key={lifeline.id} rect={{ x: colSlots[i].offset, y: 0, w: colSlots[i].size, h: HEADER_HEIGHT }} title={lifeline.label ?? lifeline.id} color={lifelineColor(i)} />
+      ))}
+    </DiagramCanvas>
+  )
+}
+
+type SequenceMessagesProps = {
+  messageList: SequenceMessage[]
+  lifelineIndex: Map<string, number>
+  colX: (i: number) => number
+  colSlots: AxisSlot[]
+  rowSlots: AxisSlot[]
+}
+
+/**
+ * メッセージ矢印を1本ずつ出現させる。DiagramCanvas の子として置く必要がある
+ * （useDiagramVisible は DiagramCanvas が提供する Context を読むため）。
+ *
+ * 次の矢印は固定時間（setInterval）ではなく、**直前の矢印の描画アニメーション（.draw の
+ * diagramLineDraw）が完了した時点**（polyline の onAnimationEnd）でマウントする。固定時間で試したところ、
+ * 1本分の描画（delay 0.25s + draw 0.5s ≈ 0.75s）より短い間隔（0.55s）で次をマウントすると、前の矢印が
+ * まだアニメーション中のうちに次のアニメーションがスケジュールされることになり、WebKit が「複数の
+ * アニメーションが同時に進行中だと、片方の描画更新を継続的に反映せずまとめて完了状態へ飛ばす」不具合
+ * （実機・Playwright動画録画で確認）を再発させた（実機報告「API→APIの折り返し矢印だけ変」。自己メッセージは
+ * 経路が長く3辺+マーカーで構成されるため、この飛び跳ねが最も視認しやすかった）。完了イベント駆動にすることで、
+ * 前の矢印が終わるまで次のアニメーションを一切スケジュールしないことを構造的に保証できる
+ * （--theme-motion-scale でテーマ側の速度が変わっても追従する。固定時間の推測値は使わない）。
+ *
+ * 完了検知は「アニメーション名」ではなく「target が polyline かどうか」で判定する（CSS Modules は
+ * @keyframes 名もローカルスコープ化してハッシュ付きの名前に変える。ビルドツールの実装詳細に依存する
+ * 文字列一致は避ける）。矢印先端（marker）の .markerReveal フェードイン完了ではなく polyline 自身の
+ * diagramLineDraw 完了を見ているのは、marker は <defs> 内の要素で animationend が確実に届くか保証しにくい
+ * ため（polyline は実際にレンダリングされる要素で確実に届く）。矢印先端の 0.15s のフェードは次の矢印の
+ * delay（0.25s）中に収まる程度の差でしかなく、視認上の破綻は生じない。dashed なスパインは無限
+ * ループ（diagramLineFlow・animation-iteration-count:infinite）で animationend が発火しないため
+ * 誤検知しない。全コンポーネント中唯一のJSタイマー駆動の演出（既存の TerminalAnimation と同じ位置づけ）で、
+ * reference-deck 撮影時の finishSettlingAnimations では確定できない既知の残差として扱う */
+function SequenceMessages({ messageList, lifelineIndex, colX, colSlots, rowSlots }: SequenceMessagesProps) {
+  const visible = useDiagramVisible()
+  const [revealCount, setRevealCount] = useState(0)
+
+  useEffect(() => {
+    setRevealCount(visible && messageList.length > 0 ? 1 : 0)
+  }, [visible, messageList.length])
+
+  // 存在しないライフラインidを参照するメッセージは描画されない（下のmapでnullを返す）ため
+  // アニメーションが一切発生せず、onAnimationEnd が永遠に来ない。そのまま待つと以降のメッセージが
+  // 出現しなくなるため、現在の番の内容が無効だとわかった時点で待たずに次へ進める
+  useEffect(() => {
+    if (revealCount === 0 || revealCount > messageList.length) return
+    const current = messageList[revealCount - 1]
+    if (!lifelineIndex.has(current.from) || !lifelineIndex.has(current.to)) {
+      setRevealCount((count) => Math.min(count + 1, messageList.length))
+    }
+  }, [revealCount, messageList, lifelineIndex])
+
+  return (
+    // display:contents で自身はレイアウトに影響させず（子の Path は DiagramCanvas 基準の
+    // position:absolute のまま）、onAnimationEnd だけをこの階層で束ねて拾う
+    <div
+      data-testid="sequence-messages"
+      style={{ display: 'contents' }}
+      onAnimationEnd={(event) => {
+        if (!(event.target instanceof Element) || event.target.tagName !== 'polyline') return
+        setRevealCount((count) => Math.min(count + 1, messageList.length))
+      }}
+    >
+      {messageList.slice(0, revealCount).map((message, i) => {
         const fromIdx = lifelineIndex.get(message.from)
         const toIdx = lifelineIndex.get(message.to)
         if (fromIdx === undefined || toIdx === undefined) return null
@@ -95,6 +167,7 @@ export function SequenceDiagram({ lifelines, messages, activations }: SequenceDi
               ]}
               head={head}
               label={message.label}
+              staggerIndex={0}
             />
           )
         }
@@ -109,13 +182,10 @@ export function SequenceDiagram({ lifelines, messages, activations }: SequenceDi
             ]}
             head={head}
             label={message.label}
+            staggerIndex={0}
           />
         )
       })}
-
-      {lifelineList.map((lifeline, i) => (
-        <DiagramCard key={lifeline.id} rect={{ x: colSlots[i].offset, y: 0, w: colSlots[i].size, h: HEADER_HEIGHT }} title={lifeline.label ?? lifeline.id} color={lifelineColor(i)} />
-      ))}
-    </DiagramCanvas>
+    </div>
   )
 }

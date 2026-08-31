@@ -1,11 +1,18 @@
-// jsdom環境にないAPIのモック
+// jsdom環境にないAPIのモック。observe() は実物と異なり、常に isIntersecting: true で即時同期発火する
+// （TerminalAnimation・SequenceDiagram の SequenceMessages 等、IntersectionObserver で「このスライドが
+// 表示中か」を判定するコンポーネントのテストで、要素が最初から見えている状態を再現するため）
 class MockIntersectionObserver {
   readonly root: Element | null = null
   readonly rootMargin: string = ''
   readonly thresholds: ReadonlyArray<number> = []
+  private callback: IntersectionObserverCallback
 
-  constructor(_callback: IntersectionObserverCallback) {}
-  observe() {}
+  constructor(callback: IntersectionObserverCallback) {
+    this.callback = callback
+  }
+  observe(target: Element) {
+    this.callback([{ isIntersecting: true, target } as IntersectionObserverEntry], this)
+  }
   unobserve() {}
   disconnect() {}
   takeRecords(): IntersectionObserverEntry[] {

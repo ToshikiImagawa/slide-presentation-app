@@ -3,6 +3,7 @@ import type { CanvasSize } from './geometry'
 import styles from './DiagramCanvas.module.css'
 
 const DiagramSizeContext = createContext<CanvasSize>({ width: 0, height: 0 })
+const DiagramVisibleContext = createContext(false)
 
 /**
  * キャンバスの実測サイズ（CSS px）を得る。線系プリミティブは縦横比で歪まない px 空間で
@@ -11,6 +12,17 @@ const DiagramSizeContext = createContext<CanvasSize>({ width: 0, height: 0 })
  */
 export function useDiagramSize(): CanvasSize {
   return useContext(DiagramSizeContext)
+}
+
+/**
+ * キャンバスが現在のスライドとして画面に表示されているか（TerminalAnimation.tsx と同じ
+ * IntersectionObserver 方式・threshold 0.5。Reveal.js は `.present` 以外のスライドを画面外へ
+ * 移動するため、これで「このスライドが今表示中か」を判定できる）。SequenceDiagram のように
+ * JS 側で時間軸を制御する演出（#269。CSSのanimation-delayを複数同時にスケジュールすると
+ * WebKitが描画を正しく更新しない実機不具合が確認されたための例外的対応）がスライド再訪時に
+ * 再生し直すために使う */
+export function useDiagramVisible(): boolean {
+  return useContext(DiagramVisibleContext)
 }
 
 /**
@@ -27,6 +39,7 @@ export function useDiagramSize(): CanvasSize {
 export function DiagramCanvas({ children }: { children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null)
   const [size, setSize] = useState<CanvasSize>({ width: 0, height: 0 })
+  const [visible, setVisible] = useState(false)
 
   // 線系プリミティブは実測サイズが揃うまで描けないため、ペイント前に計測して二重描画を避ける
   useLayoutEffect(() => {
@@ -47,9 +60,19 @@ export function DiagramCanvas({ children }: { children: ReactNode }) {
     return () => observer.disconnect()
   }, [])
 
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const observer = new IntersectionObserver(([entry]) => setVisible(entry.isIntersecting), { threshold: 0.5 })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
   return (
     <div ref={ref} className={`content-area-fill-item ${styles.canvas}`} data-testid="diagram-canvas">
-      <DiagramSizeContext.Provider value={size}>{children}</DiagramSizeContext.Provider>
+      <DiagramSizeContext.Provider value={size}>
+        <DiagramVisibleContext.Provider value={visible}>{children}</DiagramVisibleContext.Provider>
+      </DiagramSizeContext.Provider>
     </div>
   )
 }
