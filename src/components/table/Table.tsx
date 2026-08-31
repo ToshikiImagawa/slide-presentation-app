@@ -5,9 +5,26 @@ import styles from './Table.module.css'
 
 const DEFAULT_ALIGN = 'left'
 
-/** 列幅比率を%へ変換する。省略列は1として等分する */
-function columnWidths(columns: TableColumnSpec[]): number[] {
-  const weights = columns.map((column) => (typeof column.width === 'number' && column.width > 0 ? column.width : 1))
+function hasExplicitWidth(column: TableColumnSpec): boolean {
+  return typeof column.width === 'number' && column.width > 0
+}
+
+/** 列の内容量（ヘッダーラベルと全セルの文字数のうち最大値）。空でも0にならないよう下限1 */
+function contentLength(column: TableColumnSpec, rows: string[][], columnIndex: number): number {
+  const lengths = [column.label.length, ...rows.map((row) => (row[columnIndex] ?? '').length)]
+  return Math.max(...lengths, 1)
+}
+
+/**
+ * 列幅比率を%へ変換する。width省略列は内容量（文字数）に応じた重みを自動算出する（#418）。
+ * 省略列どうしの内容量が同じ（あるいは1列のみ）なら重みは全て1になり、従来の等分割と一致する。
+ */
+function columnWidths(columns: TableColumnSpec[], rows: string[][]): number[] {
+  const lengths = columns.map((column, index) => contentLength(column, rows, index))
+  const autoLengths = lengths.filter((_, index) => !hasExplicitWidth(columns[index]))
+  const avgAutoLength = autoLengths.length > 0 ? autoLengths.reduce((sum, length) => sum + length, 0) / autoLengths.length : 1
+
+  const weights = columns.map((column, index) => (hasExplicitWidth(column) ? (column.width as number) : lengths[index] / avgAutoLength))
   const total = weights.reduce((sum, weight) => sum + weight, 0)
   return weights.map((weight) => (weight / total) * 100)
 }
@@ -35,7 +52,7 @@ export function Table(spec: TableSpec) {
     return null
   }
 
-  const widths = columnWidths(columns)
+  const widths = columnWidths(columns, rows)
   const density = resolveDensity(rows.length, columns.length)
 
   return (

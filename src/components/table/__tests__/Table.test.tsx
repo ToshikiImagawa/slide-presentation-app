@@ -37,13 +37,37 @@ describe('Table', () => {
     expect(getAllByRole('columnheader')[0].style.textAlign).toBe('left')
   })
 
-  it('列幅の比率がcolのwidthに反映される（省略列は1として等分）', () => {
+  it('列幅の比率がcolのwidthに反映される（省略列は内容量が同じなら等分）', () => {
     const { container } = render(<Table columns={[{ label: 'a', width: 2 }, { label: 'b' }, { label: 'c' }]} rows={[]} />)
     const cols = container.querySelectorAll('col')
 
     expect(cols[0].style.width).toBe('50%')
     expect(cols[1].style.width).toBe('25%')
     expect(cols[2].style.width).toBe('25%')
+  })
+
+  it('width省略列は内容量（文字数）に応じた重みになる', () => {
+    const { container } = render(
+      <Table
+        columns={[{ label: 'a' }, { label: 'b' }]}
+        rows={[
+          ['xxxxxxxxxx', 'y'],
+          ['xxxxxxxxxx', 'y'],
+        ]}
+      />,
+    )
+    const cols = container.querySelectorAll('col')
+
+    expect(parseFloat(cols[0].style.width)).toBeCloseTo(90.909, 2)
+    expect(parseFloat(cols[1].style.width)).toBeCloseTo(9.091, 2)
+  })
+
+  it('width省略列と明示width列が混在する場合、明示列はそのまま比率に使われる', () => {
+    const { container } = render(<Table columns={[{ label: 'a', width: 2 }, { label: 'b' }, { label: 'c' }]} rows={[['短', '短', 'ながいながいながい']]} />)
+    const cols = container.querySelectorAll('col')
+
+    // b・cの内容量の平均を1とみなして重みを算出する（b: 1文字→軽く, c: 9文字→重く）
+    expect(parseFloat(cols[1].style.width)).toBeLessThan(parseFloat(cols[2].style.width))
   })
 
   it('行のセルが列数より少ない場合は空文字で埋める', () => {
