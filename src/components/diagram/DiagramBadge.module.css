@@ -31,3 +31,21 @@
   position: absolute;
   transform: translate(-50%, -50%);
 }
+
+/* 注意を引くべき状態にだけ付ける控えめな拡大縮小ループ（pulse:true・opt-in）。.positioned の
+   translate(-50%, -50%) は静的な中央合わせなので、同じ要素に animation で transform を上書きすると
+   中央がずれる。現時点の呼び出し元（Compare の warn/fail バッジ）は at を使わないため衝突しないが、
+   positioned と pulse を併用する場合は keyframes 側に translate も含めて書き直す必要がある */
+:global(.reveal .slides section.present) .pulse {
+  animation: diagramBadgePulse calc(1.6s * var(--theme-motion-scale)) ease-in-out infinite;
+}
+
+@keyframes diagramBadgePulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.12);
+  }
+}

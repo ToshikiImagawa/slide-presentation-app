@@ -85,3 +85,27 @@
     stroke-dashoffset: calc(-1 * var(--flow-dash-period));
   }
 }
+
+/* ソリッド矢印に「流れ」の向きを示す opt-in 演出（flow: true）。dashed の .flow は線自体が破線として
+   流れるが、ソリッド線は形を保ったまま上に短い光の粒（comet）を1つだけ重ねて流す。pathLength=1 に
+   正規化し、strokeDasharray の合計を1にしているため、dashoffset をちょうど1周期（-1）動かすだけで
+   開始状態と終了状態の見た目が一致するシームレスループになる。
+   comet はベースの線と同じ stroke 色なので、太さを揃えただけでは重なって見分けがつかない。
+   DiagramCard の diagramNodeGlow と同じ filter: brightness() で明るさを上げて視認できるようにする
+   （html2canvas は css filter の brightness を問題なく描画できる。既存の glow 演出で実績あり）。
+   .draw のドローインと併用する場合は、線が引かれ終わる delay + duration（0.25s起点 + 0.5s）を待って
+   から流し始める（線より先に光が流れて見える矛盾を避ける。.markerReveal と同じ考え方） */
+:global(.reveal .slides section.present) .flowComet {
+  filter: brightness(2.4);
+  animation: diagramLineFlowComet calc(1.4s * var(--theme-motion-scale)) linear infinite;
+  animation-delay: calc((0.25s + var(--stagger-index, 0) * min(0.12s, var(--theme-stagger-spread-max) / var(--stagger-count, 1)) + 0.5s) * var(--theme-motion-scale));
+}
+
+@keyframes diagramLineFlowComet {
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: -1;
+  }
+}

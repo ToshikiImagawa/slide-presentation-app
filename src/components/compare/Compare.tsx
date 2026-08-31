@@ -18,7 +18,11 @@ function CompareItemRow({ item, index, count }: { item: CompareItem; index: numb
   const status = item.status && STATUS[item.status]
   return (
     <li className={`${styles.item} stagger-item`} style={{ '--stagger-index': index, '--stagger-count': count } as CSSProperties}>
-      {status && <DiagramBadge color={status.color}>{status.mark}</DiagramBadge>}
+      {status && (
+        <DiagramBadge color={status.color} pulse={item.pulse}>
+          {status.mark}
+        </DiagramBadge>
+      )}
       <span className={styles.text}>{item.text}</span>
     </li>
   )

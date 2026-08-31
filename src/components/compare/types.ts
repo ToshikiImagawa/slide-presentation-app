@@ -4,6 +4,8 @@ export type CompareStatus = 'pass' | 'fail' | 'warn' | 'neutral'
 export type CompareItem = {
   text: string
   status?: CompareStatus
+  /** 特に注意を引きたい項目にだけ、状態記号バッジへ控えめな拡大縮小ループを付ける（opt-in・省略時はループなし） */
+  pulse?: boolean
 }
 
 export type ComparePaneSpec = {

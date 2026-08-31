@@ -1,0 +1,22 @@
+/* 注目させたいタイルのアイコンだけに、緩やかな拡大縮小ループを付ける（tile.highlight: true・opt-in・
+   既定オフ）。全タイルに付けると煩雑になるため対象を絞る運用にする。
+   Card 自身は grid-stagger-item として出現アニメーション（0.2s基点 + 行/列delay + 0.6s duration）を
+   持つため、その完了後に開始する（出現中にアイコンだけ先に動いて見える違和感を避ける）。
+   --stagger-row/--stagger-col 等は Card の inline style から子要素へ継承される値をそのまま使う */
+:global(.reveal .slides section.present) .avatarHighlight {
+  animation: tileIconPulse calc(1.8s * var(--theme-motion-scale)) ease-in-out infinite;
+  animation-delay: calc(
+    (0.2s + var(--stagger-row, 0) * min(0.12s, var(--theme-stagger-spread-max) / var(--stagger-row-count, 1)) + var(--stagger-col, 0) * min(0.03s, var(--theme-stagger-spread-max) / 2 / var(--stagger-col-count, 1)) + 0.6s) *
+      var(--theme-motion-scale)
+  );
+}
+
+@keyframes tileIconPulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}

@@ -497,7 +497,63 @@
 }
 
 .kpiDeltaMark {
+  display: inline-block;
   font-size: 0.75em;
+}
+
+/* 増減方向記号（▲▼）に感情表現のループを付ける。良し悪しは deltaStatus（KpiTrend.tsx の STATUS_TONE）
+   で判定する。deltaDirection（▲/▼の向き）は数値が上下した事実だけを示す記号で良し悪しとは直交する
+   概念（#196）なので、跳ねる/沈むの選択に direction を使わない（例: 障害率の上昇は direction: 'up' で
+   ▲が付くが、deltaStatus: 'danger' なので軽快な bounce ではなく sink になる）。
+   .kpi は stagger-item として親自身が出現アニメーション（0.2s + stagger-index 分の delay + 0.6s duration）
+   を持つため、その完了後（+0.6s）に開始し、出現中に記号だけ先に動いて見える違和感を避ける。
+   --stagger-index/--stagger-count は .kpi の inline style から継承される値をそのまま使う */
+:global(.reveal .slides section.present) .kpiDeltaMark[data-tone='positive'] {
+  animation: kpiMarkBounce calc(1.1s * var(--theme-motion-scale)) infinite;
+  animation-delay: calc((0.2s + var(--stagger-index, 0) * min(0.12s, var(--theme-stagger-spread-max) / var(--stagger-count, 1)) + 0.6s) * var(--theme-motion-scale));
+}
+
+:global(.reveal .slides section.present) .kpiDeltaMark[data-tone='negative'] {
+  animation: kpiMarkSink calc(1.8s * var(--theme-motion-scale)) infinite;
+  animation-delay: calc((0.2s + var(--stagger-index, 0) * min(0.12s, var(--theme-stagger-spread-max) / var(--stagger-count, 1)) + 0.6s) * var(--theme-motion-scale));
+}
+
+/* 0%/100%を translateY(0) に揃えたシームレスループ。各区間ごとに timing-function を変えて
+   「持ち上げられて頂点で減速→重力で加速して落ちる→小さく弾む」バネの物理感を出す */
+@keyframes kpiMarkBounce {
+  0%,
+  100% {
+    transform: translateY(0);
+    animation-timing-function: ease-out;
+  }
+  40% {
+    transform: translateY(-5px);
+    animation-timing-function: ease-in;
+  }
+  70% {
+    transform: translateY(0);
+    animation-timing-function: ease-out;
+  }
+  85% {
+    transform: translateY(-1.5px);
+    animation-timing-function: ease-in;
+  }
+}
+
+/* 加速しながら沈み・ゆっくり戻る非対称カーブで「重さ」を表現する。彩度を落とすのではなく
+   opacity をわずかに落とすことで、沈んでいる間だけ存在感が薄れる印象にする */
+@keyframes kpiMarkSink {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+    animation-timing-function: ease-in;
+  }
+  60% {
+    transform: translateY(3px);
+    opacity: 0.7;
+    animation-timing-function: ease-out;
+  }
 }
 
 /* 推移線は大数値の下に控えめな高さで添える（主役は数値なので上限を持たせる） */
