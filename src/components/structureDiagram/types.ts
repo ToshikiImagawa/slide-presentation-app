@@ -54,4 +54,7 @@ export type StructureEdge = {
   routing?: 'auto' | 'horizontal' | 'vertical'
   /** UMLクラス図のrelationsでのみ使用。head/dashed省略時の既定値を決める */
   type?: StructureEdgeType
+  /** ソリッド線（dashed省略/false）に「データが流れる」向きを示す光の粒を無限に流す（opt-in・既定オフ。
+   * dashed:trueと併用しても無視される・#426） */
+  flow?: boolean
 }

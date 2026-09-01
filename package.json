@@ -1,6 +1,6 @@
 {
   "name": "demo",
-  "version": "2.5.1",
+  "version": "2.6.0",
   "scripts": {
     "dev": "npm run build:addons && vite",
     "build": "npm run build:addons && vite build",

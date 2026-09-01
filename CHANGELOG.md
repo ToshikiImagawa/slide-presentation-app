@@ -6,6 +6,24 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.6.0] - 2026-09-01
+
+### Added
+
+- Added subtle entrance and ambient-motion animations across slides (content elements fade/stagger in, master backgrounds can opt in to ambient motion, timelines and diagrams draw in) so decks feel less static
+- Added entrance animations to line, pie, and KPI charts: line charts now draw left-to-right, pie charts no longer snap at the end, and KPI cards fade in progressively
+- Added entrance animations to chart value labels and legends
+- Added entrance animations to Checklist and Compare list items
+- Added a theme-level token to adjust animation speed for all entrance and ambient motion at once
+- Added opt-in looping animations to diagrams, KPI trends, Compare, and tiles (e.g. a highlighted tile icon can pulse, a Compare badge can draw attention, flow arrows can show traveling light dots)
+- Expanded the bundled sample deck with more layout examples
+
+### Fixed
+
+- Fixed table columns without an explicit width being sized equally instead of based on their content
+- Fixed z-order, stagger ordering, and delay issues in diagram-style layouts (e.g. arrows hidden behind background panels, uneven animation delays in grids)
+- Fixed sequence diagram arrows sometimes jumping straight to their final state instead of animating in one at a time
+
 ## [2.5.1] - 2026-08-28
 
 ### Added
