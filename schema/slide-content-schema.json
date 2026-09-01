@@ -104,7 +104,8 @@
               "type": "string",
               "stringConstraint": "colorToken",
               "description": "アイコン背景・枠のアクセント色トークン名（primary/accent/series1-6/success/warning/danger/neutral等、theme.colorsのキーと同じ）。省略時は既定でprimary"
-            }
+            },
+            "highlight": { "type": "boolean", "description": "特に注目させたいタイルのアイコンにだけ、控えめな拡大縮小ループを付ける（opt-in・省略時はループなし）" }
           }
         },
         "tileColumns": { "type": "number", "description": "tilesの列数。省略時はタイル数と同数の列（現行と同一の1行表示）。6枚以上のtilesを読める大きさで折返し表示したい場合に指定する" },
@@ -293,7 +294,7 @@
       "itemFields": {
         "label": { "type": "string" },
         "align": { "type": "string", "enum": ["left", "center", "right"], "description": "列内の文字揃え。省略時left" },
-        "width": { "type": "number", "description": "列幅の比率（例: 2は1の倍の幅）。省略時は全列等分" }
+        "width": { "type": "number", "description": "列幅の比率（例: 2は1の倍の幅）。省略時は列の内容量（ヘッダー・セルの文字数の最大値）に応じた重みを自動算出する" }
       }
     },
     "rows": { "type": "array", "maxItems": 10, "description": "本文行。各要素はcolumnsと同じ順序・数のセル文字列配列。推奨上限10行（超えると密度過多として自動修正対象になる）" }
@@ -316,7 +317,8 @@
           "type": "string",
           "enum": ["pass", "fail", "warn", "neutral"],
           "description": "状態記号・状態色（pass=✓success色 / fail=✕danger色 / warn=!warning色 / neutral=–neutral色）。省略時は記号なしの通常項目"
-        }
+        },
+        "pulse": { "type": "boolean", "description": "特に注意を引きたい項目にだけ、状態記号バッジへ控えめな拡大縮小ループを付ける（opt-in・省略時はループなし）" }
       }
     }
   },
@@ -357,7 +359,8 @@
       "type": "string",
       "enum": ["association", "inheritance", "implements", "dependency"],
       "description": "UMLクラス図のrelationsでのみ使用。head/dashedを明示指定しない場合の既定値を決める（association=実線+矢印 / inheritance=実線+三角 / implements=破線+三角 / dependency=破線+矢印）"
-    }
+    },
+    "flow": { "type": "boolean", "description": "ソリッド線（dashed省略/false）に「データが流れる」向きを示す光の粒を無限に流す（opt-in・省略時false。dashed:trueと併用しても無視される）" }
   },
   "hierarchyDiagram": {
     "description": "content.hierarchyDiagramの階層構成図指定（層を積む構造図・#205）。層を上から下へ積み、隣接する層同士を線で結ぶ。層の積み順が配置の明示指定になる（自動配置は使わない）",

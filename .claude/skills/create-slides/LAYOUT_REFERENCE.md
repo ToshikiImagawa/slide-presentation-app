@@ -191,6 +191,7 @@
 
 `tileColumns` は列数（省略時はタイル数と同数の列＝1行表示。6枚以上のtilesを読める大きさで折返し表示したい場合に指定する）。
 `accentColor` はアイコン背景・枠のアクセント色トークン名（`primary`/`accent`/`series1`〜`series6`/`success`/`warning`/`danger`/`neutral`等。省略時は`primary`）。
+`highlight`（boolean）を `true` にすると、特に注目させたいタイルのアイコンに控えめな拡大縮小ループを付ける（opt-in・省略時はループなし）。
 
 `icon` はComponentRegistryに `Icon:<name>` として登録済みの任意アイコン名を指定できる（アドオン・ブランドテーマ提供分を含む）。推奨（デフォルト登録済み）アイコン: `Description`, `PlaylistAddCheck`, `Traffic`, `FactCheck`, `Memory`, `Search`。未登録名は破線枠フォールバック表示＋利用者への警告になる。
 
@@ -398,7 +399,7 @@ mermaidはd3/dagre/katex/cytoscape等の重い依存を持ち込むため、コ�
 }
 ```
 
-`columns[].align`（`left`/`center`/`right`。省略時 `left`）と `columns[].width`（列幅の比率。省略時は全列等分）で列ごとの見た目を調整する。`rows[]` の各要素は `columns` と同じ順序・数のセル文字列配列。行数・列数が多い場合はpadding・文字サイズが段階的に縮み、それでも収まらない分は本文領域の外へはみ出させずクリップする。
+`columns[].align`（`left`/`center`/`right`。省略時 `left`）と `columns[].width`（列幅の比率。省略時は列の内容量（ヘッダー・セルの文字数の最大値）に応じた重みを自動算出する）で列ごとの見た目を調整する。`rows[]` の各要素は `columns` と同じ順序・数のセル文字列配列。行数・列数が多い場合はpadding・文字サイズが段階的に縮み、それでも収まらない分は本文領域の外へはみ出させずクリップする。
 
 ### component（カスタムコンポーネント）
 
@@ -457,6 +458,8 @@ mermaidはd3/dagre/katex/cytoscape等の重い依存を持ち込むため、コ�
 | `warn`    | !    | `warning`  |
 | `neutral` | –    | `neutral`  |
 
+`items[].pulse`（boolean）を `true` にすると、特に注意を引きたい項目の状態記号バッジに控えめな拡大縮小ループを付ける（opt-in・省略時はループなし）。
+
 ### flow（横フロー）
 
 工程の連なりを「左から右への流れ」で見せる横フロー。3〜5工程を想定し、工程間の矢印は自動でカード境界に接する（矢印プリミティブは `src/components/diagram/` の共通部品を再利用しており、#200 では再実装しない）。カード幅・文字サイズは工程数から自動で決まる。
@@ -475,6 +478,8 @@ mermaidはd3/dagre/katex/cytoscape等の重い依存を持ち込むため、コ�
 ### 構成図（階層構成図・サーバ/クラウド構成図・組織図・UMLクラス図・#205）
 
 4種の構成図はいずれも `src/components/diagram/` の共通プリミティブ（#202）に座標を渡す層として実装されており、ノード/エッジのデータ構造を共有する（種別ごとに独自DSLを作らない。`schema/slide-content-schema.json` の `structureNode`/`structureEdge` が単一ソース）。配置は「配列順による明示指定」または「決定的な自動配置」のいずれかで決まり、乱数・力学モデルは使わない。矢印・コネクタはノードの境界に自動で接する。
+
+エッジ（`structureEdge`）の `flow`（boolean）を `true` にすると、ソリッド線（`dashed` 省略/`false`）に「データが流れる」向きを示す光の粒を無限に流す（opt-in・省略時false。`dashed: true` と併用しても無視される）。ユーザーがエッジを明示指定する `serverDiagram.connections` / `classDiagram.relations`（後述）で使える。`hierarchyDiagram`/`orgChart` は接続線を親子関係から自動導出するため `flow` を指定する余地はない。
 
 #### hierarchyDiagram（階層構成図）
 
@@ -851,6 +856,8 @@ mermaidはd3/dagre/katex/cytoscape等の重い依存を持ち込むため、コ�
 
 `plain`/`grid`（`color` 省略時）に加え、`gradient` の半透明部分・`image` の `fit: contain` の余白の下地も既定でテーマ背景色になる（#239。真実源は `global.css` の `.master-background`）。
 
+`grid`/`gradient` の背景には `motion`（boolean）で控えめな周期的アニメーションを付けられる（他の `type` では無視される）。省略時は `true` 相当（動く）で、`false` を明示するとそのマスターだけ動きを止められる（静止画としての一貫性を優先したい場合の opt-out）。
+
 格子線の色は `tokens` の masterKey スコープで `theme-background-grid` を上書きすればマスターごとに変えられる。
 
 `only` は装飾を出すスライドの絞り込み条件。
@@ -895,6 +902,8 @@ mermaidはd3/dagre/katex/cytoscape等の重い依存を持ち込むため、コ�
 | `theme-card-accent-width`       | `0px`   | カード左端のアクセントバーの幅（`0` でバーなし。色は `tiles[].accentColor`） |
 | `theme-shadow-strength`         | `1`     | 影の濃さの倍率（`0` で影なし・`2` で倍）                                     |
 | `theme-zebra-opacity`           | `0.04`  | 表の偶数行の背景の濃さ                                                       |
+
+`theme-motion-speed`（`"*"` スコープ推奨・既定値 `1`）は、コンテンツのエントランス演出・マスター背景のアンビエントモーション（`motion: true`）等、すべてのアニメーションの duration/delay を割ってスケールする速度係数。値が大きいほど再生が速くなる（#417）。
 
 ### theme.sectionAccents（章ごとのアクセント色・#319）
 
@@ -954,7 +963,7 @@ mermaidはd3/dagre/katex/cytoscape等の重い依存を持ち込むため、コ�
 
 ### プロセス図（フローチャート・スイムレーン・日付タイムライン・ガント・#206）
 
-工程・時間軸を示す図式。フローチャート・スイムレーンはノード/エッジのデータ構造（`structureNode`/`structureEdge`）を構成図（#205）と共有し、日付タイムラインは既存の `steps`（Timeline）と見た目の基盤を共有する（`steps` の描画は変わらず、併存する独立フィールド）。
+工程・時間軸を示す図式。フローチャート・スイムレーンはノード/エッジのデータ構造（`structureNode`/`structureEdge`）を構成図（#205）と共有し、日付タイムラインは既存の `steps`（Timeline）と見た目の基盤を共有する（`steps` の描画は変わらず、併存する独立フィールド）。フローチャート・スイムレーンの `edges`/`connections` も構成図と同じ `structureEdge` を使うため、前述の `flow`（ソリッド線に光の粒を流す）が指定できる。
 
 #### dateTimeline（日付付きマイルストーンタイムライン）
 
