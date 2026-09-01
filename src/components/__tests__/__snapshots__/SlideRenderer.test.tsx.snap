@@ -3,6 +3,7 @@
 exports[`SlideRenderer > SlideFrame統合後のDOM構造（属性スナップショット） > test-bleed の section 配下がスナップショットと一致する 1`] = `
 "section.slide-container
   div.master-layer-back
+    div.master-background.master-background-grid
   div.master-body.bleed-image-layout
     div.bleed-content
     div._terminal-window_2e7c2d.MuiBox-root.css-0
@@ -13,6 +14,7 @@ exports[`SlideRenderer > SlideFrame統合後のDOM構造（属性スナップシ
 exports[`SlideRenderer > SlideFrame統合後のDOM構造（属性スナップショット） > test-custom の section 配下がスナップショットと一致する 1`] = `
 "section.slide-container
   div.master-layer-back
+    div.master-background.master-background-grid
   div.master-body
     div._terminal-window_2e7c2d.MuiBox-root.css-0
   div.master-layer-front
@@ -22,6 +24,7 @@ exports[`SlideRenderer > SlideFrame統合後のDOM構造（属性スナップシ
 exports[`SlideRenderer > SlideFrame統合後のDOM構造（属性スナップショット） > test-section の section 配下がスナップショットと一致する 1`] = `
 "section.slide-container
   div.master-layer-back
+    div.master-background.master-background-grid
   div.master-body
     div.section-title-layout.MuiBox-root.css-0
   div.master-layer-front
@@ -31,6 +34,7 @@ exports[`SlideRenderer > SlideFrame統合後のDOM構造（属性スナップシ
 exports[`SlideRenderer > SlideFrame統合後のDOM構造（属性スナップショット） > test-steps の section 配下がスナップショットと一致する 1`] = `
 "section.slide-container
   div.master-layer-back
+    div.master-background.master-background-grid
   div.master-body
     h2.MuiTypography-root.MuiTypography-h2.slide-title.css-jash87-MuiTypography-root
     div.content-area.MuiBox-root.css-0
@@ -41,6 +45,7 @@ exports[`SlideRenderer > SlideFrame統合後のDOM構造（属性スナップシ
 exports[`SlideRenderer > SlideFrame統合後のDOM構造（属性スナップショット） > test-tiles の section 配下がスナップショットと一致する 1`] = `
 "section.slide-container
   div.master-layer-back
+    div.master-background.master-background-grid
   div.master-body
     h2.MuiTypography-root.MuiTypography-h2.slide-title.css-jash87-MuiTypography-root
     div.content-area.MuiBox-root.css-0
@@ -51,6 +56,7 @@ exports[`SlideRenderer > SlideFrame統合後のDOM構造（属性スナップシ
 exports[`SlideRenderer > SlideFrame統合後のDOM構造（属性スナップショット） > test-title の section 配下がスナップショットと一致する 1`] = `
 "section.slide-container
   div.master-layer-back
+    div.master-background.master-background-grid
   div.master-body
     div.title-layout.MuiBox-root.css-0
   div.master-layer-front
@@ -60,6 +66,7 @@ exports[`SlideRenderer > SlideFrame統合後のDOM構造（属性スナップシ
 exports[`SlideRenderer > SlideFrame統合後のDOM構造（属性スナップショット） > test-two-column の section 配下がスナップショットと一致する 1`] = `
 "section.slide-container
   div.master-layer-back
+    div.master-background.master-background-grid
   div.master-body
     h2.MuiTypography-root.MuiTypography-h2.slide-title.css-jash87-MuiTypography-root
     div.content-area.MuiBox-root.css-0

@@ -57,9 +57,9 @@ export async function exportSlidesToPdf(deckEl: HTMLElement, title: string, canv
     slidesEl.style.zoom = ''
     slidesEl.style.transform = ''
   }
-  // .pdf-capturing 付与中は global.css がテーマ背景・フェード効果を .slide-container に再現し、
-  // fadeInUp アニメーションも無効化する（祖先である body/.backgrounds の見た目は
-  // html2canvas が section 単体しかキャプチャしないため引き継がれない）
+  // .pdf-capturing 付与中は global.css が未訪問フラグメントを表示済み状態にする。背景（既定のgrid含む）は
+  // .master-background として <section> 内側（html2canvas の撮影対象そのもの）に描かれるため、
+  // body 側で別途補完する必要はない
   deckEl.classList.add('pdf-capturing')
   // Reveal.js の data-src → src 昇格（slideContent プラグイン）は viewDistance 圏内のスライドに
   // しか走らず、かつ .present クラスを直接トグルするだけの撮影ループでは Reveal 自身の

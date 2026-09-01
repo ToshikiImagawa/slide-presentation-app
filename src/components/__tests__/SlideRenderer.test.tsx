@@ -1560,12 +1560,13 @@ describe('SlideRenderer', () => {
       masterMap: { content: 'standard' },
     }
 
-    it('theme未指定時はdata-master属性が付かず装飾も描画されない（現行と完全同一のDOM）', () => {
+    it('theme未指定時はdata-master属性が付かず装飾も描画されない（既定のgrid背景のみ描画される。#440）', () => {
       const contentSlide = testSlides.find((s) => s.layout === 'content')!
       const { container } = renderWithTheme(<SlideRenderer slides={[contentSlide]} />)
       const section = container.querySelector('section.slide-container')!
       expect(section.getAttribute('data-master')).toBeNull()
-      expect(section.querySelector('.master-layer-back')?.children.length).toBe(0)
+      expect(section.querySelector('.master-layer-back')?.children.length).toBe(1)
+      expect(section.querySelector('.master-layer-back > .master-background')?.className).toBe('master-background master-background-grid')
     })
 
     it('masterMapに対応するlayoutのスライドにdata-master属性が付き、backレイヤーの装飾が描画される', () => {
@@ -1573,7 +1574,8 @@ describe('SlideRenderer', () => {
       const { container } = renderWithTheme(<SlideRenderer slides={[contentSlide]} theme={masterTheme} />)
       const section = container.querySelector('section.slide-container')!
       expect(section.getAttribute('data-master')).toBe('standard')
-      expect(section.querySelector('.master-layer-back')?.children.length).toBe(1)
+      // 既定のgrid背景（1） + band装飾（1） = 2
+      expect(section.querySelector('.master-layer-back')?.children.length).toBe(2)
     })
 
     it('masterMapに対応しないlayoutのスライドは装飾が描画されない', () => {
@@ -1594,7 +1596,7 @@ describe('SlideRenderer', () => {
     it('band装飾はcenter系anchor（top-center）でも9方向センタリングtransformの影響を受けず画面外にずれない', () => {
       const contentSlide = testSlides.find((s) => s.layout === 'content')!
       const { container } = renderWithTheme(<SlideRenderer slides={[contentSlide]} theme={masterTheme} />)
-      const band = container.querySelector('.master-layer-back > div') as HTMLElement
+      const band = container.querySelector('.master-layer-back > .master-decoration-band') as HTMLElement
       // band(horizontal)は left:0/right:0 で全幅に広がるため、横方向のセンタリングtransform(-50%)が
       // 残っていると自身の幅の半分だけ左にずれて画面外に出てしまう
       expect(band.style.left).toBe('0px')
@@ -1649,10 +1651,11 @@ describe('SlideRenderer', () => {
 
     // #189: マスター背景意匠（背景を持つマスターだけが .master-layer-back の最背面に背景要素を敷く）
     describe('マスター背景（#189）', () => {
-      it('background を持たないテーマでは背景要素を描かない（現行と完全同一のDOM）', () => {
+      it('background を持たないテーマでは既定の grid 背景（motion off）を描く（デッキ既定の格子。#440）', () => {
         const contentSlide = testSlides.find((s) => s.layout === 'content')!
         const { container } = renderWithTheme(<SlideRenderer slides={[contentSlide]} theme={masterTheme} />)
-        expect(container.querySelector('.master-background')).toBeNull()
+        const el = container.querySelector('.master-background') as HTMLElement
+        expect(el.className).toBe('master-background master-background-grid')
       })
 
       it('マスターごとに別の背景（無地 / 格子 / 全面塗り）を割り当てられる（受け入れ基準）', () => {
@@ -1679,7 +1682,7 @@ describe('SlideRenderer', () => {
           masterMap: { content: 'standard' },
         }
         const { container } = renderWithTheme(<SlideRenderer slides={[contentSlide]} theme={theme} />)
-        const watermark = container.querySelector('.master-layer-back > div') as HTMLElement
+        const watermark = container.querySelector('.master-layer-back > .master-decoration-text') as HTMLElement
         expect(watermark.textContent).toBe('CONFIDENTIAL')
         expect(watermark.style.opacity).toBe('0.08')
         expect(watermark.style.transform).toContain('rotate(-30deg)')
@@ -1722,7 +1725,8 @@ describe('SlideRenderer', () => {
       it('only: section-first の装飾が各章の先頭スライドにだけ描画される', () => {
         const { container } = renderWithTheme(<SlideRenderer slides={sectionDeck(undefined, '導入', '導入', '設計')} theme={sectionTheme} />)
         const backChildren = [...container.querySelectorAll('section.slide-container')].map((s) => s.querySelector('.master-layer-back')?.children.length)
-        expect(backChildren).toEqual([0, 1, 0, 1])
+        // 既定のgrid背景（常に1）+ section-first のときだけ rule 装飾（+1）
+        expect(backChildren).toEqual([1, 2, 1, 2])
       })
 
       it('章定義のないデッキの描画は変わらない（受け入れ基準・後方互換）', () => {
