@@ -20,20 +20,26 @@ type Props = {
   meta?: SlideMeta
 }
 
+/** マスター側が背景を明示しないときの既定値。デッキ既定の見た目（格子模様）を、body ではなく
+ * <section> 内側の .master-background として描くための値（motion は既定 true だが、旧来の
+ * body 格子は動かない意匠だったため、既定値としては明示的に false で揃える） */
+const DEFAULT_MASTER_BACKGROUND: MasterBackground = { type: 'grid', motion: false }
+
 /**
  * 指定レイヤー（back/front）の中身を組み立てる。back レイヤーは最背面に背景（#189・#236）を敷き、
  * その上に該当レイヤーの装飾（only 条件を満たすもの）を宣言順で描く。
  * レイヤー内の重なり順を知るのはこのコンポーネントだけで、SlideFrame は2つのレイヤー div を並べるだけ。
+ * back レイヤーは常に何らかの背景要素を描く（meta 個別背景 → master.background → 既定 grid の優先順）。
+ * front レイヤーは装飾のみのため、master が未解決なら描くものが無い。
  */
 export function SlideMasterLayer({ master, layer, ctx, meta }: Props) {
   const metaBackgroundStyle = layer === 'back' ? metaBackgroundElementStyle(meta) : undefined
-  if (!master && !metaBackgroundStyle) return null
+  if (layer === 'front' && !master) return null
   const visible = master?.decorations.filter((d) => (d.layer ?? 'back') === layer && matchesDecorationOnly(d.only, ctx)) ?? []
-  // meta 個別背景（#236: 優先）→ master.background → 何も描かない、の順に一つだけ選ぶ
-  const backgroundElement = metaBackgroundStyle ? <div className="master-background" style={metaBackgroundStyle} /> : master?.background ? <MasterBackgroundElement background={master.background} /> : null
+  const backgroundElement = layer === 'back' ? metaBackgroundStyle ? <div className="master-background" style={metaBackgroundStyle} /> : <MasterBackgroundElement background={master?.background ?? DEFAULT_MASTER_BACKGROUND} /> : null
   return (
     <>
-      {layer === 'back' && backgroundElement}
+      {backgroundElement}
       {visible.map((decoration, i) => (
         <MasterDecorationElement key={i} decoration={decoration} ctx={ctx} />
       ))}
@@ -105,9 +111,11 @@ function backgroundStyle(background: MasterBackground): CSSProperties {
       return base
 
     case 'grid': {
-      // 格子の意匠自体は .master-background-grid（global.css）に持たせ、密度だけCSS変数で上書きする
+      // 格子の意匠自体は .master-background-grid（global.css）に持たせ、密度だけCSS変数で上書きする。
+      // color 指定時は上下フェードの色も同じ値に揃える（揃えないと下地色とフェードの境目に色差が出る）
       const density = background.size !== undefined ? ({ '--theme-background-grid-size': `${background.size}px` } as CSSProperties) : undefined
-      return { ...base, ...(background.color ? { backgroundColor: background.color } : {}), ...density }
+      const fadeColor = background.color ? ({ '--master-background-grid-fade-color': background.color } as CSSProperties) : undefined
+      return { ...base, ...(background.color ? { backgroundColor: background.color } : {}), ...density, ...fadeColor }
     }
 
     case 'fill':

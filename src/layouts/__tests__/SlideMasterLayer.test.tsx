@@ -17,9 +17,10 @@ function isVisible(only: MasterDecorationOnly, renderCtx: MasterRenderContext): 
   return renderBackLayer({ decorations: [{ type: 'text', anchor: 'bottom-right', content: 'shown', only }] }, renderCtx).textContent === 'shown'
 }
 
-/** 装飾1件を描画してそのルート要素の style を返す */
+/** 装飾1件を描画してそのルート要素の style を返す。back レイヤーは既定の grid 背景を必ず先頭に描くため
+ * lastElementChild で装飾側を取る（#440） */
 function styleOf(decoration: MasterDecoration): CSSStyleDeclaration {
-  return (renderBackLayer({ decorations: [decoration] }).firstElementChild as HTMLElement).style
+  return (renderBackLayer({ decorations: [decoration] }).lastElementChild as HTMLElement).style
 }
 
 describe('SlideMasterLayer', () => {
@@ -27,15 +28,22 @@ describe('SlideMasterLayer', () => {
     clearRegistry()
   })
 
-  it('master が未解決なら何も描画しない（現行と完全同一のDOM）', () => {
+  it('master が未解決でも back レイヤーは既定の grid 背景（motion off）を描く（デッキ既定の格子。#440）', () => {
     const { container } = render(<SlideMasterLayer master={undefined} layer="back" ctx={ctx} />)
+    const el = container.querySelector('.master-background') as HTMLElement
+    expect(el.className).toBe('master-background master-background-grid')
+  })
+
+  it('master が未解決なら front レイヤーは何も描画しない（装飾のみのレイヤーのため）', () => {
+    const { container } = render(<SlideMasterLayer master={undefined} layer="front" ctx={ctx} />)
     expect(container.innerHTML).toBe('')
   })
 
-  it('未登録コンポーネントを参照する component 装飾は描画しない（Fallback落ち防止）', () => {
+  it('未登録コンポーネントを参照する component 装飾は描画しない（Fallback落ち防止。既定のgrid背景のみ残る）', () => {
     const container = renderBackLayer({ decorations: [{ type: 'component', anchor: 'top-left', name: 'Unregistered' }] })
     expect(container.textContent).toBe('')
-    expect(container.querySelector('div')).toBeNull()
+    expect(container.children.length).toBe(1)
+    expect(container.firstElementChild?.className).toBe('master-background master-background-grid')
   })
 
   it('登録済みコンポーネントを参照する component 装飾は描画する', () => {
@@ -121,64 +129,64 @@ describe('SlideMasterLayer', () => {
   // #239: 装飾の既定色は global.css のクラス（.master-decoration-*）に持たせ、インラインでは指定しない
   describe('装飾の既定色（#239）', () => {
     it('band は color/gradient 未指定時、既定色をインラインで指定せず .master-decoration-band に委ねる', () => {
-      const el = renderBackLayer({ decorations: [{ type: 'band', anchor: 'top-center' }] }).firstElementChild as HTMLElement
+      const el = renderBackLayer({ decorations: [{ type: 'band', anchor: 'top-center' }] }).lastElementChild as HTMLElement
       expect(el.className).toBe('master-decoration-band')
       expect(el.style.backgroundColor).toBe('')
       expect(el.style.backgroundImage).toBe('')
     })
 
     it('rule は color 未指定時、既定色をインラインで指定せず .master-decoration-rule に委ねる', () => {
-      const el = renderBackLayer({ decorations: [{ type: 'rule', anchor: 'bottom-center' }] }).firstElementChild as HTMLElement
+      const el = renderBackLayer({ decorations: [{ type: 'rule', anchor: 'bottom-center' }] }).lastElementChild as HTMLElement
       expect(el.className).toBe('master-decoration-rule')
       expect(el.style.backgroundColor).toBe('')
     })
 
     it('rule は color 指定時はインラインで上書きする', () => {
-      const el = renderBackLayer({ decorations: [{ type: 'rule', anchor: 'bottom-center', color: '#123456' }] }).firstElementChild as HTMLElement
+      const el = renderBackLayer({ decorations: [{ type: 'rule', anchor: 'bottom-center', color: '#123456' }] }).lastElementChild as HTMLElement
       expect(el.style.backgroundColor).toBe('rgb(18, 52, 86)')
     })
 
     // #345: rule 装飾に borderRadius を足すと、アセット追加もアドオン実装もなしに小図形（円・正方形）が書ける
     it('rule は borderRadius 未指定時、borderRadius を出力しない（現行と完全同一のスタイル）', () => {
-      const el = renderBackLayer({ decorations: [{ type: 'rule', anchor: 'bottom-center' }] }).firstElementChild as HTMLElement
+      const el = renderBackLayer({ decorations: [{ type: 'rule', anchor: 'bottom-center' }] }).lastElementChild as HTMLElement
       expect(el.style.borderRadius).toBe('')
     })
 
     it('rule は length と thickness を同値にし borderRadius をその半分にすると円になる', () => {
-      const el = renderBackLayer({ decorations: [{ type: 'rule', anchor: 'bottom-center', length: 24, thickness: 24, borderRadius: 12 }] }).firstElementChild as HTMLElement
+      const el = renderBackLayer({ decorations: [{ type: 'rule', anchor: 'bottom-center', length: 24, thickness: 24, borderRadius: 12 }] }).lastElementChild as HTMLElement
       expect(el.style.width).toBe('24px')
       expect(el.style.height).toBe('24px')
       expect(el.style.borderRadius).toBe('12px')
     })
 
     it('rule は borderRadius 省略時は正方形になる（角丸なし）', () => {
-      const el = renderBackLayer({ decorations: [{ type: 'rule', anchor: 'bottom-center', length: 24, thickness: 24 }] }).firstElementChild as HTMLElement
+      const el = renderBackLayer({ decorations: [{ type: 'rule', anchor: 'bottom-center', length: 24, thickness: 24 }] }).lastElementChild as HTMLElement
       expect(el.style.width).toBe('24px')
       expect(el.style.height).toBe('24px')
       expect(el.style.borderRadius).toBe('')
     })
 
     it('rule は borderRadius に負値を指定すると 0 にクランプする', () => {
-      const el = renderBackLayer({ decorations: [{ type: 'rule', anchor: 'bottom-center', borderRadius: -8 }] }).firstElementChild as HTMLElement
+      const el = renderBackLayer({ decorations: [{ type: 'rule', anchor: 'bottom-center', borderRadius: -8 }] }).lastElementChild as HTMLElement
       expect(el.style.borderRadius).toBe('0')
     })
 
     it('円・正方形の色も color 経由でテーマトークン（CSS変数）に追従する（マスター/章スコープの上書きが color の値としてそのまま反映される）', () => {
       const el = renderBackLayer({
         decorations: [{ type: 'rule', anchor: 'bottom-center', length: 24, thickness: 24, borderRadius: 12, color: 'var(--theme-primary)' }],
-      }).firstElementChild as HTMLElement
+      }).lastElementChild as HTMLElement
       expect(el.style.backgroundColor).toBe('var(--theme-primary)')
       expect(el.style.borderRadius).toBe('12px')
     })
 
     it('text は color 未指定時、既定色をインラインで指定せず .master-decoration-text に委ねる', () => {
-      const el = renderBackLayer({ decorations: [{ type: 'text', anchor: 'bottom-center', content: 'x' }] }).firstElementChild as HTMLElement
+      const el = renderBackLayer({ decorations: [{ type: 'text', anchor: 'bottom-center', content: 'x' }] }).lastElementChild as HTMLElement
       expect(el.className).toBe('master-decoration-text')
       expect(el.style.color).toBe('')
     })
 
     it('text は color 指定時はインラインで上書きする', () => {
-      const el = renderBackLayer({ decorations: [{ type: 'text', anchor: 'bottom-center', content: 'x', color: '#123456' }] }).firstElementChild as HTMLElement
+      const el = renderBackLayer({ decorations: [{ type: 'text', anchor: 'bottom-center', content: 'x', color: '#123456' }] }).lastElementChild as HTMLElement
       expect(el.style.color).toBe('rgb(18, 52, 86)')
     })
   })
@@ -188,8 +196,9 @@ describe('SlideMasterLayer', () => {
 describe('マスター背景', () => {
   const backgroundEl = (background: MasterBackground): HTMLElement => renderBackLayer({ background }).querySelector('.master-background') as HTMLElement
 
-  it('background を持たないマスターでは背景要素を描かない（現行と完全同一のDOM）', () => {
-    expect(renderBackLayer({ decorations: [{ type: 'band', anchor: 'top-center' }] }).querySelector('.master-background')).toBeNull()
+  it('background を持たないマスターでは既定の grid 背景（motion off）を描く（デッキ既定の格子。#440）', () => {
+    const el = renderBackLayer({ decorations: [{ type: 'band', anchor: 'top-center' }] }).querySelector('.master-background') as HTMLElement
+    expect(el.className).toBe('master-background master-background-grid')
   })
 
   it('front レイヤーには背景を描かない（背景は back の最背面だけ）', () => {

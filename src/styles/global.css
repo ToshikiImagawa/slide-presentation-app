@@ -125,12 +125,23 @@
 /* マスター背景の grid/gradient に付ける控えめな周期モーション（opt-in・theme.masters[].background.motion）。
    0%/開始状態が motion なし時と同じ見た目になるよう設計している。Playwright の
    `animations: 'disabled'`（無限アニメーションは開始状態に固定）でも既存スクリーンショットに影響しない */
+/* 上下・左右フェード用レイヤー（.master-background-grid の1・2枚目）は動かさないため、
+   3・4枚目（格子線）だけ position を変える。レイヤー順は .master-background-grid の
+   background-image と一致させる必要がある */
 @keyframes masterGridDrift {
   from {
-    background-position: 0 0;
+    background-position:
+      0 0,
+      0 0,
+      0 0,
+      0 0;
   }
   to {
-    background-position: var(--theme-background-grid-size) var(--theme-background-grid-size);
+    background-position:
+      0 0,
+      0 0,
+      var(--theme-background-grid-size) var(--theme-background-grid-size),
+      var(--theme-background-grid-size) var(--theme-background-grid-size);
   }
 }
 
@@ -173,10 +184,12 @@ body,
   height: 100%;
 }
 
+/* 格子模様は body に持たせない。body は Reveal.js の <section> transform を受けずスライド遷移中も
+   画面に固定表示され続けるため、模様入りにするとスライド間の隙間（遷移中）に露出してしまう
+   （会社ブランドテーマ等で無関係な意匠が見切れる問題）。格子模様は .master-background-grid（既定値。
+   SlideMasterLayer.tsx）側に持たせ、<section> の内側で transform と一緒に動くようにする */
 body {
   background-color: var(--theme-background);
-  background-image: var(--theme-background-grid-image);
-  background-size: var(--theme-background-grid-size) var(--theme-background-grid-size);
   margin: 0;
   font-family: var(--theme-font-body), serif;
 }
@@ -244,10 +257,23 @@ body {
 }
 
 /* grid 種別は body のデッキ既定背景と同じ格子意匠を共有する。密度は --theme-background-grid-size の
-   インライン上書き（background.size）で変わる */
+   インライン上書き（background.size）で変わる。1・2枚目に上下・左右フェード用のグラデーションを重ね、
+   スライドの四辺に近づくほど格子線を下地色に溶け込ませる（格子模様が枠いっぱいに
+   ぶつ切りで終わらないようにする意匠。#440）。フェードは今回スライド自身の大きさに固定して描くため
+   （旧実装は body・window 基準だった）、上下だけでなく左右にも同じ処理が必要。
+   フェード色は --master-background-grid-fade-color（grid.color 指定時のみインラインで上書き）で、
+   下地色と必ず一致させる。
+   --theme-background-grid-image は横線・縦線の2枚のグラデーションなので、フェード2枚と合わせて
+   計4レイヤーになる。background-size は値が足りないと巡回してズレるため、4レイヤー分を明示する */
 .master-background-grid {
-  background-image: var(--theme-background-grid-image);
-  background-size: var(--theme-background-grid-size) var(--theme-background-grid-size);
+  background-image:
+    linear-gradient(to bottom, var(--master-background-grid-fade-color, var(--theme-background)) 0%, transparent 8%, transparent 92%, var(--master-background-grid-fade-color, var(--theme-background)) 100%),
+    linear-gradient(to right, var(--master-background-grid-fade-color, var(--theme-background)) 0%, transparent 8%, transparent 92%, var(--master-background-grid-fade-color, var(--theme-background)) 100%), var(--theme-background-grid-image);
+  background-size:
+    100% 100%,
+    100% 100%,
+    var(--theme-background-grid-size) var(--theme-background-grid-size),
+    var(--theme-background-grid-size) var(--theme-background-grid-size);
 }
 
 /* band/rule の既定色（#239）。JSON側が color/gradient を明示指定したときはインラインで上書きする */
@@ -276,18 +302,6 @@ body {
 
 .slide-container::after {
   display: none;
-}
-
-.backgrounds::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(to bottom, var(--theme-background) 0%, transparent 50%, var(--theme-background) 100%);
-  z-index: 5;
-  pointer-events: none;
 }
 
 .toolbar {
@@ -573,29 +587,4 @@ code {
 .pdf-capturing .fragment {
   opacity: 1 !important;
   visibility: visible !important;
-}
-
-/* html2canvas は section 単体しかキャプチャせず祖先（body の背景・.backgrounds::before の上下フェード）を
-   引き継がないため、撮影対象の section 自身に同じ見た目を再現する（src/pdfExport.ts） */
-.pdf-capturing .slide-container {
-  background-color: var(--theme-background);
-  background-image: var(--theme-background-grid-image);
-  background-size: var(--theme-background-grid-size) var(--theme-background-grid-size);
-}
-
-/* .reveal .slides section.slide-container::after{display:none}（詳細度 0,3,2）より詳細度を上げて
-   確実に上書きする必要がある（.pdf-capturing 単体の子孫セレクタでは詳細度 0,2,1 で負けて無効化されていた） */
-.reveal.pdf-capturing .slides section.slide-container::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(to bottom, var(--theme-background) 0%, transparent 50%, var(--theme-background) 100%);
-  /* .master-body が z-index:1 のため、それより低くしてコンテンツの背後に回す
-     （元の .backgrounds::before は .slides より前のDOM順に置かれ、コンテンツの背後になる構造だった） */
-  z-index: 0;
-  pointer-events: none;
-  display: block;
 }
