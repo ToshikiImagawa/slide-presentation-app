@@ -148,11 +148,11 @@
 }
 
 .master-background-motion-grid::before {
-  animation: masterGridDrift calc(20s * var(--theme-motion-scale)) linear infinite;
+  animation: masterGridDrift calc(3s * var(--theme-motion-scale)) linear infinite;
 }
 
 .master-background-motion-gradient {
-  animation: masterGradientDrift calc(20s * var(--theme-motion-scale)) ease-in-out infinite;
+  animation: masterGradientDrift calc(3s * var(--theme-motion-scale)) ease-in-out infinite;
 }
 
 /* アクセシビリティ設定でアニメーションを一括無効化する（fadeInUp 等の既存演出も含む） */
