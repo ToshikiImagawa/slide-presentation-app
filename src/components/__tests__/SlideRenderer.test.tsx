@@ -1566,7 +1566,7 @@ describe('SlideRenderer', () => {
       const section = container.querySelector('section.slide-container')!
       expect(section.getAttribute('data-master')).toBeNull()
       expect(section.querySelector('.master-layer-back')?.children.length).toBe(1)
-      expect(section.querySelector('.master-layer-back > .master-background')?.className).toBe('master-background master-background-grid')
+      expect(section.querySelector('.master-layer-back > .master-background')?.className).toBe('master-background master-background-grid master-background-motion-grid')
     })
 
     it('masterMapに対応するlayoutのスライドにdata-master属性が付き、backレイヤーの装飾が描画される', () => {
@@ -1651,11 +1651,11 @@ describe('SlideRenderer', () => {
 
     // #189: マスター背景意匠（背景を持つマスターだけが .master-layer-back の最背面に背景要素を敷く）
     describe('マスター背景（#189）', () => {
-      it('background を持たないテーマでは既定の grid 背景（motion off）を描く（デッキ既定の格子。#428）', () => {
+      it('background を持たないテーマでは既定の grid 背景を描く（デッキ既定の格子。motion は他の grid と同じ既定で有効。#428）', () => {
         const contentSlide = testSlides.find((s) => s.layout === 'content')!
         const { container } = renderWithTheme(<SlideRenderer slides={[contentSlide]} theme={masterTheme} />)
         const el = container.querySelector('.master-background') as HTMLElement
-        expect(el.className).toBe('master-background master-background-grid')
+        expect(el.className).toBe('master-background master-background-grid master-background-motion-grid')
       })
 
       it('マスターごとに別の背景（無地 / 格子 / 全面塗り）を割り当てられる（受け入れ基準）', () => {

@@ -390,8 +390,9 @@ export type MasterBackground = PlainMasterBackground | GridMasterBackground | Fi
 /** マスター定義。extends で他の master の decorations / background を継承できる（resolveMaster が循環を検出する） */
 export interface MasterDefinition {
   extends?: string
-  /** 背景意匠。省略時は既定値（grid・motion: false）が使われる。デッキ既定の格子模様は body ではなく
-   * この既定値経由で <section> 内側に描かれるため、Reveal.js のスライド遷移中も一緒に動き見切れない。
+  /** 背景意匠。省略時は既定値（grid。motion は明示しないので他の grid と同じ既定で有効）が使われる。
+   * デッキ既定の格子模様は body ではなくこの既定値経由で <section> 内側に描かれるため、
+   * Reveal.js のスライド遷移中も一緒に動き見切れない。
    * extends 先が背景を持つ場合は、自身に background を書いた方が勝つ */
   background?: MasterBackground
   decorations?: MasterDecoration[]

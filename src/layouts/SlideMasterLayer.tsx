@@ -21,9 +21,10 @@ type Props = {
 }
 
 /** マスター側が背景を明示しないときの既定値。デッキ既定の見た目（格子模様）を、body ではなく
- * <section> 内側の .master-background として描くための値（motion は既定 true だが、旧来の
- * body 格子は動かない意匠だったため、既定値としては明示的に false で揃える） */
-const DEFAULT_MASTER_BACKGROUND: MasterBackground = { type: 'grid', motion: false }
+ * <section> 内側の .master-background として描くための値。motion は意図的に指定しない
+ * （grid/gradient は motion 省略時に既定で動く、という他の箇所と同じルールにそのまま乗せる。
+ * ここだけ false を明示すると「motion 省略時の既定値」が2つに分かれて一貫しなくなる） */
+const DEFAULT_MASTER_BACKGROUND: MasterBackground = { type: 'grid' }
 
 /**
  * 指定レイヤー（back/front）の中身を組み立てる。back レイヤーは最背面に背景（#189・#236）を敷き、

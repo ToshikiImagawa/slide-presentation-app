@@ -28,10 +28,10 @@ describe('SlideMasterLayer', () => {
     clearRegistry()
   })
 
-  it('master が未解決でも back レイヤーは既定の grid 背景（motion off）を描く（デッキ既定の格子。#428）', () => {
+  it('master が未解決でも back レイヤーは既定の grid 背景を描く（デッキ既定の格子。motion は他の grid と同じ既定で有効。#428）', () => {
     const { container } = render(<SlideMasterLayer master={undefined} layer="back" ctx={ctx} />)
     const el = container.querySelector('.master-background') as HTMLElement
-    expect(el.className).toBe('master-background master-background-grid')
+    expect(el.className).toBe('master-background master-background-grid master-background-motion-grid')
   })
 
   it('master が未解決なら front レイヤーは何も描画しない（装飾のみのレイヤーのため）', () => {
@@ -43,7 +43,7 @@ describe('SlideMasterLayer', () => {
     const container = renderBackLayer({ decorations: [{ type: 'component', anchor: 'top-left', name: 'Unregistered' }] })
     expect(container.textContent).toBe('')
     expect(container.children.length).toBe(1)
-    expect(container.firstElementChild?.className).toBe('master-background master-background-grid')
+    expect(container.firstElementChild?.className).toBe('master-background master-background-grid master-background-motion-grid')
   })
 
   it('登録済みコンポーネントを参照する component 装飾は描画する', () => {
@@ -196,9 +196,9 @@ describe('SlideMasterLayer', () => {
 describe('マスター背景', () => {
   const backgroundEl = (background: MasterBackground): HTMLElement => renderBackLayer({ background }).querySelector('.master-background') as HTMLElement
 
-  it('background を持たないマスターでは既定の grid 背景（motion off）を描く（デッキ既定の格子。#428）', () => {
+  it('background を持たないマスターでは既定の grid 背景を描く（デッキ既定の格子。motion は他の grid と同じ既定で有効。#428）', () => {
     const el = renderBackLayer({ decorations: [{ type: 'band', anchor: 'top-center' }] }).querySelector('.master-background') as HTMLElement
-    expect(el.className).toBe('master-background master-background-grid')
+    expect(el.className).toBe('master-background master-background-grid master-background-motion-grid')
   })
 
   it('front レイヤーには背景を描かない（背景は back の最背面だけ）', () => {
