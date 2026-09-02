@@ -125,23 +125,15 @@
 /* マスター背景の grid/gradient に付ける控えめな周期モーション（opt-in・theme.masters[].background.motion）。
    0%/開始状態が motion なし時と同じ見た目になるよう設計している。Playwright の
    `animations: 'disabled'`（無限アニメーションは開始状態に固定）でも既存スクリーンショットに影響しない */
-/* 上下・左右フェード用レイヤー（.master-background-grid の1・2枚目）は動かさないため、
-   3・4枚目（格子線）だけ position を変える。レイヤー順は .master-background-grid の
-   background-image と一致させる必要がある */
+/* grid は background-position ではなく transform で動かす（.master-background-grid::before）。
+   background-position のアニメーションはフレームごとに repaint が必要でGPU合成されず、
+   実機で描画コストが高くカクつきやすい。transform は compositor 合成のみで済み滑らかになる */
 @keyframes masterGridDrift {
   from {
-    background-position:
-      0 0,
-      0 0,
-      0 0,
-      0 0;
+    transform: translate(0, 0);
   }
   to {
-    background-position:
-      0 0,
-      0 0,
-      var(--theme-background-grid-size) var(--theme-background-grid-size),
-      var(--theme-background-grid-size) var(--theme-background-grid-size);
+    transform: translate(calc(-1 * var(--theme-background-grid-size)), calc(-1 * var(--theme-background-grid-size)));
   }
 }
 
@@ -155,8 +147,8 @@
   }
 }
 
-.master-background-motion-grid {
-  animation: masterGridDrift calc(40s * var(--theme-motion-scale)) linear infinite;
+.master-background-motion-grid::before {
+  animation: masterGridDrift calc(20s * var(--theme-motion-scale)) linear infinite;
 }
 
 .master-background-motion-gradient {
@@ -257,23 +249,36 @@ body {
 }
 
 /* grid 種別は body のデッキ既定背景と同じ格子意匠を共有する。密度は --theme-background-grid-size の
-   インライン上書き（background.size）で変わる。1・2枚目に上下・左右フェード用のグラデーションを重ね、
-   スライドの四辺に近づくほど格子線を下地色に溶け込ませる（格子模様が枠いっぱいに
-   ぶつ切りで終わらないようにする意匠。#428）。フェードは今回スライド自身の大きさに固定して描くため
-   （旧実装は body・window 基準だった）、上下だけでなく左右にも同じ処理が必要。
-   フェード色は --master-background-grid-fade-color（grid.color 指定時のみインラインで上書き）で、
-   下地色と必ず一致させる。
-   --theme-background-grid-image は横線・縦線の2枚のグラデーションなので、フェード2枚と合わせて
-   計4レイヤーになる。background-size は値が足りないと巡回してズレるため、4レイヤー分を明示する */
+   インライン上書き（background.size）で変わる。
+   格子線本体は ::before・上下左右フェードは ::after に分けている（#428・#430）:
+   - ::before（格子線）: motion 時は background-position ではなく transform で動かす。
+     background-position の逐次アニメーションはフレームごとに repaint が必要でGPU合成されないため
+     実機でカクつきやすい。transform は compositor 合成のみで済み滑らかになる。
+     一辺分（--theme-background-grid-size）だけ inset を負にして外側へ広げているのは、
+     transform で動かしても隙間が見えないようにするための余白（親の overflow:hidden で切られる）
+   - ::after（フェード）: 格子線の手前に重ねて、スライドの四辺に近づくほど格子線を下地色に
+     溶け込ませる（格子模様が枠いっぱいにぶつ切りで終わらないようにする意匠）。フェード色は
+     --master-background-grid-fade-color（grid.color 指定時のみインラインで上書き）で、下地色と必ず一致させる。
+   両方が同じ paint order（before → after）で描かれるため、フェードが常に格子線の手前に来る */
 .master-background-grid {
+  overflow: hidden;
+}
+
+.master-background-grid::before {
+  content: '';
+  position: absolute;
+  inset: calc(-1 * var(--theme-background-grid-size));
+  background-image: var(--theme-background-grid-image);
+  background-size: var(--theme-background-grid-size) var(--theme-background-grid-size);
+}
+
+.master-background-grid::after {
+  content: '';
+  position: absolute;
+  inset: 0;
   background-image:
     linear-gradient(to bottom, var(--master-background-grid-fade-color, var(--theme-background)) 0%, transparent 8%, transparent 92%, var(--master-background-grid-fade-color, var(--theme-background)) 100%),
-    linear-gradient(to right, var(--master-background-grid-fade-color, var(--theme-background)) 0%, transparent 8%, transparent 92%, var(--master-background-grid-fade-color, var(--theme-background)) 100%), var(--theme-background-grid-image);
-  background-size:
-    100% 100%,
-    100% 100%,
-    var(--theme-background-grid-size) var(--theme-background-grid-size),
-    var(--theme-background-grid-size) var(--theme-background-grid-size);
+    linear-gradient(to right, var(--master-background-grid-fade-color, var(--theme-background)) 0%, transparent 8%, transparent 92%, var(--master-background-grid-fade-color, var(--theme-background)) 100%);
 }
 
 /* band/rule の既定色（#239）。JSON側が color/gradient を明示指定したときはインラインで上書きする */
