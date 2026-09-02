@@ -6,6 +6,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [2.6.1] - 2026-09-02
+
+### Fixed
+
+- Fixed the default background (grid pattern) on masters without a custom background sometimes showing through briefly at the edges during slide transitions; it's now rendered as part of each slide instead of the app's base layer, so it no longer leaks an unrelated design during transitions, and fades subtly at the edges instead of ending abruptly
+- Fixed master background ambient motion (grid and gradient) feeling choppy and slow on some devices; it now animates smoothly and at a faster, consistent pace
+
 ## [2.6.0] - 2026-09-01
 
 ### Added
