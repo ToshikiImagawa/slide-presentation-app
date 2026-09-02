@@ -18,7 +18,7 @@ function isVisible(only: MasterDecorationOnly, renderCtx: MasterRenderContext): 
 }
 
 /** 装飾1件を描画してそのルート要素の style を返す。back レイヤーは既定の grid 背景を必ず先頭に描くため
- * lastElementChild で装飾側を取る（#440） */
+ * lastElementChild で装飾側を取る（#428） */
 function styleOf(decoration: MasterDecoration): CSSStyleDeclaration {
   return (renderBackLayer({ decorations: [decoration] }).lastElementChild as HTMLElement).style
 }
@@ -28,7 +28,7 @@ describe('SlideMasterLayer', () => {
     clearRegistry()
   })
 
-  it('master が未解決でも back レイヤーは既定の grid 背景（motion off）を描く（デッキ既定の格子。#440）', () => {
+  it('master が未解決でも back レイヤーは既定の grid 背景（motion off）を描く（デッキ既定の格子。#428）', () => {
     const { container } = render(<SlideMasterLayer master={undefined} layer="back" ctx={ctx} />)
     const el = container.querySelector('.master-background') as HTMLElement
     expect(el.className).toBe('master-background master-background-grid')
@@ -196,7 +196,7 @@ describe('SlideMasterLayer', () => {
 describe('マスター背景', () => {
   const backgroundEl = (background: MasterBackground): HTMLElement => renderBackLayer({ background }).querySelector('.master-background') as HTMLElement
 
-  it('background を持たないマスターでは既定の grid 背景（motion off）を描く（デッキ既定の格子。#440）', () => {
+  it('background を持たないマスターでは既定の grid 背景（motion off）を描く（デッキ既定の格子。#428）', () => {
     const el = renderBackLayer({ decorations: [{ type: 'band', anchor: 'top-center' }] }).querySelector('.master-background') as HTMLElement
     expect(el.className).toBe('master-background master-background-grid')
   })

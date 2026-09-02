@@ -1560,7 +1560,7 @@ describe('SlideRenderer', () => {
       masterMap: { content: 'standard' },
     }
 
-    it('theme未指定時はdata-master属性が付かず装飾も描画されない（既定のgrid背景のみ描画される。#440）', () => {
+    it('theme未指定時はdata-master属性が付かず装飾も描画されない（既定のgrid背景のみ描画される。#428）', () => {
       const contentSlide = testSlides.find((s) => s.layout === 'content')!
       const { container } = renderWithTheme(<SlideRenderer slides={[contentSlide]} />)
       const section = container.querySelector('section.slide-container')!
@@ -1651,7 +1651,7 @@ describe('SlideRenderer', () => {
 
     // #189: マスター背景意匠（背景を持つマスターだけが .master-layer-back の最背面に背景要素を敷く）
     describe('マスター背景（#189）', () => {
-      it('background を持たないテーマでは既定の grid 背景（motion off）を描く（デッキ既定の格子。#440）', () => {
+      it('background を持たないテーマでは既定の grid 背景（motion off）を描く（デッキ既定の格子。#428）', () => {
         const contentSlide = testSlides.find((s) => s.layout === 'content')!
         const { container } = renderWithTheme(<SlideRenderer slides={[contentSlide]} theme={masterTheme} />)
         const el = container.querySelector('.master-background') as HTMLElement

@@ -844,7 +844,7 @@ mermaidはd3/dagre/katex/cytoscape等の重い依存を持ち込むため、コ�
 
 透かし（機密表記等）は `text`/`image` 装飾に `opacity` と `rotate` を付けて表現する。グラデーション帯は `band` に `gradient`（`{ from, to, angle }`）を指定する（`color` の代わりに使う）。斜めのストライプは `rule` に `length`（対角を覆う長さ）・`thickness`・`rotate` を指定する（辺いっぱいに伸びる `band` を回すと両端に隙間が出る）。
 
-`background` はマスター単位の背景意匠。省略するとデッキ既定の背景（テーマ背景色＋格子）がそのまま見える。`opacity`（0〜1）を下げるとデッキ既定の背景が透ける。**そのスライドに `meta.backgroundColor`/`backgroundImage`（前述の共通 meta フィールド）があるときは、この `background` を描かず個別指定が勝つ**（#236）。
+`background` はマスター単位の背景意匠。省略するとデッキ既定の背景（テーマ背景色＋格子。静止画・`motion: false` 相当）がそのまま見える。`grid` を自分で明示指定した場合は `motion` が既定で有効（動く）になるため、省略時と同じ静止した格子にしたい場合は `motion: false` を明示する必要がある（後述）。`opacity`（0〜1）を下げるとデッキ既定の背景が透ける。**そのスライドに `meta.backgroundColor`/`backgroundImage`（前述の共通 meta フィールド）があるときは、この `background` を描かず個別指定が勝つ**（#236）。
 
 | `type`     | 追加プロパティ                                                | 用途                                                                                                          |
 | ---------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
@@ -855,6 +855,8 @@ mermaidはd3/dagre/katex/cytoscape等の重い依存を持ち込むため、コ�
 | `image`    | `src`（必須）/ `fit`（`cover`/`contain`・省略時 `cover`）     | 画像を全面に敷く                                                                                              |
 
 `plain`/`grid`（`color` 省略時）に加え、`gradient` の半透明部分・`image` の `fit: contain` の余白の下地も既定でテーマ背景色になる（#239。真実源は `global.css` の `.master-background`）。
+
+`grid` は四辺（上下左右各8%）で下地色にフェードし、格子が枠いっぱいで唐突に終わらないようにする。`color` を指定した場合はフェード色もその色に追従する（真実源は `global.css` の `.master-background-grid`）。
 
 `grid`/`gradient` の背景には `motion`（boolean）で控えめな周期的アニメーションを付けられる（他の `type` では無視される）。省略時は `true` 相当（動く）で、`false` を明示するとそのマスターだけ動きを止められる（静止画としての一貫性を優先したい場合の opt-out）。
 
@@ -880,7 +882,7 @@ mermaidはd3/dagre/katex/cytoscape等の重い依存を持ち込むため、コ�
 | `{sectionTitle}`                    | 章タイトル（`meta.section` の値）   |
 | `{sectionIndex}` / `{sectionTotal}` | 章内の連番（1始まり）/ 章内の総枚数 |
 
-`masterMap` はレイアウト種別（`center`/`content`/`two-column`/`bleed`/`custom`）→ masterKey の対応表。未指定のレイアウトには装飾を描画しない（masters/masterMap を省略したデッキは現行と完全同一のDOMになる）。
+`masterMap` はレイアウト種別（`center`/`content`/`two-column`/`bleed`/`custom`）→ masterKey の対応表。未指定のレイアウトには装飾を描画しない。ただし背景だけは別で、`masters`/`masterMap` を省略したデッキでも各スライドの `<section>` 内側に既定のデッキ既定背景（テーマ背景色＋格子・静止画）が描かれる（`meta.backgroundColor`/`backgroundImage` を指定すればそちらが勝つ）。
 
 `icons` はアイコン名 → SVGアセットパス（`image/`配下）または外部URL。ComponentRegistryに `Icon:<name>` として登録され、`content.tiles[].icon` から参照できる（ブランドテーマ提供アイコンの登録経路）。
 
